@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-06-24 ~ 2026-07-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 20 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>20</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-23 06:15:29 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-23 21:41:18 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读20篇无人机相关论文，重点关注三篇9分研究：实时风估计、机器学习反馈线性化控制及强化学习抗扰着陆框架。</p>
-<p>最值得关注的是低成本四旋翼实时风估计方法与面向未建模动态的机器学习控制，以及基于强化学习的海浪扰动着陆通用控制框架。</p>
-<p>建议后续深入阅读这三篇高分论文，重点关注风估计算法在实际飞行中的校准方法以及强化学习策略的泛化能力验证。</p>
+<p>共处理19篇论文，精读7篇、速读12篇。重点关注精读中两篇9分论文：条件可逆神经网络驱动无人机控制，以及融合视觉-几何-语义地图先验的无人机6自由度定位。建议优先阅读这两篇，把握无人机控制与定位的前沿突破。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Conditional Invertible Neural Networks for Data-Driven UAV Control: A 2-D Proof of Concept">Conditional Invertible Neural Networks for Data-Driven UAV Control: A 2-D Proof of Concept</span></li><li><span class="dpr-home-dashboard-paper-title" title="AeroMap3D: Anchoring Monocular UAV 6-DoF Localization to Visual-Geometric-Semantic Map Priors">AeroMap3D: Anchoring Monocular UAV 6-DoF Localization to Visual-Geometric-Semantic Map Priors</span></li><li><span class="dpr-home-dashboard-paper-title" title="No Training, Better Flights: Test-Time Scaled VLMs for UAV Navigation">No Training, Better Flights: Test-Time Scaled VLMs for UAV Navigation</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">20 篇</strong>
+    <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Realtime Wind Estimation using Low Cost Quadrotor Uncrewed Aerial Vehicles">Realtime Wind Estimation using Low Cost Quadrotor Uncrewed Aerial Vehicles</span></li><li><span class="dpr-home-dashboard-paper-title" title="Machine Learning-based Feedback Linearization Control of Quadrotor Subject to Unmodeled Dynamics">Machine Learning-based Feedback Linearization Control of Quadrotor Subject to Unmodeled Dynamics</span></li><li><span class="dpr-home-dashboard-paper-title" title="WaveLander: A Generalizable Hierarchical Control Framework for UAV Landing on Wave-Disturbed Platforms via Reinforcement Learning">WaveLander: A Generalizable Hierarchical Control Framework for UAV Landing on Wave-Disturbed Platforms via Reinforcement Learning</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DriftWorld: Fast World Modeling through Drifting">DriftWorld: Fast World Modeling through Drifting</span></li><li><span class="dpr-home-dashboard-paper-title" title="Intelligent Multi-UAV Navigation in ITNTNs: A Hierarchical LLM Approach">Intelligent Multi-UAV Navigation in ITNTNs: A Hierarchical LLM Approach</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Distances to Trajectories: Real-Time Signed Distance Function Mapping and Distance-Accelerated Motion Planning for UAVs">From Distances to Trajectories: Real-Time Signed Distance Function Mapping and Distance-Accelerated Motion Planning for UAVs</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>20</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
 </section>
 </div>
 

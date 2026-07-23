@@ -1,0 +1,2141 @@
+Title: Conditional Generative Learning Enabled Wireless UAV Sensing and Tracking via Point Cloud Imaging
+
+URL Source: https://arxiv.org/pdf/2607.14778v1
+
+Published Time: Fri, 17 Jul 2026 00:58:30 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> 1
+
+# Conditional Generative Learning Enabled Wireless UAV Sensing and Tracking via Point Cloud Imaging 
+
+Xinhong Dai, Graduate Student Member, IEEE , Yuan Gao, Hao Jiang, Graduate Student Member, IEEE ,Xiaojun Yuan, Fellow, IEEE , and Xin Wang, Fellow, IEEE 
+
+Abstract —In this paper, we study an unmanned aerial vehicle (UAV) sensing and tracking problem, where a base station equipped with an antenna array continuously illuminates a flying UAV and exploits the reflected echoes for slot-wise point cloud imaging within its potential flight region. To accomplish this task, the imaging region for each slot is determined based on the prior of the historical UAV positions. Then, the UAV is represented by an electromagnetic point cloud in this region that contains its spatial information and electromagnetic properties (EPs), enabling the unified extraction of UAV position, attitude, and shape from the reconstructed point cloud. The EP point cloud imaging for the UAV based on echo signals is a complex inverse problem. To this end, we propose an Array-based Unified Generative UAV Sensing and Tracking (AUGUST) approach, which integrates a conditional channel encoding module and a generative decoding module. The encoding module incorporates position and signal-to-noise ratio embeddings to stabilize the UAV intrinsic feature extraction under fast UAV position and channel variations, and maps the encoded features to a latent space regularized by a learnable flow-based prior. The decoding module employs a diffusion model with a weighted training objective to reconstruct the UAV point cloud guided by the extracted features. The simulation results demonstrate that the reconstructed point clouds via the proposed AUGUST approach present higher fidelity compared to the benchmark schemes, thereby enabling a more accurate capture of the UAV attitude and shape information. The AUGUST approach also presents a substantial gain over the conventional model-based baseline in positioning performance. 
+
+Index Terms —UAV sensing and tracking, point cloud recon-struction, diffusion model, position and attitude estimation. 
+
+I. I NTRODUCTION 
+
+Benefiting from the flexible deployment, multifunctional capabilities, and other appealing features of unmanned aerial vehicles (UAVs), low-altitude economy (LAE) has attracted intense attention and is undergoing rapid development [1]. UAVs demonstrate their strong potential in different fields, in-cluding logistics, agriculture, and emergency communications [2]–[4], and have been recognized as an integral component of future sixth-generation wireless networks [5]. Looking ahead, the continuous expansion of the LAE is expected to lead to 
+
+X. Dai, Y. Gao, and X. Wang are with Key Laboratory for Information Science of Electromagnetic Waves (MoE), College of Future Information Technology, Fudan University, Shanghai, China. (e-mail: xhdai24@m.fudan.edu.cn; y gao23@m.fudan.edu.cn; xwang11@fudan.edu.cn). H. Jiang and X. Yuan are with the National Key Laboratory of Wire-less Communications, the University of Electronic Science and Tech-nology of China, Chengdu 611731, China (e-mail: jh@std.uestc.edu.cn; xjyuan@uestc.edu.cn). The corresponding author is Xin Wang .
+
+a substantial increase in the number of aerial vehicles [6]. Consequently, accurately sensing and acquiring the flight states of UAVs is essential for ensuring low-altitude network security and robust operation. With the widespread adoption of integrated sensing and communication (ISAC) technologies in various wireless sce-narios, the paradigm of wireless sensing for UAVs (espe-cially echo-based non-cooperative sensing) based on antenna arrays deployed at base stations (BSs) has shown dominating superiority. This is attributed to the strong air–ground line-of-sight (LoS) of BS-UAV links, as well as the inherently superior information processing capability and broader sensing coverage provided by densely deployed cellular BSs [5]. In fact, array-based wireless sensing offers several unique advan-tages over conventional sensing modalities such as radar and LiDAR [7]. Antenna arrays serving the communication sys-tem provide wider sensing coverage in the three-dimensional (3D) space, particularly in the vertical domain, and are less sensitive to various environmental conditions. Also, the signal transmission of BS-UAV links can be directly exploited for sensing purposes, thereby avoiding extra wireless overhead. In addition, numerous elaborate waveform designs, along with advanced beamforming strategies, can be effectively applied to antenna arrays to enhance the sensing accuracy. Many existing studies have investigated wireless non-cooperative sensing of UAVs using antenna arrays [7]–[13]. The works in [8]–[10] focus predominantly on the estimation and tracking of a single attribute, such as UAV position. Notably, a flying UAV constitutes a rigid body with distinct attitude and geometric characteristics, and the evolving sensing requirements of LAE have further driven the shift toward joint sensing and tracking of both position and attitude [11], [12], as well as the joint detection and classification of UAVs and other aerial targets [7], [13]. However, the methodologies proposed in [7]–[13] are insufficient to meet the emerging demand for multidimensional UAV sensing, and a unified wireless sensing framework capable of comprehensively extracting such UAV attributes remains largely underdeveloped. 
+
+From the perspective of electromagnetic propagation [14], characterizing or reconstructing these attributes from echo sig-nals essentially forms a complex inverse problem, which maps received signals to an “electromagnetic image” of the UAV. Current target imaging and feature reconstruction methods fall into two broad categories: The first leverages radar imaging and compressed sensing-based techniques for target imaging and classification [15], while the second employs artificial intelligence (AI) algorithms to learn the deterministic mapping arXiv:2607.14778v1 [eess.SP] 16 Jul 2026 2
+
+between received signals and target features [15]–[17]. The former typically relies on accurate statistical priors and explicit propagation modeling, which may be difficult to obtain in highly dynamic low-altitude scenarios. The latter can avoid explicit inverse solvers, but usually produces deterministic estimates and does not explicitly characterize the latent distri-bution or reconstruction uncertainty of the electromagnetic im-age conditioned on noisy echo observations. These limitations become particularly prominent for UAV sensing, where the echo-to-image mapping is high-dimensional, nonlinear, and potentially ill-posed due to limited observations, measurement noise, and rapid target-state variations. In this context, generative AI (GAI) provides a distribution-aware perspective for wireless sensing inverse problems. Rather than only learning a deterministic mapping, generative models can capture the underlying distribution of physically plausible target representations and infer high-dimensional electromagnetic images from noisy and incomplete wireless observations through latent-variable modeling [18]. Such a capability is well aligned with UAV wireless sensing, where the received echoes contain implicit but ambiguous informa-tion about multidimensional target attributes. For example, the study [19] presented a GAI-based point cloud generation method for 3D targets, where the generative model was used to transform the noise distribution to the distribution of a desired shape. Direct application of existing GAI-based methods to wireless imaging of highly dynamic UAVs, however, faces three core challenges: First, UAV mobility typically spans a large 3D space, rendering sensing and imaging across the entire flight domain computationally prohibitive; second, constructing a high-fidelity representation of UAV features over such an extensive spatial range poses a difficult task for algorithm design; third, measurement noise and rapid channel variations hinder the accurate extraction of intrinsic UAV features from echo signals. Motivated by the above considerations, we investigate an array-based UAV sensing and tracking problem. Specifically, a BS equipped with an antenna array continuously transmits signals to a flying UAV and receives the corresponding echoes, based on which wireless imaging for the UAV is performed on a slot-by-slot basis. The signal transmission, reflection, and the sensing channel are modeled in accordance with an electro-magnetic scattering framework. Note that UAV motion is not entirely random; instead, its trajectory exhibits temporal conti-nuity, with strong correlations between consecutive positions. This continuity enables historical position information to serve as valuable spatial prior knowledge during tracking, obviating the need for full-flight-region sensing. Hence, by exploiting the prior of historical UAV positions, the UAV position for each slot can be predicted, thereby constraining a potential flight region for wireless imaging centered at the predicted position. Then, we adopt the electromagnetic point cloud to visualize the sensed UAV within this region, where each point contains the spatial information and electromagnetic properties (EPs) of each scattering point on the UAV. By following the GAI principle, we propose an Array-based Unified Generative UAV Sensing and Tracking (AUGUST) approach. This approach not only can efficiently extract UAV features from array-received echo signals but also integrate these features with spatial prior information under a Bayesian framework, thereby achieving efficient and high-quality EP point cloud-based UAV imaging. The main contributions of this paper are summarized as follows:  
+
+> •
+
+We formulate a UAV sensing and tracking problem that aims to reconstruct the EP point cloud of the UAV within the predicted flight region, conditioned on the estimated sensing channel. To solve this problem, we propose an AUGUST approach comprising a conditional channel en-coding module and a generative decoding (reconstruction) module, to capture the UAV position, attitude, and shape information from the visualized point cloud.  
+
+> •
+
+In the conditional channel encoding module, a multi-plicative position embedding and a signal-to-noise ratio (SNR) embedding are incorporated to help the encoder, structured with a multilayer perceptron (MLP), effec-tively extract intrinsic UAV features with changing UAV locations and channel conditions. Then, the encoded features are mapped into a latent space regularized by a learnable global prior, to improve the generalization and consistency of the model.  
+
+> •
+
+Given the extracted features by the conditional channel encoding, the generative decoding module exploits the diffusion model to generate the UAV point cloud. To mitigate the adverse impact of distribution discrepancies among different features on the training, we develop a weighted training design by introducing a weighted loss that accounts for the UAV spatial information, EPs, and the regularization prior. Numerical results show that the proposed AUGUST ap-proach achieves higher-quality point cloud imaging compared to the alternatives, resulting in more accurate UAV attitude and shape characterization. Also, the AUGUST approach outperforms the conventional positioning method in position estimation performance. 
+
+A. Related Works 
+
+Recently, GAI has demonstrated immense potential in se-mantic transmission [20], channel representation [21], and ISAC systems [22]. Beyond these domains, several represen-tative GAI models—such as diffusion models—exhibit high flexibility in both modeling and inference design, enabling their effective adaptation to wireless sensing scenarios. Specif-ically, the authors in [23] employed a weighted conditional diffusion model to achieve human flow detection. In [24], a diffusion-based framework was developed to generate high-quality radio-frequency synthetic data for human pose sensing. Additionally, the authors in [25] modeled the EP point cloud of targets based on electromagnetic scattering principles and leveraged a diffusion model to realize 3D point cloud imaging, with the sensing channel serving as a conditioning factor. Here, the channel was mapped to a reference channel to guide the reverse diffusion process. As a comparable EP point cloud imaging approach based on echo signals, [25] focuses on static target sensing but the methodology can still be used as the point cloud imaging 3
+
+component in our proposed AUGUST approach, once the point-cloud reconstruction region is specified. Different from [25], we do not directly feed the channel information into the diffusion model. Instead, we adopt channel encoding with position and SNR embeddings, coupled with latent space mapping under the variational autoencoder (VAE) framework [26]. More recently, a diffusion Schr¨ odinger bridge (DSB)-based framework was proposed to bridge EM-property sensing and channel reconstruction in ISAC systems [27], which fur-ther demonstrates the potential of integrating electromagnetic scattering knowledge with generative reconstruction methods. Different from this bidirectional EM-property/channel recon-struction framework, this paper focuses on dynamic UAV sensing and tracking via slot-wise EP point cloud imaging, where the reconstructed point cloud is further used to infer the UAV position, attitude, and shape. 
+
+B. Organization and Notation 
+
+The rest of this paper has the following structure: In Section II, we introduce the signal model and the sensing model under the electromagnetic scattering framework. In Section III, we formulate a UAV sensing and tracking problem where the objective is UAV point cloud reconstruction. In Section IV, we develop the AUGUST approach to solve the problem based on the GAI principle. In Section V, we introduce a weighted training design for the proposed framework. Numerical results are provided in Section VI, followed by the conclusion in Section VII. 
+
+Notations: Bold lowercase and uppercase letters denote vectors and matrices, respectively. ℓ2 norm and Frobenius norm are denoted by ‖ · ‖ and ‖ · ‖ F , respectively. The transpose, conjugate transpose, and inverse of a matrix are represented by (·)T, (·)H, and (·)−1, respectively. diag [·] means forming a diagonal matrix with the given elements placed on the diagonal. vec (A) and tr (A) denote the vectorization and trace of matrix A, respectively. DKL (p(·)‖q(·)) denotes the Kullback–Leibler (KL) divergence from distribution p(·) to distribution q(·). ⊗, ⊙, and ∇ denote the Kronecker product, Hadamard product, and gradient operator, respectively. CN 
+
+and N represent the circularly symmetric complex Gaussian (CSCG) distribution and the real-valued Gaussian distribution, respectively. IN denotes the identity matrix of size N . j is the imaginary unit such that j 2 = −1. The expectation of x with respect to the distribution p is denoted by Ep[x]. The index set IN is defined as {1, . . . , N } for integer N .II. S YSTEM MODEL 
+
+A. Signal Model 
+
+As illustrated in Fig. 1, we consider a UAV sensing and tracking system, in which the BS transmits signals to a UAV flying in 3D space and exploits the reflected echoes for UAV sensing and tracking. In this system, the BS is equipped with an antenna array deployed in the x-O-z plane, consisting of 
+
+Nb = Nx × Nz antennas for transmission and reception. All antennas are uniformly spaced at half of the carrier wavelength 
+
+λc = c 
+
+> fc
+
+, where c denotes the speed of light and fc is the carrier frequency. In this paper, we only consider the LoS  
+
+> Antenna Array
+> UAV 3D Trajectory
+> Directional Beam
+> Echo Signal
+> Fig. 1. The considered UAV sensing and tracking system.
+
+link between the UAV and the BS for analytical tractability. Moreover, we assume that the UAV sensing and tracking operate over T discrete time slots indexed by t, and each slot has an equal length ∆t.Since the BS cannot accurately obtain the UAV position during tracking, a rough beamforming design, over a potential region within which the UAV is flying, is adopted based on a discrete Fourier transform (DFT) codebook [28]. This design enables uniform beam coverage over this region of interest (RoI) while striking a favorable trade-off between beam scan-ning range and echo power. Specifically, let ϑ and ϕ denote the azimuth and elevation angles, respectively. The RoI is modeled as a 2D angular sector centered at direction (ϑ(t) 
+
+> c
+
+, ϕ (t) 
+
+> c
+
+) with angular widths ∆ϑ and ∆ϕ. Define the uniform angle grids for the DFT codebook as {ϑ(t) 
+
+> ı
+
+}Nx 
+
+> ı=1
+
+∈ [ϑ(t) 
+
+> c
+
+− ∆ϑ 
+
+> 2
+
+, ϑ (t) 
+
+> c
+
++ ∆ϑ 
+
+> 2
+
+]
+
+and {ϕ(t) 
+
+> 
+
+}Nz 
+
+> =1
+
+∈ [ϕ(t) 
+
+> c
+
+− ∆ϕ 
+
+> 2
+
+, ϕ (t) 
+
+> c
+
++ ∆ϕ 
+
+> 2
+
+]. For each slot t,we consider that the BS transmits L symbols, and the l-th transmitted signal in vector form is given by: 
+
+x(t)(l) = W (t)s(t)(l) ∈ CNb×1, l ∈ I L, (1) where W (t) = [w(t)1,1, · · · , w(t) 
+
+> ı,
+
+, · · · , w(t) 
+
+> Nx,N z
+
+] ∈ CNb×Nb ,
+
+ı ∈ INx ,  ∈ INz , and s(t)(l) ∈ CNb×1 denotes the l-th downlink symbol vector intended to the UAV. The (ı,  )-th column of W (t), i.e., w(t) 
+
+> ı,
+
+is an Nb-dimensional vector, and its n-th element is given by 
+
+[w(t) 
+
+> ı,
+
+]n = 1
+
+√Nb
+
+e−jπ(a cos ϕ(t)      
+
+> cos ϑ(t)
+> ı+bsin ϕ(t)
+> )
+
+, (2) with a ∈ I Nx , b ∈ I Nz , and n = b + ( a − 1) Nz ∈ I Nb . In addi-tion, the transmitted symbols are modeled as pseudo-random, satisfying E[s(t)(l)] = 0 and E[s(t)(l)( s(t)(l)) H] = INb .Then, let X(t) = [ x(t)(1) , · · · , x(t)(L)] ∈ CNb×L denote the transmitted signal matrix over L symbols. When the number of symbols L is sufficiently large, the sample covariance matrix of X(t) can be approximated as S(t) 
+
+> X
+
+≈ 1 
+
+> L
+
+X(t)(X(t))H.Besides, we consider that the BS transmits signals subject to a fixed power constraint Ps, i.e., tr (S(t) 
+
+> X
+
+) ≤ Ps.
+
+B. Sensing Model Based on Electromagnetic Scattering 
+
+For each slot t, we assume that the antenna array at the BS operates in full-duplex mode, and the received signals at the 4
+
+BS can be modeled as 
+
+Y (t) = H(t)X(t) + N . (3) In (3), Y (t) = [ y(t)(1) , y(t)(2) , · · · , y(t)(L)] is the received signal matrix, and N = [ n(1) , n(2) , · · · , n(L)] represents the CSCG noise with the variance σ2 at the BS, i.e., n(l) ∼CN (0, σ 2INb ). H(t) ∈ CNb×Nb denotes the sensing channel matrix corresponding to the downlink transmission and signal reflection processes. We next detail the sensing model of the considered system based on the electromagnetic scattering modeling. Note that the flying UAV is a moving scattering medium with a specific geometry and electromagnetic char-acteristics. The EPs of the UAV are commonly manifested as spatial distributions of relative permittivity and conductivity, which capture the EP contrast between the UAV and the surrounding air medium. Since the relative permittivity and conductivity of the air are approximately equal to 1 and 0, respectively, the distributions can be formulated via the contrast function [29] defined as 
+
+χ(p(t)) = ( ε − 1) + j̺
+
+2πf cε0
+
+, p(t) ∈ R3×1, (4) where ε and ̺ represent the relative permittivity and conduc-tivity at point p(t) on the UAV, respectively. In this paper, we assume that the scatter points on the UAV share the same EPs. Besides, since the EPs of the UAV remain invariant during the tracking, the dependence on t and p(t) of both 
+
+ε and ̺ is omitted for notational simplicity. ε0 is the vacuum permittivity. Note that the UAV can be regarded as quasi-static during one slot-wise channel estimation and imaging operation. For the considered single-carrier pilot setting with a moderate bandwidth, the pilot duration of a slot-wise sensing is typically on the order of microseconds. In this case, the corresponding displacement, Doppler-induced phase variation, and attitude variation of the UAV within such a short duration are negligible. 
+
+Each antenna of the BS array can be modeled as an excitation current source, and the currents on the transmitting antennas linearly induce the electric field. Hence, for the l-th transmitted signal, the incident electric field at p(t) generated by the whole array can be expressed as [30] 
+
+E(t) 
+
+> i
+
+(p(t), l ) = [ m(t)1,1(p(t)), · · · , m(t) 
+
+> Nx,N z
+
+(p(t))] x(t)(l),
+
+= M (t)(p(t))x(t)(l). (5) The matrix M (t)(p(t)) ∈ C3×Nb maps the signal excitation 
+
+x(t)(l) to the incident electric field E(t) 
+
+> i
+
+(p(t), l ). The vector 
+
+m(t) 
+
+> ı,
+
+(p(t)) denotes the electric field at point p(t) generated by the (ı,  )-th antenna under unit current excitation. Accordingly, 
+
+E(t) 
+
+> i
+
+(p(t), l ) can be interpreted as a linear superposition of the electric fields generated by all array antennas. Specifically, 
+
+m(t) 
+
+> ı,
+
+(p(t)) is defined as 
+
+m(t) 
+
+> ı,
+
+(p(t)) = 
+
+∫
+
+G(p(t), p′
+
+> ı,
+
+)J (p′
+
+> ı,
+
+)dp′
+
+> ı,
+
+, (6) 
+
+where J(p′
+
+> ı,
+
+) denotes the equivalent current distribution in-duced at point p′ 
+
+> ı,
+
+on the (ı,  )-th antenna under unit current excitation. In this paper, we simplify the calculation of the integration in (6) by approximately modeling each antenna as a point dipole located at pı, . G(p(t), p′
+
+> ı,
+
+) ∈ C3×3 in (6) is the dyadic electric field Green’s function [31]. Given any two points p1 and p2, G(p1, p2) can be specifically formulated as 
+
+G(p1, p2) = 
+
+(
+
+I3 + ∇∇ 
+
+k2
+
+> c
+
+) ejkcr12 
+
+4πr 12 
+
+= [(g(r12 )r12 rT 
+
+> 12
+
+− h(r12 )I3
+
+] ejkcr12 
+
+4πr 12 
+
+, (7) where kc = 2π 
+
+> λc
+
+is the wave number in the air, r12 = ‖p1 −p2‖,
+
+r12 = p1 −p2  
+
+> ‖p1−p2‖
+
+, g(r12 ) = 3 
+
+> k2
+> cr212
+
+− 3j  
+
+> kcr12
+
+− 1, and h(r12 ) =  
+
+> 1
+> k2
+> cr212
+
+− j 
+
+> kcr12
+
+− 1. When the incident electric field E(t) 
+
+> i
+
+(p(t), l )
+
+illuminates the UAV along the beam direction, it induces conduction currents on the UAV surface. The UAV then acts as an equivalent current source and re-radiates to produce the total electric field E(t)
+
+> tot
+
+(p(t), l ). As a result, according to the Lippmann-Schwinger equation [32], for a 3D region p′ ∈ R u
+
+in which the flying UAV is located, E(t)
+
+> tot
+
+(p(t), l ) within Ru
+
+can be obtained as 
+
+E(t)
+
+> tot
+
+(p(t), l ) = k2
+
+> c
+
+∫ ∫ ∫ 
+
+> Ru
+
+χ(p′)G(p(t), p′)E(t)
+
+> tot
+
+(p′, l )dp′
+
++ E(t) 
+
+> i
+
+(p(t), l ). (8) Then, similar to (8), the scattered electric field E(t) 
+
+> s
+
+(pı, , l )
+
+back to the (ı,  )-th receiving antenna is given by [33] 
+
+E(t) 
+
+> s
+
+(pı, , l ) = k2
+
+> c
+
+∫ ∫ ∫ 
+
+> Ru
+
+χ(p′)G(pı, , p′)E(t)
+
+> tot
+
+(p′, l )dp′. (9) As the inverse process of (5), the scattered electric field 
+
+E(t) 
+
+> s
+
+(pı, , l ) will be converted into the electrical signal at each antenna. Thus, the l-th received signal at the BS with the unit receiving antenna gain is given by 
+
+y(t)(l) = [ E(t) 
+
+> s
+
+(p1,1, l ), · · · , E(t) 
+
+> s
+
+(pNx,N z , l )] Tvp + n(l),
+
+(10) where the unit vector vp ∈ R3×1 denotes the polarization vector of the receiving array. Note that the above electro-magnetic sensing model differs from conventional acoustic-, optical-, and radar-based UAV sensing paradigms [7], [34], [35], which rely on the particular target feature forms and signal design. The equations from (5) to (10) unfold the electromagnetic propagation mechanism in (3). This indicates that the spatial and EP information of the UAV can be implicitly embedded into the single-carrier array sensing chan-nel through vector electromagnetic propagation, EP-dependent scattering, and polarization projection at the receiving an-tennas, thereby providing a physical basis for structure-level UAV sensing that is independent of multicarrier transmission and delay estimation. In this case, H(t) can be utilized as prior knowledge to reconstruct the distribution of χ(p(t)). To this end, the least squares (LS) method [36] is adopted to estimate the sensing channel, denoted as H(t) 
+
+> est
+
+. The estimated 
+
+H(t) 
+
+> est
+
+is then employed as prior information to successively reconstruct the distribution of χ(p(t)) in a slot-wise manner, thereby enabling the unified sensing and tracking of the UAV’s position, attitude, and shape. 5
+
+III. P ROBLEM FORMULATION 
+
+To effectively capture the multidimensional information of the UAV, it is necessary to reconstruct and image its EP distribution in the 3D space. Traditional reconstruction methods for electromagnetic imaging, such as pixel-based methods [37], typically require analysis of the entire RoI, including the background medium. This incurs additional computational burden and is not suitable for the considered real-time UAV tracking scenario. Furthermore, our focus is on reconstructing information about the UAV itself. Therefore, a point cloud-based representation is adopted to visualize the EP distribution of the UAV, enabling an efficient, clear, and direct representation of its multidimensional information by separating the target from the background medium [19]. As discussed earlier, both the beamforming design and point cloud reconstruction rely on a predefined position to determine the beam direction and the reconstruction region within a limited spatial region. As a result, for each slot t
+
+during the tracking, we aim to utilize the temporal correlation of historical UAV locations to predict the UAV position (denoted as q(t) 
+
+> pre
+
+= [˜ q(t) 
+
+> x
+
+, ˜q(t) 
+
+> y
+
+, ˜q(t) 
+
+> z
+
+]T). Then, the point cloud reconstruction for slot t can be performed within a certain RoI centered on q(t) 
+
+> pre
+
+and bounded by a prediction error threshold. Based on these considerations, we represent the UAV as a 5D point cloud at slot t, which is composed of M normalized points, i.e., P(t) = {p(t) 
+
+> i
+
+|i ∈ I M }. Each 5D point in P(t)
+
+contains two parts, including the 3D coordinate information and 2D EPs information, which is given by 
+
+p(t) 
+
+> i
+
+=
+
+[
+
+x(t) 
+
+> i
+
+− ˜q(t)
+
+> x
+
+sx
+
+, y(t) 
+
+> i
+
+− ˜q(t)
+
+> y
+
+sy
+
+, z(t) 
+
+> i
+
+− ˜q(t)
+
+> z
+
+sz
+
+, ε
+
+εmax 
+
+,̺ ̺ max 
+
+]T
+
+,
+
+(11) where x(t) 
+
+> i
+
+, y(t) 
+
+> i
+
+, and z(t) 
+
+> i
+
+represent the coordinates of the i-th point along the corresponding dimension; εmax and ̺ max 
+
+respectively denote the maximum relative permittivity and conductivity based on the electromagnetic material settings in the dataset, as detailed in the following. Here, sx, sy,and sz denote the standard deviations of the reconstruction region, which are determined by the UAV size and the position prediction error thresholds in the corresponding dimensions. In general, a smaller sx/y/z indicates a narrower predicted flight region and thus provides a stronger spatial prior for UAV point cloud reconstruction. However, for highly dynamic trajectories with larger speed variations, more frequent velocity-direction changes, or stronger acceleration variations, the prediction error of q(t) 
+
+> pre
+
+may increase, and a larger sx/y/z is required to ensure that the UAV is covered by the reconstruction region. It is worth mentioning that sx/y/z can be empirically set in advance by assessing the randomness of UAV flight or the trajectory prediction error before the tracking and imaging, introducing a trade-off between robustness to trajectory pre-diction errors and point cloud reconstruction quality. 
+
+Note that P(t) provides a discrete representation of the intrinsic physical properties of the UAV and can be regarded as a collection of samples drawn from an underlying high-dimensional distribution p(P(t)) that characterizes these prop-erties. Furthermore, H(t) 
+
+> est
+
+implicitly incorporates the multidi-mensional information of the UAV, which can be utilized as prior information to facilitate the point cloud reconstruction. Therefore, the UAV sensing and tracking problem can be modeled as the maximization of the conditional probability given the measurement information and historical data, i.e., 
+
+arg max 
+
+> p(t)
+> i
+
+p(P(t)|H(t) 
+
+> est
+
+, ˆP(1: t−1) ), ∀t ∈ I T . (12) In (12), ˆP(1: t−1) denote the historical reconstructed point clouds before slot t, which are used for the prediction of 
+
+q(t)
+
+> pre
+
+. Specifically, the UAV positions can be estimated via the geometric centroid of all point cloud coordinates, i.e., 
+
+q(1: t−1)  
+
+> est
+
+= 1
+
+> M
+
+∑Mi=1 ˆp(1: t−1)  
+
+> pos ;i
+
+, where ˆp(1: t−1)  
+
+> pos ;i
+
+denote the 3D coordinates of the i-th reconstructed 5D points. In implemen-tation, the velocity and acceleration information can be derived from the historical trajectory and used to form a kinematic prediction q(t)
+
+> kin
+
+. Since practical UAV trajectories may contain nonlinear maneuvers and abrupt direction changes, an LSTM-based residual predictor can be further employed to learn a correction term ∆q(t) 
+
+> LSTM
+
+from historical position, velocity, and acceleration features [38]. The final predicted center can be obtained via q(t) 
+
+> pre
+
+= q(t) 
+
+> kin
+
++ ∆ q(t)
+
+> LSTM
+
+.
+
+Given q(t)
+
+> pre
+
+, problem (12) is recast as a point cloud recon-struction problem within a deterministic region conditioned on the channel data, i.e., maximizing p(P(t)|H(t) 
+
+> est
+
+) for each slot t.In general, maximum a posteriori (MAP) or minimum mean square error (MMSE) estimation can be employed to solve this problem. However, it remains challenging to explicitly characterize both p(P(t)) and p(P(t)|H(t) 
+
+> est
+
+), owing to the intricate mapping from the multidimensional information of the UAV to the channel matrix. To address this difficulty, we next leverage the powerful data distribution learning capabili-ties of generative learning and propose an efficient AUGUST approach by following the GAI principle. This approach can effectively capture the underlying high-dimensional features embedded in the measurement data, enabling more accurate and data-driven point cloud reconstruction. IV. P ROPOSED AUGUST A PPROACH 
+
+Since the conditional probability p(P(t)|H(t) 
+
+> est
+
+) is difficult to obtain directly, we address this issue from a generative learning perspective by training a parameterized probabilistic model pθ(P(t)|H(t) 
+
+> est
+
+) to approximate the original distribution 
+
+p(P(t)|H(t) 
+
+> est
+
+). As a consequence, the training objective is to maximize the log-likelihood log pθ (P(t)|H(t) 
+
+> est
+
+). Neverthe-less, direct maximization of log pθ(P(t)|H(t) 
+
+> est
+
+) is generally intractable due to latent yet inevitable physical factors, such as limited bandwidth, finite antenna aperture size, and mea-surement noise. These may result in the weak and ambiguous representations of H(t) 
+
+> est
+
+for UAV EPs. We therefore introduce a latent variable z to explicitly encode intrinsic but partially unobservable features, together with a learnable distribution 
+
+qφ(z(t)|P (t), H(t) 
+
+> est
+
+) that provides a stochastic estimate of z(t).6
+
+Accordingly, we rewrite log pθ(P(t)|H(t) 
+
+> est
+
+) as 
+
+log pθ (P(t)|H(t) 
+
+> est
+
+) = log 
+
+∫
+
+pθ (P(t), z(t)|H(t) 
+
+> est
+
+)dz(t)
+
+= log 
+
+∫
+
+qφ(z(t)|P (t), H(t) 
+
+> est
+
+) pθ(P(t), z(t)|H(t) 
+
+> est
+
+)
+
+qφ(z(t)|P (t), H(t) 
+
+> est
+
+) dz(t)
+
+= log 
+
+(
+
+Eqφ (z(t) |P (t) ,H(t) 
+
+> est )
+
+[
+
+pθ (P(t), z(t)|H(t) 
+
+> est
+
+)
+
+qφ(z(t)|P (t), H(t) 
+
+> est
+
+)
+
+]) 
+
+. (13) For notational brevity, we denote Eqφ (z(t) |P (t) ,H(t) 
+
+> est )
+
+(·) by 
+
+Eqφ (·) in the following analysis. Based on Jensen’s inequal-ity, we can obtain an evidence lower bound (ELBO) of 
+
+log pθ (P(t)|H(t) 
+
+> est
+
+) as 
+
+log pθ (P(t)|H(t) 
+
+> est
+
+) ≥ Eqφ log pθ (P(t), z(t)|H(t) 
+
+> est
+
+)
+
+qφ(z(t)|P (t), H(t) 
+
+> est
+
+)= Eqφ
+
+[
+
+log pθ(P(t)|z(t), H(t) 
+
+> est
+
+) − log qφ(z(t)|P (t), H(t) 
+
+> est
+
+)
+
+pθ (z(t)|H(t) 
+
+> est
+
+)
+
+]
+
+, ELBO (P(t), H(t) 
+
+> est
+
+). (14) Therefore, maximization of log pθ(P(t)|H(t) 
+
+> est
+
+) is recast as minimizing the following loss function: 
+
+LELBO (P(t), H(t) 
+
+> est
+
+) = Eqφ [− log pθ(P(t)|z(t), H(t) 
+
+> est
+
+)] + DKL (qφ(z(t)|P (t), H(t) 
+
+> est
+
+)‖pθ(z(t)|H(t) 
+
+> est
+
+)) . (15) Note that (15) serves as a standard training objective within the conditional VAE framework [26]. While it is feasible in general, this objective includes a KL term conditioned on the ground-truth P(t), which is not available at the inference stage. To this end, we adopt the following inference-consistent relaxations. First, we remove the dependence on P(t) in the posterior, and allow the encoder to predict a posterior that depends solely on the measurements, i.e., qφ(z(t)|H(t) 
+
+> est
+
+).This relaxation forces the encoder to extract all task-relevant information from H(t) 
+
+> est
+
+. Then, we replace the conditional prior with a global learnable prior pψ(z(t)). This prior regularizes the latent space independent of H(t) 
+
+> est
+
+and can approximate the aggregated posterior (e.g., via a normalizing flow). In addition, to ensure that information flows through the latent bottleneck and reconstruction relies solely on features extracted from the measurements, we condition the decoder primarily on z(t),i.e., replacing pθ(P(t)|z(t), H(t) 
+
+> est
+
+) with pθ(P(t)|z(t)). Based on these considerations, the loss function (15) can be reduced to a more concise form as: 
+
+˜LELBO (P(t), H(t) 
+
+> est
+
+) = Eqφ (z(t) |H(t) 
+
+> est )
+
+[− log pθ (P(t)|z(t))] + DKL (qφ(z(t)|H(t) 
+
+> est
+
+)‖pψ(z(t))) . (16) The resulting inference-aligned objective removes train-ing–inference shortcuts, and matches the expected inference pathway H(t) 
+
+> est
+
+→ z(t) → P(t). From (16), the proposed AUGUST approach can be decomposed into two modules:  
+
+> •
+
+Conditional Channel Encoding Module : The channel encoder qφ(z(t)|H(t) 
+
+> est
+
+) explicitly extracts intrinsic fea-tures of the UAV into the latent code z(t) only from the measurement data, thereby ensuring consistency between training and inference. Following the principle of VAE, the conditional information used for the reconstruction is sampled from a reparameterized latent distribution of 
+
+z(t) instead of a deterministic feature code. Moreover, a learnable global prior pψ(z(t)) that is independent of the measurement is utilized to regularize the latent space through the KL divergence term.  
+
+> •
+
+Generative Decoding (Reconstruction) Module : Given the latent code z(t) capturing the high-dimensional features from the channel, the generative decoder 
+
+pθ(P(t)|z(t)) employs the diffusion model to reconstruct the 5D point cloud representation of the UAV, thereby achieving the unified sensing and tracking its position, attitude, and shape. 
+
+It is worth noting that the learnable prior pψ(z(t)) is not used as an additional conditioning input during inference. Its role is to shape the latent space during training through the KL divergence term DKL (qφ(z(t)|H(t) 
+
+> est
+
+)‖pψ(z(t))) . Al-though this prior is not an explicit inference-time input, it affects inference indirectly because the encoder used during inference is trained under this regularized latent geometry. Compared with directly using deterministic channel features without latent-space regularization, this stochastic latent bot-tleneck constrains the channel-induced latent codes to lie on a shared and regularized latent manifold, which helps suppress noise-induced perturbations and redundant channel variations. Moreover, compared with a fixed standard Gaussian prior, the learnable flow-based prior starts from a Gaussian base distribution but transforms it through invertible mappings to better approximate the aggregated posterior induced by diverse UAV positions, attitudes, shapes, EP parameters, and channel conditions. This reduces the posterior–prior mismatch and avoids over-constraining the task-relevant latent representation, thereby providing more consistent conditional information for the subsequent diffusion-based reconstruction module [39]. 
+
+The overall description of the proposed AUGUST approach is illustrated in Fig. 2. In the subsequent subsections, we will introduce the conditional channel encoding module and the diffusion-based reconstruction module in detail. 
+
+A. Conditional Channel Encoding Module 
+
+As input to reconstruction, the sensing channel varies not only with changes in the UAV flight status but also de-pends strongly on the UAV’s spatial location and transmission strategies (e.g., beamforming design and transmit power). In particular, the phase associated with each scattering point follows an exponential phase mapping with respect to its spatial coordinates. Consequently, the sensing channel H(t)
+
+> est
+
+can vary rapidly with position changes due to multipath-induced phase variations. Thus, to facilitate stable UAV feature extraction by the encoder under continuously varying UAV positions and channel conditions, we introduce the positional embedding and SNR embedding before the channel encoder. Specifically, we first vectorize the obtained H(t) 
+
+> est
+
+and project it linearly into a dp-dimensional channel vector based on a 7
+
+Vector Projection 
+
+> Position&SNR Embedding
+> Linear
+> LeakyReLU
+> Linear
+> LeakyReLU
+> Feature Encoder
+
+MLP 
+
+MLP 
+
+> Normalizing Prior Flow
+> Channel Feature
+> Swish
+> ConcatSquash Noise Estimation Network
+
+Conditional Channel Encoding Module Generative Reconstruction Module   
+
+> Swish
+> Global Prior Regularization
+> Sampling
+> Fig. 2. The illustration of the proposed AUGUST approach within slot t.
+
+fully connected layer with parameters W p and bp, i.e., 
+
+h(t) 
+
+> vec
+
+= W p vec( H(t) 
+
+> est
+
+) + bp. (17) In the considered UAV tracking scenario, the UAV point cloud 
+
+P(t) is reconstructed within a RoI centered at the predicted position for each slot t. Thus, the position encoding function 
+
+ξ(q(t)
+
+> pre
+
+) and the SNR encoding function ξ(P (t) 
+
+> snr
+
+) are employed to address the issue of capturing high-frequency variations in the sensing channel. ξ(q(t)
+
+> pre
+
+) and ξ(P (t) 
+
+> snr
+
+) are defined as mappings from the predicted coordinate of the UAV and the SNR at the BS into higher-dimensional Fourier feature spaces, i.e., R3(2 dξ +1) for the position encoding and R2dξ +1 for the SNR encoding, respectively, i.e., 
+
+ξ(q(t)
+
+> pre
+
+) =[ q(t)
+
+> pre
+
+; sin(2 0πq(t)
+
+> pre
+
+); cos(2 0πq(t)
+
+> pre
+
+); · · · ;sin(2 dξ−1πq(t)
+
+> pre
+
+); cos(2 dξ −1πq(t)
+
+> pre
+
+)] , (18) 
+
+ξ(P (t) 
+
+> snr
+
+) =[ P (t) 
+
+> snr
+
+, sin(2 0πP (t) 
+
+> snr
+
+), cos(2 0πP (t) 
+
+> snr
+
+), · · · ,
+
+sin(2 dξ−1πP (t) 
+
+> snr
+
+), cos(2 dξ −1πP (t) 
+
+> snr
+
+)] , (19) where dξ is the number of encoding frequencies, and the SNR is given by P (t) 
+
+> snr
+
+= ‖H(t) X(t) ‖2 
+
+> F
+> ‖N‖2
+> F
+
+. After this transform, high-frequency spatial and value variations become two linear combinations of fixed harmonic bases. Besides, since wire-less channels are continuous physical fields whose statistics are strongly coupled to the UAV position, the conventional additive positional embeddings applied in natural language processing [40] are therefore less suitable for the considered problem. Motivated by [41], we then adopt a multiplicative strategy for positional embedding, and the embedded channel vector input to the encoder is given by 
+
+h(t) 
+
+> emb
+
+= [ ω1(ξ(q(t)
+
+> pre
+
+)) ⊙ h(t)
+
+> vec
+
+; ω2(ξ(P (t) 
+
+> snr
+
+))] , (20) where ω1(·) and ω2(·) are two shallow fully connected heads that explicitly capture the position- and SNR-dependent effects, while h(t) 
+
+> vec
+
+focuses on target-related information that is comparatively stable across varying UAV positions and channel conditions. As shown in the left part of Fig. 2, given h(t)
+
+> emb
+
+, we next extract a feature vector f (t) with dimension df from this embedded channel vector via a feature encoder Fenc , i.e., 
+
+f (t) = Fenc (h(t)
+
+> emb
+
+). Here, Fenc (·) is implemented based on a residual MLP with Linear–LeakyReLU pairs. Notably, the extracted feature vector f (t) encodes the intrinsic properties of the UAV, but it is high-dimensional and deterministic, which may still contain redundant information and noise. To achieve a high-quality reconstruction and improve the generalization of the model, we further compress the dimension of f (t) by using two MLPs to map f (t) to two dz -dimensional parameters of a Gaussian posterior: μ(t) 
+
+> z
+
+and σ(t) 
+
+> z
+
+. In this way, the posterior distribution of the aforementioned latent code z(t) is given by 
+
+qφ(z(t)|H(t) 
+
+> est
+
+) = N
+
+(
+
+z(t); μ(t) 
+
+> z
+
+, diag [σ(t) 
+
+> z
+
+]
+
+)
+
+. (21) Given the distribution qφ(z(t)|H(t) 
+
+> est
+
+), the latent code z(t),which is used as a conditional input for the following generative reconstruction module, can be sampled from 
+
+qφ(z(t)|H(t) 
+
+> est
+
+).
+
+B. Diffusion-Based Reconstruction Module 
+
+Based on the obtained z(t) that encodes the high-dimensional features from the sensing channel, we aim to design the decoder pθ(P(t)|z(t)) by employing the diffusion model [19], as detailed in the following. 
+
+1) Forward Diffusion Process : To clearly present the diffu-sion and denoising processes, P(t;1) , . . . , P(t;S) are denoted as a sequence of point clouds sequentially generated from the original point cloud P(t;0) = {p(t;0)  
+
+> i
+
+}Mi=1 defined in (11), up to the maximum time step S; each step is indexed by 8
+
+s. Since the 5D point cloud P(t;0) = {p(t;0)  
+
+> i
+
+}Mi=1 reflects the holistic distribution of UAV EPs, pθ(P(t;0) |z(t)) can be factorized into M independent samples drawn from the point distribution q(p(t;0)  
+
+> i
+
+|z(t)). In the forward diffusion process, the transition from the original distribution q(p(t;0)  
+
+> i
+
+) to a noise-like one q(p(t;S) 
+
+> i
+
+) can be modeled as a Markov chain: 
+
+q(p(t;1: S) 
+
+> i
+
+|p(t;0)  
+
+> i
+
+) = ∏Ss=1 q(p(t;s) 
+
+> i
+
+|p(t;s−1)  
+
+> i
+
+)= ∏Ss=1 N (p(t;s) 
+
+> i
+
+; √1 − βsp(t;s−1)  
+
+> i
+
+, β sI). (22) Here, βs is a hyperparameter controlling the noise intensity and increases linearly with the step index s. Then, according to Bayes’ rule and using the renormalization technique, the calculation of p(t;s) 
+
+> i
+
+at an arbitrary time step s can be simpli-fied to 
+
+q(p(t;s) 
+
+> i
+
+|p(t;0)  
+
+> i
+
+) = N (p(t;s) 
+
+> i
+
+; √αsp(t;0)  
+
+> i
+
+, √1 − αsI), (23) where αs = 1 − βs and αs = ∏ss′=1 αs′ = αsαs−1.
+
+2) Reverse Diffusion Process : Under the diffusion frame-work, the reconstruction process corresponds to the reverse of the forward diffusion process. From (22) and (23), the reverse transition probability conditioned on p(t;0)  
+
+> i
+
+is given by 
+
+q(p(t;s−1)  
+
+> i
+
+|p(t;s) 
+
+> i
+
+, p(t;0)  
+
+> i
+
+) = N (p(t;s−1)  
+
+> i
+
+; ˜ μs(p(t;s) 
+
+> i
+
+, p(t;0)  
+
+> i
+
+), ˜βsI),
+
+(24) with 
+
+˜μs(p(t;s) 
+
+> i
+
+, p(t;0)  
+
+> i
+
+) = 
+
+√αs−1βs
+
+1 − αs
+
+p(t;0)  
+
+> i
+
++
+
+√αs(1 − αs−1)
+
+1 − αs
+
+p(t;s)
+
+> i
+
+= 1
+
+√αs
+
+(
+
+p(t;s) 
+
+> i
+
+− ˜αsǫ(s)
+
+> i
+
+)
+
+. (25) Here, ˜βs = 1−αs−1 
+
+> 1−αs
+
+βs, ˜αs = 1−αs√1−αs
+
+, and ǫ(s) 
+
+> i
+
+=
+
+> 1√1−αs
+
+(p(t;s) 
+
+> i
+
+− √αsp(t;0)  
+
+> i
+
+). However, during reconstruction, the original point cloud P(t;0) is unknown, and the only avail-able conditioning information is z(t) encoded from the sensing channel. To tackle this, the reverse process is implemented by introducing a sequence of learnable, parameterized transition posteriors conditioned on z(t), i.e., 
+
+pθ(p(t;0: S) 
+
+> i
+
+|z(t)) = p(p(t;S) 
+
+> i
+
+) ∏Ss=1 pθ (p(t;s−1)  
+
+> i
+
+|p(t;s) 
+
+> i
+
+, z(t)).
+
+(26) Here, p(p(t;S) 
+
+> i
+
+) is a predetermined Gaussian distribution from which the initial random point cloud P(t;S) is sampled. 
+
+pθ (p(t;s−1)  
+
+> i
+
+|p(t;s) 
+
+> i
+
+, z(t)) denotes the learnable reverse transition probability that follows the Gaussian distribution: 
+
+pθ (p(t;s−1)  
+
+> i
+
+|p(t;s) 
+
+> i
+
+, z(t)) = N (p(t;s−1)  
+
+> i
+
+; μθ (p(t;s) 
+
+> i
+
+, s, z(t)), ˜βsI).
+
+(27) Since (27) is a parameterized approximation of (24), 
+
+μθ (p(t;s) 
+
+> i
+
+, s, z(t)) has a similar form as ˜μs(p(t;s) 
+
+> i
+
+, p(t;0)  
+
+> i
+
+),which is given by 
+
+μθ (p(t;s) 
+
+> i
+
+, s, z(t)) = 1
+
+√αs
+
+(
+
+p(t;s) 
+
+> i
+
+− ˜αsǫθ (p(t;s) 
+
+> i
+
+, s, z(t))
+
+)
+
+,
+
+(28) where ǫθ (p(t;s) 
+
+> i
+
+, s, z(t)) denotes the learning-dependent noise estimator. To implement this noise predictor, we adopt a unified noise estimation network composed of a series of Lcs 
+
+ConcatSquash layers proposed in [42], and each layer can be formulated as: 
+
+ηℓ+1 = ( W ℓ
+
+> 1
+
+ηℓ + bℓ
+
+> 1
+
+) ⊙ ς(W ℓ
+
+> 2
+
+c(t) + bℓ
+
+> 2
+
+) + W ℓ
+
+> 3
+
+c(t). (29) Here, ηℓ and ηℓ+1 are the input and output of the ℓ-th layer. 
+
+ς(·) is the Sigmoid function. W ℓ
+
+> 1
+
+, W ℓ
+
+> 2
+
+, W ℓ
+
+> 3
+
+, bℓ
+
+> 1
+
+, and bℓ 
+
+> 2
+
+denote the trainable weights and biases in the network. The context vector c(t) = [ s, sin( s), cos( s), sin(2 s), cos(2 s); ( z(t))T]T in-corporates the embedded features of the normalized diffusion step s = s 
+
+> S
+
+and the latent code z(t). Swish function is used as the activation function between two adjacent layers. The input of the whole network is the 5D point p(t;s) 
+
+> i
+
+, and the output is the estimated noise ǫθ (p(t;s) 
+
+> i
+
+, s, z(t)).
+
+3) ELBO of the Diffusion Model : In the reverse diffusion process, the training goal is to maximize the log-likelihood 
+
+log pθ(P(t;0) |z(t)) given the original UAV point cloud and the latent code z(t). Clearly, direct maximization of this log-likelihood is challenging. Thus, we introduce the for-ward Markov chain as in (22) to construct an ELBO of 
+
+log pθ(P(t;0) |z(t)):
+
+log pθ(P(t;0) |z(t)) = log 
+
+[
+
+Eq(P(t;1: S) |P (t;0) )
+
+pθ(P(t;0: S)|z(t))
+
+q(P(t;1: S)|P (t;0) )
+
+]
+
+≥ Eq(P(t;1: S) |P (t;0) ) log 
+
+( pθ (P(t;0: S)|z(t))
+
+q(P(t;1: S)|P (t;0) )
+
+)
+
+= Eq(P(t;1: S) |P (t;0) )
+
+[ M∑
+
+> i=1
+
+log 
+
+(
+
+pθ(p(t;0: S) 
+
+> i
+
+|z(t))
+
+q(p(t;1: S) 
+
+> i
+
+|p(t;0)  
+
+> i
+
+)
+
+)] 
+
+. (30) Note that (30) rewrites the intractable log-likelihood 
+
+log pθ(P(t;0) |z(t)) as a tractable lower bound by taking an expectation over an easy-to-sample surrogate path distribution 
+
+q(P(t;1: S)|P (t;0) ). Such a formulation implicitly encourages the learned reverse process to match the true posterior over the diffusion path. In the following, we introduce a weighted training design for the proposed AUGUST approach. V. W EIGHTED TRAINING DESIGN 
+
+The proposed AUGUST framework is designed to re-construct the original UAV point cloud based on the estimated channel at each time slot t during track-ing. Thus, the overall training objective is to maximize 
+
+Eptrain (P(0: S),Hest )[log pθ (P(0) |Hest )] . Here, ptrain (P(0: S), Hest )
+
+denotes the distribution of the training data, including the point cloud series and the estimated channel. To this end, by substituting the ELBO in (30) into the loss ˜LELBO in (16), the training loss can be reformulated as 
+
+˜Ltrain = Eptrain (P(0: S),Hest ) {DKL (qφ(z|Hest )‖pψ(z)) +Ez,P(1: S)
+
+[ M∑
+
+> i=1
+
+log 
+
+(
+
+pθ(p(0: S) 
+
+> i
+
+|z)
+
+q(p(1: S) 
+
+> i
+
+|p(0)  
+
+> i
+
+)
+
+)]} 
+
+. (31) Then, by following Bayes’ rule and according to the forward and reverse Markov chains in (22) and (26), the above loss 9
+
+Algorithm 1 Training Procedure of AUGUST Approach 
+
+Require: Sampled point cloud series P(t;0: S) with uniform time step s ∈ { 1, · · · , S }, and estimated sensing channel 
+
+H(t) 
+
+> est
+
+from ptrain (P(0: S), Hest ).
+
+Ensure: Trained parameters: (φ, ψ, θ). 
+
+> 1:
+
+repeat  
+
+> 2:
+
+Sample a batch from the data P(0: S) and Hest . 
+
+> 3:
+
+Draw a latent code z ∼ qφ(z|Hest ). 
+
+> 4:
+
+for i = 1 to M in parallel do  
+
+> 5:
+
+Sample ǫ(s) 
+
+> i
+
+∼ N (0 , I). 
+
+> 6:
+
+Diffusion loss: L(s) 
+
+> DM ;i
+
+= γpos L(s) 
+
+> pos ;i
+
++ γEP L(s)
+
+> EP ;i
+
+. 
+
+> 7:
+
+end for  
+
+> 8:
+
+Flow-prior regularization loss: 
+
+Lz = DKL 
+
+(
+
+qφ(z|Hest )‖
+
+∣∣∣det ∂Fψ
+
+> ∂ν
+
+∣∣∣−1
+
+pN (ν)
+
+)
+
+. 
+
+> 9:
+
+Parameters update based on gradient descent: 
+
+(φ, ψ, θ)itr − rl∇φ,ψ,θLtrain → (φ, ψ, θ)itr +1 
+
+with Ltrain = γpos L(s) 
+
+> pos ;i
+
++ γEP L(s) 
+
+> EP ;i
+
++ γz Lz . 
+
+> 10:
+
+until convergence 
+
+function can be further recast as a combination of different loss functions: 
+
+˜Ltrain = Eptrain 
+
+[ M∑
+
+> i=1
+
+DKL (q(p(S) 
+
+> i
+
+|p(0)  
+
+> i
+
+)‖p(p(S) 
+
+> i
+
+)) 
+
+︸ ︷︷ ︸
+
+> LN
+
++
+
+> S
+
+∑
+
+> s=2
+
+DKL (q(p(s−1)  
+
+> i
+
+|p(s) 
+
+> i
+
+, p(0)  
+
+> i
+
+)‖pθ (p(s−1)  
+
+> i
+
+|p(s) 
+
+> i
+
+, z)) 
+
+︸ ︷︷ ︸
+
+> L(s)
+> DM ;i
+
+− log pθ(p(0)  
+
+> i
+
+|p(1)  
+
+> i
+
+, z)
+
+︸ ︷︷ ︸
+
+> L(1)
+> DM ;i
+
++ DKL (qφ(z|Hest )‖pψ(z)) 
+
+︸ ︷︷ ︸
+
+> Lz
+
+]
+
+. (32) Here, LN is a learning-free term about the Gaussian initializa-tion of the reverse diffusion process, and L(1)  
+
+> DM ;i
+
+is a simplified term of L(s) 
+
+> DM ;i
+
+when s = 1 . L(s) 
+
+> DM ;i
+
+denotes the loss function of the diffusion model-based noise estimator ǫθ (p(s) 
+
+> i
+
+, s, z). From (24)-(28), L(s) 
+
+> DM ;i
+
+can be given by 
+
+L(s) 
+
+> DM ;i
+
+= Cαs ,β s ‖ǫ(s) 
+
+> i
+
+− ǫθ (p(s) 
+
+> i
+
+, s, z)‖2, (33) where Cαs,β s is a constant related to the noise intensity parameters, which can be ignored during the training [25]. However, the numerical and spatial distribution complexities of the 3D positions and that for EPs in UAV point clouds exhibit significantly different distributions. To ensure the ef-fectiveness of the reconstruction, we aim to train these two parts separately through a weighted L(s) 
+
+> DM ;i
+
+as 
+
+L(s) 
+
+> DM ;i
+
+= γpos L(s) 
+
+> pos ;i
+
++ γEP L(s)
+
+> EP ;i
+
+, (34) where L(s) 
+
+> pos ;i
+
+= ‖ǫ(s) 
+
+> pos ;i
+
+− ǫpos ;θ(p(s) 
+
+> i
+
+, s, z)‖2 and L(s) 
+
+> EP ;i
+
+=
+
+‖ǫ(s) 
+
+> EP ;i
+
+− ǫEP ;θ (p(s) 
+
+> i
+
+, s, z)‖2 denote the diffusion loss for 3D position and EPs of the i-th 5D point, respectively. γpos and 
+
+γEP are adjustable weighted coefficients for the corresponding loss. Their dimensions correspond to the definition in (11). Regarding Lz in (32), it is a KL divergence term that reg-ularizes the latent space by aligning the posterior qφ(z|Hest )
+
+with a global learnable prior pψ(z), thereby improving the consistency of the latent representation and preventing latent drift across slots. To accommodate the high-dimensional and complex distribution of qφ(z|Hest ), a learnable normalizing flow Fψ is adopted to parameterize the prior, which re-formulates Lz without changing its regularization objective. Concretely, Fψ is a differentiable bijective mapping satisfying 
+
+Fψ(ν) = z and ν = F−1 
+
+> ψ
+
+(z). Then, according to Change-of-Variables Theorem [43], Lz can be expressed as 
+
+Lz = DKL (qφ(z|Hest )‖pψ(z)) 
+
+, DKL 
+
+(
+
+qφ(z|Hest )‖
+
+∣∣∣∣det ∂Fψ
+
+∂ν
+
+∣∣∣∣
+
+> −1
+
+pN (ν)
+
+)
+
+. (35) Here, the prior pψ(z) is constructed by transforming a Gaus-sian base distribution pN (ν) = N (0, I) through Fψ. In this way, (35) enables evaluating the KL loss via the base variable 
+
+ν while retaining an expressive prior. Therefore, given (34), (35), and the uniformly sampled time step s, the end-to-end weighted training loss of the proposed AUGUST approach is given by: 
+
+Ltrain = Eptrain ,s, z,ǫ(s)
+
+> i
+
+{γpos L(s) 
+
+> pos ;i
+
++ γEP L(s) 
+
+> EP ;i
+
++ γz Lz }, (36) where γz is an adjustable weighted coefficient, and the ex-pectation is implemented based on Monte Carlo sampling and averaging for the data. The overall training procedure is summarized in Algorithm 1 . For inference, we can obtain the reconstructed UAV point cloud (denoted as ˆP(t;0) =
+
+{ˆp(t;0)  
+
+> i
+
+}Mi=1 ) from the initial noise samples by successively sampling pθ (p(t;0: S) 
+
+> i
+
+|z(t)) as shown in Fig. 2. VI. N UMERICAL RESULTS 
+
+In this section, numerical experiments are conducted to evaluate the performance of the proposed approach and the considered benchmark schemes. The performance analysis of different schemes and experimental setups for UAV position-ing, point cloud reconstruction quality, and attitude estimation is provided in detail. 
+
+A. Experiment Setting and Benchmark Schemes 
+
+Assume that the BS is centered at (0 , 0, 0) m, and the antenna array operates at fc = 3 GHz. The noise power σ2 =
+
+−120 dBm and the transmission power is set to Ps ∈ [10 , 40] 
+
+dBm. The number of transmitted symbols L within each slot 
+
+t matches the number of antennas Nb by default. To construct the UAV point cloud samples, we select five typical shapes of rotary-wing UAVs from [44]. We perform surface discrete random sampling and local coordinate system transformation on all UAVs to obtain UAV point cloud samples with different attitudes and shapes. The number of points in each UAV point cloud is fixed at M = 1000 for both training and inference. In addition, a total of 50,000 UAV point cloud samples (10,000 for each shape) are generated for training, validation, and testing with a ratio of 8:1:1. Unless otherwise specified, these samples are independently and randomly generated based on 10 
+
+(a) Random point cloud  (b) 80 steps  (c) 150 steps  (d) 180 steps  (e) 200 steps Fig. 3. The reverse diffusion process of EP point cloud based on the AUGUST approach, where the relative permittivity is presented. 
+
+(a) Ground Truth  (b) Reconstruction (SNR ≈ 20 dB) 
+
+(c) Ground Truth  (d) Reconstruction (SNR ≈ − 3 dB) Fig. 4. The potential region view of the point cloud reconstruction results based on the AUGUST approach, where the conductivity is presented and the antenna configuration is 16 × 4.
+
+1000 random discrete trajectories and subject to the flight range qx/y ∈ [10 , 30] m, qz ∈ [10 , 20] m, and the tilt angle range θx/y ∈ [−30 ◦, 30 ◦], θz ∈ [−180 ◦, 180 ◦] as illustrated in Fig. 1. The standard deviations of the reconstruction region are set to sx/y/z = 0 .85 m. Each trajectory is composed of T = 50 discrete points with ∆t = 0.2 s, where the UAV velocity, acceleration, and corresponding tilt angles all conform to basic constraints detailed in [11]. Moreover, the relative permittivity and conductivity of the UAVs are set within the ranges ε ∈ [1 .5, 5] and ̺ ∈ [1 , 10] mS/m. The integral equations of the electromagnetic scattering process are tackled in discrete form based on methods of moments (MoM) [25]. For the diffusion model, 12 ConcatSquash layers of the noise estimation network are structured as 5-16-64-128-256-512-1024-512-256-128-64-16-5. The noise intensity parameter 
+
+βs linearly increases from 0.0001 to 0.05 over S = 200 
+
+diffusion steps. Regarding the training configurations, the MLP consists of 6 layers, and the other fully-connected networks contain 2 layers. The batch size and training epochs are respectively set to 256 and 200, with a linearly decaying learning rate from 10 −4 to 10 −5. The Adam optimizer is used            
+
+>     
+>  
+>  
+>  
+> 
+>        !"#$!! %
+> Fig. 5. The MPE comparison of the considered approaches under varying SNR conditions, where the antenna configuration is 16 ×4.
+
+for optimization. Since we focus more on sensing for the UAV position, attitude, and shape, the weighted coefficients in (34) are set as γpos = 0 .9 and γEP = 0 .1. The remaining training parameters are as follows: dv = 256 , df = 512 , dz = 256 ,
+
+dξ = 10 , and γz = 10 −4.To evaluate the reconstruction performance of the proposed approach, we adopt an evaluation metric, named as weighted distance (WD), that combines the mean Chamfer distance (MCD) and the MSE of the position estimation: WD (dB ) = 10 log 10 
+
+[ 1
+
+T
+
+> T
+
+∑
+
+> t=1
+
+( 1
+
+M
+
+∑ 
+
+> ˆp∈ˆP(t;0)
+> c
+
+min 
+
+> p∈P (t;0)
+> c
+
+‖ˆp − p‖2
+
++ 1
+
+M
+
+∑
+
+> p∈P (t;0)
+> c
+
+min  
+
+> ˆp∈ˆP(t;0)
+> c
+
+‖p − ˆp‖2 + ‖q(t) − q(t) 
+
+> est
+
+‖2
+
+)] 
+
+, (37) where P(t;0)  
+
+> c
+
+and ˆP(t;0)  
+
+> c
+
+denote the centralized UAV point clouds (with the same geometric center) of the ground truth and reconstruction result, respectively; q(t) and q(t) 
+
+> est
+
+corre-spond to the true and the estimated positions of the UAV based on the geometric centroid of the point cloud 3D coordinates. The first two terms in (37) correspond to the MCD that eval-uates the reconstruction performance of the point cloud itself, and the remaining term is used to evaluate the accuracy of the UAV position estimation. In addition, to estimate the UAV attitude, we develop a heuristic attitude estimation method motivated by the fact that the UAV rotor plane is parallel to its fuselage plane. Specifically, we denote the partial points on the UAV rotor plane by the point set S(t)
+
+> rotor
+
+, and define the normalized normal vector of the UAV fuselage plane as 11 
+
+(a) Ground Truth  (b) AUGUST  (c) AUGUST-NoLatent  (d) AUGUST-NoEBD  (e) RefChannel-Diff Fig. 6. Centralized view of the point cloud reconstruction results based on different approaches, where the relative permittivity is presented, the antenna configuration is 16 × 2, and SNR ≈ 20 dB.     
+
+>  
+> 
+>       
+>     !" # $%
+> Fig. 7. The WD comparison of different approaches under varying SNR conditions, where the antenna configuration is 16 ×2.
+
+̟ 
+
+> (t)
+
+, [̟ x,̟ y,̟ z]T. Then, we perform J samplings by randomly selecting three points p(t)
+
+> a;
+
+, p(t) 
+
+> b;
+
+, p(t) 
+
+> c;
+
+∈ S rotor and the estimated normal vector ̟ (t) 
+
+> est
+
+can be obtained as: ̟ 
+
+> (t)
+> est
+
+= 1
+
+J
+
+> J
+
+∑
+
+> =1
+
+̟ 
+
+> (t)
+> 
+
+= 1
+
+J
+
+> J
+
+∑
+
+> =1
+
+(p(t) 
+
+> b;
+
+− p(t)
+
+> a;
+
+) × (p(t) 
+
+> c;
+
+− p(t)
+
+> a;
+
+)
+
+‖(p(t) 
+
+> b;
+
+− p(t)
+
+> a;
+
+) × (p(t) 
+
+> c;
+
+− p(t)
+
+> a;
+
+)‖ .
+
+(38) Based on the cosine similarity, we consider a mean directional error (MDE) to evaluate the performance of UAV attitude (normal vector) estimation, which is defined as MDE =
+
+> 1
+> T
+
+∑Tt=1 [1 − (̟ (t))T̟ (t) 
+
+> est
+
+]. All inference processes are per-formed on the NVIDIA RTX 3090 platform, and the average inference time for each point cloud reconstruction is approxi-mately 0.17 seconds when M = 1000 .For performance comparison, we consider the following benchmark schemes: 1) A simplified AUGUST approach that removes the position and SNR embedding (denoted as AUGUST-NoEBD); 2) A simplified AUGUST approach that ignores the mapping of the latent space and the flow prior regularization (denoted as AUGUST-NoLatent), in which the feature f (t) is directly used as the conditional input to the reconstruction module; 3) The approach proposed in [25], which transforms all estimated sensing channels to a reference channel at a fixed location through positional encoding and then uses the transformed channel as the conditional infor-mation for the diffusion model (denoted as RefChannel-Diff). In addition, to compare the performance of UAV position estimation at different slots, we further consider a model-based benchmark for angular and distance estimation as re-ferred to [45], and the mean positioning error (MPE), i.e., MPE = 1
+
+> T
+
+∑Tt=1 ‖q(t) − q(t) 
+
+> est
+
+‖, is used as an evaluation metric. 
+
+B. Performance of Position Estimation 
+
+To clearly reveal the working mechanism of the proposed AUGUST framework, Fig. 3 visualizes the reverse diffusion process of the EP point cloud reconstruction conditioned on the encoded sensing-channel features. Starting from the random point cloud in Fig. 3a, the reverse process gradually drives the points toward the true UAV location. As shown in Fig. 3b and Fig. 3c, the point cloud first contracts and aggregates around the target position, suggesting that the low-dimensional position-related information is captured earlier than fine-grained shape and EP details during the reverse process. Then, in the later stages shown in Fig. 3d and Fig. 3e, the point cloud is progressively denoised and refined to recover the UAV shape, attitude, and more accurate EP information. 
+
+Fig. 4 illustrates the EP point cloud reconstruction results of the proposed AUGUST approach within the predicted flight region under both high- and low-SNR conditions. From Fig. 4a and 4c, it can be seen that, due to the prediction error in UAV position, the UAV may lie anywhere within the region centered on the predicted position. As shown in the upper two subfigures of Fig. 4, under high-SNR conditions, the AUGUST approach reconstructs the UAV EP point cloud with high fidelity, capturing its relative 3D position, attitude, and shape information within the reconstruction region. In this manner, for each slot during the tracking, the UAV position can be esti-mated by adding the reconstructed offset to the predicted cen-ter. This validates the effectiveness of the proposed AUGUST approach for UAV sensing and tracking. In contrast, as shown in the lower two subfigures of Fig. 4, when the SNR is very low, the reconstruction quality degrades markedly, resulting in pronounced positioning errors and making the extraction of the attitude and shape information considerably more challenging. This indicates that low-SNR conditions significantly hinder the network’s ability to extract UAV features from the estimated sensing channel. Furthermore, Fig. 5 presents a comparison of the UAV position estimation performance across different schemes. Clearly, the proposed AUGUST approach achieves signif-icantly lower estimation errors than the other alternatives, reaching centimeter-level accuracy. Moreover, all diffusion-model-based approaches consistently outperform the conven-12 
+
+(a) Ground Truth  (b) 16 × 4 antennas  (c) 16 × 2 antennas  (d) 16 × 1 antennas Fig. 8. Centralized view of the point cloud reconstruction results based on the AUGUST approach under different antenna configurations, where the conductivity is presented, and SNR ≈ 20 dB.     
+
+>  
+> 
+>     
+>            
+> Fig. 9. The WD comparison of the AUGUST approach under different antenna configurations and SNR conditions.
+
+tional model-based method in terms of positioning accuracy. In particular, when the channel conditions are moderately improved, i.e., SNR ≥ 10 dB, these approaches exhibit no-table performance gains. This observation indicates the strong capability of the diffusion model for extracting UAV position-related information from the sensing channel. 
+
+C. Performance of Point Cloud Reconstruction 
+
+To enable a more intuitive comparison of reconstruction quality across the considered schemes, a centralized-view visualization of the reconstructed point clouds is presented in Fig. 6. It is observed from Fig. 6 that the AUGUST approach yields point clouds substantially closer to the ground truth than the benchmark schemes, whose reconstructions exhibit varying degrees of contamination by noisy points. In particu-lar, the reconstruction quality of the AUGUST-NoLatent and RefChannel-Diff approaches is comparable, both exhibiting a small number of noisy points. This can be attributed to the fact that both schemes rely on positional encoding to obtain deter-ministic conditioning information from the sensing channel, either via feature extraction or channel mapping. Specifically, the former extracts the channel features into a deterministic feature vector, whereas the latter maps the estimated channel to a reference channel, which then serves as the conditional information for diffusion denoising. In contrast, AUGUST-NoEBD yields the poorest reconstruction, with the resulting point cloud being severely corrupted. This is because the           
+
+>     
+>  
+>  
+>  
+> 
+>                  !"#$ %&'  
+> Fig. 10. The MDE comparison of the considered approaches under varying SNR conditions and antenna configurations.
+
+AUGUST-NoEBD neglects both positional and SNR embed-dings, making it difficult for the network to accurately extract intrinsic features of the UAV from the sensing channel in the absence of these auxiliary cues. These results indicate that mapping the extracted channel features into a latent space and sampling from it yield cleaner point cloud reconstructions than directly using deterministic features as inputs. Meanwhile, the necessity of incorporating the position and SNR information is also clearly validated. Correspondingly, Fig. 7 quantifies the differences in Fig. 6 in terms of WD and confirms that the proposed AUGUST approach achieves the lowest WD, i.e., the best reconstruction quality. As one of the key factors influencing sensing performance, the number of antennas directly determines the dimension of the sensing channel, i.e., the dimension of the observed data. To investigate this effect, Figs. 8 and 9 compare the reconstruction performance of the AUGUST approach under different antenna configurations via imaging results and the quantitative comparison in terms of the WD metric, respec-tively. Specifically, Fig. 8 illustrates the centralized-view point cloud reconstruction results for three antenna setups. It can be clearly observed that the point cloud reconstructed with the 16 × 1 antenna configuration contains more noisy points. As the number of antennas increases, the reconstructed UAV point cloud under the same channel conditions becomes pro-gressively closer to the ground truth. This trend suggests that a higher observation dimensionality facilitates more accurate 13 
+
+(a) Ground Truth  (b) sx/y/z = 0 .85 m
+
+(c) sx/y/z = 1 .5 m (d) sx/y/z = 2 .5 m   
+
+>  
+> 
+>     
+>    
+>    
+>    
+
+(e) WD comparison          
+
+> Fig. 11. Centralized view of the point cloud reconstruction results and the WD comparison based on the AUGUST approach under different region sizes sx/y/z . For (a)-(d), the relative permittivity is presented, the antenna configuration is 16 ×4, and SNR ≈30 dB.
+
+reconstruction of the EP distribution of the UAV, thereby en-abling more precise feature characterization. Accordingly, this conclusion is further supported by the quantitative results in Fig. 9, evaluated in terms of WD. The AUGUST approach with the 16 × 4 antenna configuration consistently achieves lower WD values across the considered SNR regimes. Moreover, in the low-SNR regime, it exhibits more pronounced performance gains compared to cases with fewer antennas, highlighting the benefits brought by increased observation dimensionality. From the reconstructed UAV point cloud, the UAV shape is readily discernible. Its attitude, represented by the normal vector of the fuselage plane, can be estimated using the heuristic method in ( 38 ). Fig. 10 provides a comprehensive comparison of the MDE achieved by the AUGUST approach and competing schemes under different settings. From Fig. 
+
+10 , it is straightforward to observe that under poor channel conditions (i.e., SNR ≈ 0 dB), none of the schemes can 
+
+(a) Smooth case with maximum prediction error 0.41 m and sx/y/z = 0 .85 m
+
+(b) Dynamic case with maximum prediction error 1.93 m and sx/y/z = 2 .5m 
+
+> Fig. 12. Prediction and tracking results for two samples of UAV trajectories generated with varying randomness.
+
+accurately estimate the fuselage-plane normal vector, resulting in an MDE close to 10% . This is because the previous results have shown that unfavorable channel conditions introduce sub-stantially more noisy points in the reconstructed point cloud, which hinders the reliable capture of attitude information, as illustrated in Fig. 6d . In addition, Fig. 6d also offers intuitive evidence for why the AUGUST-NoEBD approach consistently yields higher MDE than the other schemes. By contrast, once the channel condition improves, the considered schemes except AUGUST-NoEBD can achieve a lower MDE, and the performance differences among the different solutions are not significant. Together with the imaging results in Fig. 
+
+6, these results suggest that the heuristic attitude estimator in (38 ) remains effective for point clouds with a moderate level of contamination, yielding stable normal-vector estimation. This aligns with the visual intuition that the UAV attitude and shape remain discernible from mildly corrupted images. Moreover, the results in Fig. 10 further confirm that point cloud imaging under the GAI framework can effectively capture the UAV attitude information. 
+
+D. Additional Discussions on Key Parameters 
+
+As defined in ( 11 ), the size of the reconstruction region, i.e., 
+
+sx/y/z , hinges on the UAV size and the position prediction 14 
+
+error threshold. This means that a larger prediction error threshold requires point cloud reconstruction over a larger region, corresponding to a weaker spatial prior for UAV tracking in each slot. Fig. 11 briefly examines the impact of region size by showing the point cloud reconstruction results of the AUGUST approach for a fixed-size UAV under different 
+
+sx/y/z . It is observed from Fig. 11 that, as sx/y/z increases, the reconstructed point cloud becomes increasingly corrupted. In particular, when sx/y/z = 2 .5 m, the UAV features become difficult to discern. To further analyze the impact of the selection of sx/y/z quantitatively, we additionally compare the WD performance of AUGUST under different sx/y/z , as shown in Fig. 11e. It can be observed that, under the same SNR, a smaller sx/y/z consistently achieves a lower WD. This is consistent with the conclusions drawn from the point cloud imaging results above. The above results also reflect the influence of prediction uncertainty on current-slot sensing performance. A larger sx/y/z can tolerate larger errors in q(t)
+
+> pre
+
+,including those caused by historical position estimation errors and trajectory randomness. However, for a fixed-size UAV, enlarging the reconstruction region makes the UAV occupy a smaller relative portion of the region and dilutes the UAV EP distribution over a larger space. Therefore, there exists a trade-off between robustness to prediction errors and detailed point cloud reconstruction quality. In practice, sx/y/z should be selected according to the expected prediction error level and the desired reconstruction accuracy. To intuitively evaluate the performance of UAV position prediction and tracking, we compare two UAV trajectories with different motion patterns. As shown in Fig. 12a, for the smooth trajectory, the predicted trajectory follows the original trajectory well, with a maximum prediction error of 0.41 m. Accordingly, given a region size sx/y/z = 0 .85 m that can cover the UAV during the tracking, the estimated trajectory obtained by AUGUST closely matches the original trajectory. For the dynamic trajectory in Fig. 12b, the UAV changes its moving direction more frequently, especially around the sharp maneuvering region, which increases the maximum prediction error to 1.93 m. In this case, we need to enlarge the reconstruction region to sx/y/z = 2 .5 m to ensure that the UAV remains covered by the potential region. Although the predicted trajectory shows noticeable deviations in the high-maneuvering segment, the estimated trajectory extracted from the reconstructed point clouds still follows the original trajectory well for most slots. These results indicate that trajectory randomness mainly affects the prediction accuracy of q(t)
+
+> pre
+
+, while the final tracking performance of AUGUST can remain reliable when the potential flight region is properly selected. This is because q(t) 
+
+> pre
+
+only determines the region center, whereas the current-slot position q(t) 
+
+> est
+
+is estimated from ˆP(t). Therefore, historical trajectory estimation errors and position prediction errors do not simply accumulate in an open-loop manner, and can be mitigated or corrected by current-slot sensing and imaging. To further evaluate the scalability of the proposed AUGUST approach, we consider more diverse UAV size and material settings. The corresponding datasets are regenerated and the            
+
+>   
+> 
+>        
+>    ! "#    ! "#    ! "#
+
+(a) WD comparison for varying UAV size settings.                    
+
+>  
+> 
+>                 
+>        
+>        
+>      
+>      
+>      
+
+(b) WD comparison for varying material settings.     
+
+> Fig. 13. The WD comparisons based on AUGUST approach under different UAV size and material settings, where the antenna configuration is 16 ×4.
+
+proposed model is retrained accordingly. For the UAV size setting, the maximum half-wheelbase (i.e., half of the maxi-mum diagonal distance between two opposite rotors) is varied from 0.25 m to 0.35 m and 0.50 m, while the other UAV components are proportionally scaled. As shown in Fig. 13a, a larger UAV size generally leads to a lower WD under the same transmit power. This is because a larger UAV usually has a larger effective scattering aperture and angular extent observed by the antenna array, making the UAV-induced spa-tial features more distinguishable in the sensing channel and thereby improving point cloud reconstruction. For the material setting, the relative permittivity and conductivity are extended to ε ∈ [1 .5, 15] and ̺ ∈ [10 , 2000] mS/m, respectively, and the corresponding dataset is regenerated for training and testing. As shown in Fig. 13b, the WD decreases as the transmit power increases, indicating that a higher received SNR leads to more accurate point cloud reconstruction. Moreover, under the same transmit power, larger ε or ̺ generally yields a lower WD. This is because stronger permittivity contrast and conductivity response enhance the target-related scattered echoes under the considered settings, thereby improving the observability of the UAV EP distribution from the sensing channel. 15 
+
+VII. C ONCLUSION 
+
+Based on electromagnetic scattering modeling, we leveraged the estimated sensing channel and developed an AUGUST ap-proach to achieve UAV sensing and tracking via EP point cloud imaging within a potential flight region, thereby capturing its position, attitude, and shape information. Our AUGUST ap-proach comprises a channel encoding module and a generative decoding module. The multiplicative position embedding and the SNR embedding are utilized in the encoding module to assist the MLP-based encoder in extracting the stable UAV features under varying UAV locations and channel conditions. The encoded features are further mapped into a latent space that is regularized by a learnable flow-prior. Conditioned on the extracted features, the decoding module adopts a diffusion model to reconstruct the EP point cloud of the UAV based on the weighted training design. Numerical results demonstrate that the proposed AUGUST approach presents higher-fidelity point cloud imaging than the competing schemes, thereby en-abling more accurate characterization of the UAV attitude and shape. Moreover, the AUGUST approach achieves markedly better position estimation performance than the conventional positioning method. 
+
+Looking forward, extending the proposed AUGUST ap-proach to more complex propagation environments, such as multipath-rich or blockage-induced NLoS scenarios, consti-tutes an important direction for future research. In practical urban low-altitude scenarios, static environmental objects, such as buildings, walls, and dominant reflectors, may introduce additional multipath components into the received echoes and may even cause temporary blockage of the UAV-induced LoS echo, resulting in degraded imaging quality or potential track loss. Meanwhile, the EM properties and geometric information of these static environmental objects are often known, calibrated, or slowly varying. Inspired by the diffusion Schr¨ odinger bridge (DSB)-based EM property sensing and channel reconstruction framework proposed in [27], such static environmental information could be mapped into environment-aware latent features or reconstructed channels through bidi-rectional generative modeling. These features could then be incorporated into the conditional channel encoding module of AUGUST as additional environmental priors, helping to distinguish UAV-induced echoes from environment-induced multipath components and to exploit indirect propagation paths in multipath or blockage scenarios. This extension may further improve UAV point cloud imaging, positioning, and tracking robustness in complex low-altitude propagation environments. Another important research direction is to characterize the effective sensing range of the proposed AUGUST framework in large-scale environments. As indicated by the electro-magnetic propagation model in (5) to (10), the spatial and electromagnetic-property information of the UAV surface is embedded into the received signal through the propagation of the incident field, the EP-dependent scattering response over the UAV surface, and the projection of the scattered electric field onto the polarization direction of receiving antennas. As the sensing distance increases, the echo SNR decreases and the angular extent of the UAV observed by the finite-aperture antenna array becomes smaller, reducing the distinguishable spatial features carried by the sensing channel. Therefore, the maximum effective sensing range is not a fixed hard boundary determined only by distance, but rather a “task-dependent soft boundary” jointly affected by the link budget, array aperture, carrier frequency, UAV size, material properties, attitude, and the required reconstruction accuracy. Such a boundary is one of the important topics in future research on electromagnetic wireless sensing. 
+
+REFERENCES                                   
+
+> [1] Y. Jiang, X. Li, G. Zhu, H. Li, J. Deng, K. Han, C. Shen, Q. Shi, and R. Zhang, “Integrated sensing and communication for low altitude economy: Opportunities and challenges,” IEEE Commun. Mag. , vol. 63, no. 12, pp. 72–78, 2025. [2] F. Toscano, C. Fiorentino, N. Capece, U. Erra, D. Travascia, A. Scopa, M. Drosos, and P. D’Antonio, “Unmanned aerial vehicle for precision agriculture: A review,” IEEE Access , vol. 12, pp. 69 188–69 205, 2024. [3] Z. Deng, F. Wu, Y. Xu, D. Yang, and L. Xiao, “Energy minimization for radio map-based UAV pickup and delivery logistics system,” IEEE Trans. Veh. Technol. , vol. 73, no. 11, pp. 17 893–17 898, 2024. [4] X. Dai, B. Duo, X. Yuan, and M. Di Renzo, “Energy-efficient UAV communications in the presence of wind: 3D modeling and trajectory design,” IEEE Trans. Wireless Commun. , vol. 23, no. 3, pp. 1840–1854, 2023.
+> [5] G. Geraci, A. Garcia-Rodriguez, M. M. Azari, A. Lozano, M. Mezzav-illa, S. Chatzinotas, Y. Chen, S. Rangan, and M. D. Renzo, “What will the future of UAV cellular communications be? A flight from 5G to 6G,”
+> IEEE Commun. Surveys Tuts. , vol. 24, no. 3, pp. 1304–1335, 2022.
+> [6] Z. Fei, X. Wang, N. Wu, J. Huang, and J. A. Zhang, “Air-ground integrated sensing and communications: Opportunities and challenges,”
+> IEEE Commun. Mag. , vol. 61, no. 5, pp. 55–61, 2023. [7] W. Khawaja, M. Ezuma, V. Semkin, F. Erden, O. Ozdemir, and I. Gu-venc, “A survey on detection, classification, and tracking of AAVs using radar and communications systems,” IEEE Commun. Surveys Tuts. ,vol. 28, pp. 3272–3310, 2026. [8] X. Fang, M. He, D. Huang, Z. Zhang, L. Ge, and G. Xiao, “JTEA: A joint trajectory tracking and estimation approach for low-observable micro-UAV monitoring with 4-D radar,” IEEE Trans. Instrum. Meas. ,vol. 73, pp. 1–14, 2023. [9] X. Fang, J. Zhu, D. Huang, Z. Zhang, and G. Xiao, “An end-to-end detection and tracking framework for multiple micro-UAVs with FMCW-MIMO radar,” IEEE Trans. Geosci. Remote Sens. , vol. 61, pp. 1–16, 2023. [10] F. Wen, D. Ren, X. Zhang, G. Gui, B. Adebisi, H. Sari, and F. Adachi, “Fast localizing for anonymous UAVs oriented toward polarized massive MIMO systems,” IEEE Internet Things J. , vol. 10, no. 22, pp. 20 094– 20 106, 2023. [11] X. Dai, M. Zhang, B. Teng, X. Yuan, and X. Wang, “Attitude estimation assisted short-range UAV localization and tracking based on extremely large antenna array,” IEEE Trans. Wireless Commun. , vol. 24, no. 12, pp. 10 391–10 407, 2025. [12] J. You, Z. Ye, J. Gu, and J. Pu, “UAV-pose: A dual capture network algorithm for low altitude UAV attitude detection and tracking,” IEEE Access , vol. 11, pp. 129 144–129 155, 2023. [13] Y. Song, Y. Zeng, Y. Yang, Z. Ren, G. Cheng, X. Xu, J. Xu, S. Jin, and R. Zhang, “An overview of cellular ISAC for low-altitude UAV: New opportunities and challenges,” IEEE Commun. Mag. , vol. 63, no. 12, pp. 88–95, 2025. [14] Y. Jiang, F. Gao, and S. Jin, “Electromagnetic property sensing: A new paradigm of integrated sensing and communication,” IEEE Trans. Wireless Commun. , vol. 23, no. 10, pp. 13 471–13 483, 2024. [15] G. Xu, B. Zhang, H. Yu, J. Chen, M. Xing, and W. Hong, “Sparse synthetic aperture radar imaging from compressed sensing and machine learning: Theories, applications, and trends,” IEEE Geosci. Remote Sens. Mag. , vol. 10, no. 4, pp. 32–69, 2022. [16] R. Zheng, S. Sun, H. Liu, and T. Wu, “Deep-neural-network-enabled vehicle detection using high-resolution automotive radar imaging,” IEEE Trans. Aerosp. Electron. Syst. , vol. 59, no. 5, pp. 4815–4830, 2023. [17] R. Guo, T. Huang, M. Li, H. Zhang, and Y. C. Eldar, “Physics-embedded machine learning for electromagnetic data imaging: Examining three types of data-driven imaging methods,” IEEE Signal Process. Mag. ,vol. 40, no. 2, pp. 18–31, 2023. 16
+
+[18] W. Gilpin, “Generative learning for nonlinear dynamics,” Nat. Rev. Phys. , vol. 6, no. 3, pp. 194–206, 2024. [19] S. Luo and W. Hu, “Diffusion probabilistic models for 3D point cloud generation,” in Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR) ,2021, pp. 2837–2845. [20] H. Jiang, X. Yuan, Y. Huang, and Q. Guo, “Blind MIMO semantic communication via parallel variational diffusion: A completely pilot-free approach,” arXiv preprint arXiv:2510.27043 , 2025. [21] J. Yue, L. Fang, S. Xia, Y. Deng, and J. Ma, “Dif-fusion: Toward high color fidelity in infrared and visible image fusion with diffusion models,” 
+
+IEEE Trans. Image Process. , vol. 32, pp. 5705–5720, 2023. [22] L. Chen, C. Cai, H. Yang, X. Yuan, and Y.-J. A. Zhang, “Scoring ISAC: Benchmarking integrated sensing and communications via score-based generative modeling,” J. Commun. Inf. Netw. , vol. 10, no. 3, pp. 224– 245, 2025. [23] J. Wang, H. Du, D. Niyato, Z. Xiong, J. Kang, B. Ai, Z. Han, and D. I. Kim, “Generative artificial intelligence assisted wireless sensing: Human flow detection in practical communication environments,” IEEE J. Sel. Areas Commun. , vol. 42, no. 10, pp. 2737–2753, 2024. [24] Z. Wang and S. Mao, “AIGC for wireless sensing: Diffusion-empowered human activity sensing,” IEEE Trans. Cogn. Commun. Netw. , vol. 11, no. 2, pp. 657–671, 2025. [25] Y. Jiang, F. Gao, S. Jin, and T. J. Cui, “Electromagnetic property sensing based on diffusion model in ISAC system,” IEEE Trans. Wireless Commun. , vol. 24, no. 3, pp. 2036–2051, 2025. [26] K. Sohn, H. Lee, and X. Yan, “Learning structured output representation using deep conditional generative models,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , 2015. 
+
+[27] Y. Jiang, F. Gao, and S. Jin, “Electromagnetic property sensing and channel reconstruction based on diffusion Schr¨ odinger bridge in ISAC,” 
+
+IEEE Trans. Wireless Commun. , vol. 24, no. 8, pp. 6737–6752, 2025. 
+
+[28] Y. Han, S. Jin, J. Zhang, J. Zhang, and K.-K. Wong, “DFT-based hybrid beamforming multiuser systems: Rate analysis and beam selection,” 
+
+IEEE J. Sel. Topics Signal Process. , vol. 12, no. 3, pp. 514–528, 2018. [29] Z. Liu and Z. Nie, “Subspace-based variational born iterative method for solving inverse scattering problems,” IEEE Geosci. Remote Sens. Lett. ,vol. 16, no. 7, pp. 1017–1020, 2019. [30] H. Bassen and G. Smith, “Electric field probes–A review,” IEEE Trans. Antennas Propag. , vol. 31, no. 5, pp. 710–718, 1983. [31] L.-W. Li, P.-S. Kooi, M.-S. Leong, and T.-S. Yee, “Electromagnetic dyadic Green’s function in spherically multilayered media,” IEEE Trans. Microw. Theory Techn. , vol. 42, no. 12, pp. 2302–2310, 1994. [32] X. Chen, Computational Methods for Electromagnetic Inverse Scatter-ing . John Wiley & Sons, 2018. [33] J. O. Vargas and R. Adriano, “Subspace-based conjugate-gradient method for solving inverse scattering problems,” IEEE Trans. Antennas Propag. , vol. 70, no. 12, pp. 12 139–12 146, 2022. 
+
+[34] R. Zaheer, I. Ahmad, D. Habibi, K. Y. Islam, and Q. V. Phung, “A survey on artificial intelligence-based acoustic source identification,” 
+
+IEEE Access , vol. 11, pp. 60 078–60 108, 2023. [35] Z. Tang, W. Lu, W. Tang, D. He, Y. Huang, and Q. Wang, “Low altitude UAV detection in complex contexts,” IEEE Access , vol. 13, pp. 209 049– 209 058, 2025. 
+
+[36] M. Biguesh and A. B. Gershman, “Training-based MIMO channel estimation: A study of estimator tradeoffs and optimal training signals,” 
+
+IEEE Trans. Signal Process. , vol. 54, no. 3, pp. 884–893, 2006. [37] H. Zhang, Y. Chen, T. J. Cui, F. L. Teixeira, and L. Li, “Probabilistic deep learning solutions to electromagnetic inverse scattering problems using conditional renormalization group flow,” IEEE Trans. Microw. Theory Techn. , vol. 70, no. 11, pp. 4955–4965, 2022. 
+
+[38] Z. Shi, M. Xu, Q. Pan, B. Yan, and H. Zhang, “LSTM-based flight trajectory prediction,” in Proc. Int. Joint Conf. Neural Netw. (IJCNN) ,2018, pp. 1–8. [39] D. Rezende and S. Mohamed, “Variational inference with normalizing flows,” in Proc. Int. Conf. Mach. Learn. (ICML) , 2015, pp. 1530–1538. 
+
+[40] G. Ke, D. He, and T.-Y. Liu, “Rethinking positional encoding in language pre-training,” in Proc. Int. Conf. Learn. Represent. (ICLR) ,2021. [41] Z. Xing, Z. Zhang, Z. Chen, H. Ruan, Z. Yang, and Z. Feng, “Multi-view wireless sensing via conditional generative learning: Framework and model design,” IEEE Trans. Wireless Commun. , vol. 25, pp. 12 691– 12 708, 2026. [42] W. Grathwohl, R. T. Chen, J. Bettencourt, I. Sutskever, and D. Duve-naud, “FFJORD: Free-form continuous dynamics for scalable reversible generative models,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2019. [43] L. Dinh, J. Sohl-Dickstein, and S. Bengio, “Density estimation using real NVP,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2017. [44] A. X. Chang, T. Funkhouser, L. Guibas, P. Hanrahan, Q. Huang, Z. Li, S. Savarese, M. Savva, S. Song, H. Su et al. , “Shapenet: An information-rich 3D model repository,” arXiv preprint arXiv:1512.03012 , 2015. [45] M. Cui and L. Dai, “Channel estimation for extremely large-scale MIMO: Far-field or near-field?” IEEE Trans. Commun. , vol. 70, no. 4, pp. 2663–2677, 2022.

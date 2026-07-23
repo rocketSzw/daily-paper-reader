@@ -1,0 +1,1156 @@
+Title: Co-Design of Aeroelastic Systems with Deep Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2607.15329v1
+
+Published Time: Mon, 20 Jul 2026 00:05:03 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+# Co-Design of Aeroelastic Systems with Deep Reinforcement Learning 
+
+Yao Cheng Li ∗1 and Urban Fasel 11Department of Aeronautics, Imperial College London, SW7 2AZ, United Kingdom 
+
+> ∗corresponding author: paul.li20@imperial.ac.uk
+
+Abstract 
+
+Control co-design considers the physical system and its controller together, enabling the strong coupling between system design and control to be uncovered and exploited. This is especially relevant in aeroelastic flight systems, where structural, aerodynamic, and con-trol design choices jointly determine manoeuvrability and efficiency. This paper presents a model-free nested co-design framework for aeroelastic systems using deep reinforcement learning, in which a design-conditioned control policy is trained with proximal policy opti-misation while an outer loop updates a distribution over candidate design parameters. The approach is evaluated on three case studies of increasing complexity: a spring-mass-damper system, a pitch-plunge-flap aerofoil, and a highly flexible high-aspect-ratio glider perform-ing a thermal-soaring mission in a stochastic environment. Across these case studies, the framework is shown to progressively concentrate the design search towards high-performing regions and to outperform policies trained on randomly sampled designs. The results also show that reward shaping plays an important role in enabling stable learning in partially observed and stochastic environments. In the final glider case, the method jointly addresses wing design, flight control, and mission-level behaviour in the presence of aeroelastic coupling and atmospheric uncertainty. These results highlight the potential of model-free co-design for complex aeroelastic systems in which design, control, and mission objectives are tightly coupled. 
+
+# 1 Introduction 
+
+Co-Design, or control co-design, is a multidisciplinary optimisation approach that uses nested or simultaneous optimisation loops to consider both the physical system and its controller from the initial stages of design, enabling solutions that may not be achievable when the two are optimised separately [1–3]. In this paper, we present a co-design framework for thermal-soaring fixed-wing gliders that jointly optimises airframe design and control policy in the presence of aeroelastic coupling and environmental uncertainty. The central premise is that, for highly flexible high-aspect-ratio gliders, structural design choices and control decisions are strongly coupled, together determining manoeuvrability and efficiency. To address this, we develop a low-fidelity but fully parameterisable aeroelastic glider simulation and combine it with deep reinforcement learning to enable integrated system-controller co-design optimisation. From complex multidisciplinary engineering systems such as aircraft [4] and autonomous robots [5] to societal-scale engineered infrastructures such as electrical grids [6], co-design has been used to uncover and exploit the inherent interdependence between system architecture and control. As highlighted in the strategic future of control [7], there is an increasing need for a unifying integrated framework for system architecture and control optimisation, particularly with the adoption of emerging approaches such as data-driven control. This need becomes especially pronounced in systems with strong dynamic coupling, where system parameters directly affect controllability and observability, thereby constraining or enabling different control strategies [8]. Aeroelastic systems are a representative example of such systems. 1arXiv:2607.15329v1 [eess.SY] 16 Jul 2026 1 INTRODUCTION 
+
+Aeroelasticity is the study of the coupling between aerodynamic, structural elastic, and inertial forces acting on aerodynamic bodies such as wings, tails and fuselages [9]. As the global aviation industry is projected to double its emissions by 2050 if no action is taken [10,11], there has been significant research and development into technologies that can reduce overall emissions. One active area is the development of high aspect ratio wings, such as NASA’s transonic truss-braced wing [12] and various Airbus high-aspect-ratio wing prototypes [13]. It is known from Prandtl’s lifting line theory [14] and past aircraft designs [15] that increasing aspect ratio reduces induced drag; however, it also introduces important challenges. High-aspect-ratio wings can incur sig-nificant structural mass penalties to support long cantilever wings, reduce lateral controllability through increased roll damping, and increase susceptibility to aeroelastic flutter and divergence. Although some of these effects can be mitigated through alternative design choices, such as span loading strategies demonstrated on X-HALE [16], such choices may introduce secondary consequences. For example, they can increase roll inertia and strengthen coupling between roll, pitch and elastic degrees of freedom when elevon-based control is used. These competing design objectives become even more pronounced in unpowered soaring flight, where aerodynamic efficiency and manoeuvrability are both critical. Soaring flight is conducted by birds [17, 18], gliders [19] and more recently UAVs [20] to maintain or even gain altitude without propulsion. Different types of soaring flight exploit different atmospheric phenomena to extract energy: dynamic soaring exploits wind-shear gradients in turning climb and dive manoeuvres [21], gust soaring exploits separated boundary layers caused by terrain features using similar manoeuvres [17], and thermal soaring exploits rising thermals generated by local atmospheric convection [19]. Manoeuvrability is placed at a premium for all types of soaring: high load factors are required at the bottom of the dive, minimum-radius turns are needed to remain within narrow thermal columns, and traversing in zigzag patterns is needed above jagged ridge lines where thermals arise from. At the same time, the glide ratio of an unpowered aircraft in still air is determined by its lift-to-drag ratio. Hence, a balance must be struck between aerodynamic efficiency and manoeuvrability. Thermal soaring introduces an additional challenge of locating thermals and planning trajectories under uncertainty. Whilst the mechanism of thermal formation is well understood, accurately predicting the precise location of a thermal in practice remains difficult. Cumulus clouds can indicate thermals because they form as a by-product of condensing water vapour brought to altitude by a thermal [20]. Thermals may also be produced above local hot-spots such as fires or hot surfaces with high thermal emissivity, including concrete and rocks [20]. However, such visual cues are not always reliable because thermals are highly dynamic. In practice, the only reliable method of detecting a thermal is to fly through or near it, where it can be detected using a variometer or inferred by the pilot from changes in stick force caused by the local flow field. Consequently, thermal soaring requires a continual balance between exploration and exploitation in a highly uncertain and dynamic environment. Prolonged exploration for thermals may cause long detours and altitude loss; however, successfully finding thermals provides the opportunity to convert gained altitude into kinetic energy and complete the planned flight path sooner. Deep reinforcement learning, a subfield of machine learning, is an emerging approach for decision-making and control under uncertainty while balancing exploration and exploitation. Agents learn through repeated trial-and-error interactions with an environment, enabling them to explore different trajectories before converging towards behaviours that maximise long-term reward [22]. Deep reinforcement learning has been applied in many complex domains, including robotic control [23], video games [24–26], protein structure prediction [27, 28], and sustainable aviation rollout prediction [29]. More recently, it has also seen application in co-design [30–32] and soaring-related problems [33–35]. However, the intersection of aeroelastic glider design, thermal-soaring decision-making, and integrated co-design remains unexplored. 22 RELATED WORKS 
+
+These considerations motivate the development of a co-design framework for a fixed-wing glider operating in a thermal soaring environment using deep reinforcement learning. Specifically, in this study, we 1. create a low-fidelity flight simulation with a fully parameterisable elastic high aspect ratio fixed-wing glider model; 2. develop control strategies using deep reinforcement learning for highly flexible aircraft; and 3. integrate these elements into a unified data-driven co-design framework for the joint opti-misation of glider design and control. In the remainder of the paper, we first discuss related work in Section 2, before presenting the proposed nested co-design approach in Section 3. We then evaluate the method on three case studies of increasing complexity in Section 4, before concluding in Section 5. 
+
+# 2 Related Works 
+
+Although multidisciplinary design optimisation (MDO) in aircraft design shares many features with co-design, control design has often been treated separately, particularly in problems where time-domain dynamic interactions are not central to the design task. By contrast, co-design has seen extensive and successful application in fields such as robotics [8], where platform morphology and system parameters strongly influence the associated control strategy. This is especially true when deep reinforcement learning (RL) is used to address problems that are too complex to solve with classical optimisation methods. For example, Schaff et al. developed a nested co-design optimisation framework to jointly optimise robotic design and control policy on benchmark walk-ing robot problems [32]. In their approach, the model-free stochastic algorithm proximal policy optimisation (PPO) was used to learn a control policy within the inner loop, while a Gaussian mixture model (GMM) parameterised the design distribution in the outer loop. They showed that the learned walking gait of several robotic morphologies outperformed baseline designs. This framework was later extended to arbitrary morphologies using discrete design parame-ters [31]. Similarly, Sadat et al., following the control-inspired co-design paradigm proposed in [1], presented a two-timescale nested co-design optimisation framework on the benchmark EcoRacer problem [30]. In that work, the RL algorithm Q-learning with temporal difference was used in both the inner control loop and the outer design loop, but with different hyperpa-rameters to separate the learning rates across the two timescales. Their results demonstrated convergence towards the system optimal solution. Other nested co-design approaches have also been explored, including evolutionary optimisation of generic creature morphology with PPO-based inner-loop control [36], graph heuristic search in the outer loop with graph neural network control in the inner loop [37], and differentiable formulations in which design parameters are embedded directly within the control policy and jointly optimised [38]. Within the domain of aerial vehicles, [39] demonstrated a co-design framework for a morphing winged drone navigating an obstacle course. In that work, the NSGA-II evolutionary algorithm was used to evolve a population pool of candidate designs over many generations, while a tra-jectory optimiser minimised energy consumption and mission time subject to constraints such as hardware limits, obstacle avoidance, and initial flight conditions. Likewise, [40] developed a joint UAV and controller parameter optimisation framework using a hierarchical optimisation algorithm, with a heuristic graph search in the outer loop over mixed continuous and discrete UAV designs, and gradient-based sequential quadratic programming in the inner loop for LQR controller tuning. Both studies demonstrated improved performance over fixed baseline air-craft designs. Part of this improvement can be attributed to the use of morphing mechanisms in flexible aircraft, which have been shown to significantly enhance manoeuvring characteris-33 METHOD 
+
+tics [41, 42]. Related ideas have also appeared in flexible structural systems. For example, [43] applied a single-shooting method to the co-design of an actuated flexible pendulum, jointly op-timising structural geometry and a control policy parametrised using discrete sine series and spline basis functions. Their results showed improved objective function values compared with optimising the control policy alone. Taken together, these studies show the value of integrated design and control optimisation for flexible and morphing systems, but comparable co-design studies for aeroelastic gliders in soaring flight remain limited. Although there is a lack of co-design in soaring applications, several studies have demonstrated the use of RL algorithms for thermal searching and tracking. For example, [33] used deep de-terministic policy gradient (DDPG) to train an agent that can track a thermal column under windy conditions. Because stable flight and thermal tracking are difficult to learn simultane-ously, reward shaping was introduced to address learning bottlenecks by providing intermediate rewards for desirable behaviours in addition to the thermal tracking mission-level reward. Sim-ilarly, [34] used the soft-actor critic algorithm to explore a stochastic thermal field, showing that the agent learned distinct exploration and exploitation behaviours. Unlike these earlier studies, [35] introduced a recurrent network layer after the fully connected neural network layers and demonstrated an improved ability to encode thermal updraft dynamics during flight. How-ever, these soaring studies were all implemented using simplified rigid flight dynamics models, in which variables such as angle of attack and roll angle are determined directly by the control policy rather than emerging from higher-fidelity vehicle dynamics. As a result, important flight characteristics such as short-period pitching oscillations and Dutch roll behaviour are not repre-sented. These characteristics are directly relevant to co-design, particularly when the objective is to produce aircraft configurations that are dynamically stable and trimmable. More broadly, RL algorithms such as PPO may also learn slowly and become stuck in a local optimum in more complex problems, depending on policy initialisation and hyperparameter selection. For example, [44] addressed this issue through imitation learning to warm-start policy training for rigid aircraft control with full control dynamics. A key component of any co-design framework is a well-defined dynamical system, which serves as the environment in which the agent is trained. In [33–35], the equations of flight mechanics were implemented directly as the training environment. More generally, dedicated flight sim-ulation environments have also been developed, such as FlightMare, which combines modular Gazebo-based simulation with Unity engine visualisation for computational efficiency [45], as well as modified general-purpose environments such as PyFlyt, a UAV simulation environment built on Pybullet [46]. As highlighted in [47, 48], the suitability of a training environment de-pends not only on efficiency, accuracy, and physics capabilities, but also on usability, accessibility and extensibility for the broader research community. Across these criteria, both studies iden-tified Mujoco (multi-joint dynamics with contact) as one of the strongest available frameworks. Although Mujoco has traditionally been used for multi-jointed robotic systems with contact dynamics, as in [32, 36], it has also been applied more broadly, from simulating fruit fly flight and locomotion [49] to modelling an unborn fetus using soft body dynamics [50]. For the present work, implementing a flight dynamics environment in Mujoco provides not only an efficient and accurate physics-based RL training environment, but also a wider accessible basis for future extensions of aeroelastic flight co-design within a wider simulation ecosystem. 
+
+# 3 Method 
+
+To apply co-design to a flexible fixed-wing glider in a thermal soaring mission, this study adopts the model-free co-design framework from Schaff et al. [32] illustrated in Figure 1. The method maintains a distribution over candidate design parameters and alternates between sampling designs from this distribution and improving a control policy through interaction with the en-43 METHOD Training Environment      
+
+> Actions 𝑎 !Observed states 𝑠 !
+> Design
+> parameters
+> 𝐷 ∈𝒟
+> Rewards
+> 𝑅 !
+
+Gradient -Based Update on Gaussian Mixture Model     
+
+> m𝑎𝑥
+> !∈𝒟 $𝑅 %
+> %
+> Prune worst performing
+> distributions until one
+> remains
+> Update collection of
+> GMMs with new
+> rewards
+
+Agent trained with Proximal Policy Optimisation  
+
+> Actor network Critic network
+
+Control policy optimisation 
+
+Design parameter optimisation 
+
+Figure 1: Nested co-design framework for joint glider and controller optimisation. A design-conditioned control policy is trained in the inner loop using reinforcement learning, while the outer loop updates and prunes a distribution over candidate designs according to performance. This progressively concentrates training on high-performing regions of the design space. vironment. Crucially, the control policy is conditioned on the sampled design parameters, such that a single policy is trained across the full range of candidate designs rather than learning a separate controller for each design instance. This formulation can be viewed as a nested optimisation loop, in which the control policy optimisation is performed in the inner loop and the design parameter optimisation in the outer loop. For each sampled design, the inner-loop performs Ninner training iterations before handing off to the outer design parameter optimisation loop. The inner loop is not trained to convergence at every outer loop iteration, as both loops must be updated jointly. Doing so also reduces the total computational cost. During this process, the inner loop receives design parameters D
+
+from the outer loop and returns the achieved reward information through interaction with the environment. The outer loop optimiser seeks to maximise the total reward P 
+
+> t
+
+Rt by updating the design parameters within the feasible design space D. Meanwhile, the inner loop optimiser updates the control policy to maximize the discounted reward P∞ 
+
+> t=0
+
+γtRt where γ ∈ (0 , 1) is the discount factor that weights short-term rewards more heavily than those received further in the future. 53 METHOD 
+
+The inner loop control problem is formulated as a design-conditioned Markov decision process (MDP). At a given time t, the environment is in a state st ∈ S , the agent selects an action 
+
+at ∈ A , and the system transitions to the next state st+1 while producing a scalar reward rt.Unlike a conventional MDP, the transition function is also conditioned on the design parameter provided by the outer-loop optimiser. The one step transition probability of a given trajectory 
+
+τ , which defines a transition from st to st+1 with action at, is therefore defined as 
+
+P (st+1 , s t, a t, D ) = P r (s′ = st+1 |s = st, a = at, d = D), (1) where D remains fixed throughout a single episode and is only updated when the episode is reset. The rest of the formulation follows the standard RL setting, except that both the transition dynamics and the control policy are conditioned on the design parameters. The expected return is therefore written as 
+
+E 
+
+> τ∼π
+
+[R(τ )] = 
+
+Z
+
+> τ
+
+P (τ |π)R(τ ), (2) where the compounded transition probability is defined as 
+
+P (τ |π) = ρ0(s0) 
+
+> T−1
+
+Y
+
+> t=0
+
+P (st+1 |st, a t, D )π(at|st, D ), (3) and ρ0(s0) is the probability distribution of starting at a given initial state s0.For the inner-loop policy optimisation, we employ the on-policy, policy-gradient-based optimi-sation algorithm proximal policy optimisation (PPO) [51], which seeks to maximise a clipped surrogate advantage function defined as 
+
+ˆEt
+
+h
+
+min( rt(θ) ˆAt, clip (rt(θ), 1 − ϵ, 1 + ϵ) ˆAt)
+
+i
+
+, (4) where rt(θ) = πθ (a|s,D )  
+
+> πθk(a|s,D )
+
+is the relative difference between the updated policy and the old policy 
+
+πθk . The advantage function ˆAt = Qπ(st, a t, D ) − V π(st, D ) quantifies the advantage of sampled actions at ∼ πθ(·| st, D ), collected from Nstep × Nenv number of trajectories, by taking the difference between the state-action value function and the state value function. The clipped surrogate robustifies the algorithm against large policy updates and thereby improves training stability. To further stabilise training, the outer-loop optimiser should progressively narrow the design search space of D to limit the total transitions P (τ |π) that the policy must learn. This motivates the use of Gaussian mixture models (GMMs), which represent the design distribution using 
+
+Ndesign clusters. These clusters are progressively pruned over time based on the evaluated reward and prune rate αprune [32], allowing the inner-loop training to focus increasingly on high-performing design parameters. Each n Gaussian model parameterises the design space through a mean vector μn and covariance matrix Σn, with the mean constrained such that μ ∈ D . During training, Nenv environments are instantiated, each allocated a design parameter Dn sampled from the corresponding GMM distribution, with density 
+
+fμn,L n (D) = N (μn, Σn). (5) 63 METHOD 
+
+Algorithm 1 Nested co-design optimisation algorithm. 
+
+Require: Initial policy network πθ , initial Ndesign multivariate Gaussian distributions, and initial state observations s0 from Nenv environments. step ← 0
+
+Allocate Ndesign distributions to Nenv environments. 
+
+while step < N total steps do for i ← 1 to Nprune do 
+
+For each environment, sample design parameters Dn ∼ N (μn, Σn) from its assigned distribution. 
+
+for j ← 1 to Ninner do for k ← 1 to Nstep do 
+
+Sample an action at ∼ πθ (·| st, D n).Step through environment and collect batches of trajectories ⟨st, a t, r t, s t+1 ⟩.step ← step + Nenv .
+
+end for 
+
+Update policy πθ with PPO to minimise Eq. 4 using collected rollout trajectories. 
+
+end for if step > N freeze Nstep Nenv then 
+
+Update design distributions with Adam to minimise Eq. 6. 
+
+end if end for if step > N freeze Nstep Nenv and Ndesign > 1 then 
+
+Evaluate all distributions by sampling Neval designs and selecting deterministic actions at = argmax 
+
+> a
+
+πθ (a|st, D n) during evaluation. Prune the worst performing distributions based on the prune rate αprune .
+
+Resample and re-allocate Ndesign distributions to Nenv environments. 
+
+end if end while 
+
+To satisfy the symmetric positive definiteness requirement of the covariance matrix, we repa-rameterised the covariance matrix using the Cholesky decomposition such that Σn = LnLTn ,with diagonal elements constrained to Lii > 0. After Ninner rollout updates, we update the pa-rameters of the GMMs using the Adam optimiser [52], a gradient-based optimiser for stochastic functions, to minimise the weighted negative log-likelihood loss 
+
+L(μn, L n) = − 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+X
+
+> t
+
+Rt
+
+!
+
+> i
+
+log fμn,L n (Di), (6) where N is the total number of episodes taken between distribution updates. After every Nprune distribution updates, the current design distributions are evaluated using newly sampled designs, and the worst-performing distributions are pruned based on the mean reward achieved. This focuses the inner loop training on an increasingly smaller range of design parameters and promotes more stable convergence. However, even with a robust policy update algorithm such as PPO, policy training may still fail without additional stabilisation [44]. To address this, a warm start training step was introduced that freezes the outer-loop optimiser for Nfreeze initial inner-loop updates before initiating the co-design process. This prevents poor-performing policies during the early iterations of the inner loop from corrupting the optimisation in the outer loop. Furthermore, the means of the initial Ndesign distributions are sampled using Latin Hypercube sampling (LHS) to ensure uniform initial coverage of the design space D. Each covariance matrix is initialised as a diagonal matrix of variances set to 10% span of the parameter range. The complete algorithm is outlined in Algorithm 1. 74 RESULTS & DISCUSSION 
+
+# 4 Results & Discussion 
+
+We apply the co-design framework introduced in Section 3 to three case studies of increasing complexity: a forced spring-mass-damper system, a pitch-plunge-flap aerofoil system, and finally a fixed-wing glider executing a thermal soaring mission. 
+
+4.1 Spring-Mass-Damper System 
+
+To demonstrate the co-design workflow, we first apply it to a simple spring-mass damper system governed by 
+
+m¨x(t) + c ˙x(t) + kx (t) = F (t), (7) where the mass m, damping coefficient c and spring stiffness k parameterise the system. An external force F (t) is applied such that 
+
+F (t) = Fmax an, for t ∈ [n∆t, (n + 1)∆ t). (8) The goal is to jointly optimise a control policy and system parameters D = {k, c }, subjected to 
+
+k, c ∈ [−1, 1] , to minimise the position tracking error. The policy is sampled at constant time intervals ∆t to obtain the desired action an ∼ πθ(·| sn, D ) with an ∈ [−1, 1] . We generate a series of random step reference signals with varying step size xref ,i that are separated by random time intervals ∆τi such that 
+
+xref = xref ,i , for t ∈ [τi, τ i+1 ), (9) 
+
+τi = τi−1 + ∆ τi. (10) We initialise τ0 = 0 and sample from a uniform distribution such that 
+
+xref ,i ∼ U (−xref max , x ref max ), (11) 
+
+∆τi ∼ U (∆ τmin , ∆τmax ). (12) The reference signal is chosen to provide sufficient variance during training, allowing the agent to learn from a wide range of trajectories, such an example signal can be seen in Figure 10. The environment reward at each step is defined as Rn = −(xref − x)2.For this application, we train on Nenv = 16 parallelised environments for a total of Ntotal steps =300000 steps. The optimisation is initialised with Ndesign = 8 distributions, an evaluation and prune interval of Nprune = 5 , inner-loop update interval of Ninner = 3 , a policy update interval Nstep = 256 , and a prune rate αprune = 0 .5. The policy is pre-trained for Nfreeze = 10 
+
+inner-loop update before initiating the co-design process. The training process is repeated over five independent runs, and the aggregated reward curve is shown in Figure 2. On a simple problem such as a mass-spring-damper system, the performance of unguided random sampling is comparable to the guided learning co-design algorithm, resulting in little difference between the reward curves. The resulting optimisation behaviour is illustrated in Figures 3 and 4, which show the Gaussian mixture models together with the rewards obtained by designs sampled from their distributions 84.1 Spring-Mass-Damper System 4 RESULTS & DISCUSSION 0 50000 100000 150000 200000 250000 300000 
+
+> Steps
+> 300
+> 250
+> 200
+> 150
+> 100
+> 50
+> Training Reward
+> Mean Reward of Random Sampling
+> 95.0% Confidence
+> Mean Reward of Gradient-Based Co-Design
+> 95.0% Confidence
+
+Figure 2: Smoothed reward curve of the mass-spring-damper system repeated over 5 training attempts. Damping, 𝑐 Stiffness, k
+
+> Stiffness,  k
+
+Figure 3: Co-design evaluation stage for pruning at training step 61440. Damping, 𝑐 Stiffness, k
+
+> Stiffness,  k
+
+Figure 4: Co-design evaluation stage for pruning at training step 184320. for one representative training run. During the early stage of training, design parameters D
+
+are sampled from a large number of distributions, enabling broad exploration of the design domain D, as shown in Figure 3. At this stage, each distribution is represented by only a small number of environments, so the inner-loop optimiser must learn across a broad range of transition dynamics from limited samples per design region. As training progresses, the number of distributions is reduced to 1, indicating that the optimisation has concentrated on a candidate design region. Figure 4 shows the final evaluation before the last pruning step, where the remaining two distributions are concentrated around the region of negative damping and positive spring stiffness. Within this actuator-constrained case study, negative damping accelerates the transition between consecutive step signals, while positive stiffness helps prevent the system from straying too far from the bounded region of reference signals xref max = 2 . Overall, this example shows that the proposed model-free co-design framework can progressively narrow the design distribution and identify interpretable parameter regions associated with improved reward during training. 94.2 Pitch-Plunge-Flap Aerofoil 4 RESULTS & DISCUSSION k!
+
+> k"
+> x#$
+> L
+> M
+> 𝛼
+> 𝛽
+> h
+> k%
+> x&
+> x$'
+> x!
+> x$' !
+> c
+> T(t)
+
+Figure 5: Schematic of the pitch-plunge-flap aerofoil. 
+
+4.2 Pitch-Plunge-Flap Aerofoil 
+
+Next, we apply the co-design framework to an idealised thin aerofoil with plunge, pitch and flap degrees of freedom, shown in Figure 5. These three degrees of freedom are analogous to the out-of-plane bending, torsional twist, and flap degrees of freedom on a 3D cantilever wing. This second case study is intended to assess whether the framework remains effective in a partially observed aeroelastic system with critical stability boundaries inside the design space. Although the pitch-plunge-flap aerofoil state-space model is relatively straightforward to analyse using conventional methods, it introduces several important challenges for model-free learning approaches. First, the hidden aerodynamic states are not included in the observation, making the control problem partially observed. Second, the aerofoil undergoes several critical bifurcations within the chosen design space and operating condition. Specifically, it exhibits aeroelastic phenomena including flutter, divergence, and control reversal, substantially increasing the complexity of the optimisation problem. Here, we adopt a quasi-steady aerodynamic formulation based on [53, 54], which introduces six additional hidden aerodynamic states and makes the problem partially observed, as defined by 
+
+(Aae + ρBae )¨ y + ( Cae + ρU Dae ) ˙ y + ( Eae + ρU 2Fae )y + ρU 3Ww = 0 0 T (t)T , (13) 
+
+˙w − W1y − U W2w = 0 , (14) where y = h α βT and w = w1 . . . w6
+
+T define the degrees of freedom and hidden aerodynamic states, respectively. We refer the reader to [54] for the derivation of the aeroelastic matrices. Unlike the implementation in [54], we formulate the inertial properties as lumped masses with parameterisable location, defined by non-dimensional positions ¯xcg w and ¯xcg f for the main wing section and trailing edge flap. Coordinates are non-dimensionalised by the semi-chord such that ¯x = ( x − c/ 2) /(c/ 2) . Furthermore, a motor torque T (t) is applied on the flap hinge such that 
+
+T (t) = Tmax an, for t ∈ [n∆t, (n + 1)∆ t). (15) The design variables in this co-design problem are the main wing centre of gravity ¯xcg w , the pitch spring stiffness kα, and the flap hinge stiffness kβ . These parameters directly affect the 10 4.2 Pitch-Plunge-Flap Aerofoil 4 RESULTS & DISCUSSION 0 100000 200000 300000 400000 500000 600000 
+
+> Steps
+> 250
+> 200
+> 150
+> 100
+> 50
+> 0
+> 50
+> 100
+> 150
+> Training Reward
+> Mean Reward of Random Sampling
+> 95.0% Confidence
+> Mean Reward of Gradient-Based Co-Design
+> 95.0% Confidence
+
+Figure 6: Smoothed reward curve of the pitch-plunge-flap system repeated over 5 training at-tempts. aeroelastic stability boundaries of the system, including the onset of flutter, divergence, and con-trol reversal, thereby motivating their joint optimisation with the control policy. The objective to be minimised is the tracking error he(t) = href (t) − h(t) where the reference signal href (t) is prescribed in the same way as in Section 4.1. Furthermore, during training, the freestream ve-locity is sampled from U ∼ U (10 , 80) . Over the prescribed design space D and velocity range U ,the system may exhibit aeroelastic instabilities for certain parameter combinations, resulting in an unstable system that naturally oscillates. The system is also torque-limited, with Tmax = 5 ,such that even though a high flap hinge stiffness kβ can delay the flutter onset velocity, it can cause the controller to saturate and prevent accurate tracking of the reference point. To account for this effect, in addition to the tracking error, the reward function Rn also penalises excessive oscillations, such that 
+
+Rn = − | href − h| − λ ˙β ˙β2 + 0 .5, (16) where λ ˙β = 0 .01 is the penalty weight on the flap deflection rate. Without this term, the opti-miser would minimise the tracking error he(t) alone, without accounting for oscillatory behaviour associated with flutter. This highlights the importance of incorporating domain knowledge into the reward structure. In addition, an episode is terminated early if the plunge state h exceeds twice the maximum expected reference value href max = 1 , or if either angular states exceed 
+
+α > π/ 4 or β > π/ 4. Combined with the constant 0.5 reward, this termination criterion guides the optimisation towards stable designs and helps prune candidates that deviate too far from the expected operating range. The co-design hyperparameters used in the remaining case studies are presented in Appendix C. Figure 6 shows the training reward curve across five independent instances, together with a benchmark PPO policy trained on randomly sampled designs from D using LHS. Whilst random sampling exposes the policy to the full design space, it also requires the policy to learn over a much broader range of transition dynamics, rather than focusing on a small subset of higher-performing designs. As a result, the random-sampling baseline achieves substantially lower reward and converges more slowly than the guided co-design algorithm. Figure 7 shows the final remaining Gaussian distribution from one representative training instance, with the mean centred around the design parameters ¯xcg w = −0.54 , kα = 254 .16 , and kβ = 30 .00 . This design 11 4.2 Pitch-Plunge-Flap Aerofoil 4 RESULTS & DISCUSSION Wing CG Position, x"!" !
+
+> Flap Stiffness,  k#
+
+Pitch Stiffness, k$
+
+> Pitch Stiffness,  k$
+> Training Reward
+
+Flap Stiffness, k#
+
+Figure 7: The training reward landscape before the final design distribution update of the pitch-plunge-flap system. 0 100000 200000 300000 400000 500000 600000 
+
+Steps 
+
+> 45
+> 50
+> 55
+> 60
+> 65
+> 70
+> 75
+> 80
+> Velocity
+> Mean Flutter Velocity
+> 95.0% Confidence
+> Mean Divergence Velocity
+> 95.0% Confidence
+> Mean Control Reversal Velocity
+> 95.0% Confidence
+
+Figure 8: Evolution of flutter, divergence and control reversal speeds over the iterations of the co-design algorithm. 12 4.2 Pitch-Plunge-Flap Aerofoil 4 RESULTS & DISCUSSION 30 25 20 15 10 5 0 5
+
+> { }
+> 300
+> 200
+> 100
+> 0
+> 100
+> 200
+> 300
+> { }
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> Freestream Velocity
+
+Figure 9: Root locus plot of the optimised aeroelastic system across velocity range U ∈ (10 , 80) .
+
+Figure 10: Evaluating a trained policy on an example generated reference signal. pushes both spring stiffness parameters closer to their upper limits and shifts the main-wing centre of gravity ahead of its flexural axis at ¯xf = −0.2. Together, these design choices delay the onset of the three critical velocities, as shown in Figure 8. The best sampled design also remains stable within the specified operational velocities as shown in the Figure 9. However, the system does still exhibit control reversal at 78.9 m/s, although this critical velocity has also been shifted close to the upper bound of the operating regime. 13 4.3 Thermal Soaring of a Glider 4 RESULTS & DISCUSSION 
+
+Overall, the co-design algorithm converges towards a region of the design space where the system remains stable and avoids any critical system bifurcation behaviour. With suitable reward shaping, a model-free co-design approach can identify effective design-control combinations with relatively limited explicit constraints on the optimisation process or additional domain-specific knowledge. However, depending on the complexity of the problem, the agent may struggle to learn all possible system dynamics, even after progressively reducing the design space. Under certain conditions, the learned policy may exhibit unintuitive behaviours, such as the non-zero steady state errors as shown in Figure 10. Unlike model-based or optimal control solutions, these behaviours are not always easy to interpret. Model-free RL approaches may therefore be most appropriate for problems that are too difficult to solve using conventional methods, or for problems where broad design exploration is the primary objective. 
+
+4.3 Thermal Soaring of a Glider 
+
+Finally, we apply the co-design framework to a flexible fixed-wing aircraft model implemented in Mujoco, as detailed in Appendix A. In this case study, the design is based on the Feather RC glider from Aerosandbox [55], and we introduce the wing area Sref ∈ [0 .04 , 0.3] and wing aspect ratio AR ∈ [4 , 24] as design variables such that D = {Sref , AR }. The baseline glider from [55] is optimised solely for minimal energy loss during glide, and has an Sref = 0 .240 and 
+
+AR = 17 .25 . The objective is to jointly optimise these parameters and the control policy for a glider performing a thermal soaring mission, where success is measured by the number of randomly prescribed waypoints reached within a limited mission time. The chosen design space induces substantial variation in the aircraft dynamics and handling characteristics, including large variations in roll damping and best glide speeds. Optimising the wing area and aspect ratio introduces several coupled effects. For example, increasing the wing area increases wing mass and inertia, as shown in equations 57 and 56, while also increasing the total lift force generated through equation 32 and increasing the wing stiffness through equations 54 and 55. This in turn would affect the handling qualities of the aircraft, such as shifting the flight envelope to a lower speed due to its lower wing loading, increasing overall aircraft inertia and mass, and increasing the aircraft’s susceptibility to gusts. Because the aircraft is unpowered, it must learn not only to follow the waypoint sequence but also to explore the local thermal field, approximated here using radial basis functions, and exploit regions of strong thermals to gain altitude. Excess altitude can then be traded for airspeed, enabling the glider to reach more waypoints within the set mission time. The problem therefore combines flight control with path planning, waypoint tracking, and energy management under environmental uncertainty, which motivates the use of a model-free learning approach to allow the agent to freely explore the design space. The waypoints are generated procedurally after the previous waypoint is reached. The distance and relative bearing to the next waypoint are sampled from uniform distributions dwpt ∼ U (50 , 150) m and ∆ψwpt ∼ U (−2π, 2π), respectively. The variation in glide distances imposes competing requirements on the aircraft: short waypoint distances favour agility and frequent turning, whereas long waypoint distances favour glide efficiency. No altitude gates are imposed at the waypoints. Each episode begins with an initial airspeed of 3.5 m/s and an initial altitude of 20 m. Following the same reward shaping rationale as in Section 4.2, we define a composite reward function with multiple weighted components such that 
+
+Rt = X
+
+> i
+
+λiri. (17) Through meticulous tuning, we have identified several reward components that prevents early training collapse as detailed in Appendix B. 14 4.3 Thermal Soaring of a Glider 4 RESULTS & DISCUSSION 0 1 2 3 4 5 6 
+
+> Steps 1e6
+> 2000
+> 1000
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> Training Reward
+> Random Sampling
+> Gradient-Based Co-Design
+> Baseline
+
+Figure 11: Reward curve of the thermal soaring glider repeated over five training attempts. 
+
+Figure 12: A sample flight trajectory using the trained policy with its optimised system param-eters. Figure 11 shows the training reward curve over five separate training runs, benchmarked against both a policy trained on designs sampled from the design space D using LHS and the original baseline glider, which was optimised in open loop for minimal energy loss during flight. The co-designed glider achieves a higher reward than the benchmark glider, whose design was optimised without explicit consideration of the mission requirements. Furthermore, consistent with the results in Section 4.2, guided policy training that progressively reduces the design search space is shown to be necessary for stable and effective policy learning. Without such guidance, the training process converges much slower and achieves a significantly lower reward. This is clearly evident in the sharp increase in reward of the co-design algorithm around step 2.6 × 10 6 where a design prune has occurred. Figure 12 shows the flight trajectory of the best trained control policy. Instead of directly to its next waypoint, the agent is observed to explore its local thermal field to avoid regions of strong sinks. This training run produced candidate optimal parameters 
+
+Sref = 0 .133 and AR = 6 .05 . Whilst the selected aspect ratio lies toward the lower end of the design space, the combination of a lower aspect ratio and a small wing area enables rapid manoeuvring through reduced roll damping and a higher optimal glide speed. 15 5 CONCLUSION & OUTLOOK Wing Area, S!"#  
+
+> Aspect Ratio,  AR
+> Aspect Ratio, AR
+> Training Reward
+
+Figure 13: Training reward landscape at an early training stage of the glider in soaring ap-plication at step 1441792. Wing Area, S!"#  
+
+> Aspect Ratio,  AR
+> Aspect Ratio, AR
+> Training Reward
+
+Figure 14: Training reward landscape before the final design distribution update of the glider in soaring application at step 6029312. Figures 13 and 14 show the evolution of the design distributions during optimisation. Even at an early stage of training, the distributions shift clearly away from higher-aspect-ratio and larger wing area designs. This may be attributed both to increased roll damping and to higher induced bending loads. Larger bending loads may reduce lift efficiency if the resulting cruise condition dihedral angle becomes too high. Additionally, a smaller wing reduces the wing loading and allows the aircraft to operate at a higher optimal glide speed. 
+
+# 5 Conclusion & Outlook 
+
+In this study, we adapted the co-design framework [32] and applied it to three case studies of in-creasing complexity. Beginning with a spring-mass-damper system and a pitch-plunge-flap aero-foil, the work culminated in a fixed-wing thermal-soaring mission, using a novel flexible aircraft model implemented in Mujoco. Across these case studies, the proposed model-free nested-loop co-design framework demonstrated to identify optimal joint design-control solutions in partially observed and stochastic environments. In the final fixed-wing glider case, this included not only flight control, but also waypoint tracking and path planning. The challenge and complexity of the final case study arise from both the flight model and the mission setup. The aeroelastic flight model couples the aircraft’s rigid-body flight dynamics with structural degrees of freedom, while the vast design space produces substantial variation in handling qualities across candidate aircraft. At the mission level, waypoints are generated procedurally within an environment con-taining thermic lift and sink regions. This forces the agent to alter its flight path according to the perceived thermals in order to reach as many waypoints as possible during the set mission duration without crashing or stalling. Reward shaping played an important role in making this problem tractable by reducing training variance and encouraging desirable behaviours such as turn coordination. More broadly, the proposed framework may be useful in a range of engineering and science ap-plications of the kind highlighted in [7]. The implementation of aeroelastic wings in Mujoco also provides an additional route for modelling flying vehicles in that environment, complementing prior work such as [49], and may support future development of aerial robotics applications within the Mujoco environment. More generally, the model-free co-design approach may be applicable to complex stochastic black-box optimisation problems in which system dynamics 16 REFERENCES REFERENCES 
+
+are difficult to model. One possible example is the rollout of hydrogen aircraft [29], where the economic success of the rollout depends on the interplay between the aircraft design and the acquisition and operation of the aircraft over time by relevant stakeholders. In such a setting where the system dynamics are very difficult to model, our proposed co-design inner loop could represent individual autonomous stakeholder agents that manage airline operations and fleet acquisitions, while the outer loop optimises the aircraft parameters. Nevertheless, further investigation is needed to assess the robustness of the proposed method in highly stochastic problems. A key component of this study was reward shaping. However, in other black-box optimisation problems, the expert knowledge required to implement reward shaping or methods such as warm-start PPO [44] may not be available. Future work should therefore investigate alternative approaches, including off-policy methods like SAC, which may improve sample efficiency and allow the policy optimiser to learn from all past experiences. Such methods may help stabilise training by preventing the optimiser from regressing into a local minimum. At the same time, for optimisation problems with known models, a model-free black-box approach may not be the most suitable choice, particularly when unexpected behaviours arise that are difficult to interpret, as highlighted in Section 4.2. 
+
+# References 
+
+[1] Mario Garcia-Sanz. Control co-design: an engineering game changer. Advanced Control for Applications: Engineering and Industrial Systems , 2019. [2] Hosam K Fathy, Julie A Reyer, Panos Y Papalambros, and AG Ulsov. On the coupling be-tween the plant and controller optimization problems. In Proceedings of the 2001 American Control Conference. IEEE, 2001. [3] Daniel R Herber and James T Allison. Nested and simultaneous solution strategies for general combined plant and control design problems. Journal of Mechanical Design , 2019. [4] Rupamathi Jaddivada, Marija D Ilic, and Eyad H Abed. Energy modeling and control for improved engine stability and efficiency in air vehicles. Annual Reviews in Control , 2021. [5] Gioele Zardini, Andrea Censi, and Emilio Frazzoli. Co-design of autonomous systems: From hardware selection to control synthesis. In 2021 European Control Conference (ECC) . IEEE, 2021. [6] Shichao Liu, Wensheng Luo, and Ligang Wu. Co-design of distributed model-based control and event-triggering scheme for load frequency regulation in smart grids. IEEE Transactions on Systems, Man, and Cybernetics: Systems , 2018. [7] Andrew Alleyne, Frank Allgower, Aaron D Ames, Saurabh Amin, James Anderson, Anu-radha M Annaswamy, Panos J Antsaklis, Neda Bagheri, Hamsa Balakrishnan, and Bassam Bamieh. Control for societal-scale challenges: Road map 2030. IEEE Control Systems Magazine , 2024. [8] Josefredo Gadelha Da Silva, Thalita Nazare, Matheus Costa, Marcio J Lacerda, and Eriv-elton Nepomuceno. Engineering and technology applications of control co-design: a survey. 
+
+IEEE Access , 2024. [9] AR Collar. The expanding domain of aeroelasticity. The Aeronautical Journal , 1946. [10] Candelaria Bergero, Greer Gosnell, Dolf Gielen, Seungwoo Kang, Morgan Bazilian, and Steven J Davis. Pathways to net-zero emissions from aviation. Nature Sustainability , 2023. 17 REFERENCES REFERENCES 
+
+[11] Alberto Almena, Regina Siu, Katie Chong, Patricia Thornley, and Mirjam Roder. Reducing the environmental impact of international aviation through sustainable aviation fuel with integrated carbon capture and storage. Energy Conversion and Management , 2024. [12] Eliot Aretskin-Hariton, Jennifer Gratz, John Jasa, Kenneth Moore, Robert Falck, Caroline Kuhnle, Mark Leader, Jeff Chapman, Eric Hendricks, and Jason Kirk. Multidisciplinary optimization of a transonic truss-braced wing aircraft using aviary. In AIAA SciTech Forum and Exposition , 2024. [13] Thomas Wilson, James Kirk, Robert Mills, Andrea Castrichini, Paolo Mastracci, Bede Geoghegan Hart, Theo Meyer, Joaquin Alvarez-Rementeria Reina, and Jean-Philippe Boin. Overview of semi aeroelastic hinge simulation research at airbus. In AIAA SCITECH 2025 Forum , 2025. [14] Douglas F Hunsaker and Warren Phillips. Ludwig prandtl’s 1933 paper concerning wings for minimum induced drag, translation and commentary. In AIAA Scitech 2020 Forum ,2020. [15] Anatolii Kretov and Dmytro Tiniakov. Evaluation of the mass and aerodynamic efficiency of a high aspect ratio wing for prospective passenger aircraft. Aerospace , 2022. [16] Carlos ES Cesnik, Patrick J Senatore, Weihua Su, Ella M Atkins, and Christopher M Shearer. X-hale: A very flexible unmanned aerial vehicle for nonlinear aeroelastic tests. 
+
+AIAA journal , 2012. [17] Philip L Richardson. How do albatrosses fly around the world without flapping their wings? 
+
+Progress in Oceanography , 2011. [18] Roi Harel, Nir Horvitz, and Ran Nathan. Adult vultures outperform juveniles in challenging thermal soaring conditions. Scientific reports , 2016. [19] C Ji Pennycuick. Field observations of thermals and thermal streets, and the theory of cross-country soaring flight. Journal of Avian Biology , 1998. [20] Ian D Cowling, Simon Willcox, Yoge Patel, Phill Smith, and M Roberts. Increasing persis-tence of uavs and mavs through thermal soaring. The Aeronautical Journal , 2009. [21] Yiyuan J Zhao. Optimal patterns of glider dynamic soaring. Optimal control applications and methods , 2004. [22] Yuxi Li. Deep reinforcement learning: An overview. arXiv preprint arXiv:1701.07274 , 2017. [23] A Rupam Mahmood, Dmytro Korenkevych, Gautham Vasan, William Ma, and James Bergstra. Benchmarking reinforcement learning algorithms on real-world robots. In Con-ference on robot learning . PMLR, 2018. [24] David Silver, Aja Huang, Chris J Maddison, Arthur Guez, Laurent Sifre, George Van Den Driessche, Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, and Marc Lanctot. Mastering the game of go with deep neural networks and tree search. nature , 2016. [25] Oriol Vinyals, Igor Babuschkin, Wojciech M Czarnecki, Michaël Mathieu, Andrew Dudzik, Junyoung Chung, David H Choi, Richard Powell, Timo Ewalds, and Petko Georgiev. Grand-master level in starcraft ii using multi-agent reinforcement learning. nature , 2019. [26] Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Alex Graves, Ioannis Antonoglou, Daan Wierstra, and Martin Riedmiller. Playing atari with deep reinforcement learning. 
+
+arXiv preprint arXiv:1312.5602 , 2013. 18 REFERENCES REFERENCES 
+
+[27] John Jumper, Richard Evans, Alexander Pritzel, Tim Green, Michael Figurnov, Olaf Ron-neberger, Kathryn Tunyasuvunakool, Russ Bates, Augustin Zidek, and Anna Potapenko. Highly accurate protein structure prediction with alphafold. nature , 2021. [28] Josh Abramson, Jonas Adler, Jack Dunger, Richard Evans, Tim Green, Alexander Pritzel, Olaf Ronneberger, Lindsay Willmore, Andrew J Ballard, and Joshua Bambrick. Accurate structure prediction of biomolecular interactions with alphafold 3. Nature , 2024. [29] Martin J Muir, Stephen Rolston, Zenudeen Shehbaz, Paul Li, Lyuxi Wang, and Ian Marr. Multi-objective, multi-agent based approaches for predication of sustainable aviation roll-out. In AIAA SCITECH 2024 Forum , 2024. [30] Eddieb Sadat, Mostaan Lotfalian Saremi, and Alparslan Emrah Bayrak. A two-timescale reinforcement learning approach for control co-design problems. In International Design Engineering Technical Conferences and Computers and Information in Engineering Con-ference . American Society of Mechanical Engineers, 2023. [31] Charles Schaff and Matthew R Walter. N-limb: Neural limb optimization for efficient morphological design. arXiv preprint arXiv:2207.11773 , 2022. [32] Charles Schaff, David Yunis, Ayan Chakrabarti, and Matthew R Walter. Jointly learning to construct and control agents using deep reinforcement learning. In 2019 international conference on robotics and automation (ICRA) . IEEE, 2019. [33] Yoav Flato, Roi Harel, Aviv Tamar, Ran Nathan, and Tsevi Beatus. Revealing principles of autonomous thermal soaring in windy conditions using vulture-inspired deep reinforcement-learning. Nature Communications , 2024. [34] Yunxiang Cui, De Yan, and Zhiqiang Wan. Study on the glider soaring strategy in random location thermal updraft via reinforcement learning. Aerospace , 2023. [35] Stefan Notter, Christian Gall, Gregor Muller, Aamir Ahmad, and Walter Fichter. Deep reinforcement learning approach for integrated updraft mapping and exploitation. Journal of Guidance, Control, and Dynamics , 2023. [36] Agrim Gupta, Silvio Savarese, Surya Ganguli, and Li Fei-Fei. Embodied intelligence via learning and evolution. Nature communications , 2021. [37] Allan Zhao, Jie Xu, Mina Konakovic-Lukovic, Josephine Hughes, Andrew Spielberg, Daniela Rus, and Wojciech Matusik. Robogrammar: graph grammar for terrain-optimized robot design. ACM Transactions on Graphics (TOG) , 2020. [38] Tianjian Chen, Zhanpeng He, and Matei Ciocarlie. Hardware as policy: Mechanical and computational co-optimization using deep reinforcement learning. arXiv preprint arXiv:2008.04460 , 2020. [39] Fabio Bergonti, Gabriele Nava, Valentin Wüest, Antonello Paolino, Giuseppe L’Erario, Daniele Pucci, and Dario Floreano. Co-design optimisation of morphing topology and con-trol of winged drones. In 2024 IEEE International Conference on Robotics and Automation (ICRA) , pages 8679–8685. IEEE, 2024. [40] Allan Zhao, Tao Du, Jie Xu, Josie Hughes, Juan Salazar, Pingchuan Ma, Wei Wang, Daniela Rus, and Wojciech Matusik. Automatic co-design of aerial robots using a graph grammar. In 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) .IEEE, 2022. [41] Enrico Ajanic, Mir Feroskhan, Valentin Wüest, and Dario Floreano. Sharp turning maneu-vers with avian-inspired wing and tail morphing. Communications Engineering , 2022. 19 REFERENCES REFERENCES 
+
+[42] Valentin Wuest, Simon Jeger, Mir Feroskhan, Enrico Ajanic, Fabio Bergonti, and Dario Floreano. Agile perching maneuvers in birds and morphing-wing drones. Nature Commu-nications , 2024. [43] S Maraniello and R Palacios. Optimal vibration control and co-design of very flexible actuated structures. Journal of Sound and Vibration , 2016. [44] Christian T Coletti, Kyle A Williams, Hannah C Lehman, Zahi M Kakish, Daniel Whitten, and Julie J Parish. Effectiveness of warm-start ppo for guidance with highly constrained nonlinear fixed-wing dynamics. In 2023 American Control Conference (ACC) . IEEE, 2023. [45] Yunlong Song, Selim Naji, Elia Kaufmann, Antonio Loquercio, and Davide Scaramuzza. Flightmare: A flexible quadrotor simulator. In Conference on Robot Learning . PMLR, 2021. [46] Jun Jet Tai, Jim Wong, Mauro Innocente, Nadjim Horri, James Brusey, and Swee King Phang. Pyflyt–uav simulation environments for reinforcement learning research. arXiv preprint arXiv:2304.01305 , 2023. [47] Michael Kaup, Cornelius Wolff, Hyerim Hwang, Julius Mayer, and Elia Bruni. A review of nine physics engines for reinforcement learning research. arXiv preprint arXiv:2407.08590 ,2024. [48] Tom Erez, Yuval Tassa, and Emanuel Todorov. Simulation tools for model-based robotics: Comparison of bullet, havok, mujoco, ode and physx. In 2015 IEEE international conference on robotics and automation (ICRA) . IEEE, 2015. [49] Roman Vaxenburg, Igor Siwanowicz, Josh Merel, Alice A Robie, Carmen Morrow, Guido Novati, Zinovia Stefanidi, Gert-Jan Both, Gwyneth M Card, Michael B Reiser, et al. Whole-body simulation of realistic fruit fly locomotion with deep reinforcement learning. bioRxiv ,2024. [50] Dongmin Kim, Hoshinori Kanazawa, and Yasuo Kuniyoshi. Simulating a human fetus in soft uterus. In 2022 IEEE International Conference on Development and Learning (ICDL) .IEEE, 2022. [51] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 , 2017. [52] Diederik P Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980 , 2014. [53] Theodore Theodorsen. General theory of aerodynamic instability and the mechanism of flutter. Technical report, National Advisory Committee for Aeronautics, 1949. [54] Grigorios Dimitriadis. Introduction to nonlinear aeroelasticity . John Wiley & Sons, 2017. [55] Peter D Sharpe and R John Hansman. Aerosandbox: A differentiable framework for aircraft design optimization . Thesis, Massachusetts Institute of Technology, 2021. [56] Emanuel Todorov, Tom Erez, and Yuval Tassa. Mujoco: A physics engine for model-based control. In 2012 IEEE/RSJ international conference on intelligent robots and systems .IEEE, 2012. [57] Roy Featherstone. Rigid body dynamics algorithms . Springer, 2014. [58] Vitalii Sukhov Havaza and Ruslan Nikitin. Mathematical method for prediction aeroelastic phenomena and multidisciplinary optimization lifting surfaces of flight vehicle at prelimi-nary stage design, 2024. 20 A MUJOCO FLIGHT ENVIRONMENT 
+
+[59] James Tangler and David Kocurek. Wind turbine post-stall airfoil performance character-istics guidelines for blade-element momentum methods. In 43rd AIAA Aerospace Sciences Meeting and Exhibit , 2005. [60] Randal W Beard and Timothy W McLain. Small unmanned aircraft: Theory and practice .Princeton university press, 2012. 
+
+# A Mujoco Flight Environment 
+
+Mujoco, which stands for multi-joint dynamcis with contact, is a physics engine developed to facilitate model-based control developments [56]. Physical objects known as body within Mujoco are defined in a kinematic tree, where each child object has a parent object. Degrees of freedom may be specified between parent and child by defining primitive joint objects such as slide , hinge ,
+
+ball or free joints. Each body has assigned mass and inertia matrix stored within its inertial 
+
+property, along with a geometric definition in its geom property. Whilst Mujoco offers significant capabilities in solving for nonlinear contact physics and equality constraints, the main points of interest for this work is its recursive Newton Euler algorithm implementation in computing the composite rigid body (CRB) algorithm [57] for rigid multi-bodies. This section details the implementation of a discretised wing based on [58] where a continuous wing was discretised into uniform span strip sections, where each section contains: elastic ele-ments which prescribes the structural stiffness of the wing; inertial elements which defines each section’s mass and inertia matrix; and aerodynamic elements which introduces aerodynamic forces that are exerted on the wing. These three elements are integrated within Mujoco by exploiting existing Mujoco physics engine features where possible and implementing new ones where necessary. As an initial implementation, several assumptions were made: the wing oper-ates in low subsonic conditions, the wing is straight and non-tapered, any span-wise flow do not produce any aerodynamics forces nor moments, and wing-wake interactions are negligible. Post-stall behaviour is modelled using Viterna theory [59] to prevent the optimiser from generating unfeasible designs or flying unphysical paths. 
+
+Figure 15: Example discretisation of a clamped wing in Mujoco. Within the Mujoco implementation, each wing section was represented by a body which has a prescribed mass ¯m and inertia matrix ¯I, where ¯· denotes sectional properties. Structural elasticity is modelled for out of plane bending and torsional twist using two torsion springs with linear stiffnesses, denoted as kˆϕi and kˆθi respectively. In-plane bending was deemed negligible due to the significantly higher flexural stiffness in the in-plane direction of typical wing boxes. A preview of the implementation is shown in Figure 15 where a straight, non-tapered wing of semi-span b/ 2 is discretised into 10 discrete strip sections each with a sectional span of ¯b. In between each section are two torsional springs denoted by blue vector joints, which provides 21 A MUJOCO FLIGHT ENVIRONMENT 
+
+wing out-of-plane bending ˆϕwi and wing torsional twist ˆθwi degrees of freedom at the wing section index i. Aerodynamic forcing was applied using Mujoco’s controller forcing callback, which applies both a 3D translational force and a 3D rotational torque at the centre mass of the object’s body in the inertial frame of reference. The applied aerodynamics forces are shown using red vectors in Figure 15. 𝜙 "!"      
+
+> 𝜙 "!#
+> 𝐿 $!#
+> 𝑘 %&"
+> 𝑘 %&#
+> 𝑘 "'#
+> 𝚤 ̂'#
+> 𝚥 ̂'#
+> 𝑘 "'"
+> 𝚤 ̂'"
+> 𝚥 ̂'"
+> 𝑏 )
+> 𝑏 /2
+> 𝐿 $""
+
+Figure 16: Rear view of a 2 section discretisation of the port side wing. 𝜃 "!"         
+
+> 𝜃 "!#
+> 𝑘 $$"
+> 𝚥 ̂$"
+> 𝚤 ̂$"
+> 𝑘 $$#
+> 𝚥 ̂$#
+> 𝚤 ̂$#
+> 𝑉 $!%
+> 𝑘 &'",𝑘 &'#
+> 𝑥 ()
+> 𝑥 *(
+> 𝑥 )+
+> 𝑐
+> 𝐿 ,#"
+> 𝐿 ,"#
+> 𝐷 ,#"
+> 𝐷 ,#"
+
+Figure 17: Port side view of a 2 section discretisation. As shown in Figure 16, the wing is discretised into uniform span sections of length ¯b with a torsional spring of stiffness kˆϕi which models out-of-plane flexural stiffness. Similar to [58], a uniform lift distribution was implemented, but is transformed into an equivalent point force and torque acting at the centre of gravity that can be implemented into Mujoco. Figure 17 shows the twist deformation of the sections and the torsional springs with stiffnesses kˆθi that model the torsional stiffness. Non-zero dihedral angle Λ and root incident angles ir can be introduced by offsetting the neutral out-of-plane bending and twist angles by the respective angles. The longitudinal position of the spring is defined at distance xea away from the leading edge and is the flexural axis of the wing. Whereas, the longitudinal position of the wing centre of mass is defined as xcg away from the leading edge. Due to the low subsonic flight regime and largely linear flight envelope of a glider, it is assumed that the position of the aerodynamic centre is fixed at the quarter chord point defined as xac = c/ 4. Note that the aerodynamic lift Si
+
+¯Li and drag Si
+
+¯Di forces are in the stability axes frame of wing section index i. The stability axes of a given wing section may not necessarily align with the oncoming freestream velocity in the body axes frame of the fuselage root B0 V∞, where index 0 denotes the root. Aerodynamic 22 A MUJOCO FLIGHT ENVIRONMENT 
+
+moments are also modelled but not shown in Figures 16 and 17 for clarity. Further explanation is detailed in Section A.1. The wings are then attached to a fuselage body. The fuselage is assumed to be a rigid body that does not generate any aerodynamic forcing nor moments, but has parameterisable inertial properties. The nose of the fuselage acts as the datum of the aircraft and all flight dynamics states reference that of the fuselage. 𝑘 "!!
+
+𝚤 ̂ !! 𝚥 ̂!!
+
+𝑘 ""!
+
+𝚤 ̂"!
+
+𝛼 #
+
+𝑘 "!!
+
+𝑘 "$!
+
+𝚤 ̂ $!
+
+𝚤 ̂ !!
+
+𝚥 ̂!!
+
+𝚥 ̂$!
+
+𝛽 #
+
+𝛼 #
+
+𝚥 ̂"!
+
+Figure 18: Definition of transformation between body axes (black), stability axes (blue) and wind axes (red). Additionally, the coordinate frame is defined as North-West-Up (NWU) to maintain consistency with Mujoco implementation requirements, with exception to Euler angles yaw ψi, pitch θi
+
+and roll ϕi defined using North-East-Down (NED) due to flight mechanics conventions. The transformation between the Earth-fixed worldbody inertial frame and each body’s body frame is defined with Euler angles [60] where 
+
+
+
+ˆiBi
+
+ˆjBi
+
+ˆkBi
+
+ = RI1(ψi)R12 (θi)R2B (ϕi)
+
+
+
+ˆiI
+
+ˆjI
+
+ˆkI
+
+ = RIB (ϕi, θ i, ψ i)
+
+
+
+ˆiI
+
+ˆjI
+
+ˆkI
+
+ (18) The rotation matrices are defined as 
+
+RI1(ψi) = 
+
+
+
+cos (ψi) −sin (ψi) 0
+
+sin (ψi) cos (ψi) 00 0 1
+
+ (19) 
+
+R12 (θi) = 
+
+
+
+cos (θi) 0 sin (θi)0 1 0
+
+−sin (θi) 0 cos (ϕi)
+
+ (20) 
+
+R2B (ϕi) = 
+
+
+
+1 0 00 cos (ϕi) −sin (ϕi)0 sin (ϕi) cos (ϕi)
+
+ (21) As shown in Figure 18, the wind axes which is aligned with the freestream velocity Bi
+
+−→
+
+U ∞i seen by the i body, is two rotation transformation away from the body axes along the z and y axes by the sideslip angle βi and angle of attack αi respectively [60] such that 
+
+
+
+ˆiWi
+
+ˆjWi
+
+ˆkWi
+
+ = RBW (αi, β i)
+
+
+
+ˆiBi
+
+ˆjBi
+
+ˆkBi
+
+ (22) 23 A.1 Aerodynamic Forcing A MUJOCO FLIGHT ENVIRONMENT 
+
+where the body-to-wind rotation matrix RBW (αi, β i) is defined as 
+
+RBW (αi, β i) = 
+
+
+
+cos (βi)cos (αi) −sin (βi)cos (βi) −sin (αi)
+
+sin (βi) cos (βi) 0
+
+cos (βi)sin (αi) −sin (βi)cos (βi) cos (αi)
+
+ (23) Whereas, the stability axes is only one rotation away from the body axes along the y axis by the angle of attack αi [60] such that 
+
+
+
+ˆiSi
+
+ˆjSi
+
+ˆkSi
+
+ = RBS (αi)
+
+
+
+ˆiBi
+
+ˆjBi
+
+ˆkBi
+
+ (24) where the body-to-stability rotation matrix RBS (αi) is defined as 
+
+RBS (αi) = 
+
+
+
+cos (αi) 0 −sin (αi)0 1 0
+
+sin (αi) 0 cos (αi)
+
+ (25) 
+
+A.1 Aerodynamic Forcing 
+
+The aerodynamic forces applied onto body i is determined by the freestream velocity seen by the body Bi
+
+−→
+
+U ∞i at its aerodynamic centre defined at the mid section span, quarter-chord point. The position of the aerodynamic centre relative to the joint is a function of the out-of-plane bending ˆϕi and twist ˆθi such that 
+
+> Bi−1
+
+
+
+xi
+
+yi
+
+zi
+
+ =
+
+
+
+1 0 00 cos ( ˆϕwi ) −sin ( ˆϕwi )0 sin ( ˆϕwi ) cos ( ˆϕwi )
+
+
+
+cos (ˆθwi ) 0 sin (ˆθwi )0 1 0
+
+−sin (ˆθwi ) 0 cos (ˆθwi )
+
+
+
+xea − xac 
+
+¯b/ 20
+
+ (26) Its velocity relative to the joint is therefore 
+
+> Bi−1
+
+
+
+ui
+
+vi
+
+wi
+
+ = ddt 
+
+
+
+1 0 00 cos ( ˆϕwi ) −sin ( ˆϕwi )0 sin ( ˆϕwi ) cos ( ˆϕwi )
+
+
+
+cos (ˆθwi ) 0 sin (ˆθwi )0 1 0
+
+−sin (ˆθwi ) 0 cos (ˆθwi )
+
+
+
+xea − xac 
+
+¯b/ 20
+
+ (27) and is a function of local rotation and rotation rates. The velocities are propagated along the forward kinematic chain by Mujoco with CRB algorithm and yields the velocity of body i at its aerodynamic centre relative to the fixed inertial axes in its respective body frame axes. However, the freestream velocity seen by it is only computed after accounting for the local wind velocity 
+
+uW vW wW
+
+T such that 
+
+> Bi
+
+−→
+
+U ∞i =
+
+> Bi
+
+
+
+U∞i
+
+V∞i
+
+W∞i
+
+ =
+
+> Bi
+
+
+
+ui
+
+vi
+
+wi
+
+ − RIB (ϕi, θ i, ψ i)TI
+
+
+
+uW
+
+vW
+
+wW
+
+ (28) Referencing the axes transformation shown in Figure 18, the angle of attack and sideslip angles can be found such that 24 A.1 Aerodynamic Forcing A MUJOCO FLIGHT ENVIRONMENT 
+
+αi = arctan − Bi W∞i 
+
+> Bi
+
+U∞i
+
+!
+
+(29) 
+
+βi = arctan − Bi V∞i 
+
+> Bi
+
+U∞i
+
+!
+
+(30) Now transforming the velocity into the stability axes by projecting it onto the x-z plane, the effective dynamic pressure can be defined as 
+
+q∞i = 12 ρ Bi
+
+−→
+
+U ∞i
+
+> 2
+
+cos 2(βi) (31) where ρ is the air density. Therefore, the aerodynamic forces along stability axes ˆiSi , ˆjSi and 
+
+ˆkSi are 
+
+> Si
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ =
+
+
+
+− Si Di
+
+0 
+
+> Si
+
+Li
+
+ =
+
+
+
+−q∞i ¯Sref CDi (αi, δ i)0
+
+q∞i ¯Sref CLi (αi, δ i)
+
+ (32) where ¯Sref is the sectional wing area and δi is the trailing edge flap control surface deflection which is defined as downwards positive. Since it is assumed that spanwise flow does not generate any forces nor moments, the lateral force is assumed to be zero. The sectional lift CLi and drag 
+
+CDi coefficients were computed using Viterna theory [59] which models post-stall behaviours based on aerofoil characteristics. The drag and lift coefficients are defined as 
+
+CDi = B1sin 2(αei ) + B2cos (αei ) (33) 
+
+CLi = A1sin (2 αei ) + A2
+
+cos 2(αei )
+
+sin (αei ) (34) where 
+
+Cdmax = 1 .11 + 0 .018 AR (35) 
+
+B1 = Cdmax (36) 
+
+B2 = Cdstall − Cdmax sin 2(αstall )
+
+cos (αstall ) (37) 
+
+A1 = B1/2 (38) 
+
+A2 = ( Clstall − Cdmax sin (αstall )cos (αstall )) sin (αstall )
+
+cos 2(αstall ) (39) 
+
+αstall = Clstall − Cl0
+
+Clα
+
+(40) The aerofoil drag coefficient at stall Cdstall , linear lift curve slope Clα and its lift coefficient at zero angle of attack Cl0 are properties of the selected aerofoil. The effective angle of attack is defined as 25 A.1 Aerodynamic Forcing A MUJOCO FLIGHT ENVIRONMENT 
+
+αei = αi + δi
+
+Clδ
+
+Clα
+
+(41) where Clδ is the lift curve slope of its trailing edge flap. An effective angle of attack was implemented instead of the linearised summation of lift coefficient components to model near-stall behaviours of trailing edge flaps, where further positive flap deflection would exacerbate stall instead of further increasing lift generation. Only pitching moment is considered for aerodynamic moments. The moments around the sta-bility axes ˆiSi , ˆjSi and ˆkSi are 
+
+> Si
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ =
+
+
+
+0
+
+− Si Mi
+
+0
+
+ =
+
+
+
+0
+
+−q∞i ¯Sref cC Mi
+
+0
+
+ (42) The moments coefficient CMi is defined as 
+
+CMi = Cm0 + Cmδ δi (43) where Cm0 is the aerofoil zero-lift pitching moment coefficient and Cmδ is the pitching moment slope induced by the trailing edge flaps. Once the aerodynamic forces and moments have been obtained in the stability axes, the forces and moments are then transformed into the body axes frame such that 
+
+> Bi
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ = RBS (αi)
+
+> Si
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ (44) 
+
+> Bi
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ = RBS (αi)
+
+> Si
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ (45) In order to implement aerodynamics physics as a control force callback in Mujoco, it must be offset from the aerodynamic centre to the centre of gravity of the body such that 
+
+> BCG i
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ =
+
+> Bi
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ (46) 
+
+> BCG i
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ =
+
+> Bi
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ +
+
+
+
+xcg − xac 
+
+00
+
+ ×
+
+> Bi
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ (47) followed by a transformation into the inertial axes 
+
+> ICG i
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ = RIB (ϕi, θ i, ψ i)
+
+> BCG i
+
+
+
+Fˆii
+
+Fˆji
+
+Fˆki
+
+ (48) 26 A.2 Equivalent Structural Stiffness A MUJOCO FLIGHT ENVIRONMENT 
+
+> ICG i
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ = RIB (ϕi, θ i, ψ i)
+
+> BCG i
+
+
+
+Mˆii
+
+Mˆji
+
+Mˆki
+
+ (49) which are then applied onto the wing section bodies via Mujoco’s callback functionality. 
+
+A.2 Equivalent Structural Stiffness 
+
+Utilising Mujoco’s built in physics features, a linear stiffness value may be specified for each degree of freedom. In order to find an equivalent spring stiffness to model a continuous beam using discretised beam sections, the end tip deflection and twist are enforced to be the same as 
+
+ˆϕwi and ˆθwi under a static aerodynamic load at the mid-span. This is to ensure convergence of wing bending and twist profile under load as the wing discretisation level increases, which is critical due to its influence on the aerodynamic forces exerted onto individual discretised sections. 𝜙 "!"
+
+𝜃 $!"
+
+𝑥 #$ 
+
+𝐹 
+
+𝑀 
+
+𝑏 )/2
+
+𝑏 )
+
+𝑐 
+
+Figure 19: Deflection of a continuous beam under a force and moment load at its midspan. As shown in Figure 19, a continuous beam with flexural stiffness of EI x and torsional stiffness of GJ under a force and moment applied to its mid-span. If the tip bending deflection and twist are enforced as ˆϕwi and ˆθwi respectively, it would yield 
+
+ˆϕwi = F ¯b2
+
+8EI x
+
+(50) 
+
+ˆθwi = M¯b
+
+2GJ (51) Therefore, this would yield an equivalent linear spring stiffness in a discretised beam section as 
+
+kˆθi = 4EI x
+
+¯b (52) 
+
+kˆϕi = 2GJ 
+
+¯b (53) 27 A.3 Generalised Inertial Forces B REWARD SHAPING FOR THERMAL SOARING MISSION 
+
+The area moment Ix and polar of inertia J was defined by approximating the wing as a homoge-nous rectangular thin beam element such that 
+
+Ix = c¯h3
+
+12 (54) 
+
+J = c¯h(c2 + ¯h2)12 (55) where ¯h is the mean aerofoil height across its chord c. The equivalent stiffnesses are then implemented as joint stiffnesses on the joints connecting the wing sections. 
+
+A.3 Generalised Inertial Forces 
+
+To ensure tractable symbolic calculations, [58] implemented a generalised cuboid inertial element. Similarly, to improve computational efficiency during preliminary studies, the inertial element of a thin wing section is generalised as a cuboid element with a longitudinal offset to allow for parameterisable centre of gravity location. Its inertia matrix is defined as 
+
+¯I = ¯m
+
+12 
+
+
+
+¯b2 + ¯h2 0 00 ¯h2 + c2 00 0 ¯b2 + c2
+
+ (56) Its sectional mass assumes the cuboid element is made of homogeneous material such that 
+
+¯m = ρw¯b¯hc (57) where ρw is the density of the wing. The inertia matrix, mass and position of the cuboid inertial element is implemented in Mujoco via its inertial property. The inertial element is always defined with the local body axes orientation. 
+
+# B Reward Shaping for Thermal Soaring Mission 
+
+Due to the complexity of the environment, a sparse waypoint-based reward may result in poor training or even training collapse if the agent never achieves stable flight in the first place. We have introduced the following reward components to help guide the training process: 
+
+• End reward rend - The agent receives a reward of 300 for every waypoint it reaches but is penalised by 1200 if it crashes or stalls. Such a balance was struck such that the agent is motivated to cruise at a higher speed to reach as many waypoints as possible within the time limit but not sacrifice all its altitude in the process. 
+
+• Angle of attack penalty rα - The agent is penalised in proportion to the negative square its angle of attack α2 to prevent stalls. It should be noted that stall may occur during optimal flights around thermals and should not be excessively penalised. 
+
+• Pitch penalty rθ - The agent receives a penalty proportion to the square of its pitch θ2.This is to penalise extreme attitudes but not to limit an agent’s ability to climb or descend rapidly in response to the environment. 
+
+• Sideslip penalty rβ - The agent receives a penalty equal to the absolute value of its sideslip angle |β| in radians. Maintaining zero sideslip is key in reducing unnecessary drag on the aircraft and to ensure coordinated turns. 28 C CO-DESIGN HYPERPARAMETERS 
+
+• Heading penalty rψ - The agent receives a penalty equal to the absolute value of its relative bearing to waypoint |∆ψwpt | to prompt the agent towards its objective. 
+
+• Pitch rate penalty rq - The agent is penalised for the absolute value of its pitch rate |q|
+
+in radians. It was observed that due to the flexible aircraft model, the agent is prone to excite oscillatory behaviours in a manner similar to pilot induced oscillations. 
+
+• Thermal reward rwW - The agent receives a reward equal to the value of the local thermal strength I wW to motivate the agent to stay within thermals and to avoid sinks. 
+
+• Sink rate penalty r˙h - The agent penalty proportional to its sink rate − ˙h to discourage excessive sacrifice of glide ratio for airspeed. 
+
+• Waypoint closure rate r∆d - The agent is penalised by the difference in distance to the next waypoint between the last time step and the current time step dt−1 − dt. This encourages the agent to fly towards its waypoint but rψ, it does not penalise for loitering over thermals. The corresponding reward weights are shown in Table 1. Table 1: Weights of the different applied reward components. Weight Value 
+
+λend 1.00 
+
+λα 1.00 
+
+λθ 1.00 
+
+λβ 2.00 
+
+λψ 0.10 
+
+λq 0.01 
+
+λwW 1.00 
+
+λ˙h 2.00 
+
+λ∆d 10.00 
+
+# C Co-Design Hyperparameters 
+
+Table 2: List of co-design hyperparameters used for the three case studies. Hyperparameter Spring-Mass-Damper Pitch-Plunge-Flap Thermal Soaring 
+
+Ntotal steps 300000 600000 6000000 
+
+Nenv 16 16 128 
+
+Ndesign 8 8 16 
+
+Nfreeze 10 10 10 
+
+Ninner 3 3 2
+
+Nprune 5 10 10 
+
+αprune 0.5 0.5 0.5 
+
+Nstep 256 256 512 29
