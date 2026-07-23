@@ -1,0 +1,417 @@
+Title: Linear Stability Analysis of an INDI Pitch-Rate Controller under Model Mismatch for a Tilt-Rotor VTOL UAV
+
+URL Source: https://arxiv.org/pdf/2607.16471v1
+
+Published Time: Tue, 21 Jul 2026 00:11:58 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Linear Stability Analysis of an INDI Pitch-Rate Controller under Model Mismatch for a Tilt-Rotor VTOL UAV 
+
+Lorenzo Schenk 
+
+IDSC 
+
+ETH Zurich Zurich, Switzerland lschen@ethz.ch 
+
+Guillaume Ducard 
+
+I3S Laboratory 
+
+Univ. Cˆ ote d’Azur Sophia Antipolis, France guillaume.ducard@univ-cotedazur.fr 
+
+Christopher Onder 
+
+IDSC 
+
+ETH Zurich Zurich, Switzerland onder@idsc.mavt.ethz.ch 
+
+Abstract —Incremental Nonlinear Dynamic Inversion (INDI) is attractive for unmanned aerial vehicle (UAV) flight control because it reduces dependence on a full aerodynamic model while retaining strong disturbance-rejection capability. For a tilt-rotor vertical takeoff and landing (VTOL) architecture, however, the admissible model-mismatch range of the fast inner loop is still not characterized analytically in a parameter-explicit way. This paper isolates the pitch-rate/elevon subchannel of an existing cascaded INDI controller and studies its linear stabil-ity under model mismatch. A closed-form fifth-order transfer function is derived for the full controller–estimator–actuator– plant interconnection, and stability is characterized through the Routh–Hurwitz criterion over a parameterized linear model. Two representative three-parameter sweeps produce interpretable sta-bility regions. Based on these feasibility maps, two uncertainty-aware tuning procedures are proposed: a robustness-oriented design that maximizes a weighted worst-case combination of gain margin and phase margin, and a performance-oriented design that maximizes worst-case closed-loop bandwidth subject to margin constraints. The results show that actuator lag and inertia mismatch are comparatively benign at nominal gain, whereas control-effectiveness mismatch, particularly a sign error in the allocation, is the most dangerous destabilizing factor, leading to concrete tuning recommendations for conservative and aggressive operating conditions. 
+
+Index Terms —INDI, tilt-rotor UAV, pitch stability, model mis-match, Routh–Hurwitz, robust control, parameter optimization, design recommendation 
+
+I. I NTRODUCTION 
+
+A. INDI: Significance and Stability Challenges 
+
+Incremental Nonlinear Dynamic Inversion (INDI) has emerged as a leading flight-control approach for both rotary-and fixed-wing UAVs [1]–[3]. Unlike classical nonlinear dy-namic inversion (NDI) [4]–[6], which relies on a more com-plete model cancellation, INDI uses measured angular accel-eration together with a local control-effectiveness model to generate incremental control commands [2]. This substantially reduces dependence on a full aerodynamic model and often 
+
+*This work was supported by the French government through the France 2030 investment plan managed by the National Research Agency (ANR), as part of the Initiative of Excellence Universit´ e Cˆ ote d’Azur under reference number ANR-15-IDEX-01. 
+
+improves disturbance rejection in practice [1], but the closed-loop stability margin still depends on how actuator, filtering, inertia, and effectiveness mismatch enter the implemented loop. Quantifying the admissible mismatch range is therefore still necessary, especially across wide flight envelopes. Recent work has also broadened the field through a com-prehensive survey of INDI components, stability, and robust-ness [7] and through adaptive INDI with guaranteed stability for aerial manipulators under varying inertia and control-effectiveness conditions [8]. Nevertheless, for aircraft inner loops, analytical treatments still either rely on simplified single-lag plant models [1], address related robustness ques-tions without providing a parameter-explicit Routh character-ization of the fast pitch-rate inner loop [9], or assess stability numerically and empirically [10]. A closed-form mismatch-explicit Routh–Hurwitz analysis of the pitch-rate loop of a tilt-rotor VTOL is still missing. 
+
+B. Contributions 
+
+This paper makes the following contributions: 1) A closed-form, fifth-order transfer function is derived for the pitch-rate/elevon subchannel of the cascaded INDI controller [2], explicitly accounting for actuator lag, estimator filtering, and inverse control allocation. 2) The Routh–Hurwitz criterion is used to obtain inter-pretable stability conditions and to visualize represen-tative three-parameter stability regions. 3) Two uncertainty-aware tuning procedures are formulated on top of the Routh-feasible set: a robustness-oriented design maximizing a weighted worst-case combination of gain and phase margin, and a performance-oriented design maximizing worst-case closed-loop bandwidth subject to margin constraints. The analysis isolates the pitch-rate/elevon subchannel from the cascaded INDI inner loop of [2]. This channel is selected because the longitudinal transition maneuver considered here is dominated by pitch dynamics: acceleration from hover to forward flight requires a sustained pitch-down command that drives the elevon toward its deflection limits, making the pitch arXiv:2607.16471v1 [cs.RO] 17 Jul 2026 channel the most likely to become unstable under effectiveness mismatch. The reduction to the standalone pitch-rate loop is exact at nominal gain because, under the inherited controller architecture of [2], the attitude-control and control-allocation blocks produce identical elevon commands at the nominal operating point; deviations from this equivalence constitute part of the model mismatch studied here. The resulting linear stability certificate is therefore a local inner-loop result, not a full-envelope MIMO guarantee for aggressive coupled flight or saturated actuation. The remainder of the paper is structured as follows: Section II derives the linear model, Section III char-acterizes its stability, and Section IV presents the optimization results and design guidelines. II. S YSTEM AND CONTROLLER 
+
+A. Aircraft Pitch Model 
+
+Small-perturbation longitudinal dynamics about a trimmed flight condition reduce to the single-axis pitch equation [6]: 
+
+Iyy,m ˙q = Mm δ − dq q, (1) where q is the pitch rate, δ the elevon deflection, Mm ≡
+
+∂M/∂δ the pitch-moment effectiveness, dq > 0 the aero-dynamic pitch-rate damping (stabilizing), and Iyy,m the true moment of inertia. Defining 
+
+Kq ≜ Mm
+
+Iyy,m 
+
+, ωp ≜ dq
+
+Iyy,m 
+
+, (2) the plant transfer function is Gplane (s) = Kq /(s + ωp).Actuator dynamics are modeled as a first-order lag system: 
+
+Gact (s) = 11 + τact s . (3) In the stable-parameter-range analysis of Section IV-A, dq = 0 
+
+is used, giving the integrating plant Gplane (s) = Kq /s . Over the physically meaningful parameter range considered here and with the nominal sign convention preserved, positive aerodynamic damping adds non-negative corrections to the in-termediate characteristic-polynomial coefficients (cf. Table II) and relaxes, rather than tightens, the observed Routh condi-tions. We therefore use dq = 0 as a conservative baseline in the stability sweeps, whereas the performance optimization in Section IV-B reintroduces a non-zero dq explicitly. 
+
+B. INDI Pitch-Rate Controller 
+
+The reduced pitch-rate controller structure, shown in Fig. 1, follows the inherited architecture of [2] and consists of four interconnected blocks: a proportional error feedback, a pitch-rate estimator, an inverse control allocation, and a low-pass filter chain. 
+
+Proportional path. The tracking error e = qref − qm
+
+is multiplied by the proportional gain kp. The rate-estimate branch subtracts the low-pass-filtered estimate of ˙q, giving the incremental acceleration demand: 
+
+∆ ˙ q(s) = kp e(s) − kLP ss + kLP 
+
+qm(s)
+
+| {z } 
+
+> ˙qLP (s)
+
+. (4)  
+
+> Fig. 1. INDI pitch-rate loop derived from the inner-loop architecture of [2]. Blue: Controller; red: Estimation Block; green: System (actuator + plant).
+
+Moment reference. The increment in pitch moment ∆Mref 
+
+is obtained by multiplying ∆ ˙ q by the controller moment of inertia estimate Iyy,c .
+
+Moment Estimator (feedback compensation). The esti-mated moment ˆMLP is reconstructed from the commanded elevon deflection δ through two cascaded first-order filters, 
+
+F (s) = ˆMLP (s)
+
+Mact (s) = 1(1 + τq s)(1 + τδ s) . (5) In the matched implementation considered here, the same control-effectiveness parameter Md is used in both the control allocation ∆δ = ∆ Mref /M d and the estimator-side moment reconstruction. The internal estimator loop therefore reduces to 
+
+B(s) = Mact (s)∆Mref (s) = 11 − F (s) . (6) Model mismatch is introduced only through the difference between the assumed effectiveness Md and the true aircraft effectiveness Mm.
+
+Nominal time-alignment. From Fig. 1, the low-pass branch acting on the measured pitch rate qm is 
+
+kLP 
+
+s + kLP 
+
+= 11 + τq s , τq ≜ 1
+
+kLP 
+
+,
+
+which is aligned with the estimator filter when kLP = 1 /τ q .In the same way, the reconstruction filter 1/(1 + τδ s) matches the actuator dynamics 1/(1 + τact s) when τδ = τact . These relations define the nominal time-alignment conditions 
+
+kLP = 1
+
+τq
+
+, τδ = τact . (7) The quantities kLP , τq , and τδ are design choices, whereas 
+
+τact is a fixed physical parameter. Satisfying (7) ensures that the reconstructed moment ˆMLP and angular-acceleration estimate ˙qLP are based on the same delayed actuator signal; otherwise, phase mismatch is introduced into the incremental cancellation path [9]. Section IV-A therefore varies τq , τδ ,and kLP independently to assess sensitivity to departures from nominal alignment. TABLE I NOMINAL PARAMETER VALUES AT THE Va = 20 M/S FIXED -WING TRIM POINT .
+
+Symbol Value Unit Origin 
+
+System parameters 
+
+Iyy,m 0.025 kg m 2 Physical airframe inertia 
+
+τact 0.05 s First-order servo model 
+
+Mm ≈ − 8.4 N m/rad at Va=20 m/s from [2] 
+
+dq ≈ 3.92 N m s/rad − 14 ρV 2 
+
+> a
+
+S¯c2Cmq [2] 
+
+Controller parameters (nominal = matched) 
+
+Iyy,c = Iyy,m kg m 2 Matched inertia 
+
+Md = Mm N m/rad Matched effectiveness 
+
+kp 20 rad/s Bandwidth target [2] 
+
+τq 0.004 s Estimator corner 
+
+kLP = 1 
+
+> τq
+
+= 250 rad/s Condition (7) 
+
+τδ = τact = 0 .05 s Condition (7) 
+
+C. Closed-Loop Transfer Function 
+
+The total effective plant seen by the proportional controller is P (s) = Gplane (s) · Gact (s) · (1 /M d) · B(s). Here P (s) is the forward map from the incremental moment reference to the measured pitch rate, i.e. qm(s) = P (s)∆ Mref (s). Since 
+
+∆Mref (s) = Iyy,c 
+
+
+
+kp(qref (s) − qm(s)) − kLP ss + kLP 
+
+qm(s)
+
+
+
+,
+
+substitution gives 
+
+qm = P (s)Iyy,c kpqref − P (s)Iyy,c 
+
+
+
+kp + kLP ss + kLP 
+
+
+
+qm.
+
+Collecting the qm-terms yields (8). The closed-loop pitch-rate transfer function is 
+
+qm(s)
+
+qref (s) = P (s) Iyy,c kp
+
+1 + P (s) Iyy,c 
+
+
+
+kp + kLP ss + kLP 
+
+ . (8) Expanding (8) with Gplane (s) = Kq /s yields a fifth-order characteristic polynomial with coefficients that depend explicitly on {kp, k LP , I yy,c , τ act , τ q , τ δ , M d, K q }.
+
+D. Nominal Parameter Values 
+
+Table I collects the nominal values used throughout the analysis. System parameters are fixed by the airframe and operating point; controller parameters are design choices ini-tialized to match the physical plant. The pitch-moment effectiveness Mm = ¯ qSc C mδ is com-puted from the dynamic pressure ¯q = 12 ρV 2 
+
+> a
+
+, wing area S,chord c, and the pitch-moment derivative Cmδ [6]. At Va =20 m /s this gives Mm ≈ − 8.4 N m /rad under the adopted NED nose-down sign convention. This signed convention is used throughout, so Kq = Mm/I yy,m and Md retain their physical sign; in the matched nominal case Md and Mm have the same sign, whereas a sign error corresponds to Md cross-ing zero and reversing relative to Mm. The aerodynamic pitch-rate damping dq ≈ 3.92 N m s/rad is computed from the same trim condition. The controller parameters Iyy,c and Md are initialized to their physical counterparts, and kLP and τδ follow directly from the time-alignment condition (7). Throughout the stability analysis in IV-A, parameter perturbations are expressed as percentages of their signed nominal values; for Md in particular, Md, nom < 0 under the adopted NED convention, so that a perturbation crossing 0% corresponds to an allocation-sign reversal, identified in Section IV-A as the most dangerous destabilizing mode. III. S TABILITY ANALYSIS 
+
+A. Parameter Space and Model Mismatch 
+
+The closed-loop characteristic polynomial depends on the system model and controller parameters: 
+
+Mm, I yy,m , τ act , d q
+
+| {z }
+
+> system parameters
+
+Md, k p, I yy,c , τ q , τ δ , k LP 
+
+| {z }
+
+> controller parameters
+
+The stability maps consider two representative three-parameter subspaces: Sweep A varies {Md, τ act , k p} and Sweep B varies {Iyy,c , k p, τ δ }, while all remaining quantities are fixed at their nominal values. In the optimization, the tunable controller vector is 
+
+θ = {Iyy,c , M d, k p, τ q , τ δ , k LP },
+
+whereas plant uncertainty enters through multiplicative per-turbations of the physical parameters, as detailed in Section IV-B. 
+
+B. Routh–Hurwitz Stability Criterion 
+
+For a given parameter tuple θ, the characteristic polynomial of (8) is formed and the Routh array is evaluated. Table II makes clear that positive aerodynamic damping enters as additive corrections to the intermediate coefficients, which explains why the undamped case is a conservative baseline, even though the full stability decision is still made through the complete Routh array. 
+
+TABLE II CHARACTERISTIC POLYNOMIAL COEFFICIENTS : UNDAMPED BASELINE 
+
+(ωp = 0 ) VERSUS DAMPED FORM . H ERE GM M = Iyy,c Kq /M d ,
+
+Ts = τq + τδ , AND Tp = τq τδ . P OSITIVE AERODYNAMIC DAMPING ADDS ONLY THE LISTED CORRECTIONS δC i , WITH δC 5 = δC 0 = 0 .                                                    
+
+> Coeff. Undamped C(0)
+> i(ωp= 0 )Full Ci=C(0)
+> i+δC i
+> C5τact Tpunchanged
+> C4τact Ts+Tp(1 + τact klp )+ωpτact Tp
+> C3τact klp Ts+Ts+Tpklp +
+> GM M Tp(kp+klp )+ωp[τact Ts+Tp(1 +
+> τact klp )]
+> C2klp Ts+GM M [kpklp Tp+(kp+klp )Ts]+ωp[Ts(1 +τact klp )+
+> klp Tp]
+> C1GM M [( kp+klp )+
+> kpklp Ts]+ωpklp Ts
+> C0GM M kpklp unchanged
+
+To interpret the sampled Routh boundary, we inspected which first-column entry becomes non-positive first along the numerically observed stability frontier [11]. Two recurring Fig. 2. Stable parameter regions. Green voxels indicate parameter combinations for which all first-column entries of the Routh array are strictly positive, i.e. the closed-loop system is asymptotically stable; the absence of voxels denotes instability. Left ( Sweep A ): {Md, τ act , k p}. Right ( Sweep B ): {Iyy,c , k p, τ δ }.Axes in percent of nominal; for Md, percentages are relative to the signed nominal value Md, nom < 0; crossing 0% corresponds to an allocation-sign reversal. Each sweep contains a small disconnected stable island at negative kp (visible in both panels) 
+
+mechanisms dominate. First, the admissible proportional ac-tion is limited by an effective loop-gain combination, 
+
+ˆK ≜ Kq Iyy,c kp
+
+Md
+
+,
+
+so smaller |Md|, larger kp, or larger Iyy,c push the loop toward instability. Second, the actuator and filter dynamics contribute through the corner frequencies ωa = 1 /τ act , ωq = 1 /τ q , and 
+
+ωδ = 1 /τ δ , so increasing any of these time constants reduces the admissible gain range. For compactness we summarize these two recurring trends by the heuristic relations 
+
+ˆK < f 1(ωa, ω q , ω δ ) (9) 
+
+ωaωq ωδ > f 2( ˆK) (10) where f1 and f2 are induced by the corresponding Routh first-column expressions. These relations are descriptive summaries of the sampled boundary, not reduced exact stability tests; all numerical stability decisions in this paper are still made using the full fifth-order Routh criterion. Condition (9) bounds the effective loop gain: underestimat-ing Md inflates ˆK and drives the system toward instability. Condition (10) requires the product of corner frequencies to exceed a threshold set by ˆK: excessive lag from the actuator, estimator, or alignment filter reduces this product and shrinks the stable gain range, represented in the green volume. 
+
+C. Stable Volume Visualization 
+
+Two complementary three-dimensional parameter sweeps are performed, shown in Fig. 2. For each sweep, a dense Cartesian grid of 150 3 points is evaluated over the normalized range [−500% , 500%] on each axis. At every grid point, the full fifth-order characteristic polynomial is formed, the complete Routh array is constructed, and the point is labeled stable if and only if all first-column entries are strictly positive. The voxel plots therefore represent sampled feasibility sets rather than fitted surfaces. 
+
+Sweep A varies {Md, τ act , k p} and Sweep B varies 
+
+{Iyy,c , k p, τ δ }, with all remaining parameters held at their nominal values. A small disconnected stable region is also visible for negative kp in both sweeps; this branch is noted for completeness but is not pursued further because the present study focuses on practically relevant positive-gain tuning. IV. R ESULTS AND DESIGN RECOMMENDATIONS 
+
+A. Stable Parameter Ranges 
+
+Sweep A (Fig. 2, left) shows a stable region whose ad-missible kp ceiling rises monotonically as Md decreases from 500% of nominal toward 0%, then vanishes abruptly when Md
+
+crosses zero. Condition (9) alone would predict the ceiling should rise with Md (since larger |Md| reduces ˆK); the plot shows the opposite. The reason is that Md enters the gain-loaded characteristic-polynomial terms through GM M =
+
+Iyy,c Kq /M d. At large Md, GM M is small, which weakens 
+
+C1 and C3 and makes the admissible kp ceiling mainly set by the actuator–filter time scales rather than by ˆK alone. As Md
+
+decreases, GM M grows, strengthening these terms and raising the admissible ceiling. Larger τact uniformly lowers this ceiling at all Md, consistent with condition (10): larger τact reduces ωa
+
+and tightens the corner-frequency product. Equivalently, the actuator then delivers the requested moment with excessive delay, so increasing kp mainly increases phase lag rather than useful pitch-rate correction. When Md crosses zero, the allocation sign reverses and INDI becomes positive feedback, which means that in practice the commanded incremental moment is applied with the wrong sign. No positive kp
+
+can stabilize this, and the entire positive-gain stable region vanishes. 
+
+Sweep B (Fig. 2, right) shows a large stable block across most of the physically meaningful region ( τδ > 0, Iyy,c > 0), with the kp ceiling decreasing as both τδ and Iyy,c simulta-neously approach 0% of nominal. Both dominant conditions predict the opposite: Iyy,c → 0+ reduces ˆK (relaxing condi-tion (9)) and τδ → 0+ increases ωδ (relaxing condition (10)). The instability arises from a simultaneous collapse of the polynomial structure: τδ → 0+ makes C5 = τact τq τδ → 0,while Iyy,c → 0+ drives GM M → 0 and weakens the gain-carrying low-order terms C0 and C1. This boundary is therefore captured only by the full Routh test, not by the two heuristic summaries alone. Physically, the problem is the simultaneous loss of two stabilizing mechanisms: τδ → 0
+
+removes one reconstruction dynamic from the estimator path, while Iyy,c → 0 removes the low-frequency corrective mo-ment generated from the pitch-rate error. Note that τδ → 0
+
+also constitutes a severe violation of the time-alignment con-dition (7), confirming that operating far below τδ = τact is not safe despite the apparent relaxation of the heuristic lag condition. 
+
+B. Uncertainty-Aware Tuning 
+
+Robustness optimization ( dq = 0 , ±25% ). The uncertainty set C is defined by ±25% perturbations of the three uncertain plant parameters {τact , M m, I yy,m }, giving 8 vertex cases c ∈C. The optimization is carried out on these extreme cases only, so the resulting solution is the best one over the tested vertices, not a formal optimum over the full interior of the uncertainty box. The objective is the weighted worst-case combination of gain and phase margin: 
+
+max  
+
+> θ
+
+min 
+
+> c∈C
+
+h
+
+0.5 Gm(θ, c ) + 0 .5 Pm(θ, c )
+
+i
+
+. (11) 
+
+Gm and Pm are computed from the open-loop transfer func-tion associated with (8). Setting dq = 0 makes this study conservative with respect to positive aerodynamic damping over the parameter range considered. 
+
+Performance optimization ( dq > 0, ±10% ). Aerodynamic damping is included as a fourth uncertain parameter, giving 16 corners c ∈ C (±10% on each of the four parameters). The objective is worst-case bandwidth subject to margin constraints: 
+
+max  
+
+> θ
+
+min  
+
+> c∈C
+
+ωBW (θ, c ), (12) s.t. 45 ◦ ≤ Pm(θ, c ) ≤ 60 ◦, G m(θ, c ) ≥ 6 dB , ∀c ∈ C .
+
+Here ωBW denotes the first −3 dB crossing of the closed-loop transfer magnitude |T (jω )|, with T (s) = qm(s)/q ref (s).The 6 dB gain floor provides a standard 2× gain safety factor. Both problems are solved by exhaustive grid search over the Routh-feasible controller grid 
+
+Θ = Θ Iyy,c × ΘMd × Θkp × Θτq × Θτδ × ΘkLP .
+
+Algorithm 1 summarizes the search procedure. This grid is distinct from the three-parameter visualization sweeps of Section III-C, which only display representative slices of the stability boundary.                            
+
+> Algorithm 1: Uncertainty-Aware Controller Parameter Search Require: Uncertainty set C, parameter grid Θ, objective
+> Ensure: Optimal parameter set θ∗
+> 1: Evaluate the Routh criterion for all θ∈Θ; retain Θstable
+> 2: for each θ∈Θstable do
+> 3: Compute Routh feasibility, Gm,Pm, and ωBW for all c∈ C
+> 4: Evaluate objective (11) or (12) 5: end for
+> 6: Return θ∗= arg max θ∈Θstable objective
+
+In the implementation, the Routh–Hurwitz test is used as a cheap pre-filter before gain-margin, phase-margin, and band-width evaluations are performed at the uncertainty corners. With N grid points per controller parameter and nc uncertain plant parameters evaluated at box vertices, the uniform search scales as O(N 6 · 2nc ). For higher-dimensional problems, the same code structure could be made more scalable by replacing the uniform grid with coarse-to-fine refinement around Routh-feasible or Pareto-relevant regions. 
+
+C. Recommended Parameter Sets 
+
+The two optimal sets do not follow the same structural logic; rather, they reflect two different operating objectives under two different uncertainty descriptions. The robustness-optimal set drives the loop into a conservative regime by choosing a very small kp, fast filters, and a large Md, thereby reducing the effective loop gain and producing large stability margins. The performance-optimal set, by contrast, pushes several pa-rameters toward the edge of the admissible search box and should therefore be interpreted as a boundary-seeking high-bandwidth candidate within the chosen grid, not as evidence of the same tuning pattern. The clearest common feature between the two solutions is a small τq , which indicates that a fast rate-estimation path is beneficial in both formulations.      
+
+> TABLE III OPTIMIZED PARAMETER SETS RELATIVE TO NOMINAL .
+
+(±25% , d q =0) : 
+
+> INDEPENDENT
+
+±25% VARIATIONS OF {τACT , M m, I yy,m }, dq
+
+> FIXED AT ZERO
+
+. (±10% , d q >0) : ±10% VARIATIONS OF ALL FOUR PARAMETERS INCLUDING dq > 0.                                                              
+
+> Param. Robustness (±25% ,dq=0 )Performance (±10% ,dq>0)
+> Iopt
+> yy,c 0.05 ·Inom
+> yy,c 4.29 ·Inom
+> yy,c
+> kopt LP 0.75 ·knom LP 5.0·knom LP
+> τopt
+> δ0.05 ·τnom
+> δ2.88 ·τnom
+> δ
+> kopt
+> p0.02 ·knom
+> p1.45 ·knom
+> p
+> τopt
+> q0.05 ·τnom
+> q0.05 ·τnom
+> q
+> Mopt
+> d5.0·Mnom
+> d0.05 ·Mnom
+> d
+
+The robustness-optimal set achieves guaranteed gain mar-gins above ≈ 30 dB and phase margins near 60 ◦ across all eight corners, but sacrifices performance at the cost of a slow overdamped step response (settling time ≈ 2.5 s) (see Fig. 3, left), which makes it unsuitable as the nominal tuning for agile UAV operation. Its value lies instead in serving as a 
+
+conservative stability certificate : a verified safe operating point that can be used as a validated baseline when plant parameters are poorly characterized. In deployment, this set is therefore best interpreted as a low-confidence fallback tuning, for exam-ple during early flight testing or after suspected effectiveness Fig. 3. Step responses for the two optimal parameter sets. Black & red = nominal plant; colored lines = all uncertainty corners. Left: robustness-optimal set ( ±25% , dq =0 ): tight overdamped bundle, settling in ≈ 2.5 s, compared to the original design (right sub-panel). Right: performance-optimal set ( ±10% ,       
+
+> dq>0): all corners settle within ≈0.1s, ≈4×faster than the original design on the nominal plant.
+
+degradation. Agility can then be recovered by moving toward the performance-oriented design when the uncertainty bounds are tighter and positive aerodynamic damping is sufficiently characterized. The performance-optimal set achieves a substantially larger worst-case closed-loop bandwidth than the nominal design while satisfying the [45 ◦, 60 ◦] phase-margin window and the 6 dB gain floor. In the current numerical sweep, the largest qualified bandwidth values are finite and occur around 
+
+ωBW ≈ 1.6 × 10 3 rad /s. This high value indicates that, within the linear model and the imposed gain/phase-margin constraints, the modeled actuator lag, filtering, and mismatch are not the active bandwidth-limiting factors for this parameter combination. In practice, the limiting mechanisms would be hard elevon deflection and rate limits, sampling delay, sensor bandwidth, and structural constraints, which are not included in (12). The corresponding step responses in Fig. 3 are markedly faster than the nominal design, but this improvement requires tighter uncertainty bounds and knowledge of nominal 
+
+dq . 
+
+> Fig. 4. Left: worst-case gain/phase-margin trade-off over all Routh-feasible tunings for the robustness optimization (11). Right: worst-case bandwidth versus worst-case phase margin for the performance optimization (12). In both panels, the top-5 candidates are highlighted.
+
+D. Design Guidelines 
+
+The numerical study supports the following practical guide-lines. 1) Choose the control allocation gain Md and the con-troller gain kp jointly, and guarantee the correct sign of Md. Sweep A shows that the admissible kp ceiling increases as Md moves from large-magnitude values toward zero while preserving the nominal sign, but vanishes abruptly when Md crosses zero. A sign error in Md is therefore the most dangerous failure mode: it reverses the allocation feedback and makes stabilization with any positive kp impossible. 2) Keep τδ and Iyy,c near their nominal values at nominal gain, or reduce kp accordingly. Sweep B shows that simultaneously driving τδ and Iyy,c toward 0% of nom-inal destabilizes the loop by collapsing the fifth-order polynomial structure: τδ → 0 removes the highest-order dynamic term C5 = τact τq τδ , while Iyy,c → 0 weakens the low-order gain-carrying terms through GM M → 0.At very small kp this mechanism is much less severe, which is why the robustness-optimal set can combine small τδ and Iyy,c with kp ≈ 0. At nominal or high kp,the matched values τδ = τact and Iyy,c = Iyy,m should be respected. 3) Use the dq = 0 design as a conservative linear baseline when aerodynamic damping is uncertain. A tuning that is stable at dq = 0 is therefore an appropriate conservative starting point when the true damping is not known accurately. 4) Validate the performance-optimal solution within its uncertainty bounds. The performance-optimal solution in Section IV-B is derived under dq > 0 and therefore requires knowledge of the nominal value of dq , not its exact value; the ±10% uncertainty margin on dq
+
+demonstrates that moderate uncertainty in the damping estimate is tolerable. The step responses in Fig. 3 con-firm the improved bandwidth for all evaluated corners, but the result should not be extrapolated beyond the tested uncertainty range or to operating points where 
+
+dq is poorly characterized. V. C ONCLUSION 
+
+This paper presented a systematic linear stability analysis of an INDI pitch-rate controller for a tilt-rotor VTOL UAV under model mismatch. A closed-form fifth-order transfer function was derived and the Routh–Hurwitz criterion was used to char-acterize stability regions in two three-parameter subspaces. The stability volumes reveal that actuator lag and inertia mismatch are less destabilizing than control-effectiveness mis-match over the displayed sweep ranges: large Md combined with large kp collapses the gain-dependent Routh coefficients, and a sign error in Md eliminates all positive-gain stabil-ity abruptly. Two uncertainty-aware tuning procedures were formulated and solved, providing concrete recommendations for robustness-priority and performance-priority conditions together with a quantification of the resulting speed–robustness trade-off. Within the parameter range considered here, the dq = 0 
+
+baseline is conservative: positive aerodynamic damping shifts the coefficient set in a stabilizing direction and did not tighten the observed stability boundary. Large-amplitude maneuvers, trim-point shifts during transition, and actuator saturation introduce nonlinear effects that can change effective gain and phase lag, thereby tightening or shifting the Routh boundary derived here. Future work will extend the stability certificate to this nonlinear saturated regime via Sum-of-Squares Lyapunov methods [12], enabling certified stability regions that account for actuator saturation directly. In addition, while the pitch focus is motivated by the longitudinal transition mechanism discussed in Section I, a more complete full-envelope certifi-cate should include roll/yaw coupling for asymmetric actua-tion, lateral disturbances, and non-longitudinal maneuvers. REFERENCES [1] E. J. Smeur, Q. Chu, and G. C. de Croon, “Adaptive incremental nonlinear dynamic inversion for attitude control of micro air vehicles”, 
+
+J. Guid. Control Dyn. , vol. 39, no. 3, pp. 450–461, 2016. [2] M. Schlatter, G. Ducard, D. Rohr, and C. Onder, “Longitudinal control of a tilt-rotor VTOL UAV using incremental nonlinear dynamic inversion”, in Proc. IEEE Int. Conf. Control Autom. Diagnosis (ICCAD) , 2024. [3] E. Tal and S. Karaman, “Global incremental flight control for agile maneuvering of a tailsitter flying wing”, J. Guid. Control Dyn. , vol. 45, no. 12, pp. 2332–2349, 2022. [4] G. Ducard, H. P. Geering, “Stability Analysis of a Dynamic Inversion Based Pitch Rate Controller for an Unmanned Air-craft”, Proceedings of the IEEE/RSJ 2008 Int. Conf. on Intelligent Robots and Systems (IROS), pp. 360-366, France, September 2008. https://doi.org/10.1109/IROS.2008.4651117 [5] G. Ducard, H. P. Geering, “Airspeed Control for Unmanned Aerial Vehi-cles: a Nonlinear Dynamic Inversion Approach” Proceedings of the 16th IEEE Mediterranean Conference on Control and Automation (MED), pp. 676-681, France, June 2008. https://doi.org/10.1109/MED.2008.4602202 [6] G. Ducard, “Fault-Tolerant Flight Control and Guidance Systems: Prac-tical Methods for Small Unmanned Aerial Vehicles”, Springer, 2009. [7] A. Steinert, S. Raab, S. Hafner, F. Holzapfel, and H. Hong, “Advance-ments in incremental nonlinear dynamic inversion and its components: A survey on INDI – Part II”, Chinese J. Aeronaut. , vol. 38, no. 11, p. 103591, 2025. [8] C. Park, A. Ramirez-Serrano, and M. Bisheban, “Adaptive incremental nonlinear dynamic inversion control with guaranteed stability for aerial manipulators”, Aerospace , vol. 12, no. 4, p. 312, 2025. [9] R. van’t Veld, E. van Kampen, and Q. Chu, “Stability and robustness analysis and improvements for incremental nonlinear dynamic inversion control”, in AIAA SciTech Forum , 2018. [10] X. Wang, E. J. van Kampen, Q. P. Chu, and P. Lu, “Stability analysis for incremental nonlinear dynamic inversion control”, J. Guid. Control Dyn. , vol. 42, no. 5, pp. 1116–1129, 2019. [11] G. F. Franklin, J. D. Powell, and A. Emami-Naeini, “Feedback Control of Dynamic System”, 6th ed. Pearson, 2006. [12] A. Detailleur, D. Wahby, G. Ducard, C. Onder, “Contributions to Semialgebraic-Set-Based Stability Verification of Dynamical Systems with Neural-Network-Based Controllers”, arXiv:2510.24391v1, 2025

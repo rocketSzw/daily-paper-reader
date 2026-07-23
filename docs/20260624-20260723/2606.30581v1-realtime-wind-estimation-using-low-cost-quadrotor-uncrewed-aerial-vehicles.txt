@@ -1,0 +1,704 @@
+Title: Realtime Wind Estimation using Low Cost Quadrotor Uncrewed Aerial Vehicles
+
+URL Source: https://arxiv.org/pdf/2606.30581v1
+
+Published Time: Tue, 30 Jun 2026 02:39:13 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Realtime Wind Estimation using Low Cost Quadrotor Uncrewed Aerial Vehicles 
+
+Hiranya Udagedara 1 and Mahdis Bisheban 1
+
+Abstract — In environmental monitoring as well as emergency response applications such as wildfires, wind velocity mea-surement is essential. Quadrotor UAVs have become popular platforms for wind velocity estimation due to their maneuver-ability, compact size, and cost-effectiveness. Numerous studies use the Extended Kalman Filter (EKF) to estimate the wind velocity based on the quadrotor dynamic model. However, most of them use hovering quadrotors only for wind estimation, others use a near-linear trajectory to estimate near-constant velocities. Furthermore, EKF performance is constrained by its reliance on linearized approximations of the nonlinear quadrotor dynamics around current states, limiting accuracy in highly nonlinear scenarios, including windy conditions. This study proposes the use of an Unscented Kalman Filter (UKF), a nonlinear estimator to provide accurate wind estimations while maintaining the trajectory of the quadrotor UAV. The quadrotor is modeled on the Special Euclidean group SE (3) 
+
+and the approach is evaluated through numerical simulations using a geometric controller to maintain quadrotor flight paths. The results indicate that as the nonlinearity of the simulation increases, the UKF consistently outperforms the EKF. This demonstrates the potential of the UKF as a reliable estimator for highly nonlinear scenarios, capable of maintaining the trajectory with minimal deviation while providing accurate wind velocity estimations. 
+
+I. I NTRODUCTION 
+
+Real-time wind velocity estimation is very important in environmental data collection. In addition, in extreme cases, such as the monitoring of wildfires, knowing the wind veloc-ity allows more buffer time for preparation. Although wind collection centers are ideal for long-term data collection, for emergencies such as wildfires, portability is important. Quadrotor UAVs are essential in this context. Quadrotor UAVs are better than fixed-wing UAVs as they are more maneuverable, cost-effective, and compact in size. Direct measurement and model-based estimation are the two main methods for estimating wind velocity. Direct mea-surement requires additional sensors, such as anemometers, which significantly increase the cost of low-cost drones. These sensors also add weight, thereby reducing flight endurance, and require information about its position and velocity using onboard measurements. In contrast, model-based estimation avoids the need for extra hardware by                            
+
+> This work was supported by the Natural Sciences and Engineering Research Council of Canada (NSERC), the Government of Alberta, Alberta Innovates, and the Schulich School of Engineering at the University of Calgary. Funding was awarded to Dr. Mahdis Bisheban, Director of the Intelligent Dynamics and Control Lab and Assistant Professor at the University of Calgary.
+> 1The authors are with the Department of Mechanical and Manufacturing Engineering, University of Calgary, Cal-gary, Canada
+
+hiranya.udagedara@ucalgary.ca, mahdis.bisheban@ucalgary.ca 
+
+inferring wind velocity from the drone’s dynamics and onboard measurements, making it more cost-effective and lightweight. Some researchers have used the Kalman filter to estimate wind velocity [1], [2]. However, the Kalman filter assumes a linear quadrotor UAV model. Therefore, its capabilities limit maneuverability and accuracy of trajectory tracking and precision. In contrast, the EKF approximates the nonlinear quadrotor UAV system by linearizing it around the current states. Gonzalez et al. have used EKF to estimate the 2D wind velocity using real-time data, where the data are post-processed [3]. Sikkel et al. estimated the wind velocity in real-time with a hovering quadrotor UAV, under near constant wind disturbances [4]. In the work done by Xing et al., wind velocity estimation was carried out in a simulation environment, with a quadrotor UAV hovering in a wind field created by a Dryden model [5]. The work has taken a different approach, as they have estimated the wind velocity by parameterization of an equation for wind velocity. The EKF has been used to approximate the parameters [5]. The work by Chen et al. uses an invariant EKF for 3D wind velocity estimation. The vertical wind velocity is estimated using a hovering quadrotor UAV [6]. UKF is another variant of the Kalman filter, which is a nonlinear estimator. In the work by Condomines et al., the UKF has been used with a fixed-wing UAV for wind velocity estimation, which estimates the wind by direct measurement [7], [8]. Shastry et al. have used a variant of UKF, sq-UKF, for 3D wind velocity estimation [9]. They have estimated wind velocity in a simulated environment and estimated wind gust velocity while the quadrotor is in a hovering position. In a later work, they have used a wind turbine to simulate wind, which varies in one direction [10]. The use of EKF for wind velocity measurements with quadrotor UAVs is widely discussed. However, the use of UKF for wind velocity estimation has yet to be explored. With recent advances in low-cost onboard computing, the previously prohibitive computational demands of the UKF no longer pose a significant limitation. However, in both EKF-and UKF-based studies focus has been mainly on the planar wind velocity [3]–[5]. Only a few studies focus on all three components of wind velocity [6], [9], [10]. Among them, only Chen et al. performed real experiments and using a quadrotor UAV for wind estimation [6]. But the flight is a straight-line trajectory, and the vertical wind velocity is non-existent. Therefore, even with EKF, wind velocity estimation while performing complex trajectories is to be explored. In this study, the main focus is on precise and accurate 
+
+Author’s preprint. Published by IEEE American Control Conference (ACC), 2026. 
+
+> arXiv:2606.30581v1 [cs.RO] 29 Jun 2026
+
+wind velocity estimation during trajectory tracking, using low cost quadrotor UAVs, while using the same algorithm for state estimation, without requiring extra computation and power recourse. This enables the quadrotor UAV to monitor the wind velocity while continuing on its intended flight. This allows for a more stable and energy-efficient flight while col-lecting environmental data. A model-based approach is used to estimate the wind velocity. Measurements are obtained from commonly available onboard sensors, GPS, and a 6-axis IMU (3-axis gyroscope and 3-axis accelerometer). A wide range of models have can be used for wind estimation. These models span from simple static relation-ships, such as those linking power or thrust and the UAV’s orientation or tilt to wind speed [2], to more sophisticated approaches, including kinematic and/or dynamic particle models [1], translational kinematic and dynamic models of a rigid body [11], and orientation-based kinematic and dy-namic models [9]. Orientation-based kinematic and dynamic models mostly represented by minimal representation like Euler angles [12]. In general, dynamic models are required for estimating time-varying wind or when the UAV is in motion. By contrast, in the case of a hovering UAV under constant wind conditions, static or particle kinematic and dynamic models can provide estimation up to some wind magnitude [13]. In this paper, we use both translational and orientation kinematic and dynamic model of a quadrotor UAV on SE(3) to avoid singularity problem. To the best of author knowledge this is the first time, one uses these complete models for realtime 3D wind estimation. In this paper, Section II presents the methodology, fol-lowed by the results and discussion in Section III. The paper concludes with Section IV. II. M ETHODOLOGY 
+
+This section presents the quadrotor UAV’s dynamic model, the UKF and EKF estimation processes, and experimental details. 
+
+A. Dynamic Model of the Quadrotor UAV 
+
+This section presents the dynamic model of the quadrotor UAV on SE(3). The origin of the body frame is assumed to be located at the center of mass of the quadrotor. Without loss of generality, the center of mass of the IMU is assumed to coincide with that of the quadrotor. In the case of any misalignment in orientation or displacement between the IMU and the center of mass of the UAV, these can be corrected through calibration of the IMU. As the body frame changes its orientation, the IMU frame remains fixed with respect to the body frame. Let x ∈ R3 represent the position of the origin of the body frame in the inertial frame. Then 
+
+v ∈ R3 represents the velocity of the origin of the body frame in the inertial frame. The angular velocity of the quadrotor in the body frame is represented by Ω ∈ R3, and its orientation is denoted by R ∈ R3×3. vw ∈ R3 is the wind velocity in the inertial frame. In this study, 21 parameters are considered, thus, the full state vector X = [ x, v, Ω, R, v w ] ∈ R21 . The translational and attitude dynamics of a quadcopter subject to a wind disturbance are as follows: 
+
+˙x =v, (1) 
+
+˙vb =vb × Ω + RT ge 3 − fce3
+
+m + RT ˙vw + Df
+
+m + RT ∆1
+
+m ,
+
+(2) 
+
+˙R =R ˆΩ, (3) 
+
+˙Ω = J−1(−Ω × JΩ + Mc + ∆ 2), (4) where e3 = [0 , 0, 1] T ∈ R3, and vb ∈ R3 is the vehicle velocity in the body frame. The velocity vb can be expressed in terms of the inertial velocity v as, vb = RT v. Thus, ˙v can be defined as follows, 
+
+˙v =ge 3 − fcRe 3
+
+m + ˙ vw + RD f
+
+m + ∆1
+
+m . (5) In this study, the velocity of the quadrotor in inertial frame v
+
+is not measured directly, but estimated using measurements from the GPS. Thus, Equations (1) to (5) are used. A geometric controller is employed to generate the thrust force (fc ∈ R) and the moment vector ( Mc ∈ R3) necessary to maintain the quadrotor on its designated path [14], which are assumed to be instantly realized. The rate of change of wind velocity was assumed to remain constant until the next time step ( ˙ vw = [0 , 0, 0] T ), which is acceptable for small time-steps. The symbol ˆ(.) represents the hat map. ∆1 ∈ R3
+
+and ∆2 ∈ R3 account for the external forces and torques in the body frame, which are not explicitly modeled. ∆1 and 
+
+∆2 are considered fixed but unstructured. In Equation (5), Df ∈ R3 denotes the drag force, and the generic horizontal drag force is given by 
+
+Df = − 1
+
+2 ρair Cd|vr |vr , (6) where Cd ∈ R3×3 is the body drag coefficient matrix. The relative wind velocity in the body frame vr ∈ R3 is given by vr = vb − RT vw .
+
+B. Measurement 
+
+It is assumed that xgps , Ωimu , and aimu ∈ R3 are obtained from the low cost sensors, including the GPS and the IMU. The measurement vector is Y = [ xgps , Ωimu ] ∈ R6, which are available on low cost UAVs. Acceleration measurement 
+
+aimu is directly used in updating the wind velocity vw .
+
+C. Estimation 
+
+Estimation of the full state vector X is performed using both EKF and UKF. Both estimators carry out the estimation in two sections: flow update and measurement update. During flow update, the full state vector Xk−1 and error covariance matrix Pk−1 of the previous time step are propagated. The propagated full-state vector X− 
+
+> k
+
+and the error covariance matrix P − 
+
+> k
+
+are then adjusted during the measurement update. The subscript k − 1 refers to the previous time step. The superscript − indicates the prior estimate, and + indicates the posterior estimate. In the literature, wind dynamics are often modeled as a stochastic process, for example using Random Walk or Gauss-Markov [15]. Alternatively, many studies assume 
+
+˙vw = [0 , 0, 0] T , where the wind velocity is directly mea-sured. In this study, a different approach is followed, as the wind dynamics are modeled under the assumption ˙vw is negligible and no stochastic model is introduced. In contrast, at each time-step, the priori estimate of the wind velocity v−
+
+> wk
+
+is obtained using the relationship in Equation (6). The drag force Df is derived using the relationship in Equation (5). The reading from the accelerometer aimu is such that, 
+
+aimu = ˙ vb − RT ge 3 = vb × Ω − fce3
+
+m + Df
+
+m + RT ∆1
+
+m .
+
+(7) In this formulation, the accelerometer is assumed to measure the non-gravitational acceleration (specific force) in the body frame, i.e., the acceleration relative to the world frame with gravity neglected. In an ideal situation, where there is no wind disturbance, the acceleration measured by the accelerometer would be as follows, 
+
+aideal = vb × Ω − fce3
+
+m + RT ∆1
+
+m . (8) Thus, the drag force is roughly, the difference between the two accelerations, aimu and aideal . Therefore, at each time-step, the measurement from the accelerometer aimu is used to calculate the supposed drag force as follows, 
+
+Dfk = m(aIMU k − aideal k ), (9) By calculating Dfk , the wind velocity vwk can be estimated using (6). This prior estimate of the wind velocity v− 
+
+> wk
+
+, is then refined during measurement update step. 
+
+a) EKF: The EKF algorithm relies on a state-dependent linearization of the nonlinear quadrotor system given in Equation (1) to (4). For that Jacobian-based lineariza-tion is carried out by introducing perturbed states δ ˙X =[δ ˙x, δ ˙v, δ ˙Ω, δ ˙R, δ ˙vw ]. In geometric control, the rotation ma-trix R is not directly perturbed, as it should remain on 
+
+SO (3) . Instead, we express perturbations with a minimal vector η ∈ R3 through the exponential map [11]. Using first-order approximation, η is defined so that it satisfies, 
+
+δR = d
+
+dǫ 
+
+∣∣∣∣ǫ=0 
+
+R exp( ǫˆη) = Rˆη, (10) where ǫ ∈ R is a smaller scalar parameter controlling perturbation magnitude. Therefore, the perturbed state vector 
+
+δ ˙X = [ δ ˙x, δ ˙v, δ ˙Ω, δ ˙η, δ ˙vw ] ∈ R15 is used in obtaining the Jacobian linearization. The system was linearized around 
+
+vw = 0 , as the nominal wind is assumed unknown and also to simplify the analytic Jacobians. Thus, perturbed form of Equation (1) can be expressed as follows, 
+
+δ ˙x = δv. (11) The perturbed form of Equation (5) can be expressed as follows, 
+
+δ ˙v = δ( − fcRe 3
+
+m
+
+) + δ( RD f
+
+m
+
+),
+
+where, RD f = − 1 
+
+> 2
+
+ρair CdR|RT v −RT vw |(RT v −RT vw ) = 
+
+− 1 
+
+> 2
+
+ρair Cd|v − vw |(v − vw ). Thus, δ ˙v can be expressed as, 
+
+δ ˙v = − 1
+
+2m ρair Cd(|v|I3×3 + vv T
+
+|v| )δv + fc
+
+m R(e3)∧η, (12) where |v| = vT 
+
+> |v|
+
+, and δ(Re 3) = Rˆηe 3 = R(e3)∧η. As η
+
+is already a perturbation itself, ˙η = δ ˙η. Therefore, using Equation (3) and (10), ˙η can be defined. From Equation (3), 
+
+δ ˙R = Rˆη ˆΩ + R(δ ˆΩ) .
+
+From the relationship in Equation (10), 
+
+δ ˙R = ˙Rˆη + Rˆ˙η. 
+
+By equating both expressions for δ ˙R, and substituting from Equation (3) 
+
+˙Rˆη + Rˆ˙η = Rˆη ˆΩ + R(δ ˆΩ) ,Rˆ˙η = R(δ ˆΩ) + Rˆη ˆΩ − R ˆΩˆ η, 
+
+ˆ˙η = ( δ ˆΩ) + ˆ η ˆΩ − ˆΩˆ η. 
+
+Given that −ˆη ˆΩ + ˆΩˆ η =̂ Ω × η ,
+
+ˆ˙η = δ ˆΩ −̂ Ω × η, 
+
+˙η = δΩ − Ω × η, 
+
+˙η = − ˆΩη + δΩ, (13) where, Ω × η = ˆΩη. The perturbed state δ ˙Ω is obtained by linearizing the rotational dynamics given in Equation (4) and neglecting the first-order variations of the control/disturbance torque yields, as follows, 
+
+δ ˙Ω = δ(J−1(−Ω × JΩ + Mc + ∆ 2)) ,δ ˙Ω = J−1δ(−Ω × JΩ) .
+
+As −Ω × JΩ = − ˆΩJΩ = ( JΩ) ∧Ω,
+
+δ ˙Ω = J−1(− ˆΩJδ Ω + ( JΩ) ∧δΩ) ,δ ˙Ω = J−1(( JΩ) ∧ − ˆΩJ)δΩ. (14) *** Look into fc and Mc by referring Dr. Bisheban’s thesis *** The perturbed wind dynamics can be expressed as follows, 
+
+δ ˙vw = 0 . (15) The second-order perturbations have been neglected in this study. At the current time-step, Equations (11) to (15), the quadrotor dynamics can be expressed in the linearized form 
+
+δ ˙X = Ftk−1 δX + Gtk−1 W, where the state transition matrix 
+
+Ftk−1 ∈ R15 ×15 and process noise transition matrix Gtk−1 ∈
+
+R15 ×6 can be expressed as follows, 
+
+Ftk−1 =
+
+
+
+03 I3 03 03 03
+
+03 F1 F2 03 03
+
+03 03 F3 I3 03
+
+03 03 03 F4 03
+
+03 03 03 03 03
+
+ , G tk−1 =
+
+
+
+03 03 
+
+> I3
+> m
+
+03
+
+03 03
+
+03 J−1
+
+03 03
+
+ ,
+
+(16) where, 
+
+F1 = − 1
+
+2m ρair Cd(|vk−1|I3×3 + vk−1vTk−1
+
+|vk−1|
+
+),F2 =( fck−1 /m )Rk−1(e3)∧,F3 = − ˆΩk−1,F4 =J−1(( JΩk−1)∧ − ˆΩk−1J).
+
+To obtain the linearized discrete form of the nonlinear quadrotor model is X− 
+
+> k
+
+= Fk−1X+ 
+
+> k−1
+
++ Gk−1Wk−1, where 
+
+Wk−1 ∈ R6 and Vk ∈ R6 represents the zero-mean Gaussian white process noises. The matrices Ftk−1 and Gtk−1 are transformed into their respective discrete forms Fk−1 and 
+
+Gk−1 using the following relationship, 
+
+Ftk−1 ≡ ∂f 
+
+∂X 
+
+∣∣∣∣ ˙X(t) ,U(t)
+
+, Gtk−1 ≡ ∂G (t)
+
+∂X 
+
+∣∣∣∣ ˙X(t) ,U(t)
+
+, (17) 
+
+Fk−1 = In×n + ∆ tF tk−1 Ψ, Gk−1 = ∆ tΨGtk−1 , (18) where, Ψ = In×n + ∆t 
+
+> 2
+
+Ftk−1 , and ∆t is the time step. In this study, the continuous-discrete form of the EKF was adapted [16]. Thus, during the flow update stage, the priori estimate of the states X− 
+
+> k
+
+, is obtained by propagating the previous state estimate X+
+
+> k−1
+
+, through Equations (1) to (5), using Runge-Kutta fourth-order integration. Propagation through nonlinear dynamics of the quadrotor, improves the accuracy of the priori estimate. To obtain the priori estimate of the error covariance matrix P − 
+
+> k
+
+The previous estimate of the error covariance matrix P + 
+
+> k−1
+
+, is propagated as follows, 
+
+P − 
+
+> k
+
+= Fk−1 Pk−1F Tk−1 + Gk−1QkGTk−1, (19) where, Qk = E[WkWTk ] ∈ R6×6 is the process noise covariance matrix. During the measurement update stage, the Kalman gain 
+
+Kk ∈ R15 ×6 is calculated as follows, 
+
+Kk = P − 
+
+> k
+
+HTk [HkP − 
+
+> k
+
+HTk + Rk]−1, (20) where, Hk = ∂h 
+
+> ∂X
+
+∣∣ ¯X−
+
+> k
+
+∈ R6×15 , is the Jacobian of the mea-surement function, and Rk = E[VkVTk ] ∈ R6×6. Linearized form of the general measurement equation can be expressed as follows, 
+
+Yk = HkX− 
+
+> k
+
++ Vk, (21) where, Vk ∈ R6 represents the zero-mean Gaussian white measurement noises. Full state vector X is then updated during the measurement update. The attitude R− 
+
+> k
+
+and angular velocity priori estimates Ω− 
+
+> k
+
+are updated using angular veloc-ity measurements Ωimu , while the position x− 
+
+> k
+
+and velocity 
+
+v− 
+
+> k
+
+priori estimates are updated using measurements from GPS, xgps . Accelerometer measurement aimu is only used in updating the wind velocity v− 
+
+> wk
+
+. The true measurements from the sensors Zk ∈ R6, are used in updating the posteriori states X+ 
+
+> k
+
+, as follows, 
+
+¯X+ 
+
+> k
+
+= ¯X− 
+
+> k
+
++ Kk[Zk − Hk ¯X− 
+
+> k
+
+]. (22) Finally, the posteriori error covariance matrix P + 
+
+> k
+
+is updated as follows, 
+
+P + 
+
+> k
+
+= [ I − KkHk]P − 
+
+> k
+
+[I − KkHk]T + KkRk KTk . (23) Equation (23), is Joseph’s form for error covariance [11], [16]. This form is used to ensure that the error covariance matrix P + 
+
+> k
+
+remains positive definite and symmetric. 
+
+b) UKF: The UKF is a variation of the Kalman filter designed to address the nonlinearities of a discrete dynamic system. In UKF, a set of strategically chosen points around the mean of the states, known as sigma points, plays a major role in the UKF algorithm. The sigma points are propagated through the nonlinear system functions. Thus, allowing to capture the transformation of the mean and covariance di-rectly. The full state vector X = [ x, v, Ω, R, v w ] ∈ R21 is used in the UKF algorithm. As the measurement noise is additive, a non-augmented UKF algorithm was used in this study [17]. During measurement update stage, the posteriori state estimates from the previous time-step are used to generated the sigma points (X ik−1 ∈ Rn×2n+1 , i = 0 , ..., 2n), such that Xk−1 =
+
+[
+
+X+
+
+> k−1
+
+, X+ 
+
+> k−1
+
+±
+
+√
+
+(n + λ)P +
+
+> k−1
+
+]
+
+. Here the scaling parameter λ ∈ R is calculated such that λ =
+
+α2(n + κ) − n, where α = 1 ensures sufficient spread of the sigma points, and κ ∈ R determines the secondary scaling. In this study α = 1 , to ensure the sigma points are spread sufficiently, κ = 0 is adopted since additional scaling is unnecessary. A larger λ spreads the points more, captures more nonlinearity, but at a higher risk of the system becoming unstable. There a total of n = 21 states, thus a total of 43 sigma points are generated. The generated sigma points X ik−1, are then propagated through the nonlinear dynamic equations of the quadrotor UAV, Equations (1) to (5), using Runge-Kutta fourth-order integration. Propagated sigma points are then used to calculated the priori mean estimate of the full state vector ¯X− 
+
+> k
+
+∈ R21 , and priori estimate of the error covariance P − 
+
+> k
+
+as follows, 
+
+¯X− 
+
+> k
+
+=
+
+> 2n
+
+∑
+
+> i=0
+
+W mean i X ik, (24) 
+
+P − 
+
+> k
+
+=
+
+> 2n
+
+∑
+
+> i=0
+
+W cov i (X ik − ¯X− 
+
+> k
+
+)( X ik − ¯X− 
+
+> k
+
+)T + Qk, (25) where, W mean  
+
+> 0
+
+= λ 
+
+> n+λ
+
+, W cov  
+
+> 0
+
+= λ 
+
+> n+λ
+
+(1 − α2 + β), and 
+
+W mean i = W cov i = 1 
+
+> 2( n+λ)
+
+∈ R, i = 1 , 2, ..., n . The covariance weight for the sigma points are denoted by the parameter β . For Gaussian distributions, β is considered to be 2. During the measurement update stage, the priori estimates 
+
+¯X− 
+
+> k
+
+and P − 
+
+> k
+
+are updated. For that, first the mean predicted measurement ¯Y − 
+
+> k
+
+∈ R6 should be obtained. Hence, the sigma points X ik, are transformed using the general measurement equation, Yk = h(Xk, Uk, Vk, k ). The transformed sigma TABLE I PARAMETERS OF THE QUADROTOR MODEL                         
+
+> Symbol: Description Value Unit
+> Ixx : MOI about body frame’s x-axis 0.02 kg ·m2
+> Iyy : MOI about body frame’s y-axis 0.02 kg ·m2
+> Izz : MOI about body frame’s z-axis 0.04 kg ·m2
+> d: Distance from rotor arm to the quadro-tor’s center of gravity
+> 0.169 m
+> m: Quadrotor mass 2.0kg
+> Cd: Body drag force coefficient diag([ 3.265, 3.265, 1.633]) ×10 −2
+> -
+> σgps : GPS standard deviation 0.1m
+> σimu : Gyroscope standard deviation 0.009 rad/s
+> σacc : Accelerometer standard deviation 0.097 ms −2
+> g: Gravitational acceleration 9.81 ms −2
+
+points Yik ∈ R6 are then used as follows, 
+
+¯Yk =
+
+> 2n
+
+∑
+
+> i=0
+
+W mean i Yik. (26) Subsequently, Kalman gain Kk ∈ R21 ×6 is calculated as follows, 
+
+Pyy k =
+
+> 2n
+
+∑
+
+> i=0
+
+W cov i (Yik − ¯Yk)( Yik − ¯Yk)T + Rk, (27) 
+
+Pxy k =
+
+> 2n
+
+∑
+
+> i=0
+
+W cov i (X ik − ¯X− 
+
+> k
+
+)( Yik − ¯Yk)T , (28) 
+
+Kk = Pxy k P −1 
+
+> yy k
+
+. (29) Then using ¯Y − 
+
+> k
+
+and Kk the posteriori state estimate ¯X+ 
+
+> k
+
+and the error covariance P + 
+
+> k
+
+are calculated as follows, 
+
+¯X+ 
+
+> k
+
+= ¯X− 
+
+> k
+
++ Kk(Zk − ¯Yk), (30) 
+
+P + 
+
+> k
+
+= P − 
+
+> k
+
++ KkPyy k KTk . (31) The true measurements at the current time-step are Zk =[xgps , Ωimu ] ∈ R6.
+
+D. Case Settings 
+
+The parameters of the quadrotor used in the simulation are included in Table I. It was assumed that the quadrotor UAV is equipped with an ICM-45686 (6-axis IMU) [18] with gyroscope accuracy 3.8 mdps/ √Hz and accelerometer accuracy 70 μg/ √Hz , as well as an M10 GPS module [19] with accuracy 2.0 CEP . The corresponding standard devia-tions are summarized in Table I. Since the flight tajectory is considered relatively small, the GPS standard deviation was assumed to be 0.1 m. The system was introduced with fixed disturbances ∆1 and ∆2 as process noise and non-additive, zero-mean, Gaussian noise as the measurement noise, that affects the measurements from the GPS, gyroscope, and accelerometer. Equations (5) and (4) include the fixed dis-turbances, ∆1 = [0 .5, 0.8, −1.0] , ∆2 = [0 .2, 1.0, −0.1] .The performance of EKF and UKF estimations was tested using numerical simulations using MATLAB. The quadrotor UAV was tested while hovering, as well as while following a Lissajous trajectory. The performance of the system was observed for 15 seconds. at a time-step of 0.005 seconds. During hovering, the quadrotor started at an initial point 
+
+xi = [0 , 0, 0] T and traveled to xd = [1 , 0, −1] T , and hovered at the point. The desired trajectory of the Lis-sajous curve is xd(t) = [ sin (t), sin (2 t), −1 + 0 .2cos (2 t)] T .The quadrotor UAV is disturbed with a constant wind of vwt = [4 , 5, 0] T . To gauge the estimation accuracy in a more complex wind field, a sinusoidal wind field, 
+
+vwt = [5 sin(2 πf 1t), 4 sin(2 πf 2t), 4 sin(2 πf 2t)] T , where, 
+
+f1 = 1 /15 Hz and f2 = 2 /15 Hz .III. R ESULTS AND DISCUSSION 
+
+Wind velocity estimation using quadrotor UAV, is carried out in two stages. First stage is for fixed-disturbance identi-fication. The quadrotor UAV hovers, fly through a straight-line trajectory and through a Lissajous curve, in the absence of wind disturbances, during which the fixed disturbances are estimated using EKF and UKF. The estimates from each trajectory are then averaged to obtain an final estimate for the fixed disturbances, which are shown in Table II.                       
+
+> TABLE II ESTIMATIONS FOR BIAS OF A QUADROTOR UAV
+> Type ∆1∆2
+> EKF 0.516 0.776 -0.992 0.200 1.000 -0.100
+> UKF 0.512 0.802 -0.978 0.200 1.000 -0.100
+> True 0.500 0.800 -1.000 0.200 1.000 -0.100
+
+During the second stage, quadrotor UAV estimates the wind relying on the corresponding estimates from stage one. To assess the performance of quadrotor UAV with EKF and UKF algorithms, the wind velocity estimation is carried out in three different cases. Wind velocity estimation was carried out in three different cases. Case 1: Quadrotor following a Lissajous trajectory under constant wind disturbances, Case 2: Quadrotor in hovering under sinusoidal wind disturbances, and Case 3: Quadrotor following a Lissajous trajectory under sinusoidal wind disturbances. In this work, the drag moment is neglected, considering its negligible effects, compared to the drag force. The measurement noise corrupting the measurements are given in Table I. As listed in Table I, sensor-based values are used for Rk and are adjusted to optimize estimation performance. The process and measure-ment noise covariances are defined as ( QEKF ∈ R6×6 and 
+
+QUKF ∈ R21 ×21 ), ( REKF ∈ R9×9, and RUKF ∈ R6×6). The initial estimates for wind velocity (vw ) contained high-frequency noise. Thus, a second-order Butterworth filter is used as a postprocessing step. The corresponding results, evaluated via RMSE and standard deviation, are presented in Table III. According to the results, both EKF and UKF estimate the wind velocities with highest accuracy in Case 2 (hovering under sinusoidal wind disturbances). Among the three in-vestigated cases, Case 1 (Lissajous trajectory under constant wind disturbances) results in the lowest estimation accuracy for both EKF and UKF. The Case with highest nonlinearities is the Case 3 (Lissajous trajectory under sinusoidal wind TABLE III 3D W IND VELOCITY ESTIMATION RMSE VIA EKF AND UKF  
+
+> Estimator Filtered Estimate
+> Case 1
+> EKF
+> 0.8192 ( ±0.6044)
+> 0.7955 ( ±0.7416)
+> 1.3490 ( ±0.8249)
+> UKF
+> 0.6238 ( ±0.5370)
+> 0.8461 ( ±0.7138)
+> 1.2511 ( ±0.8040)
+> Case 2
+> EKF
+> 0.4562 ( ±0.4486)
+> 0.7322 ( ±0.7271)
+> 1.1373 ( ±1.0870)
+> UKF
+> 0.4525 ( ±0.4505)
+> 0.6863 ( ±0.6314)
+> 1.0530 ( ±1.0275)
+> Case 3
+> EKF
+> 0.6935 ( ±0.6857)
+> 0.6325 ( ±0.6294)
+> 1.3425 ( ±1.3255)
+> UKF
+> 0.6694 ( ±0.6695)
+> 0.4964 ( ±0.4566)
+> 1.2463 ( ±1.2442)
+
+disturbances). As the nonlinearity of the trajectory and wind disturbances increases, the UKF tends to consistently outper-form the EKF. Overall the accuracy of wind estimation in vertical direction is lower. When assessing the trajectory holding capability of the quadrotor UAV under wind disturbances, it was observed that both estimates were capable of following the trajectory, even during the highest nonlinear scenario, Case 3. Figure 1 shows the trajectory of the quadrotor UAV relying only on sensor measurement, with EKF and with UKF. Both EKF and UKF estimators ensure that the quadrotor UAV follows the intended path with minimum deviation. The quadrotor UAV was capable of following the tra-jectory even during the highest nonlinear scenario, Case 3. Figure 1 shows the trajectory of the quadrotor UAV in 3D space, under sinusoidal wind disturbances. The quadrotor UAV was not capable of adhering to the path when it is relying only on the sensor measurements. Thus, indicating the need for an estimator. Both EKF and UKF estimators ensure that the quadrotor UAV follows the intended path with minimum deviation. To evaluate the trajectory holding ability of the two estimators, the RMSE and standard deviations of the position (x), velocity (vw ), angular velocity (Ω) and attitude (R) were calculated. The results are included in Table IV. According to the results, both EKF and UKF estimators are capable of trajectory holding, while the EKF is faster. The orientation error vector was obtained as  
+
+> 1
+> 2
+
+(RT Rt − (RT Rt)T )∨, where R is the estimated rotation and Rt is the true rotation. The symbol ∨ represents the vee map. Errors of the remaining state calculated by computing the difference between and true values. The EKF is capable of performing the estimation sparing only 0.0001 seconds for a single iteration, while UKF used 0.0019 seconds. Results from Table IV indicate that the UKF is capable of accurately estimating position (x) than the UKF, amid noisy measurements. In addition, the parameter which is totally estimated by the estimator velocity (v), has much better accuracy, when estimated using UKF. However, the EKF                                                   
+
+> Fig. 1. Trajectory of the quadrotor UAV while following a Lissajous trajectory under sinusoidal wind disturbances. TABLE IV STATE ESTIMATION RMSE AND STANDARD DEVIATION VIA EKF AND
+> UKF FOR LISSAJOUS TRAJECTORY IN A SINUSOIDAL WIND FIELD
+> State EKF UKF
+> x
+> (m)
+> 0.0172 ( ±0.0171) 0.0115 ( ±0.0115)
+> 0.0164 ( ±0.0163) 0.0107 ( ±0.0104)
+> 0.0173 ( ±0.0174) 0.0113 ( ±0.0113)
+> v
+> (ms −1)
+> 0.0565 ( ±0.0565) 0.0225 ( ±0.0225)
+> 0.0571 ( ±0.0571) 0.0210 ( ±0.0210)
+> 0.0322 ( ±0.0325) 0.0261 ( ±0.0257)
+> Ω(rads −1)
+> 0.0010 ( ±0.0003) 0.0057 ( ±0.0057)
+> 0.0011( ±0.0003) 0.0057 ( ±0.0057)
+> 0.0009 ( ±0.0005) 0.0057 ( ±0.0057)
+> R
+> 0.0003 ( ±0.0003) 0.0010 ( ±0.0010)
+> 0.0003 ( ±0.0003) 0.0008 ( ±0.0008)
+> 0.0010 ( ±0.0009) 0.0014 ( ±0.0011)
+
+shows higher accuracy in estimating the angular velocity (Ω) 
+
+and the attitude (R). In terms of computational time, EKF is far more quicker than the UKF. IV. C ONCLUSION 
+
+This study improves wind velocity estimation and trajec-tory tracking of quadrotor UAVs using UKF. The estimations relied solely on commonly available onboard sensors. The performance of the UKF was compared to the widely used EKF. The results indicated that the UKF outperformed the EKF as system nonlinearity increased. However, in near-linear scenarios, the EKF achieved similar accuracy with less computation time. In wind velocity estimation, both the UKF and EKF maintained accurate trajectory tracking, despite wind disturbances. The UKF eliminated the need for high-cost sensors by providing cost-effective estimates. It is well-suited for critical tasks like wildfire monitoring, where nonlinearities are significant. For more general tasks, the EKF is computationally faster. Future work will focus on improving the accuracy of vertical wind velocity estimation. ACKNOWLEDGMENT 
+
+The authors acknowledge the support of Natural Sciences and Engineering Research Council of Canada (NSERC) and Alberta Innovates. REFERENCES [1] P. P. Neumann and M. Bartholmai, “Real-time wind estimation on a micro unmanned aerial vehicle using its inertial measurement unit,” 
+
+Sensors and Actuators, A: Physical, vol. 235, pp. 300–310, 11 2015. [2] X. Xiang, Z. Wang, Z. Mo, G. Chen, K. Pham, and E. Blasch, “Wind field estimation through autonomous quadcopter avionics,” 
+
+AIAA/IEEE Digital Avionics Systems Conference - Proceedings , vol. 2016-Decem, pp. 1–6, 2016. [3] J. Gonz´ alez-Rocha, C. A. Woolsey, C. Sultan, and S. F. D. Wekker, “Model-based wind profiling in the lower atmosphere with multirotor uas,” in AIAA Scitech 2019 Forum. American Institute of Aeronautics and Astronautics Inc, AIAA, 1 2019. [4] L. Sikkel, G. de Croon, C. D. Wagter, and Q. Chu, “Iros 2016 : 2016 ieee/rsj international conference on intelligent robots and systems : October 9-14, 2016, daejeon convention center, daejeon, korea,” in 
+
+2016 IEEE/RSJ International Conference on Intelligent Robots and 
+
+Systems. IEEE, 10 2016, pp. 2141–2146. [5] Z. Xing, Y. Qu, and Y. Zhang, “Shear wind estimation with quadro-tor uavs using kalman filtering regressing method,” International 
+
+Conference on Advanced Mechatronic Systems, ICAMechS , vol. 2017-Decem, pp. 196–201, 2017. [6] H. Chen, H. Bai, and C. N. Taylor, “Invariant-ekf design for quadcopter wind estimation,” Proceedings of the American Control Conference, vol. 2022-June, pp. 1236–1241, 2022. [7] J.-P. Condomines, M. Bronz, G. Hattenberger, and J.-F. Erdelyi, “Experimental wind field estimation and aircraft identification,” in 
+
+IMAV 2015: International Micro Air Vehicles Conference and Flight 
+
+Competition. HAL open science, 9 2015. [Online]. Available: http://www.researchgate.net/publication/282003424 [8] M. B. Rhudy, Y. Gu, J. N. Gross, and H. Chao, “Onboard wind velocity estimation comparison for unmanned aircraft systems,” IEEE 
+
+Transactions on Aerospace and Electronic Systems, vol. 53, pp. 55–66, 2 2017. [9] A. Shastry and D. A. Paley, “Uav state and parameter estimation in wind using calibration trajectories optimized for observability,” IEEE 
+
+Control Systems Letters, vol. 5, pp. 1801–1806, 11 2021. [10] A. K. Shastry and D. A. Paley, “System identification for high-performance uav control in wind,” International Journal of Robust and 
+
+Nonlinear Control, vol. 33, pp. 10 451–10 467, 11 2023. [11] K. Gamagedara, T. Lee, and M. Snyder, “Real-time kinematics gps based telemetry system for airborne measurements of ship air wake,” in AIAA Scitech 2019 Forum. American Institute of Aeronautics and Astronautics Inc, AIAA, 2019. [12] M. B. Rhudy, Y. Gu, and H. Chao, “Wind field velocity and accelera-tion estimation using a small uav,” in AIAA Modeling and Simulation 
+
+Technologies Conference. American Institute of Aeronautics and Astronautics (AIAA), 6 2014, pp. 1–9. [13] J. Gonz´ alez-Rocha, C. A. Woolsey, C. Sultan, and S. F. De Wekker, “Sensing wind from quadrotor motion,” Journal of Guidance, Control, 
+
+and Dynamics, vol. 42, no. 4, pp. 836–852, 2019. [14] F. A. Goodarzi and T. Lee, “Global formulation of an extended kalman filter on se(3) for geometric control of a quadrotor uav,” Journal of 
+
+Intelligent and Robotic Systems: Theory and Applications , vol. 88, pp. 395–413, 12 2017. [15] M. Rhudy, J. Gross, and Y. Gu, “Stochastic wind modeling and estimation for unmanned aircraft systems,” in AIAA Aviation 2019 
+
+Forum. American Institute of Aeronautics and Astronautics Inc, AIAA, 2019, pp. 1–9. [16] J. L. Crassidis and J. L. Junkins, Optimal Estimation of Dynamics 
+
+Systems, 2nd ed. Chapman & Hall CRCy, 2004. [17] S. S. Haykin, Kalman Filtering and Neural Networks. John Wiley & Sons, 2001. [18] TDK InvenSense, “ICM-45686,” https://invensense.tdk.com, 2025, ac-cessed: 2025-06-25. [19] Holybro Store, “M10 GPS,” https://holybro.com, 2025, accessed: 2025-06-25.

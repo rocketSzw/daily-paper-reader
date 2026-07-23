@@ -1,0 +1,1116 @@
+Title: QuadRocket: An Aerial Robotic Testbed for Adaptive Thrust-Vector Control of Rocket-Like Vehicles
+
+URL Source: https://arxiv.org/pdf/2607.02474v1
+
+Published Time: Fri, 03 Jul 2026 01:33:51 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# QuadRocket : An Aerial Robotic Testbed for Adaptive Thrust-Vector Control of Rocket-Like Vehicles 
+
+PEDRO SANTOS , Graduate Student Member, IEEE Instituto Superior T´ ecnico, Universidade de Lisboa, Lisbon, Portugal 
+
+JOEL REIS 
+
+Faculty of Science and Technology, University of Macau, Taipa, Macao, China 
+
+PAULO OLIVEIRA , Senior Member, IEEE Instituto Superior T´ ecnico, Universidade de Lisboa, Lisbon, Portugal 
+
+CARLOS SILVESTRE , Senior Member, IEEE Faculty of Science and Technology, University of Macau, Taipa, Macao, China 
+
+Abstract— This paper presents QuadRocket , a quadrotor-based rocket prototype that provides a low-cost, low-risk platform for validating advanced thrust-vector control strategies for launch-vehicle–type systems. The prototype consists of a cylindrical main body mounted on top of a quadrotor through a universal joint, forming a flying inverted pendulum with non-negligible inertia. For control design, the coupled system is modeled as a single axisymmetric rigid body actuated by a vectored force applied along 
+
+This article has been accepted for publication in IEEE Transactions on Aerospace and Electronic Systems. This is the author’s version which has not been fully edited and content may change prior to final publication. Citation information: DOI 10.1109/TAES.2026.3706328. ©2026 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works This work was supported in part by the Macao Science and Tech-nology Development Fund under Grants FDCT/0192/2023/RIA3 and FDCT/0059/2024/RIA1, in part by the University of Macau, un-der Projects MYRG2022-00205-FST, MYRG-GRG2023-00107-FST-UMDF, UMDF-TISF/2025/007/FST and SRG2024-00012-FST, and in part by Fundac ¸ ˜ ao para a Ciˆ encia e Tecnologia (FCT) through LAETA (UID/50022/2025) and LARSyS (DOI: 10.54499/LA/P/0083/2020). Pe-dro Santos holds a Ph.D. scholarship from FCT (2023.00268.BD). 
+
+(Corresponding author: C. Silvestre) .P. Santos and P. Oliveira are with IDMEC and ISR, Instituto Superior T´ ecnico, Universidade de Lisboa, Lisbon, Portugal (e-mail: pedrodos-santos; paulo.j.oliveira). J. Reis and C. Silvestre are with the Department of Electrical and Computer Engineering of the Faculty of Science and Technology, University of Macau, Taipa, Macao, China (e-mail: joelreis; csilvestre). C. Silvestre is on leave from Instituto Superior T´ ecnico, Universidade de Lisboa, Lisboa, Portugal. 0018-9251 © 2026 IEEE 
+
+its longitudinal axis. A reduced-attitude representation on the two-sphere is adopted to explicitly exploit the vehicle’s axial symmetry and to decouple yaw from the thrust-vector direction. On this model, we derive an adaptive backstepping controller that achieves almost-global trajectory tracking in the presence of unknown constant disturbances, while a control-point transformation mitigates non-minimum-phase behavior. The quadrotor is then treated as a thrust-vector actuator, and a dynamic-surface-based attitude controller is designed to track the desired thrust-vector, accounting for actuation dynamics and avoiding explicit differentiation of virtual control signals. The complete architecture is evaluated in simulation and validated experimentally in an indoor motion-capture arena. Results demonstrate accurate trajectory tracking, effective disturbance compensation, and confirm the suitability of the QuadRocket as a versatile testbed for thrust-vector-controlled robotic vehicles. 
+
+Index Terms— Adaptive backstepping, aerial robotics, experi-mental robotics, nonlinear control, thrust-vector control, underac-tuated systems. 
+
+I. INTRODUCTION 
+
+TESTING and validating control algorithms before deployment in highly complex autonomous vehicles is of utmost importance. This is especially true in the launch vehicle industry, where strict safety requirements and high operational costs impose that new technologies demonstrate a proven level of reliability [1]. At the same time, increasingly demanding mission scenarios require novel control algorithms capable of coping with a broader range of operating conditions and adapting to varying trajectory tracking requirements across different missions [2]. Nonlinear and adaptive control strategies are natural candidates due to their intrinsic suitability for achieving global—or near-global—stability and tracking performance in the presence of unknown disturbances and parametric uncertainties [3]. Because these algorithms are more complex and less established than classical control approaches, low-cost and low-risk test vehicles become essential tools for thoroughly verifying and validating their performance. In this work, a novel platform to serve as low-cost testbed for thrust vectoring-based advanced control algorithms is presented and flight-tested. Leveraging the wide availability and cost-effective nature of quadrotor UAVs (Unmanned Aerial Vehicles) [4], together with their agility and extensive control-oriented research body, a cylindrical carbon fiber structure is designed and assem-bled on top of a quadrotor through an universal joint. The universal joint allows for unconstrained rotational motion between both bodies in two degrees of freedom, resulting in a flying inverted pendulum configuration with non-negligible inertia. This system is physically analogous to a rocket controlled via thrust vectoring in the sense that the net thrust force is applied along a direction that is not fixed to the main body axis, generating coupled translational and rotational dynamics through an off-center actuation point. As in rocket Thrust-Vector Control (TVC) systems, control authority is exercised through the regulation of the thrust-vector direction and magnitude, leading to similar control objectives and stability chal-
+
+IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026 1      
+
+> arXiv:2607.02474v1 [cs.RO] 2 Jul 2026 --
+> ·p{I}
+> {B}
+> {Q}
+> 1Fig. 1. The QuadRocket : representation of reference frames (red, green, and blue represent the x,y, and zaxes, respectively).
+
+lenges. Besides its primary goal of serving as a low-cost and low-risk testbed for advanced thrust-vector control of rocket-like vehicles, we envision two additional appli-cations which naturally emerge from the proposed aerial vehicle: i) autonomous cargo transportation, in which the cylindrical structure could carry a given payload; and ii) autonomous inspection of civil infrastructures, namely ceilings [5], where the structure mounted on the quadrotor enables agile close-proximity operations. For control design purposes, we follow the rocket analogy and take the two interconnected systems as a single rigid body with the inertial orientation of the carbon structure, actuated by a vectored force, which is given by the relative orientation and thrust magnitude of the quadrotor. In other words, the quadrotor is seen as a thrust-vector actuator to the main cylindrical body. Consequently, our control strategy focuses on two main tasks: i) to design a trajectory tracking controller for a generic axisymmetric rigid body actuated by a vectored force applied at a point on its longitudinal axis, below the center of mass; and ii) to design a control law for the angular velocity command of the quadrotor such that it tracks the desired thrust-vector provided by the flight controller. The axisymmetric rigid body actuated by a vectored force is an underactuated system with additional nonholo-nomic constraints arising from the coupling between force and torque inputs. This coupling can also lead to unde-sired non-minimum phase behavior [6]. The literature is scarce when it comes to integrated nonlinear trajectory tracking solutions for thrust-vector-controlled rockets, as position and attitude control loops are often designed separately, relying on linear approximations, and without formal stability guarantees for the complete cascaded system [7]. Nevertheless, integrated approaches are stan-dard for other underactuated autonomous vehicles, some of which sharing fundamental actuation mechanics with our platform. These include Lyapunov-based methods, most predominantly nonlinear backstepping, for thrust-vectored-controlled surface crafts [8], [9] and VTOL (Vertical Take-Off and Landing) ducted fan UAVs [10], geometric control of quadrotor UAVs [11]–[13], sliding mode control for missiles [14], as well as feedback linearization-based strategies [15], [16]. The reader is refered to [3], [17] and the references therein for a deeper understanding on trajectory tracking control techniques for underactuated mechanical systems. Our strategy leverages the tools of adaptive backstep-ping to derive a control law that defines the desired thrust-vector and ensures almost-global trajectory tracking in the presence of a constant exogenous disturbance. Moreover, borrowing from the literature on attitude control of under-actuated rigid-bodies and geometric control on the sphere [12], [18], we rely on a reduced attitude representation on the 2-sphere to fully exploit the axial symmetry of the vehicle and obtain almost-global attitude tracking with decoupled yaw motion. Additionally, the control point is moved from the center of mass to the center of oscillation in order to cancel small torque-to-force couplings and prevent non-minimum phase behavior, as originally detailed in [19] and [20]. The backstepping technique and the reduced attitude representation are also used for quadrotor control to ensure that it tracks the desired thrust-vector. 
+
+A. Related Work 
+
+Other works have focused on developing low-cost and low-risk thrust vectoring testbeds to validate novel Guidance, Navigation & Control (GNC) algorithms. Two independent projects from Switzerland, [21], [22], have built and successfully tested thrust vectoring flying plat-forms relying on electric brushless motor-driven contra-rotating propellers attached to a gimbal mechanism. Both use Model Predictive Control (MPC) to solve the tra-jectory planning and tracking problem while optimizing actuation effort and satisfying constraints. Contrary to these works, in our platform thrust vectoring is achieved through multirotor attitude and force generation, avoiding gimbal-specific constraints such as servo angle/rate limits and backlash, and enabling rapid, repeatable experiments through readily available multirotor hardware. Moreover, while [21], [22] primarily validate optimization-based GNC (optimal guidance and MPC/NMPC-type tracking), our paper instead focuses on a closed-form nonlinear adaptive controller targeting stability/robustness guaran-tees without requiring online optimization. As for quadrotor-based solutions, previous work from some of the authors has solved the trajectory tracking problem for the flying inverted pendulum via adaptive backstepping [23]. In this case, the pendulum is taken as a point mass, with the quadrotor being the main    
+
+> 2IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026
+
+contributor to the overall mass of the system. A differ-ent quadrotor-based scheme has been proposed in [24], where the primary goal is to accurately represent the dynamics of a launch vehicle. Both a flexible inverted pendulum and hanging mass are attached to the quadrotor to simulate aerodynamic instability and fuel sloshing. As opposed to our platform, the quadrotor is the main body and the inverted pendulum is used to replicate launch vehicle modes. Control design also differs, as a standard Linear Quadratic Regulator (LQR) is derived on a linear representation of the system to track attitude commands from an independent guidance loop. Focusing on the control strategy, nonlinear/geometric adaptive control techniques are standard when trying to enforce strict stability guarantees in the presence of constant disturbances [25]. Relevant works which share similar design methodology can be found in [23], [26]– [29]. In our paper, we apply these techniques to an original model of a thrust-vector-controlled rocket-like vehicle, relying on a reduced-attitude representation on the 2-sphere. In doing so, we build on a considerable gap in the rocket trajectory control literature, where tracking solutions with (near) global performance are lacking [30]. Reduced-attitude representations have long been used in rigid-body attitude control, motivated by the need to regulate a body-fixed axis and by the presence of torque underactuation. Seminal work can be found in [18], [31]. More recently, these techniques have been exploited in the context of trajectory tracking with aerial vehicles for which the thrust direction governs position tracking independently of yaw motion [32], most pre-dominantly quadrotor UAVs [12], [33]–[36]. In our paper, we extend this methodology to a class of axissymetric aerial vehicles controlled by means of thrust vectoring. We rely on a reduced-attitude error that respects the geometrical properties of the 2-sphere, similar to the one employed in [12], [36], and propose a geometric tracking law derived through backstepping that ensures almost global asymptotic convergence. As opposed to previous works, to ensure stability of the closed-loop system we do not rely on time-scale separation [33], and do not restrict the admissible gains [12], [36] or the reduced-attitude configuration space [35]. This is achieved through a sequential backstepping design that leads to a single Lyapunov function encapsulating all tracking errors (position and attitude). 
+
+B. Contributions 
+
+Contributions of this work can be segmented into (i) platform design and experimental realization, and (ii) modeling and nonlinear control development: 1) To the best of our knowledge, the QuadRocket is the first quadrotor-based rocket prototype where the largest mass contributor is not the quadrotor but a body of non-negligible inertia attached to it through an universal joint; 2) We demonstrate that a quadrotor can act as a thrust-vector actuator, enabling control of a flying inverted pendulum when modeled as a thrust-vector-controlled rocket; 3) An original model for the dynamics and kinemat-ics of a generic axisymmetric rigid body controlled via thrust vectoring is derived by exploiting a reduced attitude representation on the 2-sphere and considering a control point transformation that cancels out non-minimum phase behavior. 4) A novel almost-global trajectory tracking solution in the presence of a constant exogenous distur-bance is obtained. For this class of vehicles, our approach is the first to merge position and attitude control in a single loop while using a reduced atti-tude error that respects the geometrical properties of the 2-sphere. 
+
+C. Notation 
+
+Throughout this paper, the following notation applies. Bold lowercase and uppercase symbols stand for column vectors and matrices, respectively. The n-dimensional Euclidean space is represented by Rn, with Sn denoting the set of unit vectors in Rn+1 . The space tangent to the n-sphere Sn at a point p ∈ Sn is denoted by 
+
+TpSn. The set of positive real numbers is denoted by 
+
+R+, while R+0 represents the set of non-negative real numbers. The symbol I denotes the identity matrix, and 
+
+0 denotes a vector/matrix of zeros, both of appropriate dimensions. The transpose operator is denoted by (·)T.The symbol ⊗ stands for the Kronecker product while the direct sum is represented by ⊕. Given a vector 
+
+x = [ x1 x2 . . . x n ]T ∈ Rn, its Euclidean norm is defined as || x|| := √xTx. A function f is of class Cn if its derivatives f ′, f ′′ , ..., f (n) exist and are continuous. The special orthogonal group of order three is defined as SO(3) := X ∈ R3×3 : XX T = XTX = I, det (X) = 1 .The operator S(·) : R3 7 → R3×3 yields a skew-symmetric matrix satisfying (the cross product) S(x)y = x × y, for any x, y ∈ R3. The operator diag (x) : Rn 7 → Rn×n
+
+returns a diagonal matrix with the elements of x along the main diagonal. The vectors e1, e2, e3 ∈ S2 are orthonormal and form a basis of R3, such that the identity matrix can be expressed as I = [ e1 e2 e3].
+
+II. SYSTEM OVERVIEW 
+
+The QuadRocket platform was conceived as an aerial robotic testbed that is inexpensive, modular, and easy to reproduce, while still capturing the key dynamics of thrust-vector-controlled rocket-like vehicles. The design relies almost exclusively on off-the-shelf components and simple custom parts so that the platform can be replicated and modified in typical robotics laboratories. The system consists of a quadrotor UAV mechanically coupled to a cylindrical body through a universal joint, forming a flying inverted pendulum with non-negligible inertia, as  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 3
+
+0.1 
+
+0.15 
+
+0.1 
+
+0.5 
+
+0.2 
+
+1𝛿 Fig. 2. QuadRocket scheme. All dimensions in meters. The orange rectangle represents the battery, and the universal joint is shown in red. 
+
+illustrated in Fig. 2. This configuration preserves the essential coupling between thrust-vector direction and rigid-body attitude, enabling realistic evaluation of guid-ance and control strategies for thrust-vector-controlled vehicles. The cylindrical body is assembled from four independent carbon-fiber tubes with carbon-fiber disks attached to both ends, as shown in Fig. 3, each tube carrying a carbon-fiber leg so that the vehicle can stand upright on the ground. An additional carbon disk is positioned near the top of the structure to support the battery that powers the quadrotor. Positioning the battery at this location shifts the overall center of mass closer to the top, which increases the torque lever arm and, consequently, control authority. An off-the-shelf aluminum universal joint is attached to the top of the quadrotor using a 3D printed PLA (Polylactic Acid) part (see Fig. 3). To connect the carbon fiber cylindrical structure to the top part of the universal joint, an aluminum shaft was first designed and then manufactured by an external partner. The shaft has a threaded end so that it can be secured to the bottom carbon plate using a nut, while connection to the universal joint is guaranteed by friction, aided by a tightening shaft built into the joint. The universal joint allows for unconstrained rotational motion between both bodies in two degrees of freedom, corresponding to the gimbal angles, up to 40 ◦
+
+of maximum tilt. A rotational constraint is imposed on the remaining degree of freedom by the universal joint, meaning that the quadrotor and the main body will have the same rotation on their individual axis of connection to the joint. The mass properties of the system are collected on Table I.              
+
+> TABLE I System mass properties.
+> Component Mass (kg) %Total
+> Quadrotor 0.45 29.0 Carbon fiber structure 0.64 41.3 Universal joint and shaft 0.11 7.1 Battery and power cables 0.35 22.6 Fully assembled vehicle 1.55 100
+> Fig. 3. Quadrotor with mounted universal joint and main body.
+
+A. Quadrotor 
+
+The quadrotor had been previously designed and as-sembled at the SCORE lab of the University of Macau and is of the FPV racing type (see Fig. 3). Its lightweight structure is made out of carbon fiber plates connected through aluminum spacers and carbon fiber arms to support each of its four brushless motors. The BetaFPV Snow 2306 2500KV motors were used with 5 inch propellers, producing a maximum combined thrust of 55 N at a current of 160 A. To power the drone, a 4-cell LiPo battery is used with a discharge rate of 120 C and a nominal capacity of 2000 mA.h. As for the flight computer, a BrainFPV RADIX 2 HD Flight Controller is used with BetaFlight 4.5.1 flight software running on it. For our implementation, the flight software is configured to manual mode such that the quadrotor tracks thrust and angular velocity commands coming from an RC communication link. This RC communication link will be directly commanded by the control algorithm to be derived. 
+
+III. PROBLEM FORMULATION 
+
+The QuadRocket consists of two interconnected rigid bodies linked by a universal joint. Directly modeling and controlling this coupled multibody system with joint constraints leads to a high-dimensional and cumbersome representation that obscures the main control challenges. To simplify the flight-stabilization and control problem, we adopt an abstraction in which the vehicle is modeled as a single axisymmetric rigid body actuated by a vectored    
+
+> 4IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026
+
+force applied along its longitudinal axis, i.e., the quadrotor is treated as a thrust-vector actuator: ASSUMPTION 1 The QuadRocket is an axisymmetric rigid body actuated by a vectored force applied along its longitudinal axis. The magnitude of the control force is given by the thrust produced by the quadrotor, and its direction is determined by the relative orientation between the quadrotor and the cylindrical structure. 
+
+Under Assumption 1, the cylindrical body defines the inertial position, velocity, and orientation of the vehicle, while the abstracted rigid body has the combined mass and approximate inertia properties of both physical bod-ies. ASSUMPTION 2 The angular velocity of the quadrotor is regulated by a sufficiently fast inner-loop controller. Consequently, it can be treated as a control input. 
+
+Assumptions 1 and 2 allow us to decompose the control problem into two complementary tasks: 1) Design a flight controller for a generic axisymmet-ric rigid body actuated by a vectored force, applied on its longitudinal axis below the center of mass; 2) Design an attitude controller to command the angular velocity of the quadrotor such that it tracks the desired thrust-vector input computed by the flight controller. 
+
+A. QuadRocket Dynamic Modelling 
+
+Following Assumption 1, the QuadRocket can be seen as an underactuated vehicle with constant mass, m ∈ R+,while its inertia tensor is the positive definite matrix given by J ∈ R3×3. Let us introduce three reference frames: an inertial one denoted by {I}, a body-fixed one denoted by 
+
+{B}, whose origin coincides with the center of mass of the vehicle, and a third one fixed to the quadrotor denoted by {Q}. Figure 1 depicts the reference frames. Let p, v ∈ R3 respectively stand for the inertial position and velocity of the center of mass, R ∈ SO(3) be the rotation matrix from {B} to {I}, and ω ∈ R3 be the angular velocity of {B} with respect to {I}, expressed in 
+
+{B}. Then, the kinematics of the QuadRocket are given by ( ˙p = v ,
+
+˙R = RS (ω) .
+
+(1a) (1b) Moreover, let Rq ∈ SO(3) be the rotation matrix from 
+
+{Q} to {I}, and ωq ∈ R3 be the angular velocity of {Q}
+
+with respect to {I}, expressed in {Q}. Then, the attitude kinematics of the quadrotor are given by 
+
+˙Rq = Rq S(ωq ) . (2) By defining a virtual thrust-vector control input, de-noted by u ∈ R3, as the instantaneous force vector produced by the quadrotor expressed in {B}, i,e, 
+
+u := −T RTRq e3 , (3) where T ∈ R+0 is the thrust magnitude, the dynamics of the vehicle are obtained: 
+
+˙v = ge3 + 1
+
+m Ru + b ,
+
+˙ω = −J−1S(ω)Jω + LJ−1S(e3)u ,
+
+(4a) (4b) where g ∈ R+ is the gravitational acceleration, L ∈ R+ is the distance between the center of mass and the universal joint, both assumed to be located on the longitudinal axis, and b ∈ R3 is an unknown disturbance. ASSUMPTION 3 The unknown exogenous disturbance, b,is constant or slowly time-varying, i.e, ˙b ≈ 0.
+
+B. Reduced attitude Representation in S2
+
+Considering the nature of thrust-vector actuation, the control task, and the axial symmetry of the vehicle, it is advantageous to decouple the rotational motion of the longitudinal axis (pitch and roll) from rotational motion around this axis (yaw). To do so, we first rewrite the atti-tude kinematics of the vehicle by applying the projection map [18] 
+
+πi(R) := Re i , (5) which takes the full attitude of the vehicle given by its rotation matrix, R ∈ SO(3), and projects it into a unit vector in S2. Using this map, the rotation matrix can be expressed as R = [ r1 r2 r3 ], where 
+
+ri := πi(R) ∈ S2 , i = {1, 2, 3} . (6) The unit vector r3 defines the direction of the longitudinal axis, i.e., the z-axis of {B}, expressed in {I} and its kinematics are given by 
+
+˙r3 = −S(r3) Ω12 , ˙r3 ∈ Tr3 S2 ⊂ R3 , (7) where 
+
+Ω12 := −S2(r3) Ω = ω1r1 + ω2r2 , Ω12 ∈ Tr3 S2 , (8) with 
+
+Ω := R ω . (9) ASSUMPTION 4 Due to the axial symmetry of the vehicle, its inertia tensor is taken as a diagonal matrix of the form J = diag (j⊥, j ⊥, j ∥), where j⊥, j ∥ ∈ R+ are the transverse and longitudinal inertia values, respectively. 
+
+Using the reduced attitude representation, together with Assumption 4, the dynamics and kinematics take the new form 
+
+
+
+˙p = v ,
+
+˙v = ge3 + 1
+
+m u3r3 − 1
+
+mL S(r3)Γ + b ,
+
+˙r3 = −S(r3) Ω12 ,
+
+˙Ω12 = 1
+
+j⊥
+
+Γc ,
+
+(10a) (10b) (10c) (10d) where Γ ∈ Tr3 S2 is the torque input caused by quadrotor thrust vectoring, defined as 
+
+Γ := LS(r3)Ru , (11)  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 5
+
+and Γc ∈ Tr3 S2 is an auxiliary torque input that gathers the thrust vectoring, Γ, and gyroscopic terms, Γ0 ∈ Tr3 S2,defined as 
+
+Γc := Γ + Γ0 , (12) with 
+
+Γ0 := j⊥ S2(r3)  RJ −1S(ω)Jω − S(Ω)Ω12 
+
+ . (13) 
+
+C. Non-minimum Phase Behavior and Coordinate Change 
+
+Looking at the vehicle dynamics and kinematics in (10), besides the problem of underactuation, a coupling between force and torque actuation is noted through the dependency of the position dynamics on the torque input Γ. This is characteristic to underactuated vehicles controlled by means of a vectored force and is known to cause undesired non-minimum phase behavior [10]. To tackle this problem, and similarly to what was done in [8]–[10] for other autonomous platforms controlled by a vectored force, let us write the dynamics and kinematics of the system with respect to an arbitrary point located on the longitudinal axis of the vehicle at a given distance, denoted by δ ∈ R+, above its center of mass, as illustrated in Fig. 2. The inertial position and velocity of this point, respectively pδ , vδ ∈ R3, are given by 
+
+pδ = p − δr3 , (14) 
+
+vδ = v + δ S(r3) Ω12 , (15) leading to the following position dynamics and kinemat-ics: 
+
+˙pδ = vδ = v − δ ˙r3 , (16a) 
+
+˙vδ = ge3 + u3 r3 + S(r3)
+
+ δj⊥
+
+Γc − 1
+
+mL Γ
+
+
+
++ b ,
+
+(16b) where 
+
+u3 := u3
+
+m + δ ΩT
+
+> 12
+
+Ω12 . (17) Based on (16b), it is straightforward to infer that the coupling term coming from the torque input can be canceled with the additional cross-product term arising from the coordinate change if 
+
+δ = j⊥
+
+mL ∧ Γ = Γc . (18) The value of δ is user-defined, corresponding to a control point shift to the center of oscillation [19]. On the other hand, the condition on the torque input is equivalent to Γ0 = 0, which, from (13), is verified for ω3 = 0 .Considering that rotational motion around r3 is decoupled from the remaining rotational degrees of freedom, and that 
+
+ω3 can be set by commanding the angular velocity of the quadrotor accordingly, we assume that this condition can also be satisfied. Then, the model used for control design takes the final form 
+
+
+
+˙pδ = vδ ,
+
+˙vδ = ge3 + u3 r3 + b ,
+
+˙r3 = −S(r3) Ω12 ,
+
+˙Ω12 = 1
+
+j⊥
+
+Γc .
+
+(19a) (19b) (19c) (19d) 
+
+D. Problem Statement 
+
+We are now in the position to formally state the two problems that naturally arise from the complementary control tasks: PROBLEM 1 (Virtual Thrust-Vector Control) Given a time-parameterized reference trajectory denoted by 
+
+pd(t) ∈ R3, of class C4, and whose time derivatives are bounded, design a control law for the virtual thrust-vector input u in (3) that, under the dynamic model in (19) ,ensures convergence of the tracking error pδ − pd to zero in the presence of unknown constant disturbances, b.
+
+PROBLEM 2 (Quadrotor Attitude Control) Derive a con-trol law for the angular velocity ωq in (2) such that the quadrotor is able to track the commanded virtual thrust-vector input u.
+
+IV. NONLINEAR CONTROL DESIGN 
+
+In this section, strategies to independently solve Prob-lems 1 and 2 will be derived by leveraging the tools of nonlinear adaptive backstepping and dynamic surface control. 
+
+A. Virtual Thrust-Vector Control 
+
+Given the model in (19), we shall design a control law for the virtual thrust-vector input, u(t), that solves Problem 1. For that purpose, let us start by defining the position and velocity tacking errors as the first states of our error system: 
+
+z1 := pδ − pd ∈ R3 , (20) 
+
+z2 := vδ − ˙pd ∈ R3 . (21) Consider now the first candidate Lyapunov function given by 
+
+V1 := 12 zT 
+
+> 1
+
+z1 . (22) Its time derivative can be written as 
+
+˙V1 = −W1 + zT 
+
+> 1
+
+(z2 + Kpz1) , (23) where Kp ∈ R3×3 is a positive definite gain matrix, and 
+
+W1 := zT 
+
+> 1
+
+Kpz1 ∈ R+0 is a non-negative auxiliary term. Looking at (23), a new error e := z2 + Kpz1 ∈ R3
+
+is defined, leading to our second candidate Lyapunov function: 
+
+V2 := V1 + 12 eTe . (24)    
+
+> 6IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026
+
+Using the dynamics given in (19), the time derivative of (24) can be expressed as 
+
+˙V2 = −W2 + eT (ζ + ge3 + b − ¨pd + u3 r3) , (25) where W2 := W1 + eTKve ∈ R+0 is another non-negative auxiliary term, with Kv ∈ R3×3 being a positive definite symmetric gain matrix, and where 
+
+ζ := ( I + KvKp) z1 + ( Kp + Kv) z2 ∈ R3 (26) is an auxiliary vector, defined to simplify notation. To cancel out the last term of (25), let us define a vector which gathers the known terms as 
+
+ξ := ζ + ge3 + bb1 − ¨pd ∈ R3 , (27) where bb1 ∈ R3 is a first estimate on the constant unknown disturbance. Accordingly, the estimation error is defined as eb1 := bb1 − b ∈ R3 . (28) By replacing (27) and (28) in (25), we get 
+
+˙V2 = −W2 + eT (ξ + u3 r3) − eT eb1 . (29) Note that the second term in (29) cannot be directly canceled out due to the underactuated nature of the system. Indeed, nothing imposes alignment between ξ and 
+
+r3. Thus, to tackle this problem, a desired direction for the longitudinal axis is defined as 
+
+r3d := ξ
+
+|| ξ|| , ξ̸ = 0 , (30) and the following law for the longitudinal component of the virtual thrust-vector is imposed: 
+
+u3 := −ξTr3 . (31) Replacing both definitions, (30) and (31), in (29), we obtain ˙V2 = −W2 + ∆ − eT eb1 , (32) with 
+
+∆ := || ξ|| eTS(r3)zr ∈ R , (33) where a reduced attitude error 
+
+zr := S(r3d)r3 ∈ Tr3 S2 ∩ Tr3d S2 (34) is defined. This error definition respects the geometrical properties of S2 – the space where the reduced attitude representation lives – allowing for a more intuitive control design. To account for the last term in (32), a third candidate Lyapunov function is defined as 
+
+V3 := V2 + 12 ebT 
+
+> 1
+
+Λ−11 eb1 , (35) where Λ1 ∈ R3×3 is a positive definite auxiliary gain matrix. The time derivative of (35) can be written as 
+
+˙V3 = −W2 + ∆ + ebT
+
+> 1
+
+
+
+Λ−11
+
+˙eb1 − e
+
+
+
+, (36) thus, if the dynamics of the estimation error are given by 
+
+˙eb1 = Λ1e , (37) the time derivative in (36) simplifies to 
+
+˙V3 = −W2 + ∆ . (38) Under Assumption 3, the estimation error dynamics in (37) can be enforced through the adaptation law 
+
+˙bb1 = Λ1e , (39) which will correspond to an integral action that grants the controller robustness to constant or slowly varying disturbances. At this point, we must ensure that r3 aligns with r3d,thereby canceling out the term ∆ in (38). In other words, a control law for the torques produced by the virtual thrust-vector must be devised such that reduced attitude control is achieved. With that goal in mind, we introduce yet another candidate Lyapunov function 
+
+V4 := V3 + hr
+
+ 1 − rT
+
+> 3d
+
+r3
+
+ , (40) where hr ∈ R+ is a positive auxiliary tuning parameter. The time derivative of (40) can be written as 
+
+˙V4 = −W3 + ∆ + zrT [kr zr + hr (Ω12 − Ω12 d)] , (41) where W3 := W1 + W2 + kr zrTzr ∈ R+0 is a third non-negative auxiliary term, kr ∈ R+ is a positive scalar gain, and Ω12 d := S(r3d)˙ r3d ∈ Tr3d S2 is the desired inertial angular velocity projected onto the plane normal to r3d.Let us now define a commanded angular velocity Ω12 c ∈
+
+Tr3 S2 as 
+
+Ω12 c := − kr
+
+hr
+
+zr + 1
+
+hr
+
+|| ξ|| S(r3)e − S2(r3) bΩ12 d , (42) where bΩ12 d ∈ R3 (shown in Appendix A) is the known part of Ω12 d, computed using a second estimate on b
+
+defined as bb2 ∈ R3, such that 
+
+bΩ12 d = Ω12 d + || ξ|| −1S(r3d) ( Kp + Kv) eb2 . (43) The associated angular velocity error is defined as 
+
+zΩ := Ω12 − Ω12 c ∈ Tr3 S2 . (44) Then, through substitution and simple algebraic manipu-lation, we can write (41) as 
+
+˙V4 = −W3 + hr zT
+
+> r
+
+
+
+zΩ + Ξ eb2
+
+
+
+, (45) with 
+
+Ξ := −|| ξ|| −1S2(r3)S(r3d) ( Kp + Kv) ∈ R3×3 . (46) Our goal now is to render ˙V4 negative by canceling out the term projected onto zr in (45). To that end, we start by deriving an appropriate adaptation law for the second estimate on the unknown disturbance, bb2. Similarly to what was done in (35) for the first estimate, we define a fifth candidate Lyapunov function as 
+
+V5 := V4 + 12 ebT 
+
+> 2
+
+Λ−12 eb2 , (47) where Λ2 ∈ R3×3 is a positive definite auxiliary gain matrix. The time derivative of (47) can be written as 
+
+˙V5 = −W3 + hr zT 
+
+> r
+
+zΩ + ebT
+
+> 2
+
+
+
+Λ−12
+
+˙eb2 + hr ΞTzr
+
+
+
+. (48) Therefore, the adaptation law 
+
+˙bb2 = −hr Λ2 ΞTzr , (49)  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 7
+
+under Assumption 3, leads to 
+
+˙V5 = −W3 + hr zT 
+
+> r
+
+zΩ . (50) The next step consists in ensuring that the angular velocity error zΩ goes to zero. To achieve this, a new candidate Lyapunov function is introduced: 
+
+V6 := V5 + hΩ
+
+2 zT
+
+> Ω
+
+zΩ , (51) where hΩ ∈ R+ is a positive auxiliary tuning parameter. The derivative of V6 is given by 
+
+˙V6 = −W4 + zT 
+
+> Ω
+
+(hr zr + kΩzΩ + hΩ ˙zΩ) , (52) where kΩ ∈ R+ is a positive scalar gain and W4 := W1 +
+
+W2+W3+kΩzT
+
+> Ω
+
+zΩ ∈ R+0 is a non-negative auxiliary term. Looking at the angular velocity dynamics in (19), we see that the angular acceleration ˙Ω12 can be commanded as needed through the control torque Γc. Let us then impose 
+
+Γc := −j⊥
+
+ kΩ
+
+hΩ
+
+zΩ + hr
+
+hΩ
+
+zr + S2(r3) ˙Ω12 c ∈ Tr3 S2
+
+
+
+,
+
+(53) where ˙Ω12 c ∈ R3 (shown in Appendix A) is the known part of ˙Ω12 c, computed using a third estimate on b defined as bb3 ∈ R3, such that 
+
+˙Ω12 c = ˙Ω12 c + Θ eb3 , (54) with Θ ∈ R3×3 being the matrix that gathers all depen-dencies on eb3, also shown in Appendix A. Using the control law (53), together with the angular velocity error definition (44), the time derivative of (51) can be rewritten as ˙V6 = −W4 + hΩzT 
+
+> Ω
+
+Θ eb3 . (55) A final candidate Lyapunov function is now introduced with the goal of deriving an adaptation law for the third and final estimate bb3:
+
+V := V6 + 12 ebT 
+
+> 3
+
+Λ−13 eb3 , (56) where Λ3 ∈ R3×3 is a positive definite auxiliary gain matrix. Its time derivative is given by 
+
+˙V = −W4 + ebT
+
+> 3
+
+
+
+Λ−13
+
+˙eb3 + hΩ ΘTzΩ
+
+
+
+. (57) Therefore, the adaptation law 
+
+˙bb3 = −hΩΛ3 ΘTzΩ , (58) under Assumption 3, leads to 
+
+˙V = −W4 ≤ 0 . (59) At last, with all inputs of model (19) already defined, the virtual thrust-vector input u can be retrieved. From definition (17) and control law (31) we get 
+
+u3 := −m  ξTr3 + δ || Ω12 || 2 . (60) Moreover, from (11), together with (18), we have that 
+
+−S2(e3)u = − 1
+
+L S(e3)RTΓc . (61) Thus, the virtual thrust-vector input, which can be decom-posed as 
+
+u = e3eT 
+
+> 3
+
+u − S2(e3)u , (62) is given by 
+
+u := − 1
+
+L S(e3)RTΓc − m  ξTr3 + δ || Ω12 || 2 e3 , (63) with Γc defined as in (53). We are now ready to state the main theorem regarding the stability of the origin of the error system defined by (z1 , z2 , zr , zΩ), which dictates the trajectory tracking performance of the QuadRocket under the single rigid body approach with idealized instantaneous thrust-vector actuation. THEOREM 1 Consider the dynamics (4) and kinematics (1) of the QuadRocket when using the single rigid-body approach with idealized instantaneous thrust-vector actuation u(t), and assume that condition (18) holds. Then, for a reference trajectory pd(t) of class at least 
+
+C4, the control law (63), together with the adaptation laws (39), (49), and (58), renders the tracking error variables (z1 , z2 , zr , zΩ) almost globally asymptotically convergent to zero in the presence of a constant bounded external disturbance, b. Moreover, all closed-loop sig-nals remain bounded, and the disturbance estimate bb1
+
+converges to the true value b.Proof: The Lyapunov function in (56) is positive definite and well-defined over the domain O := {z ∈ R12 : r3̸ =
+
+−r3d} as 
+
+V := 12 zTQz + 12 ebTΛ−1 eb , (64) where 
+
+z :=  zT 
+
+> 1
+
+eT zT 
+
+> r
+
+zT
+
+> Ω
+
+T ∈ R12 , (65) 
+
+eb := 
+
+h ebT 
+
+> 1
+
+ebT 
+
+> 2
+
+ebT
+
+> 3
+
+iT
+
+∈ R9 , (66) 
+
+Q := diag 
+
+
+
+1, 1, hr
+
+1 + rT
+
+> 3d
+
+r3
+
+, h Ω
+
+
+
+⊗ I ∈ R12 ×12 (67) is a positive definite matrix, and 
+
+Λ := Λ1 ⊕ Λ2 ⊕ Λ3 ∈ R9×9 (68) is also a positive definite matrix. When condition (18) holds, the dynamics and kinematics of the QuadRocket 
+
+with respect to the point −δe3 in {B}, using the reduced attitude representation, are given by (19). Moreover, we consider the ideal scenario where the quadrotor is able to instantaneously provide a desired force vector u(t) with respect to {B}. For these conditions, using (59), the time derivative of (64) can be compactly written as 
+
+˙V = −zTWz ≤ − λmin (W) || z|| 2 , (69) where 
+
+W := Kp ⊕ Kv ⊕ kr I ⊕ kΩI ∈ R12 ×12 (70) is a positive definite matrix, and λmin (W) ∈ R+ its smallest eigenvalue. Therefore, ˙V is negative definite with respect to z, which implies that V is bounded and, consequently, so are the errors z and eb. Using this fact, one can prove that ¨V is also bounded (Appendix B), allowing to infer that ˙V is uniformly continuous.     
+
+> 8IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026 Reference Trajectory
+> Model
+> Quadrotor Kinematics (2)
+> Quadrotor Controller (74), (84)
+> Nonlinear backstepping controller (63)
+> Adaptation laws (39), (49), (58)
+> QuadRocket
+> Dynamics & Kinematics (19)
+> Thrust-vector (3)
+> External disturbances
+> 1st order LP filter (77)
+> System error (20), (21) (34), (44) Fig. 4. Diagram of control architecture.
+
+Hence, according to Barbalat’s Lemma [37, Lemma 4.2], it is possible to conclude that ˙V → 0, which implies that z converges to zero. In turn, the convergence of 
+
+z to zero implies that z1 → 0, e → 0, z2 → 0,
+
+r3 → ±r3d, and zΩ → 0. The geometric ambiguity associated with the collinearity between r3 and r3d is inevitable for static feedback controllers and is caused by the topological properties of S2 [38]. Nonetheless, the system configuration characterized by r3 = −r3d
+
+forms a set that has measure zero. Therefore, under the weak assumption that initial conditions do not contain this set, which holds under all practical circumstances, the tracking error variables (z1 , z2 , zr , zΩ) almost globally asymptotically converge to the origin. Finally, the convergence of z1, z2, and ˙z2 to zero implies that 
+
+bb1 → b + ξ + u3r3 , (71) where ˙vδ = ge3 + u3 r3 + b, and where (21), (26), (27), and (28) were used. Replacing u3 by the law imposed in (31), and using the fact that S2(r3) = r3rT 
+
+> 3
+
+− I, we get 
+
+bb1 → b − S2(r3)ξ . (72) Using definitions (30) and (34), (72) can be rewritten as 
+
+bb1 → b + || ξ|| S(r3)zr . (73) Finally, we note that zr → 0, which implies that bb1 → b,thus concluding our proof. REMARK 1 Convergence of the estimates bb2 and bb3 to the true value is dependent on the existence of persistent excitation from the reference trajectory, otherwise exhibit-ing a bounded estimation error. This is characteristic of adaptive backstepping design [39]. 
+
+REMARK 2 Theorem 1 establishes stability results for the single rigid body model with thrust-vector actuation - a generic model typically used for rocket-like vehicles. In the context of the QuadRocket, this model is used as a first approximation to the coupled dynamics of the system at hand, where the quadrotor is seen as an actuator which can instantaneously provide a thrust force at a given angle with respect to the main body. The validity of this approximation, which is used for control design purposes, was verified both in simulation and during flight testing. 
+
+B. Quadrotor Attitude Control 
+
+With the virtual thrust-vector input already defined, we are left with the task of designing an appropriate control law for the angular velocity command given to the quadrotor, ωq . The goal is that its attitude tracks the desired thrust direction, while providing the correspond-ing magnitude, thereby solving Problem 2. Formally, we introduce a desired thrust-vector ud ∈ R3, expressed in {B}, which corresponds to the virtual control input defined in (63). From the desired thrust-vector, the thrust input to the quadrotor immediately follows as 
+
+T := || ud|| . (74) Then, we recall (3) and note that the actual force produced by the quadrotor, expressed in {B}, can be written as 
+
+u = −T RTr3q , (75) where r3q := π3 (Rq ) ∈ S2 is the reduced attitude repre-sentation of the quadrotor. Expression (75), together with definition (74), allows us to extract a desired direction for 
+
+r3q as 
+
+r3dq := −R ud
+
+|| ud|| ∈ S2 , ud̸ = 0 , (76) where ud is the output of a first order filter applied to ud,designed as 
+
+˙ud τs + ud = ud , ud(t0) = ud(t0) , (77) in which τs is the time constant and t0 is the initial time. The use of the first order filter is borrowed from Dynamic Surface Control theory [40] and will allow us to design a tracking controller without the need of computing the explicit time derivative of ud. Let us then define a reduced attitude tracking error for the quadrotor as 
+
+eq := S(r3dq )r3q ∈ Tr3q S2 ∩ Tr3dq S2 , (78) and propose the candidate Lyapunov function 
+
+Vq := 1 − r3dq Tr3q . (79)  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 9
+
+Its time derivative can be written as 
+
+˙Vq = −Wq + eT 
+
+> q
+
+(kq eq + Ω12 q − Ω12 dq ) , (80) where Wq := kq eT 
+
+> q
+
+eq ∈ R+0 is an auxiliary non-negative term, kq ∈ R+ is a positive constant gain, Ω12 q := 
+
+S(r3q )˙ r3q ∈ Tr3q S2, and Ω12 dq := S(r3dq ) ˙r3dq ∈ Tr3dq S2.Thus, by setting 
+
+Ω12 q := −kq eq − S2(r3q )Ω12 dq , (81) the time derivative of Vq becomes 
+
+˙Vq = −Wq < 0 ∀ eq̸ = 0 . (82) Recalling (8) and (9), we have that 
+
+Ω12 q = −Rq S2(e3) ωq , (83) which means that Ω12 q can be set through ω1q and ω2q
+
+– the x and y components of ωq . Thus, the remaining component, ω3q , can be used to drive ω3 to zero such that the second part of condition (18) is verified. The universal joint connecting both bodies imposes the restriction ω3 =
+
+ω3q , allowing us to simply set ω3q = 0 . Therefore, the control law to govern the angular velocity of the quadrotor is set as 
+
+ωq := RT
+
+> q
+
+ −kq eq − S2(r3q )Ω12 dq 
+
+ . (84) PROPOSITION 1 Consider the quadrotor attitude kine-matics in (2), and that the quadrotor perfectly tracks the angular velocity command, ωq . Then, the feedback law (84) renders the point r3q = r3dq almost global asymptotically stable. Moreover, the actual thrust-vector input u converges asymptotically to a ball B := {u ∈ R3 :
+
+|| u − ud|| ≤ r} centered around ud of radius 
+
+r = τs sup 
+
+> t≥0
+
+∥ ˙ud(t)∥ . (85) 
+
+Proof: The proof can be found in Appendix C. REMARK 3 Equation (77) acts as a first-order low-pass filter on the desired thrust-vector, ud, for which the cut-off frequency can be adjusted through the time constant τs. As established in Proposition 1, the time constant will have an impact on the thrust-vector tracking error || u − ud|| .Hence, there exists a trade-off between minimizing the tracking error and limiting high-frequency noise. 
+
+Finally, Fig. 4 presents an architecture diagram of the proposed integrated trajectory tracking solution, re-sulting from the combination of the virtual thrust-vector controller with the quadrotor control law. 
+
+V. COMPUTER SIMULATION 
+
+Prior to its implementation on the real vehicle, the overall control scheme for trajectory tracking was tested in a Matlab/Simulink simulation environment. The pro-posed solution was verified using the dynamics and kinematics model presented on Section A, corresponding  
+
+> Fig. 5. Representation of the bump function.
+
+to the numerical implementation of (1)-(4). The built-in variable-step ode45 solver was used with a maximum allowed step size of 0.01 seconds 1.
+
+A. Bump function-based reference trajectories 
+
+To ensure that reference trajectories have the nec-essary smoothness, class C∞ bump functions [42] were used to directly define the time evolution of the desired inertial velocity. To that end, a smooth transition function is introduced: 
+
+f (s) := 
+
+
+
+0 , s ≤ 0
+
+e− 1
+
+> s
+
+e− 1 
+
+> s
+
++ e− 11−s
+
+, 0 < s < 11 , s ≥ 1
+
+. (86) Using the smooth transition function, f (s), and defining 
+
+ts, T1, and T2 ∈ R as the start time, transition interval, and plateau interval, respectively, a generic bump function 
+
+Ψ : R+0 → R+0 is constructed according to 
+
+Ψ( t | ts, T 1, T 2) := 1 − f
+
+ (t−ts−b)2−a2
+
+> b2−a2
+
+
+
+, (87) where a = T2/2 and b = T1 + a. Figure 5 displays an example bump function with the relevant time instants and intervals identified. 
+
+B. Setup 
+
+The reference trajectory, which was later used during flight arena testing, was derived from a desired inertial velocity profile (Fig. 6) constructed using the generic bump function (87). A conservative trajectory design was adopted to account for the prototype nature of the vehicle. The vehicle is required to perform an initial vertical climb, followed by a sideways motion, after which the vehicle simultaneously descends and moves towards the initial desired position. The exact inertial velocity profile is described by 
+
+˙pd =
+
+
+
+0
+
+−0.5Ψ( t |11 , 2.9, 0.2) + 0 .5Ψ( t |20 , 2.9, 0.2) 
+
+−0.4Ψ( t |1, 3.4, 0.2) + 0 .28Ψ( t |20 , 4.9, 0.2) 
+
+ ,
+
+(88)          
+
+> 1To ensure consistent numerical integration of (19c), a standard projec-tion method [41] was used. 10 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026 0510 15 20 25 30
+
+Time (s)  
+
+> -0.6 -0.4 -0.2 00.2 0.4 0.6 Fig. 6. Reference inertial velocity profile.
+
+from which the desired inertial position can be integrated from a given initial condition, and the subsequent time derivatives can be explicitly derived. For this simulated scenario, the initial position of the vehicle was set to p(0) = [ 0 .3 − 0.4 − 0.5 ] T m, while the desired initial position of the control point was set to pd(0) = [ 0 0 − 1 ] T m. An initial inclination was induced according to R(0) = I + sin θ S(a) + (1 −
+
+cos θ)S2(a) with θ = 3 ◦ and a = [ −1 − 0.5 0 ] T. The quadrotor was initially aligned with the inertial frame, i.e. Rq (0) = I, leading to a misalignment with respect to the main body. As for the constant disturbance, its value was imposed as b = [ 0 .1 − 0.2 − 0.15 ] T m/s 2.Additionally, a time delay of 0.02 s was introduced in the thrust and angular velocity commands to account for transmission delays and quadrotor response times. The system parameters are as follows: m = 1.55 kg, 
+
+g = 9 .81 m.s −2, j⊥ = 0 .15 kg.m 2, and L = 0 .5 m. Table II collects the set of gains used in simulation.                    
+
+> TABLE II Control gains used in simulation.
+> Parameter Value
+> Kp,Kv2I,1.5I
+> kr, h r60, 6
+> kΩ, h Ω25, 15
+> Λ1,Λ2,Λ31I,2I,0.01 I
+> kq, τ s18, 0.03
+
+C. Simulation Results 
+
+Figure 7 displays the 3-dimensional representation of the actual and reference trajectories. Starting with a significant position error and a counterproductive initial tilt, the QuadRocket is able to converge to the desired trajectory and maintain accurate tracking throughout the flight. To quantitatively demonstrate the trajectory tracking performance, the time evolution of all errors is presented in Fig. 8. The left-side plots attest for the asymptotic convergence of position, velocity, and attitude errors to the origin during the first seconds of the flight. Even though asymptotic convergence was only proven for ide-alized thrust-vector actuation, the fast response of the quadrotor allows for the extension of this property to the                     
+
+> Fig. 7. Simulated trajectory tracking visualization with accurate representations of the vehicle at given points. The green star and red square represent the starting and final positions, respectively. Time (s) -0.5 -0.25 00.25 0.5 -1 01210 -3 -0.5 -0.25 00.25 0.5 -5 0510 -3 -0.2 -0.1 0-4 -2 02410 -3 -4 -2 0-0.1 00.1 024689.9 00.1 0.2 10 15 20 25 30 -0.01 00.01
+> Fig. 8. Top to bottom: time evolution of z1,z2,zr,zΩ, and eq.Left subplots: initial transient and convergence performance. Right subplots: steady-state performance.
+
+interconnected system. Note that, appropriate tuning of the quadrotor attitude gain, kq , leads to a comparatively faster convergence of the quadrotor attitude error, eq . The right-side plots show the residual errors throughout the remainder of the flight. Noticeably, the step-like shape of the velocity bump function induces spikes in the attitude errors at the transition times, which likely propagate from the quadrotor attitude tracking error.              
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 11 -0.4 -0.2 00.2 0.4
+> 0510 15 20 25 30
+> Time (s)
+> -0.2 00.2 0.4 0.6 0.8 1
+> 20 25 30
+> 00.05 0.1 Fig. 9. Top: evolution of bb1. Bottom: evolution of || eb1|| ,|| eb2|| , and
+> || eb3|| .
+
+The QuadRocket was able to track the desired trajec-tory in the presence of an unknown constant disturbance. Figure 9 displays the time evolution of bb1, || eb1|| , || eb2|| ,and || eb3|| . The first estimate on the disturbance, bb1,converges very close to the true value, as expected for the idealized model, while bb2 and bb3 exhibit steady state error. Finally, the actuation signals are displayed in Fig. 10. The hover thrust magnitude stabilizes at a value below the weight due to the negative disturbance in the z-axis, a mark of the adaptive nature of the controller. As for the angular velocity command, after the initial stabilization effort, it is only excited at the transition intervals. The bottom plot shows the actual (provided by the quadrotor) and desired thrust-vector components orthogonal to r3.The actual thrust-vector closely tracks the desired values, once again indicating that idealizing the quadrotor as a thrust-vector actuator is not only a reasonable assumption but also an effective one. The zoomed section in the first 0.5 s attests for the fast convergence, limited by the imposed 0.02 s delay. Overall, simulation results provide an empirical confirmation of the closed-loop stability of the interconnected system, as stated in Remark 2. 
+
+VI. FLIGHT EXPERIMENT AND RESULTS 
+
+The viability of the proposed control scheme in com-puter simulation paves the way for the next logical step: to test it on the actual vehicle in a controlled environment - an indoor flight arena equipped with a motion capture system. 
+
+A. Setup 
+
+The experimental setup developed at the SCORE Laboratory, University of Macau, is implemented in a MATLAB/Simulink environment that enables seamless integration of sensors, control algorithms, and vehicle communication systems. Figure 11 schematizes the ex-perimental setup, describing the information flow between 14 16 18               
+
+> -5 -2.5 02.5 5
+> 0510 15 20 25 30 Time (s)
+> -2 -1 012
+> 00.25 0.5
+> -4 -2 024
+> 00.25 0.5
+> -4 -2 02
+> Fig. 10. Actuation signals. Top to bottom: Thrust magnitude, quadrotor angular velocity command, and actual vs desired thrust-vector components orthogonal to r3.Vicon Vehicle
+> User
+> Arm & Disarm
+> Trajectory
+> state Cameras
+> Trajectory tracking controller
+> Pre-processing
+> Safety
+> Betaflight
+> 3.2 KHz
+> Motors
+> Quadrotor Quad
+> Body
+> Objects
+> 100Hz 100Hz
+> State
+> estimate
+> Fig. 11. Experimental setup. Blue arrows indicate RC communication links.
+
+each subsystem. The states of the QuadRocket are mea-sured using a VICON motion capture system comprising a total of 30 Vantage cameras arranged in an 11 × 5 × 7 m volume. This high-performance system is able to operate with sub-millimeter accuracy at 100 Hz, which allows for an accurate tracking of the reflective markers attached to the main body and quadrotor. Position and attitude measurements of each object are received in Simulink via Ethernet connection and pre-processed to recover the full state of the QuadRocket - pδ , vδ , r3, and Ω12 .We stress that the VICON motion capture system is a measurement tool, not a control crutch, meaning that it is used as a high-precision ground-truth measurement tool, not as a substitute for onboard sensing in the control loop. Moreover, the angular velocity of the rigid-bodies is obtained implicitly from a first-order Euler discrete differentiation of their rotation matrices, which means that the controller receives a state “estimate” at a fixed rate                               
+
+> 12 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026 0.1 0.15 0.2 -3.5 -3 -2.5 -2 -1.5 -1 -0.5 0.1 0.15 0.2 00.5 11.5 22.5
+> 13.5 14 14.5 15 15.5 16 16.5 -1.2 -0.8 -0.4 00.4 0.8 1.2 0510 15 20 25 30 -1 -0.5 00.5 1-0.5 00.5 00.5 11.5 22.5 -4 -3.5 -3 -2.5 -2 -1.5 -1 -0.5 0
+> Actual trajectory Reference trajectory
+> 00.1 0.2 0.3 0.4 01234010 20 30 40
+> 0510 15 20 25 30 -0.6 -0.3 00.3 0.6 Fig. 12. Experimental trajectory tracking results. On the left, actual and reference trajectories with snapshots of the vehicle. Center-left column displays two planar views. Center-right column displays the evolution (top to bottom) of i) the norm of position and velocity errors, ii) the angle between r3and r3dand the norm of the angular velocity error, and iii) desired and actual inertial velocity. On the right (top to bottom), evolution of the thrust magnitude, quadrotor angular velocity command, and components of the desired thrust-vector orthogonal to r3.
+
+with associated noise and latency, mirroring a real sensor suite. The trajectory tracking controller is implemented in Simulink and runs at a frequency of 100 Hz, using the state estimate and the user-defined trajectory to compute the inputs to the quadrotor, i.e., T and ωq . These inputs are sent to the quadrotor through an RC communication link at 100 Hz and interpreted by the onboard flight computer running the Betaflight software. The onboard flight computer adjusts the current sent to each motor at the frequency of 3.2 kHz so as to track the commanded thrust and angular velocity. The RC link contains an additional arm/disarm signal which is sent by the user from Simulink to start or abort the mission. The abort signal can also be automatically triggered if given state-dependent conditions are verified, such as user-defined attitude and/or position limits. The desired trajectory for the test flight was derived from the inertial velocity profile defined in (88). However, the desired initial position was set to pd(0) = pδ (0) − 0.2 e3 m so that the desired trajectory would adjust to the initial position (as placed in the arena) and that the vehicle would rapidly gain some elevation with respect to the floor. Apart from the adaptation gains, all other parameters were kept equal to the simulation values (Tab. II). More conservative values were used for the adaptation gains, prioritizing the first adaptation layer: Λ1 = 0 .5 I, Λ2 = 0 .02 I, and 
+
+Λ3 = 0 .001 I.
+
+B. Experimental Results 
+
+The main trajectory tracking results of the flight experiment conducted at the indoor flight arena are shown in Fig. 12. Additionally, a video of this same experi-ment is available at: https://youtu.be/V5t TqCEJUo. The 
+
+QuadRocket was able to track the desired trajectory with centimeter-level precision and moderate actuation effort. In fact, after an initial transient of approximately 5 s, the mean value of || z1|| is calculated at 1.82 cm. As verified in simulation, the transient intervals of the reference velocity bumps induce spikes which propagate from the quadrotor tracking error (Fig. 14) up to the position error. Most noticeably, the linear and angular velocity errors, z2 and 
+
+zΩ, reach maximum values during these periods. The impact of high frequency noise coming from linear and angular velocity estimates is also visible, especially in the angular velocity command - a marked difference between the noiseless simulated results and the experimental ones. When the vehicle starts or stops moving, the actuation ef-fort is increased as its underactuated nature requires a tilt towards or against the direction of motion, respectively. Moreover, by analyzing the time evolution of vδ during these instants, it is possible to infer that non-minimum phase behavior, although minimized, is not completely canceled. This fact indicates that some error was present in the values of the physical parameters required to com-pute δ. Indeed, the accurate tracking results were obtained in the inevitable presence of model uncertainty, as the one posed by the diagonal inertia matrix assumption, attesting for the robustness of the proposed tracking law and for  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 13
+
+the validity of the assumptions used to simplify control design. The high precision tracking with extremely reduced steady-state errors was enabled by the adaptive nature of the proposed control scheme. The time evolution of 
+
+bb1, bb2, and bb3 is shown in Fig. 13. A considerable -0.2 00.2           
+
+> -0.02 -0.01 00.01 0.02
+> 0510 15 20 25 30 Time (s)
+> -0.2 00.2
+> Fig. 13. Time evolution of bb1,bb2, and bb3.
+
+disturbance value was estimated by the first adaptation layer, bb1, with emphasis on the y-axis, which is attributed to a possible misalignment between the quadrotor attach-ment point and the center of mass of the vehicle. The increase on the z-axis value towards the end of the flight reflects the thrust performance loss with the decrease of the battery voltage. In fact, the variation of the estimated values throughout the flight indicates the presence of time-varying and state-dependent disturbances, which the controller was able to counteract even though theoretical guarantees are built on the constant disturbance assump-tion. Additionally, a comparatively lower magnitude of bb2
+
+is verified, which indicates that the corresponding gain was overly conservative. Finally, and as predicted by simulation, the quadrotor attitude tracking is sufficiently fast so that it can be considered as a thrust-vector actuator to the main body, thus confirming the applicability of this platform as a rocket prototype. The top plot in Fig. 14 demonstrates this fact by showcasing the fast and accurate tracking of r3dq 
+
+by r3dq . This property allows for the extension of closed-loop stability to the interconnected system, validating the single rigid-body assumption as an effective one for control design purposes. The bottom plot compares the angular displacement between r3q and r3qd - a measure of the actual tracking error - against the angular dis-placement between r3q and r3dq - a measure of the error used in dynamic surface control. The actual error has a larger steady-state value and the tracking performance is significantly worse during transients, highlighting the downfalls of relying on dynamic surface control to avoid explicit differentiation of the desired thrust-vector in-put, ud. Nonetheless, the use of this control strategy -0.2 -0.1 00.1 0.2                    
+
+> 0510 15 20 25 30 Time (s)
+> 0246
+> Fig. 14. Quadrotor attitude tracking performance. Top: r3qvs r3dq -
+> xand ycomponents. Bottom: Angle between r3qand i) r3dq , and ii)
+> r3dq .
+
+for quadrotor attitude tracking did not compromise the overall trajectory tracking performance and simplified the resulting control scheme. 
+
+VII. CONCLUSION 
+
+This paper introduced QuadRocket , a quadrotor-based rocket prototype that serves as a low-cost, low-risk aerial robotic testbed for thrust-vector control of rocket-like ve-hicles. The coupled quadrotor–cylindrical-body system is modeled as a single axisymmetric rigid body actuated by a vectored force, using a reduced-attitude representation on the two-sphere to explicitly exploit axial symmetry and decouple yaw from thrust-vector direction. On this model, we derived an adaptive backstepping controller that pro-vides almost-global trajectory tracking in the presence of unknown constant disturbances, while a control-point transformation mitigates non-minimum-phase behavior induced by the underactuated dynamics. To bridge the gap between the virtual thrust-vector input and the real actua-tion, the quadrotor is treated as a thrust-vector actuator. A dynamic-surface-based attitude controller is then designed to track the desired thrust-vector while accounting for actuation dynamics and avoiding explicit differentiation of virtual control signals. The complete control architecture was first validated in simulation and then experimentally demonstrated in an indoor motion-capture arena, where the QuadRocket achieved accurate trajectory tracking and effective disturbance compensation, despite actuation de-lays and sensing noise. Overall, the results confirm that a compact quadrotor platform can reliably emulate thrust-vector-controlled rocket dynamics and that the proposed control framework is suitable for experimental validation of advanced guidance and control strategies. Future work will explore more aggressive maneuvers in the presence of external disturbances and parameter variations, integration with onboard state estimation and sensing, and extension of the framework to multi-vehicle cooperative scenarios and other thrust-vector-controlled robotic systems.    
+
+> 14 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026
+
+APPENDIX A. Auxiliary Computations 
+
+For completeness and ease of implementation, this first appendix provides all remaining essential formulas required to reproduce the proposed methodology. Inter-mediate steps and derivations are omitted to maintain conciseness. 
+
+1. Computation of bΩ12 d
+
+bΩ12 d := S(r3d) b˙r3d (89a) 
+
+b˙r3d := −|| ξ|| −1S2(r3d) b˙ξ (89b) 
+
+b˙ξ := b˙ζ + ˙bb1 − ... 
+
+p d (89c) 
+
+b˙ζ := ( I + KvKp) z2 + ( Kp + Kv) b˙z2 (89d) 
+
+b˙z2 := ge3 + u3 r3 + bb2 − ¨pd (89e) 
+
+2. Computation of ˙Ω12 c
+
+˙Ω12 c := 1
+
+hr
+
+h
+
+S(r3)e r T 
+
+> 3d
+
+˙ξ + || ξ||  S(˙ r3)e + S(r3) ˙ei
+
+− kr
+
+hr
+
+˙zr − (S(˙ r3)S(r3) + S(r3)S(˙ r3)) bΩ12 d
+
+− S2(r3) ˙Ω12 d (90) where 
+
+˙zr := S(r3d)˙ r3 − S(r3)˙ r3d (91a) 
+
+˙r3d := −|| ξ|| −1S2(r3d) ˙ξ (91b) 
+
+˙ξ := ˙ζ + ˙bb1 − ... 
+
+p d (91c) 
+
+˙ζ := ( I + KvKp) z2 + ( Kp + Kv) ˙ z2 (91d) 
+
+˙e := Kp z2 + ˙ z2 (91e) 
+
+˙z2 := b˙z2 − bb2 + bb3 (91f) 
+
+˙Ω12 d := −S(b˙r3d)˙ r3d + S(r3d)¨ r3d (91g) and 
+
+¨r3d := −|| ξ|| −1S2(r3d) ¨ξ + rT 
+
+> 3d
+
+˙ξ
+
+|| ξ|| 2
+
+!
+
+S2(r3d)b˙ξ
+
+− || ξ|| −1  S(˙ r3)S(r3) + S(r3)S(˙ r3) b˙ξ (92) where 
+
+¨ξ := ¨ζ + Λ1 ˙e − .... 
+
+p d (93a) 
+
+¨ζ := ( I + KvKp) ˙ z2 + ( Kp + Kv) ¨ z2 (93b) 
+
+¨z2 := u3 ˙r3 + ˙ u3 r3 + ˙bb2 − ... 
+
+p d (93c) 
+
+˙u3 := −rT 
+
+> 3
+
+˙ξ − ξT ˙r3 (93d) 
+
+3. Computation of Θ
+
+Let us define Θ1, Θ2, Θ3 and Θ4 ∈ R3×3 such that 
+
+ddt 
+
+b˙ξ = ¨ξ + Θ1 eb3 , (94a) 
+
+˙r3d = ˙ r3d + Θ2 eb3 , (94b) 
+
+ddt b˙r3d = ¨ r3d + Θ3 eb3 , (94c) 
+
+ddt bΩ12 d = ˙Ω12 d + Θ4 eb3 . (94d) Then, we have that 
+
+Θ1 := − Λ1 − I − KvKp
+
++ ( Kp + Kv) r3rT 
+
+> 3
+
+(Kp + Kv)
+
+(95a) 
+
+Θ2 := − ∥ ξ∥−1S2(r3d)( Kp + Kv) (95b) 
+
+Θ3 := ∥ξ∥−1
+
+
+
+2 b˙ξ rT 
+
+> 3d
+
+− r3d b˙ξT
+
+− (rT
+
+> 3d
+
+b˙ξ)I
+
+
+
+Θ2
+
+− ∥ ξ∥−1S2(r3d)Θ1 − S2(r3d)
+
+∥ξ∥2
+
+b˙ξ rT 
+
+> 3d
+
+(Kp + Kv)
+
+(95c) 
+
+Θ4 := S(r3d)Θ3 − S(b˙r3d)Θ2 (95d) and, finally, 
+
+Θ := − kr
+
+hr
+
+S(r3)Θ2 + S2(r3)Θ4 + || ξ|| 
+
+hr
+
+S(r3)+ 1
+
+hr
+
+S(r3)e r T
+
+> 3d
+
+(Kp + Kv) .
+
+(96) 
+
+B. Boundedness of ¨V
+
+The second time derivative of V can be written as 
+
+¨V = −2 zT 
+
+> 1
+
+Kp ˙z1 − 2 eTKv ˙e − 2 kr zT 
+
+> r
+
+˙zr − 2 kΩzT 
+
+> Ω
+
+˙zΩ .
+
+Since we have already established that both the tracking and estimation errors are bounded, we must now check for the boundedness of their time derivatives. Firstly, recall that the reference curves are smooth and have bounded time derivatives. Moreover, in the presence of bounded disturbances, the fact that eb is bounded, implies the boundedness of bb1, bb2, and bb3. The fact that both z1 and e are bounded implies, by definition, the boundedness of z2, which in turn implies the boundedness of ˙z1 (note that ˙z1 = z2). The velocity error dynamics, given by ˙z2 = ˙ vδ − ¨pd, will also be bounded, owing to the fact that the input u3, defined in (31), is bounded. The boundedness of u3 follows from the boundedness of 
+
+ξ in (27), which depends only on terms already verified to be bounded. Immediately, note that ˙e = ˙ z2 + Kp ˙z1 is bounded. Consider now the following time derivatives: ˙ζ =(I + KvKp) ˙ z1 + ( Kp + Kv) ˙ z2, ˙ξ = ˙ζ + ˙bb1 − ... 
+
+p d,
+
+˙zr = S(˙ r3d)r3 + S(r3d)˙ r3, ˙r3d = −|| ξ|| −1S2(r3d) ˙ξ, and 
+
+˙r3 = −S(r3)Ω12 . Then, we have that ˙ζ is bounded, which together with the boundedness of ˙bb1 (see (39)), implies that ˙ξ is bounded. In addition, both r3 and r3d
+
+are unit vectors on the 2-sphere, thus being bounded. Therefore, ˙r3d is also bounded. As for ˙r3, it follows from  
+
+> SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 15
+
+the boundedness of zΩ that a bounded angular velocity command Ω12 c leads to a bounded signal. From (42) and (43) we have that Ω12 c is in fact bounded as it depends on bounded terms only, proving the boundedness of ˙r3.It is then possible to conclude that ˙zr is bounded. At last, we have left to prove the boundedness of 
+
+˙zΩ. Consider the following time derivatives: ¨z1 = ˙z2,
+
+¨z2 = ˙u3r3 + u3 ˙r3 − .... 
+
+p d, ˙u3 = − ˙ξTr3 − ξT ˙r3, ¨ζ =(I + KvKp) ¨ z1 + ( Kp + Kv) ¨ z2, ¨ξ = ¨ζ + ¨bb1 − ... 
+
+p d, and 
+
+¨bb1 = Λ1 ˙e, ¨r3d = − ddt 
+
+ || ξ|| −1S2(r3d) ˙ξ. It follows that 
+
+¨ξ is bounded, which in turn confirms the boundedness of ¨r3d. Thus, ˙Ω12 d is also bounded. From (49) and (46) we have that ˙eb2 is bounded, allowing us to conclude the boundedness of ˙bΩ12 d and, consequently, of ˙Ω12 c (see (43) and (42)). Therefore, since ˙zΩ = ˙Ω12 − ˙Ω12 c, if ˙Ω12 is bounded, then ˙zΩ will also be bounded. The boundedness of ˙Ω12 is determined by the input Γc in (53), where ˙Ω12 c
+
+is the only signal whose boundedness is left to prove. However, we note from (90)-(93) that ˙Ω12 c is bounded, thus concluding our proof. 
+
+C. Proof of Proposition 1 
+
+Lyapunov function Vq , defined in (79), is positive semi-definite and its codomain is the compact set C =[0 , 2] . The limits of the codomain exclusively occur at the points where eq goes to zero, i.e, Vq (r3q = r3dq ) = 0 and 
+
+Vq (r3q = −r3dq ) = 2 . Moreover, its time derivative (82) is negative definite about eq , vanishing when r3q = ±r3dq .Therefore, for any initial condition in the set I = {r3q ∈
+
+S2 : r3q̸ = −r3dq }, r3q will asymptotically converge to r3dq , thus proving the first part of Proposition 1. By definition, the almost global asymptotic convergence of 
+
+r3q to r3dq directly implies the almost global convergence of u to ud (see (75) and (76)). Let us now define the filtering error as ef = ud − ud arising from the first-order low-pass filter (77). Consequently, we have that 
+
+u → ud + ef , with the filtering error dynamics being given by ˙ef = −(1 /τ s)ef − ˙ud. For a norm bounded time derivative of the desired thrust-vector, i.e, 
+
+|| ˙ud(t)|| ≤ ˙udmax = sup 
+
+> t≥0
+
+∥ ˙ud(t)∥ , (97) it follows that 
+
+|| ef (t)|| ≤ ˙udmax τs
+
+
+
+1 − e−(1 /τ s)t
+
+
+
+. (98) Therefore, as t → ∞ , the norm of the filtering error will be bounded by τs ˙udmax , implying that u asymptotically converges to the ball of radius τs ˙udmax centered around 
+
+ud, thus concluding our proof. 
+
+REFERENCES 
+
+[1] S. Bennani, C. Dennehy et al. , “Looking to the future: A call to action for advanced GNC algorithm verification and validation,” The Inter-Agency GNC V&V Working Group, Tech. Rep., 2024. [2] P. Simpl´ ıcio, A. Marcos, and S. Bennani, “Guidance of reusable launchers: Improving descent and landing performance,” J. Guid. Control Dyn. , vol. 42, no. 10, pp. 2206–2219, 2019. [3] A. P. Aguiar and J. P. Hespanha, “Trajectory-tracking and path-following of underactuated autonomous vehicles with parametric modeling uncertainty,” IEEE Trans. Autom. Control , vol. 52, pp. 1362–1379, 2007. [4] S. Sun, A. Romero, P. Foehn, E. Kaufmann, and D. Scaramuzza, “A comparative study of nonlinear MPC and differential-flatness-based control for quadrotor agile flight,” IEEE Trans. Robot. ,vol. 38, no. 6, pp. 3357–3373, 2022. [5] B. B. Kocer, T. Tjahjowidodo, M. Pratama, and G. G. L. Seet, “Inspection-while-flying: An autonomous contact-based nonde-structive test using UAV-tools,” Autom. Constr. , vol. 106, 2019. [6] J. Hauser, S. Sastry, and G. Meyer, “Nonlinear control design for slightly non-minimum phase systems: Application to V/STOL aircraft,” Automatica , vol. 28, no. 4, pp. 665–679, 1992. [7] B. Wie, W. Du, and M. Whorton, “Analysis and design of launch vehicle flight control systems,” in AIAA Guidance, Navigation and Control Conference and Exhibit , 2008. [8] J. Reis, W. Xie, D. Cabecinhas, and C. Silvestre, “Nonlinear backstepping controller for an underactuated ASV with model parametric uncertainty: Design and experimental validation,” IEEE Trans. Intell. Vehicl. , vol. 8, pp. 2514–2526, 2023. [9] D. Cabecinhas, P. Batista, P. Oliveira, and C. Silvestre, “Hovercraft control with dynamic parameters identification,” IEEE Trans. Control Syst. Technol. , vol. 26, pp. 785–796, 5 2018. [10] J. M. Pflimlin, P. So` u, and T. Hamel, “Hovering flight stabilization in wind gusts for ducted fan UAV,” in IEEE Conference on Decision and Control , December 2004. [11] T. Lee, M. Leok, and N. McClamroch, “Geometric tracking control of a quadrotor UAV on SE(3),” in 49th IEEE Conference on Decision and Control , 2010. [12] K. Gamagedara, M. Bisheban, E. Kaufman, and T. Lee, “Geomet-ric controls of a quadrotor UAV with decoupled yaw control,” in 
+
+IEEE American Control Conference , 2019, pp. 3285–3290. [13] X. Shi, Y. Zhang, and D. Zhou, “Almost-global finite-time tra-jectory tracking control for quadrotors in the exponential coordi-nates,” IEEE Trans. Aerosp. Electron. Syst. , vol. 53, no. 1, pp. 91–100, 2017. [14] Y. B. Shtessel, I. A. Shkolnikov, and A. Levant, “Guidance and control of missile interceptor using second-order sliding modes,” 
+
+IEEE Trans. Aerosp. Electron. Syst. , vol. 45, no. 1, pp. 110–124, 2009. [15] J. Yang, S. Li, C. Sun, and L. Guo, “Nonlinear-disturbance-observer-based robust flight control for airbreathing hypersonic vehicles,” IEEE Trans. Aerosp. Electron. Syst. , vol. 49, no. 2, pp. 1263–1275, 2013. [16] P. Santos and P. Oliveira, “Pitch plane trajectory tracking control for sounding rockets via adaptive feedback linearization,” in 2025 IEEE Aerospace Conference , 2025, pp. 1–17. [17] P. Casau, R. G. Sanfelice, R. Cunha, D. Cabecinhas, and C. Sil-vestre, “Robust global trajectory tracking for a class of underac-tuated vehicles,” Automatica , vol. 58, pp. 90–98, 2015. [18] F. Bullo, R. Murray, and A. Sarti, “Control on the sphere and reduced attitude stabilization,” IFAC Proceedings Volumes , vol. 28, no. 14, pp. 495–501, 1995. [19] R. M. Murray, M. Rathinam, and W. Sluis, “Differential flatness of mechanical control systems: A catalog of prototype systems,” in ASME International Mechanical Engineering Congress and Exposition , 1995, pp. 349–357. [20] M. van Nieuwstadt and R. Murray, “Approximate trajectory gen-eration for differentially flat systems with zero dynamics,” in 34th IEEE Conference on Decision and Control , vol. 4, 1995, pp. 4224– 4230. [21] L. Spannagl, E. Hampp, A. Carron, J. Sieber, C. A. Pascucci, A. U. Zgraggen, A. Domahidi, and M. N. Zeilinger, “Design, optimal guidance and control of a low-cost re-usable electric model rocket,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2021, pp. 6344–6351. [22] R. Linsen, P. Listov, A. D. Lajarte, R. Schwan, and C. N. Jones, “Optimal thrust vector control of an electric small-scale rocket 16 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. XX, No. XX XXXXX 2026 prototype,” in IEEE International Conference on Robotics and Automation (ICRA) , 2022, pp. 1996–2002. [23] W. Yang, G. Yu, J. Reis, and C. Silvestre, “Robust nonlinear 3D control of an inverted pendulum balanced on a quadrotor,” 
+
+Automatica , vol. 159, 2024. [24] W. J. Elke and R. J. Caverly, “Dynamics, guidance, and control of a low-cost quadcopter-based space vehicle testbed,” in AIAA SciTech Forum and Exposition , 2024. [25] A. Astolfi, D. Karagiannis, and R. Ortega, “Towards applied nonlinear adaptive control,” Annu. Rev. Control , vol. 32, no. 2, pp. 136–148, 2008. [26] M. Hua, T. Hamel, P. Morin, and C. Samson, “A control approach for thrust-propelled underactuated vehicles and its application to VTOL drones,” IEEE Trans. Autom. Control , vol. 54, no. 8, pp. 1837–1853, 2009. [27] O. Mofid and S. Mobayen, “Adaptive finite-time backstepping global sliding mode tracker of quad-rotor UAVs under model uncertainty, wind perturbation, and input saturation,” IEEE Trans. Aerosp. Electron. Syst. , vol. 58, no. 1, pp. 140–151, 2022. [28] J. Reis, G. Yu, D. Cabecinhas, and C. Silvestre, “High-performance quadrotor slung load transportation with damped oscillations,” Int. J. Robust Nonlin. Control , vol. 33, no. 17, pp. 10 227–10 256, 2023. [29] L. Sun and W. Huo, “6-DOF integrated adaptive backstepping control for spacecraft proximity operations,” IEEE Trans. Aerosp. Electron. Syst. , vol. 51, no. 3, pp. 2433–2443, 2015. [30] R. Chai, A. Tsourdos, A. Savvaris, S. Chai, Y. Xia, and C. Philip Chen, “Review of advanced guidance and control algorithms for space/aerospace vehicles,” Prog. Aerosp. Sci. , vol. 122, p. 100696, 2021. [31] P. Tsiotras and J. M. Longuski, “Spin-axis stabilization of sym-metric spacecraft with two control torques,” Syst. & Control Lett. ,vol. 23, no. 6, pp. 395–402, 1994. [32] D. Brescianini and R. D’Andrea, “Tilt-prioritized quadrocopter attitude control,” IEEE Trans. Control Syst. Technol. , vol. 28, no. 2, pp. 376–387, 2020. [33] D. Kooijman, A. P. Schoellig, and D. J. Antunes, “Trajectory tracking for quadrotors with attitude control on S2 × S 1,” in 18th European Control Conference (ECC) , 2019, pp. 4002–4009. [34] E. M. Coates, D. Reinhardt, and T. I. Fossen, “Reduced-attitude control of fixed-wing unmanned aerial vehicles using geometric methods on the two-sphere,” IFAC-PapersOnLine , vol. 53, no. 2, pp. 5749–5756, 2020, 21st IFAC World Congress. [35] J. Madeiras, C. Cardeira, and P. Oliveira, “Trajectory tracking of a quadrotor via full-state feedback control,” Aerosp. Sci. Technol. ,vol. 147, p. 109013, 2024. [36] C. Monta˜ nez-Molina and J. Pliego-Jim´ enez, “Position and reduced attitude trajectory tracking control of quadrotors: Theory and experiments,” Aerosp. Sci. Technol. , vol. 155, 2024. [37] J. E. Slotine, Applied Nonlinear Control , 1st ed. Prentice Hall, 1991. [38] S. P. Bhat and D. S. Bernstein, “A topological obstruction to con-tinuous global stabilization of rotational motion and the unwinding phenomenon,” Syst. & Control Lett. , vol. 39, no. 1, pp. 63–70, 2000. [39] M. Krstic, I. Kanellakopoulos, and P. Kokotovic, Nonlinear and Adaptive Control Design . Wiley, 1995. [40] D. Swaroop, J. Hedrick, P. Yip, and J. Gerdes, “Dynamic surface control for a class of nonlinear systems,” IEEE Trans. Autom. Control , vol. 45, no. 10, pp. 1893–1899, 2000. [41] E. Hairer, C. Lubich, and G. Wanner, Geometric Numerical Inte-gration: Structure-Preserving Algorithms for Ordinary Differential Equations , ser. Springer Series in Computational Mathematics. Springer Berlin Heidelberg, 2013. [42] L. W. Tu, An Introduction to Manifolds , 2nd ed. Springer, 2011, ch. 3. 
+
+Pedro Santos (Graduate Student Member, IEEE) received his B.Sc. and M.Sc. degrees in Aerospace Engineering from Instituto Superior T´ ecnico (IST), Lisbon, Portugal, in 2020, and 2022, respectively. He is currently pursuing a Ph.D. degree in Aerospace Engineering at IST in affiliation with the Associated Laboratory for Energy, Transports, and Aeronautics. His re-search interests are in the area of underactuated autonomous vehicles with a focus on nonlinear and robust Guidance, Navigation, and Control (GNC) algorithms for launch vehicles. 
+
+Joel Reis received the M.Sc. degree in Aerospace Engineering from the Instituto Su-perior T´ ecnico, Lisbon, Portugal, in 2013, and the Ph.D. degree in Electrical and Computer Engineering from the University of Macau, Macau, in 2019. He is currently an Assistant Professor with the Faculty of Science and Technology, University of Macau. His research interests include estimation and control theory for autonomous vehicles. 
+
+Paulo Oliveira (Senior Member, IEEE) re-ceived the Ph.D. degree in Electrical and Com-puter Engineering, in 2002, respectively, and the Habilitation in Mechanical Engineering in 2016, all from Instituto Superior T´ ecnico (IST), Lisbon, Portugal. Since 2020, he holds a joint position as Full Professor in the Mechanical Engineering and Electrotechnical and Com-puter Engineering Departments of IST. He is the Coordinator of the Doctoral Program in Aerospace Engineering and member of the Scientific Council, both at IST. His research interests are on Autonomous Robotic Vehicles with a focus on Mechatronic Systems Integration, and Guidance, Navigation and Control Systems (GNC). He is author or coauthor of more than 100 journal and 200 conference papers, and participated in more than 40 European and Portuguese research projects, over the last 35 years. 
+
+Carlos Silvestre (Senior Member, IEEE) re-ceived his Licenciatura and M.Sc. in Electrical and Computer Engineering, his Ph.D. in Con-trol Science, and his Habilitation in Electri-cal and Computer Engineering from Instituto Superior T´ ecnico (IST), Lisbon, Portugal, in 1987, 1991, 2000, and 2011, respectively. He has been with the Department of Electrical and Computer Engineering at IST since 2000, where he is a Professor in Systems, Decision, and Control, currently on leave since 2012. He is currently a Professor and Head of the Department of Electrical and Computer Engineering at the University of Macau’s Faculty of Science and Technology. His research interests include linear and nonlinear control, estimation theory, hybrid systems, multi-agent control, networked control, inertial navigation, and machine learning for autonomous systems, with a focus on unmanned ocean and aerial vehicles. SANTOS ET AL.: AN AERIAL ROBOTIC TESTBED FOR ADAPTIVE THRUST-VECTOR CONTROL 17
