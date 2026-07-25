@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-25</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 19 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-23 21:41:18 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-25 21:37:36 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>共处理19篇论文，精读7篇、速读12篇。重点关注精读中两篇9分论文：条件可逆神经网络驱动无人机控制，以及融合视觉-几何-语义地图先验的无人机6自由度定位。建议优先阅读这两篇，把握无人机控制与定位的前沿突破。</p>
+<p>今日精读7篇速读12篇，聚焦零样本目标导航与物理增强实时控制两大9分前沿。最值得关注《Difference-Based Relational Learning for Zero-Shot Object-Goal Visual Navigation》与《Physics-enhanced reinforcement learning for real-time optimal control of dynamical systems》。建议读者优先精读这两篇高影响力论文，了解零样本迁移与物理融合强化学习的核心突破。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Conditional Invertible Neural Networks for Data-Driven UAV Control: A 2-D Proof of Concept">Conditional Invertible Neural Networks for Data-Driven UAV Control: A 2-D Proof of Concept</span></li><li><span class="dpr-home-dashboard-paper-title" title="AeroMap3D: Anchoring Monocular UAV 6-DoF Localization to Visual-Geometric-Semantic Map Priors">AeroMap3D: Anchoring Monocular UAV 6-DoF Localization to Visual-Geometric-Semantic Map Priors</span></li><li><span class="dpr-home-dashboard-paper-title" title="No Training, Better Flights: Test-Time Scaled VLMs for UAV Navigation">No Training, Better Flights: Test-Time Scaled VLMs for UAV Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Difference-Based Relational Learning for Zero-Shot Object-Goal Visual Navigation With Direct Sim-to-Real Transfer">Difference-Based Relational Learning for Zero-Shot Object-Goal Visual Navigation With Direct Sim-to-Real Transfer</span></li><li><span class="dpr-home-dashboard-paper-title" title="Physics-enhanced reinforcement learning for real-time optimal control of dynamical systems">Physics-enhanced reinforcement learning for real-time optimal control of dynamical systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer">Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,7 +87,7 @@
     <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DriftWorld: Fast World Modeling through Drifting">DriftWorld: Fast World Modeling through Drifting</span></li><li><span class="dpr-home-dashboard-paper-title" title="Intelligent Multi-UAV Navigation in ITNTNs: A Hierarchical LLM Approach">Intelligent Multi-UAV Navigation in ITNTNs: A Hierarchical LLM Approach</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Distances to Trajectories: Real-Time Signed Distance Function Mapping and Distance-Accelerated Motion Planning for UAVs">From Distances to Trajectories: Real-Time Signed Distance Function Mapping and Distance-Accelerated Motion Planning for UAVs</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Anticipate Before Acting: Future-State-Conditioned Vision-Language Navigation">Anticipate Before Acting: Future-State-Conditioned Vision-Language Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="HyWorldVLA: A Vision-Language-Action Model with Hybrid World Modeling for Autonomous Driving">HyWorldVLA: A Vision-Language-Action Model with Hybrid World Modeling for Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="DAPM: UAV Monocular Depth Estimation from Any Height, Pitch, Roll and FOV">DAPM: UAV Monocular Depth Estimation from Any Height, Pitch, Roll and FOV</span></li></ul>
   </div>
   <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
 </section>

@@ -1,0 +1,622 @@
+Title: Configuration-Induced Passive Self-Rotation for Perception-Enhanced Autonomous Flight
+
+URL Source: https://arxiv.org/pdf/2607.17646v1
+
+Published Time: Tue, 21 Jul 2026 01:35:06 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Configuration-Induced Passive Self-Rotation for Perception-Enhanced Autonomous Flight 
+
+Xurui Liu, Miao Wang, Tianyu He, Linrui Yang, and Xiaobin Zhou ∗
+
+Abstract — Autonomous flight in confined and cluttered envi-ronments is fundamentally limited by the restricted field of view (FoV) of onboard sensors. Passive self-rotation expands sensing coverage without additional sensors but introduces a tradeoff between swept-FoV refresh rate and flight performance. This letter presents a configuration-induced passively self-rotating tricopter for perception-enhanced autonomous flight. Firstly, the rear-arm configuration parameter is exploited to regulate the passive self-rotation operating point, providing an airframe-level mechanism for balancing swept-FoV refresh rate and flight performance. Secondly, a hierarchical autonomy framework integrating planning and control is developed to enable agile and robust autonomous flight under continuous passive self-rotation. For waypoint-based inspection, guide-point replanning is further used to improve task-level coverage. Extensive real-world experiments, including high-speed trajectory tracking, disturbance-rejection tests, and autonomous navigation in rep-resentative cluttered environments, demonstrate the effective-ness of the proposed approach for perception-enhanced au-tonomous flight. 
+
+I. I NTRODUCTION 
+
+Small unmanned aerial vehicles (UAVs) are increasingly deployed in confined and cluttered environments, such as forests [1], underground garages and narrow passages [2], [3], and warehouses. Reliable navigation in these environ-ments requires continuous obstacle perception and suffi-ciently complete local mapping. However, size, weight, and power constraints often limit small UAVs to compact sensors rigidly mounted on the airframe. Consequently, the observ-able region is restricted by the sensor field of view (FoV) and mounting direction, leaving lateral, rear, and near-ground regions under-observed. This limitation is particularly critical in cluttered environments, where incomplete observations can delay obstacle discovery, reduce planning efficiency, and increase navigation risk [4]. To mitigate under-observed regions caused by fixed and limited FoV, prior approaches enlarge the observable re-gion using wide-FoV sensors [5], multiple sensors, active gimbals [6], or vehicle self-rotation [4], [7], [8]. Additional sensors and active gimbals can improve coverage, but they introduce extra components, electromechanical degrees of freedom, or higher integration complexity, increasing the size, weight, and power burden on small UAVs. Vehicle self-rotation offers a different route by using body motion 
+
+The authors are with the School of Robotics and Automation, Nanjing University, Suzhou 215163, China. (Emails: xrl250444@gmail.com, wm ubuntu@nju.edu.cn, tonyhe 2015321@outlook.com, linruiyang2004@163.com, xiaobin nju@nju.edu.cn) 
+
+> ∗
+
+Corresponding author. 1m/s trajectory   
+
+> 2m/s trajectory
+> 3m/s trajectory
+> 4m/s trajectory
+> 5m/s trajectory
+> Waypoint
+> Start & destination
+> A(1) A(2)
+> A(3)
+> B(1) B(2)
+> B(3)
+> FPV picture
+
+Fig. 1. Autonomous navigation in an unknown forest environment. A(1) Bird’s-eye view of the experimental environment, showing the flight area and waypoint layout. A(2) First-person view (FPV) captured during autonomous flight through a narrow passage. A(3) Chase-camera view of the tricopter during autonomous flight. B(1) Reconstructed point-cloud map overlaid with the start and destination, waypoints, and trajectories at 1–5 m /s. B(2)-B(3) Local point-cloud view illustrating the planned trajectory through cluttered trees. 
+
+itself to expand the effective FoV, and recent self-rotating aerial vehicles have demonstrated enlarged sensing range and autonomous navigation in unknown environments [4], [7], [8]. However, these platforms mainly generate or regulate self-rotation through dedicated mechanisms, passive aero-dynamic structures, or unconventional vehicle architectures, so the self-rotation rate is often treated as a platform-dependent property rather than an airframe-level design vari-able. Consequently, the relation among swept-FoV refresh, flight-control authority, and navigation performance remains insufficiently explored, especially because continuous self-rotation introduces attitude coupling, aerodynamic distur-bances, and model mismatch during agile flight. These chal-lenges motivate a unified framework that jointly considers platform design, flight control, and swept-FoV navigation for passively self-rotating aerial vehicles. Motivated by these challenges, we develop a tricopter that induces passive self-rotation through its airframe configu-ration. The system couples airframe-level self-rotation-rate regulation, local replanning, and nonlinear model predictive control (NMPC) with incremental nonlinear dynamic inver-sion (INDI) compensation to support autonomous naviga-tion under passive self-rotation (see Fig. 1). For waypoint-based inspection, guide-point replanning uses swept-FoV arXiv:2607.17646v1 [cs.RO] 20 Jul 2026 map updates to prioritize less-observed regions. The main contributions of this work are summarized as follows: 1) A configuration-induced passively self-rotating tri-copter, shown in Fig. 2, that enables airframe-level regulation of the passive self-rotation rate without re-quiring additional aerodynamic speed-regulation com-ponents. 2) A perception-enhanced autonomous flight framework that combines local replanning and self-rotating trajec-tory tracking for robust navigation under passive self-rotation, with guide-point replanning for waypoint-based inspection. 3) Extensive real-world experiments that validate the self-rotation mechanism, swept-FoV perception capabil-ity, high-precision trajectory tracking, and autonomous navigation performance in cluttered environments. II. R ELATED WORK 
+
+A. Self-Rotating Aerial Vehicle Design and Control 
+
+Self-rotating aerial vehicles have been explored as com-pact platforms that exploit continuous body rotation for flight and perception. The Monospinner demonstrated stable hovering with a continuously rotating body [9], and recent single-actuator monocopter work achieved smooth trajectory tracking using INDI on Samara-inspired platforms [10]. Swashplateless micro aerial vehicles [11], revolving-wing drones [12], passive compliant variable-pitch wings [13], and reconfigurable rotary-wing platforms [14] further showed that self-rotation, bio-inspired actuation, or reconfiguration can support efficient and agile flight. PULSAR and PULSAR II achieved omnidirectional sensing, autonomous navigation, agile tracking, and collision resistance on single-actuator platforms [4], [7], while SPINNER validated vertical field-of-view expansion and autonomous flight with a passive tri-rotor configuration [8]. However, in these platforms the self-rotation rate is mainly set by the vehicle architecture, flight mode, actuator dynamics, or auxiliary regulation elements rather than by a primary airframe design variable linked to swept-FoV refresh and flight-control authority. This work in-stead adjusts the passive self-rotation operating point through the tricopter airframe, balancing swept-FoV refresh with control authority without extra spin-regulation components. 
+
+B. Perception-Enhanced Autonomous Navigation 
+
+Autonomous flight in cluttered environments requires cou-pling perception, planning, and control under limited onboard sensing and computation [1], [15], [16]. Perception-aware and information-driven planning methods improve navigation by considering sensing quality, informative viewpoints, or exploration frontiers during motion generation. Represen-tative examples include perception-aware planning in un-known and feature-limited environments [17], perception-aware model predictive path integral control for unknown-environment navigation [18], and exploration methods based on submaps, safe local replanning, unknown-region guid-ance, or lightweight LiDAR-based exploration [19]–[22]. The cited approaches obtain observations either from fixed or actively steered sensors, or from viewpoints explicitly selected during planning. In contrast, a passively self-rotating aerial vehicle naturally produces a time-varying swept FoV during flight. The resulting map updates support local re-planning under passive self-rotation. In waypoint-based in-spection, they are also used to select guide points toward less-observed regions. III. S YSTEM DESIGN AND CONFIGURATION -I NDUCED 
+
+SELF -R OTATION 
+
+A. Hardware Platform and Software Architecture 
+
+We treat the rear-arm configuration as an airframe-level design variable for setting the passive self-rotation operating point. As shown in Fig. 2(A), we implement three tricopter prototypes that span different values of this design variable. Each prototype has one front arm and two symmetric rear arms, with rear-arm parameter α changing the rear-rotor pitch moment arm and regulating the steady passive self-rotation rate. To isolate the effect of α, the prototypes share the same major hardware configuration. The onboard system integrates LiDAR sensing, onboard computing, flight control, and three-rotor propulsion modules. The LiDAR is mounted with a fixed tilt angle β = 25 ◦, enabling vehicle self-rotation to transform the instantaneous FoV into a swept observation region. Fig. 2(B) illustrates the onboard autonomy frame-work. LiDAR and inertial measurement unit (IMU) data are processed by FAST-LIVO2 [23] and an extended Kalman filter for state estimation and local mapping. The resulting map supports local replanning and, for inspection, guide-point generation toward less-observed regions. The planner produces dynamically feasible reference trajectories, which are tracked by NMPC with INDI-based compensation. The compensated commands are executed by the flight-control unit (FCU) and electronic speed controllers (ESCs), with rotor-speed feedback returned to the INDI layer. 
+
+B. Configuration-Induced Passive Self-Rotation 
+
+Fig. 2(C1) illustrates how the rear-arm configuration in-duces passive self-rotation. Varying α changes the rear-rotor pitch moment arm, so balancing roll and pitch moments redistributes the rotor thrusts and alters the residual yaw counter-torque that drives passive self-rotation. The three rotor thrusts are denoted by f = [ f1, f 2, f 3]T,where each fi = ktϖ2 
+
+> i
+
+with kt the thrust coefficient and 
+
+ϖi the angular speed of rotor i. The rotor thrust-to-wrench mapping is 
+
+
+
+Fτx
+
+τy
+
+τz
+
+ =
+
+
+
+1 1 10 √32 L − √32 L
+
+−L αL αL 
+
+−κτ κτ κτ
+
+| {z } 
+
+> M(α)
+
+f , (1) where M (α) is the thrust allocation matrix, L is the front-rotor pitch-axis moment arm, αL is the rear-rotor pitch-axis moment arm, κτ is the rotor counter-torque coefficient, and Original FoV     
+
+> Self-Rotation
+> Extended FoV
+> (C1)
+> C. Self-Rotation Mechanism
+> Grid map
+> Extended
+> Kalman filter
+> LiDAR-Inertial
+> odometry
+> IMU data
+> & point cloud
+> IMU
+> data
+> Observation Model
+> 𝒑, 𝝎 𝒛
+> Original FoV
+> Trajectory planning
+> Smoothness Total time Dynamic feasibility
+> Guide Point
+> NMPC 250.0 Hz
+> INDI
+> 250.0 Hz
+> FCU
+> ESC
+> 333.0 Hz
+> RPM
+> 𝝎 𝒑, 𝒒, 𝒗, 𝝎
+> Reference Trajectory
+> 𝒇 𝒕 𝒇 𝑰𝑵𝑫𝑰
+> B. Software architecture
+> Tilt Angle
+> LiDAR
+> （MID-360 ）
+> Computer
+> （Jetson Orin NX ）
+> Flight controller
+> （Kakute H7 ）
+> Battery
+> （4s, 2300 mAh ）
+> Motor
+> （T-Motor F60 Pro ）
+> Propeller
+> （GemFan 51477 ）
+> 𝜷 = 𝟐𝟓 °
+> 𝒇 𝟏
+> 𝒇 𝟑 𝒇 𝟐
+> (C2)
+> 𝟐𝜷 = 𝟓𝟎 °
+> 𝟓𝟗 °
+> 𝟏𝟎𝟗 °
+> A.UAV Design
+> prototype I
+> prototype III
+> prototype II
+> 𝜶 = 𝟎. 𝟓
+> 𝜶 = 𝟎. 𝟕𝟓
+> 𝜶 = 𝟎. 𝟔𝟓
+
+Fig. 2. System overview of the configuration-induced passively self-rotating tricopter. (A) Three prototypes with different rear-arm configuration parameters α, onboard hardware, and propulsion layout. (B) Onboard software architecture. (C) Self-rotation mechanism. (C1) Rear-arm geometry producing residual yaw counter-torque. (C2) Swept-FoV expansion from the native 59 ◦ sensor FoV to an effective 109 ◦ vertical envelope. 
+
+m and g are the platform mass and gravitational accelera-tion, respectively. Under hovering equilibrium and neglecting aerodynamic disturbances, the rotor thrusts satisfy 
+
+f1 = αmg 
+
+1 + α , f2 = f3 = mg 
+
+2(1 + α) . (2) Substituting these thrusts into the yaw-moment row gives the residual yaw counter-torque 
+
+τ res  
+
+> z
+
+(α) = κτ (−f1 + f2 + f3) = κτ mg 1 − α
+
+1 + α . (3) Here, τ res  
+
+> z
+
+(α) denotes the net yaw moment generated by the equilibrium thrust distribution. For α < 1, this residual yaw counter-torque decreases as α approaches one, so a smaller 
+
+α provides a larger driving moment for passive self-rotation. This relation links the rear-arm configuration to the passive self-rotation operating point. Since the steady self-rotation rate is set by the balance between this driving moment and aerodynamic rotational damping, it is determined experimen-tally through steady-hover tests. The perception effect is illustrated in Fig. 2(C2). Contin-uous passive self-rotation converts the instantaneous LiDAR FoV into a swept-FoV envelope. The native vertical FoV of the Livox Mid-360 is FoV native = 59 ◦. Over one self-rotation period, the accumulated vertical angular envelope can be approximated as 
+
+FoV eff ≈ FoV native + 2 β = 109 ◦. (4) IV. S ELF -R OTATING FLIGHT DYNAMICS AND MODEL 
+
+IDENTIFICATION 
+
+A. Self-Rotating Flight Dynamics Model 
+
+The model is expressed in a world frame W and a body-fixed frame B. The vehicle state consists of the world-frame position p, world-frame velocity v, attitude quaternion q,and body-frame angular velocity ω. The rotation matrix from 
+
+B to W is denoted by R, and e3 = [0 , 0, 1] T denotes the vertical unit vector. The product Re 3 gives the body thrust-axis direction in W . The self-rotating flight model is 
+
+m ¨p = F Re 3 − RDR Tv − mg e3, (5) 
+
+˙q = 12 q ⊗
+
+ 0
+
+ω
+
+
+
+, (6) 
+
+˙ω = J−1 (τ + τip − ω × Jω − τaero ) . (7) Here, D is the translational drag matrix, τ is the rotor-generated body moment, τip denotes the moment induced by rotor inertia, and τaero denotes the lumped rotational residual during self-rotating flight. The symbols ⊗ and ×
+
+denote quaternion multiplication and the vector cross prod-uct, respectively. Motivated by the lumped rotor-drag formu-lation for high-speed multirotor flight [24], this residual is approximated by a linear model, 
+
+τaero ≈ c + Av RTv + Bω ω, (8) where c is a residual bias vector, and Av and Bω are 
+
+3 × 3 residual-moment coefficient matrices associated with body-frame velocity and angular-rate effects. The three rows correspond to roll, pitch, and yaw residual moments. 
+
+B. Model Parameter Identification 
+
+We measure m directly, obtain J from the assembled CAD model, and calibrate kt and κτ through static bench measurements. The translational drag coefficient is identified from flight data. Let vB = RTv be the body-frame velocity. From the translational dynamics, the acceleration residual associated with translational drag is written as 
+
+ηD = RT
+
+ Fm Re 3 − ge3 − ¨p
+
+
+
+= D
+
+m vB . (9) The entries of D/m are obtained by linear least-squares regression between ηD and vB .We identify the rotational residual from lemniscate flight logs collected at multiple reference speeds. The residual is constructed as 
+
+ηω = τ + τip − J ˙ω − ω × Jω . (10) 
+
+c, Av , and Bω are estimated by fitting (8) to the rotational residual using flight segments with sufficient translational and rotational excitation. The fitted coefficients help the nom-inal model capture prototype-specific rotational residuals. V. C ONTROLLER DESIGN AND GUIDE -P OINT 
+
+REPLANNING 
+
+A. Tracking Control with Disturbance Compensation 
+
+At each control cycle, the NMPC optimizes a rotor-thrust command sequence over horizon N with step size ∆t. The prediction state augments the rigid-body state with the actual rotor thrusts, 
+
+x = [ pT, qT, vT, ωT, f T]T, ˙f = 1
+
+τm
+
+(u − f ), (11) where u is the thrust command and τm is the motor time constant. The transition map Φ used in the NMPC constraints is obtained by discretizing the rigid-body dynamics and (11). Under passive self-rotation, yaw evolves with the vehicle’s natural spinning motion. The tracking-error vector is there-fore defined so that the NMPC cost penalizes thrust-axis misalignment rather than full attitude error, 
+
+yi =
+
+
+
+pi − pref 
+
+> i
+
+ Rie3 × bref 3,i 
+
+
+
+> xy
+
+vi − vref 
+
+> i
+
+ωxy,i − ωref 
+
+> xy,i
+
+ , (12) where ωxy = [ωx, ω y ]T and bref 3,i is the reference thrust axis. Let ∆fi = fi − f ref  
+
+> i
+
+, ∆ui = ui − uref  
+
+> i
+
+, and zi =[yT 
+
+> i
+
+, ∆f T 
+
+> i
+
+]T. The NMPC problem is 
+
+u∗  
+
+> k:k+N−1
+
+= arg min   
+
+> uk,..., uk+N−1
+
+zT 
+
+> k+N
+
+QN zk+N
+
++ 
+
+> k+N−1
+
+X
+
+> i=k
+
+ zT 
+
+> i
+
+Qz i + ∆ uT 
+
+> i
+
+Ru∆ui
+
+ (13) subject to 
+
+xi+1 = Φ( xi, ui), umin ≤ ui ≤ umax , (14) for i = k, . . . , k + N − 1. The state-error weight follows the ordering of zi as Q = diag( Qp, Qtilt , Qv , Qω , Qf ). The matrix Ru weights the thrust-command deviation, and QN
+
+weights the terminal cost. We use INDI [25] to compensate residual aerodynamic and motor-response errors. The subscript xy denotes the roll-pitch components, with yaw left to the passive self-rotation dynamics. The feedback terms τ f 
+
+> xy
+
+and ˙ωf 
+
+> xy
+
+are obtained from thrust estimates derived from rotor speeds and from IMU angular rate measurements after low pass filtering, respectively. The desired lateral moment is 
+
+τ d 
+
+> xy
+
+= τ f 
+
+> xy
+
++ Jxy 
+
+  ˙ωdes  
+
+> xy
+
+− ˙ωf
+
+> xy
+
+ , (15) where ˙ωdes  
+
+> xy
+
+is the desired roll-pitch angular acceleration and Jxy is the roll-pitch inertia submatrix. The INDI-compensated rotor thrust command is 
+
+uINDI = M −1 
+
+> F xy
+
+(α)
+
+ F
+
+τ d
+
+> xy
+
+
+
+. (16) Here, MF xy (α) contains the total-thrust, roll-moment, and pitch-moment rows of M (α).
+
+B. Guide-Point Selection and Replanning 
+
+Passive self-rotation continuously produces swept-FoV map updates. At replanning cycle n, these updates are used to form the observed free space and its frontier boundary. Let 
+
+θS,k (x) be the vertical angle of voxel x in the tilted LiDAR frame at observation update k, computed using the vehicle yaw and LiDAR tilt β, and let LOS k(x) = 1 indicate an unobstructed line of sight (LOS) verified by ray casting. The observed set, safe free candidate set, and frontier set are 
+
+On = [
+
+> k∈K n
+
+{x | rmin ≤ ∥ x − pk∥ ≤ Rℓ,θℓ ≤ θS,k (x) ≤ θu, LOS k(x) = 1 },
+
+Xn = {x ∈ O n | I n(x) = 0 },
+
+Bn = {b ∈ X n | ∃ b′ ∈ N 6(b), b′ /∈ O n}. (17) Here, Kn is the update set before cycle n, pk is the vehicle position at update k, rmin and Rℓ are LiDAR range limits, and θℓ and θu are vertical FoV bounds. The condition 
+
+In(x) = 0 marks a collision-free voxel, and N6(b) gives the six-connected neighbors used to extract Bn.The guide point is searched in a sector window Wn along the current waypoint direction, with radius Rs = κf H,angular width ψs, and height threshold hs. Let XW =
+
+Xn ∩ W n and BW = Bn ∩ W n. For x ∈ X W , the score is 
+
+Jg (x) = Ig (x) + λpdT 
+
+> n
+
+(x − pn)+ λ⊥
+
+ I − dndT
+
+> n
+
+ (x − pn) ,Ig (x) = X  
+
+> bj∈B W
+> ρj≤Rℓ
+
+exp 
+
+
+
+− (ρj − RK )2
+
+2σ2
+
+  1 − cos 2 θj
+
+ . (18) Here, dn is the current waypoint direction, while ρj and θj
+
+are the distance and angular relation between candidate x and frontier voxel bj . Let xg,n be the highest-scoring candidate at cycle n. The guide-point latch and local target are 
+
+ηn =
+
+(
+
+1, xact  
+
+> g,n −1
+
+is inactive or ∥pn − xact 
+
+> g,n −1
+
+∥ ≤ dg ,
+
+0, otherwise ,
+
+xact  
+
+> g,n
+
+=
+
+(
+
+xg,n , Ig (xg,n ) > 0, η n = 1 ,
+
+xact 
+
+> g,n −1
+
+, otherwise ,
+
+gn =
+
+(
+
+xact 
+
+> g,n
+
+, xact  
+
+> g,n
+
+is active and ∥wn − pn∥ > d term ,
+
+wn, otherwise .
+
+(19) Given gn, a grid-based A* search finds a collision-free initial path from pn to gn on the local occupancy map, which minimum-control-effort (MINCO) optimization [26] refines into a dynamically feasible trajectory. VI. E XPERIMENTS 
+
+We evaluate the proposed system through a series of real-world experiments. These experiments examine whether passive self-rotation expands the effective vertical sensing coverage achieved with the tilted LiDAR (Section VI-A), how the rear-arm configuration affects the passive self-rotation rate and flight agility (Section VI-B), whether the identified model improves prediction accuracy and supports robust control under external disturbances (Sections VI-C and VI-D), and evaluate sparse-waypoint navigation and guide-point replanning for relative coverage in waypoint-based inspection (Section VI-E). Table I lists the main experimental parameters for prototype II, selected in Sec-tion VI-B. The nonlinear MPC problem is solved using the ACADO solver in conjunction with qpOASES, and tracking performance is evaluated by the position root-mean-square error (RMSE). TABLE I EXPERIMENTAL PARAMETERS FOR PROTOTYPE II                                                                               
+
+> Parameters Values
+> m[kg ], L[m]1.1245 ,0.125
+> J[10 −3kg m 2], κτ[m]diag(5 .90 ,5.43 ,4.65) ,0.0125
+> N,∆t[s], τm[s]20 ,0.05 ,0.02
+> Qp,Qvdiag(1000 ,1000 ,1000) ,diag(1 ,1,1)
+> Qtilt ,Qωdiag(10 ,10) ,diag(1 ,1)
+> Qf,Rudiag(1 ,1,1) ,diag(2 ,2,2)
+> umin ,umax [N]0.001 ,7.0
+> rmin [m], Rℓ[m]0.1,9
+> θℓ,θu−7◦,52 ◦
+> H[m], κf,ψs,hs[m]10 ,1,150 ◦,0.1
+> RK[m], σ[m], λp,λ⊥3,0.9,0.5,3
+> dg[m], dterm [m]5,7
+
+A. Swept-FoV Expansion 
+
+We compare the proposed self-rotating tricopter with two fixed-mount quadrotor references, as shown in Fig. 3. All vehicles hover at 1.2 m , with a 0.6 m cubic obstacle placed 
+
+1.2 m away at a rear bearing. The evaluated obstacle edge in Fig. 3(A1) requires a depression angle of at least 18 .4◦. The horizontal reference provides only 7◦ downward coverage, while the tilted reference reaches 32 ◦ but only within a fixed forward sector. Both references therefore miss the rear obstacle. In contrast, passive self-rotation sweeps the vertical FoV of the tilted LiDAR around the vehicle, allowing the obstacle to be captured in the accumulated point cloud. This confirms vertical FoV expansion under passive self-rotation. 
+
+B. Configuration Selection and Agile Flight Performance 
+
+We experimentally compare three prototypes with α =0.50 , 0.65 , and 0.75 , denoted as prototypes I–III, to evaluate the tradeoff between swept-FoV refresh and agile flight per-formance. Fig. 4(A2)–(A3) show all prototypes following the lemniscate reference trajectory, but the tracking error distri-butions broaden as speed increases, especially for prototype I. This trend indicates that faster swept-FoV refresh increases compensation demand during agile translation. Prototype III maintains small errors at moderate speeds but has the longest rotation period, whereas prototype II keeps a relatively short period while remaining close to the best tracking accuracy across the speed range. 1.2m          
+
+> 1.2m
+> 27 °
+> 32 °
+> Horizontal line
+> A (1) A (2)
+> A (3)
+> B (1) B (2) B (3)
+> Detected obstacle
+> 18.4 °
+> Tricopter 𝜷 = 25°
+> Quadrotor 𝜷 = 0°
+> 0.6m Quadrotor 𝜷 = 25°
+> Ground blind zone Rear blind zone
+> Fig. 3. Swept-FoV expansion experiment. A(1) shows the tilted LiDAR geometry and rear obstacle. A(2)–A(3) show the horizontal and tilted fixed LiDAR references. B(1)–B(3) compare the corresponding point cloud observations.
+
+Table II summarizes this tradeoff. As α increases, τn
+
+decreases from 0.333 to 0.143 , and the measured self-rotation rate during steady hover decreases from 11 .03 rad /s
+
+to 4.69 rad /s, confirming that α effectively sets the pas-sive self-rotation operating point. The ¯Ωz ± σ values are computed from a selected 12 s steady hover window, and 
+
+Ts = 2 π/ ¯Ωz . The dynamic flight metrics include eRMSE for position tracking. The 5 m /s metrics ∆fRMS and U95 denote the RMS INDI correction to the NMPC thrust command and the 95th percentile of maximum rotor thrust utilization, respectively. At 5 m /s, prototype I has the shortest period (0.57 s ) but the largest tracking error ( 0.241 m ) and INDI correction ( 0.943 N ), whereas prototype III has the longest period ( 1.34 s ) and the highest thrust utilization ( 0.903 ). Prototype II achieves eRMSE = 0 .151 m with ∆fRMS =0.737 N and U95 = 0.834 , and is therefore selected for subsequent autonomous flight experiments. To test prototype II in a gate-passing task, we further fly it through a sequence of gates at reference speeds from 
+
+2 m /s to 5 m /s, as shown in Fig. 4. The executed trajectories pass through the gates while following the reference, and the error distributions remain compact across speeds. At 
+
+5 m /s, the RMSE is 0.121 m with ∆fRMS = 0 .670 N and 
+
+U95 = 0 .833 , confirming that the prototype II configuration preserves sufficient control margin in constrained agile flight. 
+
+C. Self-Rotating Dynamics Model Validation 
+
+The prototype-II coefficients used in the nominal predic-tion model are: 
+
+D/m = diag(0 .307 , 0.325 , 0.145) s −1,
+
+c = 10 −3[−23 .38 , 12 .06 , 35 .94] T N m .Av = 10 −3
+
+ − 5.15 −13 .52 −0.77 14 .77 0.19 1.01 
+
+−14 .08 − 3.14 1.85 
+
+ N s ,Bω = 10 −3
+
+
+
+− 0.77 − 7.33 3.22 
+
+− 4.69 1.27 −1.01 3.63 3.02 −1.31 
+
+ N m s .TABLE II PROTOTYPE SELECTION METRICS , L EMNISCATE TRACKING , AND GATE PASSING RESULTS                                                                      
+
+> ¯Ωz±σTs∆f5 m /sRMS ↓U5 m /s95 ↓eRMSE ↓(m)Task ατn(rad /s)(s)(N)2 m /s3 m /s4 m /s5 m /s
+> Eight (prototype I) 0.50 0.333 11 .03 ±0.28 0.57 0.943 0.814 0.084 0.156 0.211 0.241 Eight (prototype II) 0.65 0.212 8.20 ±0.49 0.77 0.737 0.834 0.050 0.077 0.122 0.151
+> Eight (prototype III) 0.75 0.143 4.69 ±0.71 1.34 0.872 0.903 0.059 0.073 0.102 0.159 Gate (prototype II) 0.65 0.212 8.20 ±0.49 0.77 0.670 0.833 0.054 0.068 0.085 0.121
+
+(A1) 
+
+(A2) 
+
+(A3)  (B3) 
+
+(B2) 
+
+(B1) 
+
+Fig. 4. Trajectory tracking experiments for configuration selection and gate passing validation. A(1) shows overlaid snapshots during lemniscate flight. A(2) compares the reference and executed trajectories of the three prototypes on a three-dimensional lemniscate trajectory with a 10 m × 6 m footprint and a height range of 0.8 m –1.2 m . A(3) reports distributions of tracking error at reference speeds from 2 m /s to 5 m /s. B(1) shows the selected prototype II in gate passing, and B(2)–B(3) report its executed trajectories and distributions of tracking error. TABLE III HELD -O UT PREDICTION VALIDATION FOR PROTOTYPE II 
+
+Translational acceleration RMSE aB ↓ [m/s2]Model x y z Vec. Rigid body 1.81 1.98 1.09 2.89 + translational drag 1.68 1.82 1.09 2.71 
+
++ drag + rotational residual 1.68 1.82 1.09 2.71 
+
+Angular-acceleration RMSE ˙ω ↓ [rad /s2]Model x y z Vec. Rigid body 10.01 9.37 7.76 15.76 + translational drag 10.01 9.37 7.76 15.76 + drag + rotational residual 7.89 7.86 2.00 11.31 
+
+Using the prototype-II coefficients, we evaluate NMPC prediction accuracy on lemniscate logs excluded from pa-rameter identification, with reference speeds from 2 m /s
+
+to 5 m /s. To avoid attributing input mismatch to model error, the logged thrust–moment corresponding to the rotor-thrust command after INDI compensation is used as the model input. Table III compares a rigid-body baseline, the same model with translational drag, and the full model. The acceleration labels are computed from logged state deriva-tives, where aB denotes the velocity derivative transformed into the body frame and ˙ω denotes the filtered angular-rate derivative recorded by the controller. Vector RMSE is computed over all pooled validation samples as the root mean square of the Euclidean norm of the prediction error over the three axes. The translational-drag term reduces the vector acceleration RMSE from 2.89 m /s2 to 2.71 m /s2.The rotational residual model reduces the vector angular-acceleration RMSE from 15 .76 rad /s2 to 11 .31 rad /s2,mainly by decreasing the yaw-axis RMSE from 7.76 rad /s2
+
+to 2.00 rad /s2. This yaw-axis reduction is consistent with the yaw-dominant rotational mismatch associated with passive self-rotation. The identified drag and residual terms improve nominal NMPC prediction, leaving the remaining mismatch to INDI. 
+
+D. Robust Flight under External Disturbances 
+
+To evaluate closed-loop robustness beyond nominal track-ing, prototype II is tested in confined-space flight and external-contact recovery. For confined-space flight, the ve-hicle flies through a foam tunnel of 0.8 m × 1.2 m × 4.8 m 
+
+at a reference speed of 3 m /s with a maximum reference acceleration of 4.5 m /s2, as shown in Fig. 5(A). The vehicle has an approximate lateral half-span of 0.2 m from its center to the outermost side. In the 0.8 m -wide tunnel, the estimated trajectory has a mean absolute deviation of 0.024 m from the passage centerline and a maximum deviation of 0.072 m . In the disturbance-recovery test shown in Fig. 5(B), we apply two types of external contact to the hovering vehicle: brief 1.2 m           
+
+> A (1) A (2)
+> B (1) B (2)
+> B (3)
+> 0.2 m 0.2 m
+> 0.2 m Fig. 5. Robustness experiments. A(1) shows the confined passage with a height of 1.2 m , width of 0.8 m , and length of 4.8 m . A(2) shows the tricopter flying through this confined passage at a reference speed of
+> 3 m /swith a maximum reference acceleration of 4.5 m /s2. B(1)–B(3) show disturbance-recovery tests during hovering under cloth-strip contact with a rotating propeller and sustained airframe push. waypoint
+> guide point
+> Without guide-point replanning
+> With guide-point replanning
+> Garage scene
+> Fig. 6. Underground-garage inspection experiment for guide-point eval-uation. The inset shows a camera view of the experimental environment. The reconstructed point cloud is overlaid with sparse waypoints, selected guide points, and the executed trajectories with and without guide-point replanning.
+
+contact between a cloth strip mounted on a wooden stick and a rotating propeller blade, and a sustained push on the airframe. In the brief propeller-contact trial, the strongest impact produces a maximum displacement of 0.62 m from the pre-contact hover position, including a vertical drop of 
+
+0.61 m , and the vehicle returns to within 0.15 m in about 5 s .In the sustained-push trial, the vehicle is displaced laterally by about 0.44 m and returns to within 0.15 m of the pre-push hover position in about 1.8 s after the displacement peak. In both contact tests, the vehicle remains controllable and recovers to stable hovering. 
+
+E. Autonomous Navigation and Guide-Point Evaluation 
+
+We first evaluate closed-loop navigation under passive self-rotation without guide-point selection. The test is per-formed in a 25 m × 25 m outdoor area with trees and hedges, as shown in Fig. 1. Sparse waypoints provide only coarse route guidance, and five runs are conducted with reference speeds of 1, 2, 3, 4, and 5 m /s, respectively. Prototype II replans locally around the trees and hedges and completes all five runs without collision under passive self-rotation. To evaluate the effectiveness of guide-point replanning in waypoint-based inspection, autonomous navigation is performed with and without guide-point replanning in an underground-garage environment. As shown in Fig. 6, both trials use the same waypoint sequence in the same region. We quantify relative task-level coverage by voxelizing the two run point clouds at 0.1 m resolution and using their union as the reference set Vref = Vguide ∪ V no . We report relative three-dimensional coverage C3D = |V run |/|V ref |× 100% and 
+
+3 m trajectory-neighborhood coverage C3m = |{ c ∈ C ref |
+
+d(c) ≤ 3 m }| /|C ref | × 100% , where Cref is the projected reference map and d(c) is the nearest trajectory distance. These metrics compare the two trials against this shared relative reference, rather than measuring absolute coverage of the complete garage environment. As shown in Table IV, the guide-point trial takes about 
+
+21 .5% longer, while increasing relative three-dimensional coverage from 51 .9% to 61 .4% and 3 m trajectory-neighborhood coverage from 55 .9% to 71 .1% . To account for the longer execution time, we also compare time-normalized relative coverage rates. The guide-point trial achieves a com-parable relative three-dimensional coverage rate ( 0.57% /s
+
+versus 0.58% /s), while slightly increasing the 3 m trajectory-neighborhood coverage rate from 0.63% /s to 0.65% /s. For this route, guide-point replanning increases measured rela-tive coverage while maintaining comparable time-normalized coverage rates despite the longer execution time.   
+
+> TABLE IV UNDERGROUND -G ARAGE INSPECTION METRICS
+
+Method Time ( s) C3D ↑ C3m ↑
+
+Guide point 108.7 61.4% 71.1% 
+
+Direct waypoint 89.4 51.9% 55.9% 
+
+VII. P LATFORM -L EVEL COMPARISON 
+
+To clarify the architectural tradeoff behind the proposed tricopter, we compare it with representative self-rotating UAVs, including PULSAR II [4], PULSAR [7], SPIN-NER [8], Monospinner [9], and SAM [10]. Fig. 7 provides a normalized comparison based on reported metrics. FoV coverage is scored as SFoV = Ω eff /(4 π), flight speed as 
+
+Sv = vmax / max i vmax ,i , and tracking accuracy at the speed closest to 2 m /s as Strack = emin /e i, where ei is the reported position-tracking error or RMSE of platform i, and emin is the smallest comparable error. Autonomy is scored as High for onboard planning or replanning in cluttered or unknown environments, Medium for autonomous flight or tracking without autonomous planning, and Low when the capability is not reported or not directly comparable. Spin-rate design reflects the reported number of self-rotation operating points. Actuation simplicity is scored as Sact = 1 /N a, and regulator-free spin is scored as Sreg = 1 /(1 + Nr ), where Na is the Fig. 7. Platform-level comparison of representative self-rotating UAVs based on reported quantitative metrics and qualitative capability levels. 
+
+number of propulsion actuators and Nr is the number of additional anti-torque or spin-regulation surfaces. The comparison indicates that the proposed tricopter achieves a strong overall profile among self-rotating UAVs, combining high tracking accuracy, high flight speed, onboard planning-based autonomy, and regulator-free passive self-rotation. VIII. C ONCLUSION 
+
+This letter presents a configuration-induced passively self-rotating tricopter for perception-enhanced autonomous flight. By treating the rear-arm configuration as an airframe-level design variable, the proposed platform regulates the passive self-rotation operating point to balance swept-FoV refresh rate and flight performance. The system combines a tilted LiDAR, a self-rotating flight model, an NMPC-INDI control framework, local replanning, and guide-point replanning for waypoint-based inspection. Real-world experiments show that the platform expands the vertical sensing envelope, tracks fast lemniscate trajectories, navigates cluttered envi-ronments, and, in the underground-garage inspection, records higher measured relative coverage in the guide-point trial. These results validate the proposed airframe-control-planning design and indicate that passive self-rotation can support autonomous navigation without additional sensor-actuation mechanisms. REFERENCES [1] K. Mohta, M. Watterson, Y. Mulgaonkar, et al. , “Fast, autonomous flight in GPS-denied and cluttered environments,” Journal of Field Robotics , vol. 35, no. 1, pp. 101–120, 2018, doi: 10.1002/rob.21774. [2] A. Agha, K. Otsu, B. Morrell, et al. , “NeBula: TEAM CoSTAR’s robotic autonomy solution that won Phase II of DARPA Subter-ranean Challenge,” Field Robotics , vol. 2, pp. 1432–1506, 2022, doi: 10.55417/fr.2022047. [3] M. Tranzatto, F. Mascarich, L. Bernreiter, et al. , “CERBERUS: Autonomous legged and aerial robotic exploration in the tunnel and urban circuits of the DARPA Subterranean Challenge,” Field Robotics ,vol. 2, pp. 274–324, 2022, doi: 10.55417/fr.2022011. [4] N. Chen, H. Li, Y. Ren, et al. , “An autonomous single-actuator UAV with omnidirectional field of view, high agility, and collision resistance,” Nature Communications , 2026, doi: 10.1038/s41467-026-73283-x. [5] W. Gao, K. Wang, W. Ding, et al. , “Autonomous aerial robot using dual-fisheye cameras,” Journal of Field Robotics , vol. 37, no. 4, pp. 497–514, 2020, doi: 10.1002/rob.21946. [6] G. Chen, D. Sun, W. Dong, et al. , “Computationally efficient trajectory planning for high speed obstacle avoidance of a quadrotor with active sensing,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 3365–3372, 2021, doi: 10.1109/LRA.2021.3062332. [7] N. Chen, F. Kong, W. Xu, et al. , “A self-rotating, single-actuated UAV with extended sensor field of view for autonomous navigation,” 
+
+Science Robotics , vol. 8, no. 76, eade4538, 2023. [8] X. Zhou, Z. Zheng, A. Jin, et al. , “A self-rotating tri-rotor UAV for field of view expansion and autonomous flight,” arXiv:2603.28581, 2026. [9] W. Zhang, M. W. Mueller, and R. D’Andrea, “A controllable flying vehicle with a single moving part,” in Proc. IEEE Int. Conf. Robot. Au-tom. (ICRA) , 2016, pp. 3275–3281, doi: 10.1109/ICRA.2016.7487499. [10] E. Tang, X. Cai, S. M. Lee, et al. , “Smooth and robust trajectory tracking of single-actuator monocopters via incremental nonlinear dynamic inversion,” IEEE Robotics and Automation Letters , vol. 10, no. 11, pp. 11824–11831, 2025, doi: 10.1109/LRA.2025.3616650. [11] J. Paulos and M. Yim, “Flight performance of a swashplateless micro air vehicle,” in Proc. IEEE Int. Conf. Robotics and Automation (ICRA) ,2015, pp. 5284–5289, doi: 10.1109/ICRA.2015.7139936. [12] S. Bai, Q. He, and P. Chirarattananon, “A bioinspired revolving-wing drone with passive attitude stability and efficient hovering flight,” 
+
+Science Robotics , vol. 7, no. 66, eabg5913, 2022. [13] X. Cai, L. S. T. Win, B. L. Suhadi, et al. , “A self-rotary aerial robot with passive compliant variable-pitch wings,” IEEE Robotics and Automation Letters , vol. 8, no. 7, pp. 4195–4202, 2023. [14] X. Cai, S. K. H. Win, and S. Foong, “QuadRotary: Design and control of in-flight transition between quadcopter and rotary-wing,” 
+
+IEEE/ASME Transactions on Mechatronics , vol. 30, no. 6, pp. 5376– 5386, 2025, doi: 10.1109/TMECH.2025.3556021. [15] S. Liu, M. Watterson, S. Tang, et al. , “High speed navigation for quadrotors with limited onboard sensing,” in Proc. IEEE Int. Conf. Robotics and Automation (ICRA) , 2016, pp. 1484–1491. [16] G. Loianno, C. Brunner, G. McGrath, et al. , “Estimation, control, and planning for aggressive flight with a small quadrotor with a single camera and IMU,” IEEE Robotics and Automation Letters , vol. 2, no. 2, pp. 404–411, 2017. [17] C. Yu, Z. Lu, J. Mei, and B. Zhou, “Perception-aware planning for quadrotor flight in unknown and feature-limited environments,” in 
+
+Proc. IEEE/RSJ Int. Conf. Intelligent Robots and Systems (IROS) ,2025, pp. 3533–3540, doi: 10.1109/IROS60139.2025.11246321. [18] Y. Zhai, R. Reiter, and D. Scaramuzza, “PA-MPPI: Perception-aware model predictive path integral control for quadrotor navigation in unknown environments,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 3804–3811, 2026, doi: 10.1109/LRA.2026.3662653. [19] S. Papatheodorou, S. Boche, S. B. Laina, and S. Leutenegger, “Ef-ficient submap-based autonomous MAV exploration using visual-inertial SLAM configurable for LiDARs or depth cameras,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2025, pp. 7284–7290, doi: 10.1109/ICRA55743.2025.11128702. [20] H. Oleynikova, Z. Taylor, R. Siegwart, et al. , “Safe local exploration for replanning in cluttered unknown environments for micro-aerial vehicles,” IEEE Robotics and Automation Letters , vol. 3, no. 3, pp. 1474–1481, 2018. [21] X. Liu, M. Lin, S. Li, et al. , “FLARE: Fast large-scale autonomous exploration guided by unknown regions,” IEEE Robotics and Au-tomation Letters , vol. 10, no. 11, pp. 12197–12204, 2025, doi: 10.1109/LRA.2025.3620618. [22] S. Geng, Z. Ning, F. Zhang, and B. Zhou, “EPIC: A lightweight LiDAR-based AAV exploration framework for large-scale scenarios,” 
+
+IEEE Robotics and Automation Letters , vol. 10, no. 5, pp. 5090–5097, 2025, doi: 10.1109/LRA.2025.3555878. [23] C. Zheng, W. Xu, Z. Zou, et al. , “FAST-LIVO2: Fast, direct LiDAR-inertial-visual odometry,” IEEE Transactions on Robotics , vol. 41, pp. 326–346, 2025. [24] M. Faessler, A. Franchi, and D. Scaramuzza, “Differential flatness of quadrotor dynamics subject to rotor drag for accurate tracking of high-speed trajectories,” IEEE Robotics and Automation Letters , vol. 3, no. 2, pp. 620–626, 2018. [25] E. Tal and S. Karaman, “Accurate tracking of aggressive quadrotor tra-jectories using incremental nonlinear dynamic inversion and differen-tial flatness,” IEEE Transactions on Control Systems Technology , vol. 29, no. 3, pp. 1203–1218, 2021, doi: 10.1109/TCST.2020.3001117. [26] Z. P. Wang, X. Zhou, C. Xu, et al. , “Geometrically constrained trajec-tory optimization for multicopters,” IEEE Transactions on Robotics ,vol. 38, no. 5, pp. 3259–3278, 2022.

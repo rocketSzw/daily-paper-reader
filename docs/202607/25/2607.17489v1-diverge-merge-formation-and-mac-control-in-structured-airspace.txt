@@ -1,0 +1,1074 @@
+Title: Diverge-Merge Formation and MAC Control in Structured Airspace
+
+URL Source: https://arxiv.org/pdf/2607.17489v1
+
+Published Time: Tue, 21 Jul 2026 01:24:52 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+> 1
+
+# Diverge-Merge Formation and MAC Control in Structured Airspace 
+
+Kai Xiong, Member, IEEE , Xingyu Wu, Ba Zhang, Li Wei, Member, IEEE , Min Zeng, Supeng Leng, Senior Member, IEEE 
+
+Abstract —The rapid scaling of advanced air mobility (AAM) makes corridor-based structured airspace a promising infras-tructure for high-density unmanned aerial vehicle (UAV) traffic. Formation flight can improve corridor capacity by suppressing shockwave propagation, but rigid formations become inefficient or unsafe during ramp branching, merging, and congestion. To address this problem, this paper proposes a task-driven diverge-merge control framework for UAV formations in structured airspace. At the beginning, a corridor-ramp branching structured airspace model is established to characterize the traffic dynamics and spatial constraints. Building upon this, a fast task-driven clustering mechanism integrates spatial connectivity, flight intent, and aerial task interactions to enable real-time diverge and merge for ramp branching and traffic reshaping. To make the diverge-merge reconfigurations executable at the media access control (MAC) layer of the formation, a cluster-aware distributed time division multiple access (CAD-TDMA) protocol is further designed. It protects intra-cluster control synchronization while conservatively reusing low-risk inter-cluster slots. Simulation re-sults show that the proposed diverge-merge algorithm maintains near-zero geometrical misclassification under severe physical overlapping and congestion. With the formation diverge-merge traces, CAD-TDMA achieves the best delay–loss–throughput tradeoff over fixed TDMA and WiFi MAC. It shows that the proposed formation control framework can jointly support real-time formation reconfiguration and reliable communication in corridor-ramp structured airspace. 
+
+Index Terms —UAV Formation, Diverge and Merge Control, MAC Design, Corridor-Ramp Structured Airspace 
+
+I. I NTRODUCTION 
+
+# ADvanced air mobility (AAM) has catalyzed an unprece-dented surge in low-altitude airspace utilization, position-ing unmanned aerial vehicles (UAVs) as the primary carriers for next-generation urban logistics and on-demand transporta-tion. As aerial traffic scales toward density, the conventional paradigm of unconstrained free-flight becomes untenable, plagued by intractable route-crossing conflicts, congestion, and stringent regulatory safety mandates. To mitigate these systemic bottlenecks, corridor-based airspace has emerged as an indispensable architectural paradigm, organizing UAV flight into unidirectional, pipe-straight structures that enforce strict 
+
+K. Xiong, X. Wu, B. Zhang, and S. Leng are with School of Informa-tion and Communication Engineering, University of Electronic Science and Technology of China, Chengdu, 611731, China. L. Wei is with College of Information Science and Electronic Engineering, Zhejiang University, Hangzhou 310027, China. M. Zeng is with the Network and Communication Research Institute, College of Information Engineering, Southwest University of Science and Technology, Mianyang, Sichuan 621010, China. 
+
+spatial boundaries and flow segregation, thereby laying the physical foundation for safe low-altitude operations. Despite the structural advantages of corridors, independent UAV flight remains highly vulnerable to string shockwave effects, where minor velocity perturbations amplify backward and drastically degrade traffic flux. To breach this capacity limit, formation flight has been proposed as a highly effective paradigm. As illustrated in Fig. 1a, upon impact with a traffic shockwave, formation flight sustains and releases a higher traffic flux compared to individual flight. Furthermore, Fig. 1b shows that formation flight enables the swarm to recover the required safety separation faster after a shockwave distur-bance. By restructuring multiple UAVs into a macroscopic kinematic unit, formation flight acts as a low-pass filter that suppresses high-frequency perturbations, thereby establishing the necessity of coordinated formations for high-capacity and safe corridor traffic. (b) Formation flight dynamics in response 
+
+> to traffic shockwaves
+> Oscillated position
+> (a) Individual flight dynamics in response
+> to traffic shockwaves
+> (c) Traffic flux upon shockwave hit
+> (d) Safety separation upon shockwave hit
+
+Fig. 1: Corridor-based formation flight v.s. individual flight. 
+
+However, in realistic low-altitude traffic scenarios, UAVs cannot fly strictly straight. The reason is that navigating around no-fly zones, accommodating diverse destinations, and adapt-ing to heterogeneous task distributions inevitably necessitate frequent changes in corridors with different directions. This demands a multidirectional corridor network. To guarantee flight safety, these multidirectional corridors cannot physically intersect at the same altitude. Consequently, to facilitate seam-less direction switching among non-overlapping corridors, ramp structures, serving as dedicated transitional links between distinct corridors, are strictly required. Motivated by this, we propose the concept of a corridor-ramp structured airspace, as depicted in Fig. 2. This structured airspace comprises altitude-arXiv:2607.17489v1 [cs.NI] 20 Jul 2026 2
+
+layered corridors interconnected by both intralayer and inter-layer ramps, with individual corridors further longitudinally partitioned into multiple parallel lanes. It not only maintains corridor flight advantages but also provides a tractable envi-ronment for modeling complex route branching, merging, and capacity bottlenecks in high-density UAV dispatch. Unfortunately, the introduction of the corridor-ramp struc-tured airspace dictates that UAV formations must undergo dynamic diverge and merge maneuvers to navigate the net-work efficiently. As a formation approaches a ramp junction, its members often possess diverse downstream destinations, necessitating a diverge operation to decouple the macroscopic formation into sub-formations for corridor-switching naviga-tion. Conversely, when sub-formations exit a ramp and enter a main corridor, maintaining overly fragmented formations wastes valuable spatial capacity and escalates routing over-head. In such scenarios, these sub-formations must proac-tively execute a merge operation to re-aggregate with nearby co-directional formations, thereby maximizing the corridor’s carrying density. Therefore, the capability to execute agile and appropriate diverge-merge transition is the prerequisite for efficient formation flight within this structured airspace. Crucially, these transient diverge-merge operations impose severe stresses on the underlying UAV ad-hoc networks. Formation flight control, cooperative collision avoidance, and state synchronization heavily rely on reliable and stable intra-formation communications. During dynamic diverging and merging, formation node density fluctuates sharply, and formation-management traffic becomes highly bursty. Tradi-tional medium access control (MAC) protocols struggle to provide comprehensive and stable network performance under such conditions. Contention-based protocols (e.g., CSMA/CA) suffer from severe air interface collisions and unpredictable delays when local density spikes, whereas fixed TDMA avoids random contention but introduces excessive waiting latency and lacks the flexibility to accommodate bursty, topology-aware control traffic. Consequently, a communication-support mechanism tailored for the dynamic diverge and merge process is needed to bridge the gap between physical formation control and cybernetic wireless access. To address these intertwined challenges, this paper proposes a task-driven diverge-merge control framework tailored for the corridor-ramp structured airspace. First, we develop a task-driven diverge-merge algorithm that transcends traditional spatial-only clustering. This method integrates communication connectivity, 3-dimensional (3D) flight intent, and historical task interaction intensity. Furthermore, to support the result-ing high-frequency network changes at the wireless access layer, we design a cluster-aware distributed TDMA (CAD-TDMA) protocol. CAD-TDMA explicitly maps the task-aware cluster labels into distributed frame-level slot management. It strictly protects intra-cluster owner slots for critical control synchronization while conservatively reusing low-risk inter-cluster slots based on passive overhearing and local risk history, thereby achieving an optimal delay-loss-throughput tradeoff. Specifically, the main contributions of this paper are summarized as follows:  
+
+> •
+
+We propose a corridor-ramp structured airspace model that explicitly captures the geometric constraints and topological complexities of low-altitude traffic. By incor-porating altitude-layered, multi-lane unidirectional cor-ridors interconnected by ramps, this structured airspace enforces flow segregation to eliminate free-flight conflicts while providing a foundation for modeling capacity bot-tlenecks during high-density UAV dispatch.  
+
+> •
+
+We develop a task-driven dynamic diverge-and-merge collaborative control algorithm that achieves precise for-mation reconfiguration under stringent spatial constraints. Distinct from traditional group partitioning, our approach leverages unsupervised state-feedback for closed-loop weight adaptation and an accelerated Fast Spectral Clus-tering (FSC) technique. By anchoring topology evolution on historical task interactions and 3D flight intent, the algorithm effectively prevents blind fragmentation and erroneous merging when physical distance cues degrade during complex ramp maneuvers.  
+
+> •
+
+We design a cluster-aware distributed TDMA (CAD-TDMA) MAC protocol specifically tailored to support the bursty communication demands of formation diverge-and-merge operations. By mapping task-aware cluster labels into frame-level slot management, CAD-TDMA protects intra-cluster reserved slots for critical synchro-nization and conservatively reuses low-risk inter-cluster slots according to local observation history. Extensive ns-3 validations demonstrate that this communication-support mechanism achieves a more balanced delay– reliability tradeoff than fixed TDMA and WiFi baselines in dense, dynamic corridor flight scenarios. The remainder is organized as follows: Sec. II reviews related work. Sec. III presents the system model. Sec. IV and V give the proposed algorithms. Sec. VI presents the simulation, and Sec. VII concludes the paper. II. R ELATED WORK 
+
+The realization of AAM necessitates the seamless integra-tion of airspace architecture, flight formation coordination, and wireless communication support. This section reviews the state-of-the-art in these three interconnected domains and identifies the critical gaps that motivate our diverge-merge formation control and network design. 
+
+A. Structured airspace architecture 
+
+As the scale of AAM expands, the conventional free-flight paradigm becomes nonviable for managing high-density UAVs due to massive route-crossing conflicts and collision risks [1]. Consequently, both academia and aviation authorities have proposed various airspace architectures to regulate low-altitude operations [2]. Existing low-altitude airspace studies have explored static grid-based partitioning via geofencing [3] and multi-layered airspace designs aimed at vertical flow segrega-tion [4]. Additionally, directional corridors championed by the federal aviation administration (FAA) [5, 6] and cooperative virtual-tube models [7] have been extensively investigated. These pioneering airspace architectures have advanced aerial traffic management, capacity estimation, and route planning. 3Lane1 : 𝒒 𝟏            
+
+> Lane2 :𝒒 𝟐
+> Lane3 :𝒒 𝟑
+> Formation Flight
+> Layer1 :𝓛 𝟏
+> Layer2 :𝓛 𝟐
+> Layer3 :𝓛 𝟑
+> Top View
+> Merge
+> Layer3
+> Layer2
+> Layer1
+> Ramp
+> Ramp
+> Corridor (𝒆 i)
+> Take -off Landing
+> Side View
+> Dynamic Network Support
+> Diverge
+> Sub -cluster
+> Ramp
+> Structured Airspace
+> Sub -cluster
+
+Fig. 2: Corridor-ramp structured airspace. 
+
+Despite exploring diverse airspace architectures, existing studies overlook the extreme spatial squeezing effects imposed by geometric boundaries on formation flight at the structured bottlenecks. They fail to address the network-physical cou-pling between macroscopic spatial constraints and microscopic formation control and communication scheduling. 
+
+B. Formation flight control 
+
+In structured airspace, formation flight is a promising paradigm for enhancing macroscopic traffic flux and mitigat-ing collision risks associated with uncoordinated movements. However, maintaining rigid formations is impractical when confronted with narrow ramps and dynamic task require-ments. Hence, dynamic formation reshaping has emerged as a prominent research area [8–10]. Existing literature ex-plores formation diverge-merge mechanisms: some employ au-tonomous decision, such as improved potential field control or multi-agent consensus protocols, to achieve adaptive obstacle avoidance [11, 12]. Moreover, graph-theoretic clustering and heuristic rules are widely utilized. By partitioning adjacency matrices based on spatial metrics and communication quality to sever weak edges, these methods facilitate safe formation diverging at route convergences [13–15]. Despite these efforts, current strategies exhibit limitations. Traditional algorithms often rely on homogeneous physical distance or relative velocity features, neglecting historical task interactions and flight intents. Furthermore, handling real-time evolution for large-scale nodes incurs prohibitive computa-tional overhead for eigen-decomposition in spectral cluster-ing, failing to meet millisecond-level low-altitude operation requirements [16, 17]. 
+
+C. Distributed MAC protocols 
+
+MAC design has been widely studied in wireless Ad-Hoc, vehicular, and aerial networks. Classical carrier-sense random access protocols, such as carrier sense multiple ac-cess with collision avoidance (CSMA/CA) and IEEE 802.11 distributed coordination function (DCF), provide flexible dis-tributed access without global coordination. However, their performance is strongly affected by contention intensity and hidden-terminal conditions. In dense and dynamic UAV for-mations, diverge-merge operations may cause sudden node-density variations and bursty traffic, increasing collision prob-ability, retransmissions, and access delay uncertainty [18– 20]. In contrast, TDMA-based MAC divides time into frames and slots, which can provide more predictable transmission opportunities by reducing random contention. It is suitable as a MAC-support mechanism for high-dynamic formations. Existing distributed TDMA MAC protocols have been in-vestigated in Ad-Hoc, vehicular, and aerial networks. For ex-ample, distributed slot reservation and reuse have been widely studied for reliable broadcast and delay-sensitive communi-cation [21–25]. Nevertheless, these protocols mainly manage slots according to node-level reservations, local topology, or traffic demand. They do not explicitly apply the task-aware cluster labels, and therefore cannot directly distinguish intra-/inter-cluster synchronization slots. III. S YSTEM MODEL 
+
+Conventional swarm control isolates formation reshaping from network scheduling, inevitably triggering disconnections and collisions. To fulfill the research gap, this section pro-vides a joint formation and wireless MAC scheduling opti-mization model. Specifically, we first construct the corridor-ramp airspace and UAV kinematics. Then, a multi-dimensional similarity metric is proposed to optimize the formation control. 
+
+A. Corridor-ramp structured airspace 
+
+Emerging urban traffic management frameworks such as UTM [26] and U-space [27] confine UAV operations within corridors. We accordingly propose a multi-layered and multi-lane corridor-ramp structured airspace. The airspace is strat-ified into NL altitude layers {L 1, . . . , LNL } that separate conflicting flows. Each layer Lℓ hosts a set of parallel unidi-rectional corridors {e1, e 2, . . . }, and adjacent layers differ by a fixed heading angle α so that their flows do not intersect at the same altitude, as shown in the top view of Fig. 2. Each corridor 
+
+e is in turn divided into nL,e parallel lanes {q1, . . . , q nL,e }
+
+across its cross-section, which form the discrete lateral slots along which a formation arranges its members, as shown in the formation flight panel of Fig. 2. Corridors are interconnected by ramps. A ramp is a transitional link that connects either two corridors within the same layer or two corridors residing in different layers, so that a UAV switches corridors through a ramp according to its destination and the downstream conges-tion. The airspace is abstracted as a directed graph G = ( V, E),where V collects the junctions such as waypoints and ramp endpoints, and each edge e ∈ E is a corridor segment: 
+
+e =  le, R e, n L,e , z e, C max ,e (v), (1) with length le, cross-sectional radius Re, lane count nL,e ≤⌊2Re/w L⌋, lateral lane spacing wL, and host layer ze ∈{1, . . . , N L} determining corridor altitude and heading. Rear-end safety within each lane q enforces a velocity-dependent longitudinal separation dsaf e (v) = d0 + τ v + v2 
+
+> 2amax
+
+, which combines the static margin d0, the reaction delay τ , and the 4
+
+maximum deceleration amax . Aggregating the nL,e lanes, the corridor capacity is: 
+
+Cmax ,e (v) = nL,e 
+
+ le
+
+dsaf e (v)
+
+
+
+. (2) When the speed rises or a formation approaches a ramp, both the per-lane admissible count and the available lane number decrease, so a formation executes diverge-merge maneuvers to change the lane occupancy across different corridors and keep the traffic load within the corridor capacity Cmax ,e (v).
+
+B. Formation flight dynamics 
+
+Conventional free-flight mobility models fail to capture the severe physical mutual exclusions inherent in confined struc-tured airspace. To reflect fluid-like congestion and collision avoidance, the kinetic state of UAV ui ∈ U at time t is assembled by its position pi(t) ∈ R3 and velocity vi(t) ∈ R3.Let ptgt,i denote the terminal waypoint for node ui. To enforce the required safety separation dsaf e during spatial squeezing, we integrate an artificial potential field (APF)-based spatial repulsive force. For the detectable neighbor set Ni, the repulsion frep,i (t) is activated exclusively when the inter-UAV distance di,j (t) = ∥pi(t) − pj (t)∥ breaches dsaf e :
+
+frep,i (t) = X 
+
+> j∈N i,d i,j <d saf e
+
+κ
+
+ 1
+
+di,j (t) − 1
+
+dsaf e 
+
+ pi(t) − pj (t)
+
+di,j (t) , (3) where κ is the repulsive gain. The actual steering ui(t)
+
+synthesizes destination attraction, velocity damping, and this collision repulsion. To comply with the physical limits, the joint force is bounded by the allowable acceleration amax :
+
+ui(t) = sat amax 
+
+
+
+vmax 
+
+ptgt,i −pi(t)
+
+∥ptgt,i −pi(t)∥ −vi(t)+ frep,i (t)
+
+
+
+,
+
+(4) where the standard vector saturation operator is sat C (x) = 
+
+x min(1 , C 
+
+> ∥x∥
+
+). Besides, navigating narrow corridors exacer-bates aerodynamic disturbances (e.g., wall effects). This ex-ogenous perturbation is modeled as a Gaussian noise ni(t) ∼N (0 , σ 2I). The discrete-time kinematic updates, bounded by the allowable speed vmax , are given as: 
+
+vi(t + 1) = sat vmax 
+
+
+
+vi(t) + ui(t)∆ t
+
+
+
++ ni(t),
+
+pi(t + 1) = pi(t) + vi(t + 1)∆ t. 
+
+(5) Ultimately, this mobility model couples kinematic bottlenecks with fluidic congestion, providing a physical foundation for evaluating the subsequent formation transition mechanisms. 
+
+C. Multi-dimensional clustered similarity 
+
+Conventional spatial clustering algorithms blindly equate physical proximity with logical affiliation. This is a fatal assumption in structured airspace where functionally distinct formations frequently cross corridors and ramps. To shatter this spatial rigidity, we construct a time-varying, undirected, and non-negative logical graph H(t) = ( U, S(t)) to represent the cyber-physical relationships within the formation. The similarity matrix S(t) ∈ RN ×N quantifies the logical coupling degree between any pair of nodes. To satisfy the symmetric and non-negative prerequisites for the subsequent Normalized Cut (Ncut) operations, S(t) is assembled by three density-adaptive similarities, which are the communication similarity, flight intent similarity, and task similarity. 
+
+1) Communication similarity: This similarity characterizes the communication link reliability. In congested spaces (e.g., rear-end congestion in a single corridor or ramp merging), the abrupt surge in UAV density leads to severe communication interference. Assuming the transmission power of all UAVs is 
+
+Ptx . When node j receives a signal from node i, the physical-layer Signal-to-Interference-plus-Noise Ratio (SINR) is [28]: 
+
+γi,j (t) = Ptx G0d−αi,j (t)|hi,j |2
+
+N0 + P 
+
+> k∈U\{ i,j }
+
+Ptx G0d−αk,j (t)|hk,j |2 , (6) where di,j (t) is the distance between UAV i and j, α is the path loss exponent, G0 is the reference channel gain, h is the fading coefficient, and N0 is the ambient noise power. Due to the distinct interference perceived at different UAVs (receivers), we then define the communication similarity using a Sigmoid activation function that maps the averaged SINR of bidirectional UAV i and j into a continuous probability: 
+
+Si,j  
+
+> L
+
+= 11 + exp 
+
+
+
+−κ
+
+ γi,j (t)+ γj,i (t)2 − γth 
+
+ , (7) where γth is the minimum SINR demodulation threshold, and κ controls the activation steepness. This formulation intrinsically filters out weak links while preserving symmetric topological connectivity. 
+
+2) Flight intent similarity: During UAV formation merging and overtaking, distinct task groups may spatially overlap. Flight intent serves to decouple spatially intermingled UAVs. The intent similarity Si,j  
+
+> I
+
+∈ [0 , 1] is jointly determined by short-term kinematic heading alignment and long-term 3D trajectory convergence: 
+
+Si,j  
+
+> I
+
+= λ
+
+ 12 + vTi (t)vj (t)2∥vi(t)∥∥ vj (t)∥
+
+
+
++ (1 − λ) exp 
+
+
+
+− ∥ptgt,i − ptgt,j ∥2
+
+2σ2
+
+> tgt
+
+
+
+,
+
+(8) where v(t) denotes the instantaneous velocity vector, ptgt 
+
+represents the 3D terminal task waypoint, λ ∈ [0 , 1] balances the influence of short-term heading and long-term destination, and σtgt defines the distance threshold for destination similar-ity. The first term calculates the cosine similarity of velocity vectors to align UAV headings, while the second term employs a Gaussian kernel to measure terminal waypoint proximity. 
+
+3) Task interaction similarity: To verify the underlying logical affinity, we mine the historical task interactions through the proposed time-decayed frequent pattern tree (TD-FPTree) algorithm. Denote Ωi,j (τ ) ∈ {0, 1} as a binary indicator, where Ωi,j (τ ) = 1 if node i and node j cooperate in the same task transaction at time τ , and 0 otherwise. To enhance recent interactions while fading obsolete relations, the interaction intensity Si,j  
+
+> T
+
+is defined over a sliding time window [t−Tw, t ]:
+
+Si,j  
+
+> T
+
+= 1Φ
+
+> t
+
+X 
+
+> τ=t−Tw
+
+Ωi,j (τ )e−ηd(t−τ ), (9) 5
+
+where ηd > 0 is the coefficient, and Tw is the window length. Crucially, the normalization factor Φ = Ptτ =t−Tw e−η(t−τ )
+
+bounds Si,j  
+
+> T
+
+within [0 , 1] . Finally, the adjacency matrix of the logical connection graph H(t) is a weighted sum of three similarity metrics: 
+
+Si,j (t) = β1(t)Si,j  
+
+> L
+
++ β2(t)Si,j  
+
+> I
+
++ β3(t)Si,j  
+
+> T
+
+, (10) where βk(t) ≥ 0 and P 
+
+> i
+
+βi(t) = 1. This construction ensures that S(t) is symmetric, non-negative, and properly bounded within [0 , 1] , satisfying all necessary and sufficient prerequisites for the subsequent graph partitioning operations. 
+
+D. Problem formulation 
+
+Upon the multi-dimensional connection graph H(t) =(U, S(t)) , the dynamic diverge-and-merge process is formed as a capacity-constrained Ncut problem. Let the formation 
+
+U be partitioned into k disjoint clusters (sub-formations), denoted as C = {C1, C 2, . . . , C k}. Furthermore, the ob-jective is designed to maximize the intra-cluster network-formation cohesiveness while safely severing weak logical connections. For any given cluster Cm, the external edge-cut P
+
+> i∈Cm
+
+P 
+
+> j / ∈Cm
+
+Si,j (t) (overall severed logical connections) and the degree-volume P
+
+> i∈Cm
+
+P 
+
+> j∈U
+
+Si,j (t) (overall connec-tivity intensity) are functions of similarity matrix S(t).Unlike traditional clustering algorithms, any formation con-trol in structured airspace must respect the underlying spatial and communication bottlenecks. To prevent oversized for-mations from overwhelming the MAC-layer scheduling, the partition is subjected to a wireless access capacity Nmax ,dictated by the available air-interface resources. This constraint acts as the bridge linking the formation control with wireless limits. Consequently, the optimization problem is: 
+
+P1 : min 
+
+> C
+> k
+
+X
+
+> m=1
+
+P
+
+> i∈Cm
+
+P 
+
+> j / ∈Cm
+
+Si,j (t)
+
+P
+
+> i∈Cm
+
+P 
+
+> j∈U
+
+Si,j (t)s.t. |Cm| ≤ Nmax , ∀m ∈ { 1, . . . , k }.
+
+(11) IV. D YNAMIC DIVERGE -M ERGE CONTROL 
+
+Solving the network-spatial constrained cluster partitioning problem P1 in real time constitutes the core challenge of the proposed diverge-merge control. To meet the stringent real-time computational demands imposed by high-frequency formation transitions, the proposed algorithm is designed into three core modules: 1) an on-demand diverge-and-merge mechanism; 2) a fast spectral clustering paradigm; and 3) a closed-loop adaptive clustering adjustment. 
+
+A. Network-supported formation control 
+
+To shatter the network-formation isolation inherent in swarm optimization, we propose a network-support diverge and merge formation control scheme, as depicted in Fig. 3. Specifically, this architecture has two coupled modules. At the upper module, the dynamic diverge-merge control operates through a four-step closed loop. Rather than relying on spatial proximity, the process begins by evaluating multi-dimensional connections (communication link, flight intent, and task) to construct the similarity matrix. A subsequent formation control component evaluates trigger conditions to set the target cluster count. If the triggering conditions are met, the formation per-forms a FSC algorithm to reshape its envelope geometry; oth-erwise, it bypasses re-clustering. Finally, an adaptive weighting component computes the weighting parameters for the next time slot, providing feedback to the similarity construction. Dynamic diverge -merge control 
+
+1.  Similarity Construction 
+
+3. Fast Spectral Cluster             
+
+> 𝑂 (𝑁 3)→𝑂 (𝑁𝑙𝑜𝑔𝑁 +𝑁 𝑘 2)
+> Cluster Label 𝑵 𝒎𝒂𝒙
+> 𝑆 (t)=𝛽 (t)1𝑆 ℒ+𝛽 (t)2𝑆 ℐ+𝛽 (t)3𝑆 𝒯
+> link·intent·task similarity
+
+2. Diverge -merge Decision 𝑺 (𝑡 )  
+
+> Cluster 𝓒 ∗
+> Evaluate trigger & set target 𝑲
+
+4. Adaptive weighting                
+
+> 𝜷 𝑡 +1←ΠΔ𝜷 𝑡 −𝜂 ො𝐠 𝑡
+> ො𝐠 𝑡 ≈SPSA _grad 𝒞 ,𝐒
+> Next time slot
+
+CAD -TDMA 
+
+Slot -state 
+
+Decision                
+
+> Information Input
+> -Cluster label
+> -Overhearing records
+> -Risk evidence
+> -Distance check
+> -Own(Protected)
+> -Forbidden(Same -cluster)
+> -Reusable(Inter -cluster)
+> -Cooling(Inter -cluster)
+> -Idle/Unobserved
+> Slot -state Output
+> Three -step clustering
+> 𝜷 (𝑡 +1)
+> If trigger target 𝑲 else 𝓒 ,𝑺 (𝑡 )
+> Network -supported
+> maximum number of UAVs
+> Topological basis for
+> slot allocation
+
+Fig. 3: Network-supported diverge-merge control framework. 
+
+At the lower module of Fig. 3, the generated cluster labels from the diverge-merge control module serve as the basis for MAC slot allocation. CAD-TDMA maps these labels, alongside passive overhearing records, risk evidence, and distance checks, into local slot-state decisions. Each slot is classified as one of the Own (Protected), Forbidden (Same-cluster), Reusable (Inter-cluster), Cooling (Inter-cluster), or Idle/Unobserved, ensuring same-cluster slots are protected while low-risk inter-cluster slots can be reused. To maintain network-formation consistency, CAD-TDMA feeds back the wireless access capacity to the diverge-merge control module of Fig. 3, ensuring that the number of cluster and an individual cluster scale adhere to the real-time wireless access capability. 
+
+B. Dynamic diverge-and-merge triggers 
+
+In spatial confined corridors, relying on a static number of clusters k inevitably degrades communication and collision-proof flight efficacy. To avoid this, we design an event-driven mechanism to dynamically manage the formation scale. As multiple clusters converge at spatial bottlenecks (e.g., multi-ramp junctions), inter-cluster distances drastically di-minish. To accurately capture imminent collision risks, the physical inter-cluster distance is defined by the minimum edge distance: Dinter (Cm, C n) = min i∈Cm,j ∈Cn di,j (t). A merge maneuver is executed when Dinter falls below a predefined threshold dmerge . Crucially, in structured airspace, physical survival strictly supersedes logical task independence. Cru-cially, in structured airspace, flight safety supersedes logical 6
+
+task independence. Therefore, physically proximal clusters are compelled to logically merge, forcing them to share a unified TDMA frame for coordinated collision avoidance. Provided their merged cluster size satisfies the MAC access capacity, the merge trigger is formulated as: 
+
+Dinter (Cm, C n) ≤ dmerge ∧ |Cm| + |Cn| ≤ Nmax . (12) Once the triggering conditions are met, the adjacent formations logically merge ( k ← k − 1). Conversely, maintaining an oversized formation incurs pro-hibitive intra-communication delays. To comply with the MAC access capacity Nmax limitation, the local degradation loss is evaluated through the maximum physical dispersion: 
+
+ϵL(Cm) = max i,j ∈Cm (di,j (t)/R c)2. Hence, the local diverge is activated if: 
+
+|Cm| > N max ∨ ϵL(Cm) ≥ ϵth . (13) Upon activation, the FSC algorithm is locally invoked to cleave this specific oversized formation (klocal ←⌈| Cm|/N max ⌉), releasing network pressure. Prolonged reliance on local operations may gradually frag-ment the macro-connections. Let kmax ≥ ⌈|U| /N max ⌉ denote the upper bound of manageable sub-nets for the corridor routing protocol. When the total cluster count exceeds this threshold ( k > k max ), local adjustments are deemed insuffi-cient. Serving exclusively as a last-resort fallback due to its high computational overhead, a cluster-wide FSC execution is triggered ( kglobal ← ⌈|U| /N max ⌉) to eradicate accumulated formations fragmentation and restore traffic efficiency. 
+
+C. Fast spectral clustering 
+
+While spectral clustering provides mathematically optimal topology boundaries, its baseline O(N 3) complexity is com-putationally catastrophic for resource-constrained UAVs exe-cuting high-frequency maneuvers. To shatter this bottleneck, we propose a three-stage FSC pipeline that drastically curtails the computational footprint without sacrificing algebraic rigor. First, we aggressively sparsify the dense similarity matrix 
+
+S(t) to bypass the O(N 2) graph construction bottleneck. By deploying spatial KD-trees, we construct a mutual K-nearest neighbor ( K-NN) graph in just O(N log N ) time. For any node i with its Knn strongest connections denoted by NK (i),the sparse symmetric adjacency matrix is defined as: 
+
+Si,j sparse =
+
+(
+
+Si,j (t), if j ∈ N K (i) or i ∈ N K (j)0, otherwise . (14) To prevent ill-conditioned matrix exceptions caused by isolated nodes during sparsification, a tiny numerical stabilizer δ > 0
+
+is injected. The regularized symmetric normalized Laplacian is given as: 
+
+Lsym (t) = I − D−1/2 
+
+> δ
+
+Ssparse (t)D−1/2 
+
+> δ
+
+, (15) where Dδ = Dsparse (t) + δI. This strict regularization securely bounds the eigenvalues within [0 , 2] .Second, rather than executing an exhaustive O(N 3) eigen-decomposition, we employ the Implicitly Restarted Lanc-zos Method (IRLM) [29]. By extracting only the first k
+
+Algorithm 1: Fast Spectral Clustering (FSC)  
+
+> 1
+
+Input : S(t), neighbor count Knn , numerical shift δ 
+
+> 2
+
+Output : Cluster partition C = {C1, C 2, . . . , C k} 
+
+> 3
+
+Sparsify S(t) by mutual Knn nearest neighbors  
+
+> 4
+
+Regularize degree matrix: Dδ ← diag( Ssparse 1) + δI 
+
+> 5
+
+Compute symmetric normalized Laplacian: 
+
+Lsym ← I − D−1/2 
+
+> δ
+
+Ssparse D−1/2 
+
+> δ
+> 6
+
+Extract top k eigenvectors of Lsym via IRLM  
+
+> 7
+
+Normalize eigenvector matrix U by rows to get embedding E∗ ∈ RN ×k 
+
+> 8
+
+Apply Mini-Batch K-Means++ on E∗
+
+eigenvectors corresponding to the smallest eigenvalues, IRLM drastically curtails the embedding complexity to O(N k 2).The optimal cluster count k is dynamically determined by the standard eigengap heuristic, k = arg max i(λi+1 − λi).The extracted eigenvectors are then row-wise ℓ2-normalized to form the low-dimensional feature matrix E∗ ∈ RN ×k.Finally, to accelerate the discretization phase, we replace standard K-Means with MiniBatchKMeans on E∗. Initialized via KMeans++ [30], it updates centroids using random subsets rather than the entire swarm, operating in just O(b·k·I) where 
+
+b is the batch size and I is the iteration count. By cascading KD-tree sparsification ( O(N log N )), IRLM partial extraction (O(N k 2)), and MiniBatch discretization (O(b · k · I)), the computational core of the FSC mechanism is strictly bounded by O(N log N + N k 2). Since the batch size, iterations, and cluster count satisfy b, I, k ≪ N , this FSC mechanism solidly guarantees compliance with the strict real-time processing constraints of onboard flight controllers, with the complete procedure given in Alg. 1. 
+
+D. Adaptive weight adjustment 
+
+Static topology weights leave the swarm blind to structural degradation in fluid corridor environments. The three similarity modalities also differ in how informative they are over time. In free flow, spatial proximity separates formations cleanly, while inside a congested corridor the formations interpenetrate and the link modality loses its discriminative power. The weighting vector β(t) = [β1(t), β 2(t), β 3(t)] T is therefore adapted online via structural feedback. We define three unsupervised penalty metrics to quantify distinct topological defects: 
+
+1) Communication degradation: This metric evaluates the loss of intra-cluster spatial cohesiveness by measuring physical link dispersion. Let Rc denote the maximum reliable commu-nication range. The global penalty is formulated as the mean squared distance ratio: 
+
+ϵL(t) = 1
+
+k
+
+> k
+
+X
+
+> m=1
+
+1
+
+|Cm|2
+
+X
+
+> i∈Cm
+
+X
+
+> j∈Cm
+
+ di,j (t)
+
+Rc
+
+2
+
+. (16) An elevated ϵL(t) indicates that the partition stretches intra-cluster links beyond reliable range. 
+
+2) Clustering oscillation: To penalize structural jitter while bypassing the label permutation problem of unsupervised clustering, we introduce a co-membership indicator matrix 7
+
+Z(t) ∈ {0, 1}N ×N , where Zi,j (t) = 1 if UAVs i and j
+
+share a cluster and 0 otherwise. The macroscopic oscillation is quantified by the temporal disagreement: 
+
+ϵI (t) = 1
+
+N (N − 1) 
+
+X
+
+> i∈U
+
+X 
+
+> j̸=i
+
+|Zi,j (t) − Zi,j (t − 1) | . (17) A high ϵI (t) indicates that the partition churns between slots instead of tracking a persistent structure. 
+
+Algorithm 2: Fast Diverge-and-Merge Control  
+
+> 1
+
+Input : U, N max , k max , ϵ th , d merge , d diverge , η, T β 
+
+> 2
+
+Output : Cluster assignments C(t) 
+
+> 3
+
+Initialize β(0) ← [1 /3, 1/3, 1/3] T 
+
+> 4
+
+for each time slot t do  
+
+> 5
+
+if t mod Tβ = 0 then  
+
+> 6
+
+Update β(t) using SPSA gradient ˆg(t) 
+
+> 7
+
+Refresh S(t) using β(t), set kcap ← ⌈|U| /N max ⌉ 
+
+> 8
+
+if Diverge Condition then  
+
+> 9
+
+ktgt ← k(t − 1) + 1  
+
+> 10
+
+else if Merge Condition then  
+
+> 11
+
+ktgt ← k(t − 1) − 1 
+
+> 12
+
+else  
+
+> 13
+
+ktgt ← EigenGap( S(t))  
+
+> 14
+
+ktgt ← clip( ktgt , max( kmin , k cap ), k max ) 
+
+> 15
+
+if ktgt ̸ = k(t − 1) OR Trigger conditions met then  
+
+> 16
+
+C(t) ← FSC( S(t), k tgt ) ; // via Alg. 1  
+
+> 17
+
+else  
+
+> 18
+
+C(t) ← C (t − 1) 
+
+3) Logical fragmentation: This metric quantifies the pro-portion of collaborative relationships severed by the current partition, defined as the normalized cut of the historical interaction graph: 
+
+ϵT (t) = 
+
+Pkm=1 
+
+P
+
+> i∈Cm
+
+P 
+
+> j / ∈Cm
+
+Si,j 
+
+> T
+
+P
+
+> i∈U
+
+P 
+
+> j∈U
+
+Si,j 
+
+> T
+
+. (18) A rising ϵT (t) indicates that cohesive task sub-groups are being cut apart. The three indicators live on incommensurable scales, as ϵL is a squared distance ratio while ϵT is a nor-malized cut ratio. Each is standardized by its own exponential moving scale sk(t) = ρ s k(t − 1) + (1 − ρ) |ϵk(t)|, yielding the dimensionless defect ˆϵk = ϵk/s k. With ˆϵ(t) = [ˆ ϵL, ˆϵI , ˆϵT ]T ,the weighting is posed as the online minimization of the aggregate normalized defect: 
+
+min  
+
+> β∈∆
+
+J(β) = 1T ˆϵ(β), (19) where ∆ = {β : P3 
+
+> i=1
+
+βi = 1 , βi ≥ βmin } and the floor 
+
+βmin keeps every modality alive. Minimizing J steers the weight toward the modality that currently explains the swarm structure, since a modality that fails to do so inflates its own defect term. As each ϵk depends on β only through the discrete clustering output, J admits no closed-form gradient. We adopt projected gradient descent with a simultaneous perturbation stochastic approximation (SPSA) estimate [31], which probes the cost along one random direction and needs two extra evaluations of J per update: 
+
+ˆg(t) = J Π∆(β + c d) − J Π∆(β − c d)
+
+2c d,
+
+β(t) = Π ∆
+
+
+
+β(t − 1) − η ˆg(t)
+
+
+
+,
+
+(20) where c is the perturbation magnitude, d ∈ {− 1, +1 }3 is a Rademacher vector, η is the step size, and Π∆ denotes Euclidean projection onto the simplex. The perturbation is applied once every Tβ slots to limit overhead. The recursion converges to a stationary point of J, at which no modality can be down-weighted without inflating the aggregate defect. Coupling this feedback with the proposed FSC and the on-demand triggers completes the formation diverge and merge algorithm, given as Alg. 2. V. C LUSTER -A WARE DISTRIBUTED TDMA The diverge-merge algorithm in Section ?? outputs spatial-and task-aware cluster labels. These labels indicate which UAVs should frequently exchange control information and task-related data. However, in dense corridors, formation diverge-merge maneuvers may suddenly increase network traf-fic load. If the MAC layer cannot support these communication bursts, UAVs may suffer from large access delay and frequent air-interface packet losses, finally affecting flight safety during formation maneuvers. Therefore, CAD-TDMA is designed as a network mechanism for formation diverge-merge control. Regarding this, the MAC layer should support a large cluster size while keeping communication quality acceptable. Let 
+
+Nmax denote the maximum cluster size supported by the MAC layer. The objective is: 
+
+P2 : max Nmax 
+
+s.t. ¯∆ ≤ ∆th , ℓair ≤ ℓth . (21) where ¯∆ is the average packet delay and ℓair is the air-interface loss rate. The air-interface loss rate represents failed MAC-layer delivery caused by simultaneous transmissions, slot conflicts, strong interference, or SINR degradation, and thus reflects the collision and interference risk at the air interface. This objective is feasibility-oriented rather than throughput-maximization-oriented: CAD-TDMA first aims to support the largest feasible cluster size under bounded delay and air-interface loss, while throughput Θ is used afterwards to evaluate slot-resource utilization. Therefore, the ns-3 eval-uation in Section VI does not simply compare the maximum achievable throughput, but examines the delay-loss-throughput tradeoff under the same dynamic diverge-merge traces.  
+
+> Fig. 4: Frame structure and representative slot states in CAD-TDMA. 8
+
+The core idea of CAD-TDMA is to distinguish protected intra-cluster access from cautious inter-cluster reuse. Intra-cluster communication is usually more frequent and more important for diverge-merge synchronization, so same-cluster slots should be protected and not reused. Inter-cluster commu-nication is relatively less coupled, so inter-cluster slots can be reused only when the distance and recent overhearing history indicate low risk. In this way, CAD-TDMA reduces delay and air-interface losses for critical intra-cluster traffic while maintaining effective resource utilization through conservative inter-cluster slot reuse. 
+
+A. Frame-slot structure and state 
+
+CAD-TDMA divides time into consecutive frames, and each frame contains Nslot configurable slots indexed by Q =1, 2, . . . , N slot . Each UAV maintains one owner slot ωi(t) ∈ Q 
+
+as its primary reserved transmission opportunity in frame 
+
+t. The owner slot is applied for reservation announcements, cluster-state control messages, and regular data packets. When the local queue becomes busy, a UAV may occupy low-risk inter-cluster slots for opportunity access. For a single UAV, each slot is classified into one of five states, as shown in Fig. 4.  
+
+> •
+
+Own : A slot owned by the node. The node can directly transmit data in this slots.  
+
+> •
+
+Reusable : A low-risk inter-cluster slot. The node can oc-cupy it as an opportunity slot when the queue is busy.  
+
+> •
+
+Forbidden : An owner slot declared by another node. The node cannot occupy it.  
+
+> •
+
+Cooling : An inter-cluster slot with recent risk or insufficient spatial separation. The node should temporarily avoids it.  
+
+> •
+
+Idle/Unobserved : A slot without a fresh slot-binding record. It is designed as a candidate for future owner-slot allocation. Therefore, a UAV can transmit only in its Own slot or in a Reusable slot. In Forbidden, Cooling, and Idle/Unobserved slots, the UAV keeps silent and listens to nearby packets. The guard interval between adjacent slots is only used to absorb timing offsets and is not treated as a transmission resource. 
+
+B. Passive slot-view update 
+
+To support distributed operation, each CAD-TDMA packet carries a lightweight CAD header between the L2 header and the upper-layer payload, as illustrated in Fig. 5. By passively overhearing ordinary packets, a UAV can decode the CAD header and update its local slot-view records, including the observed slot binding, cluster identity, freshness, and risk state. Therefore, CAD-TDMA does not require a centralized scheduler or an explicit reservation handshake in every frame. The decoded CAD header provides the minimum informa-tion needed for local slot-view maintenance. Specifically, it contains five fields:  
+
+> •
+
+Type : packet type, such as data transmission, reservation announcement, release notification, or conflict feedback.  
+
+> •
+
+EpochId : cluster-state version. It helps discard stale slot-binding records after diverge or merge events.  
+
+> •
+
+ClusterId : sender’s current cluster label. It is used to distinguish same-cluster protected slots from inter-cluster reuse candidates.   
+
+> Fig. 5: Slot diagram of CAD-header-based passive update.
+> •
+
+OwnerSlot : sender’s reserved owner slot.  
+
+> •
+
+Role : sender’s role, such as cluster head, boundary node, or ordinary member. By overhearing CAD headers, a UAV can maintain alocal slot view of nearby transmissions. In particular, it can determine which slots are occupied by same-cluster nodes, which slots belong to inter-cluster nodes, and whether the corresponding records are still fresh. In addition, undecodable busy slots, failed acknowledgements, and conflict feedback are recorded as risk evidence. These local observations are then used for next-frame slot classification and allocation. 
+
+C. Cluster-aware allocation and inter-cluster reuse 
+
+CAD-TDMA first protects same-cluster slots. Let gi(t)
+
+denote the cluster label of node i in frame t, and let ωi(t)
+
+denote its owner slot. After overhearing CAD headers, node i
+
+builds a same-cluster blocked set: 
+
+Bi(t) = {ωj (t) | gj (t) = gi(t), j ̸ = i, Fresh j (t) = 1 }, (22) where Fresh j (t) = 1 means that the record of node j has a consistent EpochId and has not expired. Node i must select its owner slot outside Bi(t), so same-cluster UAVs do not reuse each other’s reserved slots. This rule prevents UAVs in the same cluster from reusing each other’s reserved slots. Since same-cluster UAVs fre-quently exchange heartbeat packets, acknowledgements, and cluster-state updates, such protection reduces high-risk simul-taneous transmissions and helps lower access delay and air-interface losses. After same-cluster slots are excluded, CAD-TDMA checks whether an inter-cluster slot can be reused. Let Pi(q, t ) denote the set of fresh passive overhearing records associated with inter-cluster transmitters on slot q at node i. The distance safety of slot q is evaluated by the minimum distance from node i to the transmitters in Pi(q, t ). If no fresh inter-cluster record exists on slot q, the slot is treated as Idle/Unobserved rather than being directly reused. Let τ risk  
+
+> i
+
+(q) denote the latest frame in which node i observes risk evidence on slot q, and let Tobs be the observation window. The available opportunity-slot set of node i is defined as 
+
+Ai(t) = q ∈ Q | q / ∈ B i(t), Pi(q, t )̸ = ∅,
+
+min  
+
+> j∈P i(q,t )
+
+∥pi(t) − pj (t)∥ ≥ δreuse , t − τ risk  
+
+> i
+
+(q) > T obs , (23) 9 
+
+> Fig. 6: Distributed CAD-TDMA protocol.
+
+where the first condition protects same-cluster slots, the second ensures that the slot is a known inter-cluster slot rather than an unobserved slot, the third avoids reuse when the inter-cluster transmitter is too close, and the fourth requires that no recent risk evidence has been observed. A node may select opportunity slots only from Ai(t).
+
+Algorithm 3: CAD-TDMA Slot-state Decision  
+
+> 1
+
+Input : Cluster label gi(t), epoch, role, slot set Q
+
+Output : Owner slot ωi(t) and opportunity-slot Ai(t)
+
+for each frame f do  
+
+> 2
+
+Update local slot view by overhearing CAD headers  
+
+> 3
+
+Remove stale records and update τ risk  
+
+> i
+
+(q) 
+
+> 4
+
+Build Bi(t) according to (22)  
+
+> 5
+
+if ωi(t) is invalid or ωi(t) ∈ B i(t) then  
+
+> 6
+
+Select ωi(t) ∈ Q \ B i(t) 
+
+> 7
+
+Build Ai(t) according to (23)  
+
+> 8
+
+for each slot q in the next frame do  
+
+> 9
+
+Transmit if q = ωi(t) or q ∈ A i(t) with a busy queue; otherwise overhear  
+
+> 10
+
+if node i exits or changes epoch then  
+
+> 11
+
+Release or age the previous owner slot 
+
+D. Distributed protocol procedure 
+
+The distributed protocol of CAD-TDMA is summarized in Fig. 6 and Alg. 3. Each UAV maintains a local slot view by overhearing CAD headers in the slots where it does not transmit. At the beginning of each frame, stale records are removed according to the EpochId and aging timer. The node then updates its same-cluster blocked set and evaluates whether inter-cluster slots have sufficient spatial separation and no recent risk evidence. If the current owner slot becomes invalid due to a cluster-epoch change or a same-cluster conflict, the UAV selects a new owner slot outside the same-cluster blocked set. For data transmission, the node first uses its owner slot. When the queue is busy, it may occupy slots classified as reusable. In Forbidden, Cooling, and Idle/Unobserved slots, the node remains silent and continues passive listening. When a node leaves or changes its cluster epoch, its previous slot binding is removed either by explicit release or by local aging. VI. N UMERICAL SIMULATION 
+
+This section presents a comprehensive numerical validation of the proposed dynamic diverge-merge collaborative control framework. The evaluation methodology is structured into two primary components: 1) a kinematic algorithmic validation using a Python-based simulator to assess the topological reconstruction accuracy of a 100-UAV swarm; and 2) acommunication-support validation using ns-3 to evaluate the underlying MAC protocol’s capability in supporting high-frequency topology evolution. 
+
+A. Diverge-Merge Algorithm Validation 
+
+To evaluate the proposed framework, we implement a 3D kinematic UAV simulator. The mobility follows the APF-based bounded control model established in Section III, while the communication layer evaluates dynamic SINR using a log-distance path-loss model. The primary simulation parameters are summarized in Table I. TABLE I: Primary simulation parameters                                    
+
+> Param. Value Param. Value
+> N100 ∆t0.1s
+> Tc1svmax 15 m/s
+> amax 3m/s 2d05m
+> κ060 m/s 2Rc250 m
+> Ptx 23 dBm α2.5
+> Tw400 sNmax 45
+> dmerge 45 mddiverge 90 m
+
+We benchmark the proposed framework against two base-lines. The proposed framework executes the complete pipeline equipped with adaptive weights and TD-FPTree task memory. Standard SC represents spectral clustering driven only by spatial and intent similarities ( SL and SI ), lacking historical task memory. K-Means serves as the spatial-only baseline, applying standard K-means directly to raw 3D coordinates. To quantitatively capture the utility of the resulting topolo-gies, we define two outcome-oriented metrics based on the ground-truth task groups {T g }Gg=1 and the algorithm-assigned clusters {Ci}Ni=1 .First, the Task-Cluster Alignment (TCA) measures the pro-portion of same-task UAVs successfully grouped into the same macroscopic cluster. It is defined as the ratio of the most frequent cluster label within each task group: TCA = 1
+
+G
+
+> G
+
+X
+
+> g=1
+
+1
+
+|T g | max 
+
+> c
+
+X
+
+> i∈T g
+
+I(Ci = c), (24) where I(·) is the indicator function. Second, the Task Communication Score (TCS) evaluates the effective data exchange quality among collaborating nodes. Intra-cluster links preserve their full capacity, whereas cross-10 0 20 40 60 80     
+
+> Time(s)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Task-Cluster Alignment
+> Proposed
+> Std. SC
+> K-Means
+> Merge
+> (25-50s)
+> Diverge
+> (50-80s)
+> 020 40 60 80
+> Time(s)
+> 0.03
+> 0.04
+> 0.05
+> 0.06
+> 0.07
+> 0.08
+> 0.09
+> Task Communication Score  Merge
+> (25-50s)
+> Diverge
+> (50-80s)
+
+Fig. 7: Multi-Corridor scenario. The proposed framework sustains a TCA above 0.99 across all phases, whereas both baselines degrade once the ramp maneuvers collapse the spatial separation. 0 20 40 60 80     
+
+> Time(s)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Task-Cluster Alignment
+> Proposed
+> Std. SC
+> K-Means
+> Shockwave
+> (20-50s)
+> Release
+> (50-80s)
+> 020 40 60 80
+> Time(s)
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> Task Communication Score  Shockwave
+> (20-50s)
+> Release
+> (50-80s)
+
+Fig. 8: Congestion scenario. Both baselines track the proposed framework under free flow, but fall away once the shockwave drives the fleets to interpenetrate. 
+
+cluster links suffer a penalty to model multi-hop routing overhead: TCS = 1
+
+Npair GX
+
+> g=1
+
+X
+
+> i<j ∈T g
+
+Si,j 
+
+> L
+
+
+
+I(Ci = Cj ) + δI(Ci̸ = Cj )
+
+
+
+,
+
+(25) where Npair is the total number of intra-task UAV pairs, and 
+
+δ = 0 .02 represents the severe multi-hop penalty. Two stress-test scenarios are designed to expose the limita-tions of conventional algorithms. The Multi-Corridor scenario 
+
+places five heterogeneous task groups in a network of four parallel corridors in the lower layer and one corridor in the upper layer, each group starting in its own corridor. During 
+
+t ∈ [25 , 50] s, two groups enter the main lower corridor through ramps from opposite sides while a third climbs a ramp into the upper corridor, so that same-layer and cross-layer merging occur together and create severe physical overlapping, before differential-speed peeling restores the formations. The Congestion scenario confines five fleets to a single multi-lane corridor, where they enter in an ordered queue and are initially well separated. A downstream bottleneck decelerates the leading fleet during t ∈ [20 , 50] s, and the resulting shockwave propagates backward, compressing the queue to near-collision spacing and driving the fleets to interpenetrate. Several fleets share the same downstream destination, so the declared intent distinguishes traffic only at the ramp level rather than at the fleet level. Spatial distance and flight intent therefore lose discriminative power as a consequence of congestion physics rather than by construction. As summarized in Table II, the proposed framework attains the highest TCA and TCS in both scenarios. Table III reports the cluster number resolved by each algorithm, which is not TABLE II: TCA and TCS performance comparison                  
+
+> Algorithm Multi-Corridor (S1) Congestion (S2) TCA TCS TCA TCS
+> Proposed 0.995 0.081 0.991 0.093
+> Std. SC 0.679 0.056 0.625 0.054
+> K-Means 0.672 0.066 0.777 0.075
+
+TABLE III: Mean cluster number k per phase                          
+
+> Algorithm Multi-Corridor (S1) Congestion (S2)
+> Indep. Merge Diverge Free Shock Release Proposed 5.05 5.00 5.00 5.00 5.00 5.00
+> Std. SC 4.35 4.20 3.73 5.87 4.07 4.23
+> K-Means 7.50 5.92 4.97 5.07 4.67 4.00
+
+supplied as a prior but is decided online by the eigengap estimate under the capacity bound and the diverge-merge triggers. This quantity exposes a failure mode that TCA alone cannot reveal, since a partition that absorbs several task groups into one cluster still retains a high alignment score. In the Multi-Corridor scenario, the proposed framework recovers k ≈ 5 in every phase and sustains a TCA above 
+
+0.99 throughout. Fig. 7 shows the transient evolution. Even before any maneuver, K-Means resolves k = 7 .50 , because a formation extended along its corridor is split into leading and trailing groups by a purely spatial partition, and its TCA is already limited to 0.682 . During the merging phase (t ∈ [25 , 50] s), the two same-layer groups entering the main corridor and the group climbing into the upper layer overlap heavily in space, and the collapsed spatial separation leaves the spectral embedding of Std. SC without a discriminative cut, so its TCA falls to 0.716 . In the diverge phase, differential-speed peeling restores the spatial separation, yet neither baseline recovers: Std. SC drifts to k = 3 .73 and a TCA of 0.581 ,absorbing distinct groups into common clusters, while its TCS declines to 0.030 . The proposed framework retains the group structure through the task-affinity modality, whose historical interaction record is unaffected by the transient spatial overlap. In the Congestion scenario, all fleets share one corridor and the shockwave compresses the queue to near-collision spacing. Fig. 8 traces the transient evolution. Under free flow the fleets remain well separated, and K-Means attains a TCA of 0.955 
+
+with a near-correct k = 5 .07 , which confirms that the scenario does not penalize spatial reasoning by construction. Once the shockwave arrives, the fleets interpenetrate and spatial proximity ceases to be informative: K-Means falls to 0.787 and Std. SC to 0.571 , whereas the proposed framework holds at 
+
+0.993 . After the bottleneck is released, both baselines collapse further rather than recovering. K-Means settles at k = 4 .00 
+
+with a TCA of 0.452 , and Std. SC at k = 4 .23 with a TCA of 
+
+0.558 , since several fleets exit through the same downstream ramp and the declared intent no longer separates them. The proposed framework maintains k = 5 .00 and a TCA of 0.986 ,and reorganizes the fleets onto their own ramps. Fig. 9 traces the weight adaptation in the Congestion Scenario and reveals the underlying closed-loop mechanism. Under free flow the link modality takes the lead as the well-separated fleets make spatial proximity the most reliable cue, 11 0 10 20 30 40 50 60 70 80    
+
+> Time(s)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Weight Value
+> 1(Link)
+> 2(Intent)
+> 3(Task)
+> Shockwave
+> (20-50s)
+> Release
+> (50-80s)
+
+Fig. 9: Dynamic weight adaptation in the congestion scenario. The task weight β3 rises as the shockwave removes the spatial signal. 50 100 200 500 1000 2000   
+
+> Swarm size N
+> 10
+> 20
+> 50
+> 100
+> 200
+> 500
+> 1000
+> 2000
+> Runtime (ms)
+> Std. SC
+> Proposed (FSC)
+> K-Means 5.3 ×
+
+Fig. 10: Execution time comparison across varying formation sizes. 
+
+while the intent weight is suppressed early. As the shockwave removes the spatial signal, the weight shifts toward the task modality, which rises to share the lead with the link term and carries the fleet partition that neither position nor destination can recover. This task-dominant regime persists after the release, confirming that the controller tracks the currently informative modality rather than a fixed weighting. Finally, Fig. 10 validates the computational scalability of the proposed framework. Across formation sizes N ∈ [50 , 2000] ,it completes the N = 2000 partition in 0.49 s against 2.62 sfor standard spectral clustering, a 5.3× speedup that widens monotonically with N . The total runtime is dominated by the O(N 2) similarity construction, as pairwise SINR must be evaluated for all links; however, the FSC core reduces the subsequent eigen decomposition from O(N 3) to O(N k 2),which is the primary source of the observed performance gain. K-Means is faster in absolute terms but resolves an incorrect cluster number in every phase, as reported in Table III. 
+
+B. Communication-support validation with ns-3 
+
+To verify whether the proposed diverge-merge results can be supported at the wireless access layer, we conduct a trace-driven ns-3 validation [32]. The ns-3 simulator replays the Python-side dynamic diverge-merge control framework traces, including UAV trajectories, task-aware cluster labels, MAC interaction events, and task-level traffic events. Two scenar-ios are evaluated: multi-corridor scenario for UAV corridor-switching and congestion scenario for extreme single-corridor congestion. Each scenario contains 80 replay frames with an interval of 1 s, resulting in a 79.5 s effective evaluation duration after warm-up and ending margins. 
+
+(a) Multi-corridor scenario. 
+
+(b) Congestion scenario. 
+
+(c) NS-3 network connection results. 
+
+Fig. 11: Scenario position snapshots and ns-3 replay results under two diverge-merge scenarios. Different colors indicate different task-aware clusters, and green arrows indicate the traffic flows. 
+
+Fig. 11 shows the scenario position snapshots and ns-3 re-play results for the multi-corridor scenario and the congestion scenario. The position snapshots illustrate the UAV spatial distributions during independent flight, merging, congestion, release, and diverge phases, while the ns-3 replay visualizes the corresponding network state, task-aware cluster labels, and traffic flows. CAD-TDMA uses these replayed labels for cluster-aware slot management, whereas WiFi and fixed TDMA are evaluated under the same traffic traces as baselines. Control traffic is modeled by UDP heartbeat broadcasts with short ACK replies, while task traffic is modeled by burst UDP incast toward an event sink. The key simulation parameters are summarized in Table IV. Three metrics are used: average delay ¯∆, air-interface loss rate ℓair , and throughput Θ. Delay reflects the waiting time for cluster-state synchronization and bursty task traffic. Air-interface loss measures failed MAC-layer delivery after trans-mission and captures collision/interference risk. Throughput evaluates the effective use of wireless resources. 12 
+
+TABLE IV: Primary ns-3 parameters. 
+
+Parameter Value 
+
+Replay setting 80 frames, 1 s/frame, 79.5 s evaluation Mobility input Waypoint replay from dynamic diverge-merge collaborative control traces Compared MACs WiFi MAC, fixed TDMA, CAD-TDMA PHY IEEE 802.11a, 6 Mbps Channel model log-distance path loss Traffic model UDP heartbeat/ACK and burst incast Packet size 64-byte control, 800-byte data TDMA setting One-node-one-slot, 6 ms slot 
+
+(a) Multi-corridor scenario. (b) Congestion scenario. 
+
+Fig. 12: Per-second TX/RX packet dynamics under two representative scenarios. In each subfigure, the three panels from top to bottom correspond to WiFi MAC, fixed TDMA, and Proposed. 
+
+Specifically, ¯∆ = 1
+
+> Nrx
+
+P
+
+> p∈P rx
+
+ trx  
+
+> p
+
+− ttx 
+
+> p
+
+, where Prx is the set of received packets and Nrx = |P rx |. The air-interface loss rate is ℓair = N loss air /N tx mac , where N loss air is the number of packets lost after MAC transmission and N tx mac is the number of MAC-layer transmitted packets. The throughput is Θ = 8Brx /T eval , where Brx is the total number of received bytes and Teval is the evaluation duration. Therefore, the TX/RX dynamics in Fig. 12a are used only to illustrate runtime access behavior, while the final comparison is based on delay, air-interface loss, and throughput jointly. Fig. 12 shows the runtime TX/RX packet dynamics under the multi-corridor scenario and the congestion scenario with a unified vertical scale. WiFi produces the largest number of transmission attempts, but the clear TX–RX gap indicates considerable ineffective access under contention. Fixed TDMA keeps TX and RX close due to deterministic slot schedul-ing, while Proposed achieves a similarly balanced TX/RX behavior with more adaptive access control. This indicates that Proposed avoids excessive air-interface attempts and reduces communication-resource waste, while maintaining practical service capability under dynamic UAV formation traces. Fig. 13 compares the average delay in the two scenarios. WiFi has the smallest delay among successfully received packets because random access allows immediate transmis-sion attempts. However, this apparent delay advantage is achieved at the cost of severe packet loss. Fixed TDMA avoids most air-interface collisions, but its rigid slot schedule introduces second-level waiting delay, which is unsuitable for frequent cluster-state updates and bursty task traffic. CAD-TDMA significantly reduces the delay compared with fixed TDMA by allowing cluster-aware slot management and low-risk opportunity-slot reuse. 
+
+Fig. 13: Average delay comparison of different MAC schemes under multi-corridor scenario and congestion scenario. 
+
+TABLE V: Level mapping for communication-support capa-bility.                                  
+
+> Level Delay support(ms) Reliability Throughput (Mbps)
+> 5≤200 ≤0.01 ≥6
+> 4(200 ,350] (0 .01 ,0.10] [4 ,6)
+> 3(350 ,1000] (0 .10 ,0.30] [2 ,4)
+> 2(1000 ,3000] (0 .30 ,0.50] [1 ,2)
+> 1>3000 >0.50 <1
+
+Fig. 14: Capability of WiFi MAC, fixed TDMA, and proposed. 
+
+For intuitive comparison, Table. V indicates that the three communication metrics are mapped into fixed threshold ranges, where a higher level indicates better communication support. This level mapping is used only for visualization and does not introduce an additional optimization objective. Fig. 14 summarizes the communication-support capability in three aspects: delay support, reliability, and throughput support. A higher level indicates a better support capability. WiFi has strong delay and throughput support, but weak reliability because dense contention causes many air-interface losses. Fixed TDMA has strong reliability but weak delay support because its rigid schedule limits responsiveness. CAD-TDMA does not maximize a single metric; instead, it provides the most balanced capability profile. As observed in Fig. 12a, CAD-TDMA may suppress transmissions during dense merge-overlap intervals, but this behavior reduces ineffective ac-cess and protects intra-cluster synchronization. Therefore, its throughput is acceptable rather than maximal, while its delay and reliability remain suitable for dynamic formation control. VII. C ONCLUSION 
+
+This paper addresses the dynamic diverge-merge control of UAV flight formations within corridor-ramp structured airspace, seamlessly bridging formation reconstruction with wireless access scheduling. To overcome the severe spatial 13 
+
+squeezing and communication bottlenecks inherent in complex ramp transitions, we developed a task-driven collaborative control algorithm that fuses spatial connectivity, 3D flight intent, and historical task interactions via an accelerated spectral clustering paradigm, effectively preventing blind frag-mentation under extreme physical congestion. Furthermore, to sustain the bursty network traffic demands of high-frequency formation evolution, a cluster-aware distributed TDMA proto-col was formulated to protect intra-cluster owner slots while conservatively exploiting low-risk inter-cluster opportunities. Comprehensive kinematic and ns-3 trace-driven validations confirm that the proposed framework maintains near-zero network misclassification and achieves a superior delay-loss-throughput tradeoff over conventional baselines. Ultimately, this work provides a scalable, network-enabled blueprint for safe and high-capacity AAM operations. REFERENCES [1] J. Yang, Y. Wang, X. Hang, and D. Delahaye, “A review on airspace design and risk assessment for urban air mobility,” IEEE Access , vol. 12, pp. 157 599–157 611, 2024. [2] J. Kim, M. Z. Li, E. M. Atkins, G. Franzini, K. Wadhwani, and S. Riverso, “Centralized and distributed optimization of advanced air mobility strategic traffic management,” Drone Systems and Applications , vol. 14, pp. 1–21, 2026. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S2564493926000019 [3] A. Cheaitou, A. Hamdan, F. Ibrahim, S. Hamdan, J. Lundberg, I. Alsyouf, M. B˚ ang, K. Lundin Palmerius, A. Shikhli, B. Josefsson, Z. E. A. Tahboub, E. Junholm, and J. J. Westberg, “Optimizing and visualizing dynamic service performance for airspace users to enable safe and efficient urban air mobility in Dubai.” [Online]. Available: https://doi.org/10.1007/s10479-025-06983-0 [4] B. Chen and J. Li, “Research on uav logistics operation mode based on low altitude air corridor hierarchical management,” in 2025 Low-Altitude Economy Forum & International Conference on Low-Altitude Flight Technology and Unmanned Aerial Vehicle Application (LEF & ICLU) , 2025, pp. 174–178. [5] Federal Aviation Administration, “Urban Air Mobility (UAM) Concept of Operations 2.0,” Federal Aviation Administration (FAA), Washington, DC, USA, Tech. Rep., 2023. [6] A. P. Cohen, S. A. Shaheen, and E. M. Farrar, “Urban air mobility: History, ecosystem, market potential, and challenges,” IEEE Trans. Intell. Transp. , vol. 22, no. 9, pp. 6074–6087, 2021. [7] Q. Quan, R. Fu, M. Li, D. Wei, Y. Gao, and K.-Y. Cai, “Practical distributed control for vtol uavs to pass a virtual tube,” IEEE Trans. Intell. Veh. , vol. 7, no. 2, pp. 342–353, 2022. [8] X. Zhang, W. Ding, Q. Liu, D. Qi, Z. Zhang, S. Wang, and Y. Wang, “Reinforcement learning based uav swarm fission-fusion approach with integrated validation of perception and control,” in 2024 IEEE Interna-tional Conference on Unmanned Systems (ICUS) , 2024, pp. 826–836. [9] T. Zhang, D. Yu, K. H. Cheong, Y. Liu, and Z. Wang, “Hierarchical distributed strategy for autonomous uav swarm formation aggregation,” 
+
+IEEE Trans. Veh. Technol. , vol. 74, no. 10, pp. 15 264–15 279, 2025. [10] A. Gaydamaka, A. Samuylov, D. Moltchanov, M. Ashraf, B. Tan, and Y. Koucheryavy, “Dynamic topology organization and maintenance algorithms for autonomous uav swarms,” IEEE Trans. Mob. Comput ,vol. 23, no. 5, pp. 4423–4439, 2024. [11] R. Chen, J. Li, Y. Chen, Y. Huang, X. Wang, and L. Shen, “An asynchronous consensus method with low communication traffic and high efficiency for distributed multi-agent scheduling,” IEEE Trans. Mob. Comput , vol. 25, no. 1, pp. 215–228, 2026. [12] O. F. Archila, A. Vande Wouwer, and J. Schiffer, “A multiple artificial potential functions approach for collision avoidance in uav systems,” 
+
+IEEE Transactions on Intelligent Transportation Systems , vol. 26, no. 10, pp. 16 688–16 699, 2025. [13] G. Zhu, H. Yao, T. Mai, Z. Wang, D. Wu, and S. Guo, “ Fission Spectral Clustering Strategy for UAV Swarm Networks ,” IEEE Trans. Serv. Comput , vol. 17, no. 02, pp. 537–548, Mar. 2024. [Online]. Available: https://doi.ieeecomputersociety.org/10.1109/TSC.2024.3376191 [14] M. Aissa, M. Abdelhafidh, and A. B. Mnaouer, “Emass: A novel energy, safety and mobility aware-based clustering algorithm for fanets,” IEEE Access , vol. 9, pp. 105 506–105 520, 2021. [15] S. Huang, H. Yao, X. Wang, T. Mai, Z. Wang, and S. Guo, “Graph attentional based agglomerative cluster for uav swarm networks,” IEEE Trans. Netw. Sci. Eng , vol. 12, no. 4, pp. 3311–3327, 2025. [16] D. Cheng, X. Jiang, S. Xia, G. Wang, J. Huang, S. Zhang, and Y. Wang, “Fast spectral clustering via pseudo-label-based granular-ball division for large-scale data,” IEEE Transactions on Knowledge and Data Engineering , vol. 38, no. 5, pp. 2807–2817, 2026. [17] L. He, N. Ray, Y. Guan, and H. Zhang, “Fast large-scale spectral clus-tering via explicit feature mapping,” IEEE Transactions on Cybernetics ,vol. 49, no. 3, pp. 1058–1071, 2019. [18] L. Gupta, R. Jain, and G. Vaszkun, “Survey of important issues in uav communication networks,” IEEE Commun. Surveys Tuts. , vol. 18, no. 2, pp. 1123–1152, 2016. [19] M. Mozaffari, W. Saad, M. Bennis, Y.-H. Nam, and M. Debbah, “A tutorial on UAVs for wireless networks: Applications, challenges, and open problems,” IEEE Commun. Surveys Tuts. , vol. 21, no. 3, pp. 2334– 2360, 2019. [20] K. Li, W. Ni, X. Wang, R. P. Liu, S. K. Kanhere, and S. Jha, “Energy-efficient cooperative relaying for unmanned aerial vehicles,” IEEE Trans. Mob. Comput , vol. 15, no. 6, pp. 1377–1386, 2016. [21] H. A. Omar, W. Zhuang, and L. Li, “Vemac: A tdma-based mac protocol for reliable broadcast in vanets,” IEEE Trans. Mob. Comput , vol. 12, no. 9, pp. 1724–1736, 2013. [22] M. Hadded, P. Muhlethaler, A. Laouiti, R. Zagrouba, and L. A. Saidane, “Tdma-based mac protocols for vehicular ad hoc networks: A survey, qualitative analysis, and open research issues,” IEEE Commun. Surveys Tuts. , vol. 17, no. 4, pp. 2461–2492, 2015. [23] R. Zhang, X. Cheng, L. Yang, X. Shen, and B. Jiao, “A novel centralized TDMA-based scheduling protocol for vehicular networks,” IEEE Trans. Intell. Transp. , vol. 16, no. 1, pp. 411–416, 2015. [24] X. Jiang and D. H. C. Du, “PTMAC: A prediction-based TDMA MAC protocol for reducing packet collisions in VANET,” IEEE Trans. Veh. Technol. , 2016. [25] J. Wu, H. Lu, Y. Xiang, F. Wang, and H. Li, “SATMAC: Self-adaptive TDMA-based MAC protocol for VANETs,” IEEE Transactions on Intelligent Transportation Systems , vol. 23, no. 11, pp. 21 712–21 728, Nov. 2022. [26] P. Kopardekar, J. Rios, T. Prevot, M. Johnson, J. Jung, and J. E. Robinson, “Unmanned aircraft system traffic management (utm) concept of operations,” in 16th AIAA Aviation Technology, Integration, and Operations Conference , 2016, p. 3292. [Online]. Available: https://ntrs.nasa.gov/citations/20190000370 [27] SESAR Joint Undertaking, “U-space blueprint,” SESAR Joint Undertaking, Brussels, Belgium, Tech. Rep., 2017. [Online]. Available: https://www.sesarju.eu/u-space-blueprint [28] Y. Zeng, Q. Wu, and R. Zhang, “Accessing from the sky: A tutorial on uav communications for 5g and beyond,” Proceedings of the IEEE , vol. 107, no. 12, pp. 2327–2375, 2019. [29] D. C. Sorensen, “Implicit application of polynomial filters in a k-step arnoldi method,” SIAM J. Matrix Anal. Appl. , vol. 13, no. 1, p. 357–385, Jan. 1992. [Online]. Available: https://doi.org/10.1137/0613025 [30] D. Arthur and S. Vassilvitskii, “K-means++: The advantages of careful seeding,” in Proceedings of the Eighteenth Annual ACM-SIAM Sym-posium on Discrete Algorithms, SODA 2007, New Orleans, Louisiana, USA, January 7-9, 2007 , 2007. [31] J. C. Spall, “Multivariate stochastic approximation using a simultaneous perturbation gradient approximation,” IEEE Trans. Autom. Control. ,vol. 37, no. 3, pp. 332–341, 1992. [32] G. F. Riley and T. R. Henderson, “The ns-3 network simulator,” in 
+
+Modeling and Tools for Network Simulation , K. Wehrle, M. G¨ unes ¸, and J. Gross, Eds. Berlin, Heidelberg: Springer, 2010, pp. 15–34.
