@@ -1,0 +1,558 @@
+Title: Confidence-Gated Vision-Only Heading Alignment for UAV-UGV Cooperative Systems
+
+URL Source: https://arxiv.org/pdf/2607.18713v1
+
+Published Time: Wed, 22 Jul 2026 00:37:31 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+> 1
+
+# Confidence-Gated Vision-Only Heading Alignment for UAV–UGV Cooperative Systems 
+
+Reza Ahmari, Graduate Student member, IEEE, , Vahid Hemmati, Parham Kebria, Senior member, IEEE, , Olusola Odeyomi, Kaushik Roy, and Abdollah Homaifar 
+
+This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. 
+
+Abstract —Vision-based heading prediction is useful for UAV– UGV cooperation, but accurate prediction alone does not guar-antee that every predicted heading should be issued directly as a control command. This paper investigates the decision problem of when and how a fixed vision-based heading predictor should be trusted for command issuance. A lightweight confidence-gated framework is proposed in which execution decisions are made using two interpretable reliability proxies derived from the per-ception stream: bounding-box area as a visibility-related proxy and short-window variation in predicted heading as a stability-related proxy. During low-confidence intervals, the framework compares the baseline freeze-HOLD policy with a bounded-blend fallback that updates the issued command conservatively. The method is evaluated on a real UAV–UGV dataset under clean and perturbed conditions. The results show that confidence gating creates a clear trade-off among execution rate, executed-frame accuracy, issued-command accuracy, and smoothness. The results further show that sparse execution can cause severe stale-command error under the baseline freeze-HOLD policy, whereas the bounded-blend fallback substantially improves command-level behavior under the same gate decisions. These findings highlight that reliable perception-driven autonomy depends not only on prediction accuracy, but also on decision-aware command issuance during low-confidence intervals. 
+
+Index Terms —Trustworthy autonomy, robotic perception, confidence-gated decision making, UAV–UGV systems, perception-to-control interface. 
+
+I. INTRODUCTION Cooperative aerial–ground robotic systems have attracted sustained attention because they combine complementary sensing, mobility, and operational capabilities. In particular, unmanned aerial vehicles (UAVs) provide rapid viewpoint adaptation and broad situational awareness, while unmanned ground vehicles (UGVs) offer persistent ground-level inter-action, payload support, and endurance. Recent literature shows that UAV–UGV collaboration is being actively studied across applications such as environmental monitoring, disaster response, inspection, and precision agriculture, while also highlighting persistent challenges related to sensing reliability,       
+
+> R. Ahmari, O. Odeyomi, and K. Roy are with the Department of Com-puter Science, North Carolina Agricultural and Technical State University, Greensboro, NC 27411, USA. E-mail: rahmari@aggies.ncat.edu, otodey-omi@ncat.edu, kroy@ncat.edu. V. Hemmati, P. Kebria, and A. Homaifar are with the Department of Elec-trical and Computer Engineering, North Carolina Agricultural and Technical State University, Greensboro, NC 27411, USA. E-mail: vhemmati@ncat.edu, pmkebria@ncat.edu, homaifar@ncat.edu. Corresponding author: Abdollah Homaifar.
+
+communication, coordination, and environmental uncertainty [1]–[8]. Within this broader setting, reliable relative perception be-tween aerial and ground platforms is a critical requirement. Vision-based methods are especially attractive because they can support following, rendezvous, and landing behaviors without relying exclusively on external infrastructure. Prior work has demonstrated that UAVs can autonomously follow and land on moving ground platforms using visual sensing, including approaches based on fiducial landmarks, monocular perception, visual servoing, onboard sensing and computing, and more recent marker-less formulations [9]–[16]. These studies show that vision can provide the geometric information needed for relative pose or heading estimation in dynamic UAV–UGV interaction scenarios. In a prior work, a vision-based heading predictor was developed to estimate relative heading from image-derived geometric features [17]. The present paper does not redesign or retrain such a predictor. Instead, it addresses a different and practically important question: when and how should a predicted heading actually be issued as a control command? Aperception model may achieve low average prediction error un-der nominal conditions, yet still produce unstable or unreliable outputs under degraded visibility, detection jitter, or shifted operating conditions. This distinction between prediction qual-ity and decision reliability is well aligned with the broader uncertainty literature in machine learning and computer vision [18]. Existing work has shown the importance of distinguish-ing aleatoric and epistemic uncertainty, obtaining practical un-certainty estimates in deep models, calibrating neural-network confidence, and evaluating model trustworthiness under dataset shift [18]–[25]. Related work on selective prediction further reinforces the principle that abstention or deferred action may be preferable when confidence is insufficient [26]–[28]. This issue is especially important in heading alignment and landing-related control loops [29], [30]. If every predicted heading is executed immediately, short-term perception vari-ability can translate into oscillatory commands, unnecessary corrections, or unreliable actuation under degraded sensing conditions [25], [31], [32]. Conversely, if the system sim-ply withholds uncertain predictions and indefinitely freezes the previously issued command, prolonged low-confidence intervals can lead to stale-command accumulation. Therefore, the central problem addressed in this paper is not how to construct a heading predictor from scratch, but how to determine whether the current predicted heading from an existing perception module is sufficiently reliable for execution and, when it is not, how the issued command should evolve arXiv:2607.18713v1 [cs.RO] 21 Jul 2026 2
+
+conservatively. To address this problem, this paper proposes a confidence-gated vision-only heading alignment framework for UAV– UGV systems. The main contributions of this paper are as follows:  
+
+> •
+
+A confidence-gated vision-only heading alignment frame-work is proposed for UAV–UGV systems, in which a previously developed heading predictor is treated as a fixed perception module and a lightweight decision layer is introduced on top of it.  
+
+> •
+
+The decision layer uses two interpretable and compu-tationally lightweight reliability proxies derived directly from the perception stream: a visibility-related proxy based on bounding-box area and a stability-related proxy based on short-window variation in the predicted heading sequence.  
+
+> •
+
+Heading execution is formulated as an execute/hold de-cision problem , so that predicted headings are issued only when the current perceptual evidence is sufficiently reliable rather than being passed directly to the control system at every step.  
+
+> •
+
+The study shows that confidence gating should be treated as a fallback-aware decision problem: under sparse ex-ecution, the baseline freeze-HOLD policy can lead to stale-command accumulation, especially under stronger perturbation.  
+
+> •
+
+To address this limitation, a bounded-blend fallback update is introduced, allowing the issued command to evolve conservatively during low-confidence intervals, re-ducing stale-command persistence without fully trusting unreliable predictions.  
+
+> •
+
+The proposed framework is evaluated using both prediction-level and decision-level metrics. In addition to prediction error, the evaluation considers execution rate, issued-command accuracy, command smoothness, and ro-bustness under controlled centroid and area perturbations. This enables the study to distinguish between two related but different questions: whether the model can accurately predict the heading, and whether the system should trust and execute that prediction as a command. The remainder of the paper is organized as follows. Section II reviews related work in UAV–UGV cooperation, vision-based landing and following, and uncertainty-aware au-tonomous decision making. Section III formulates the heading prediction and execution problem. Section IV presents the confidence-gated decision framework and fallback policies. Section V describes the experimental setup, and Section VI reports quantitative results, robustness analysis, and the com-parative evaluation of hold-policy behavior. II. R ELATED WORK 
+
+A. UAV–UGV Cooperative Systems 
+
+Cooperative aerial–ground robotics has emerged as an im-portant research area because UAVs and UGVs provide com-plementary operational capabilities. UAVs offer rapid view-point changes, broad scene coverage, and flexible sensing, whereas UGVs provide persistent ground interaction, pay-load support, and longer-duration operation [1], [2], [4], [5]. Recent review literature shows that UAV–UGV collaboration is being studied across applications including environmental monitoring, disaster response, infrastructure inspection, and precision agriculture, while also identifying open challenges in perception, coordination, communication, and uncertainty handling [1]–[4], [33], [34]. These findings support the broader relevance of aerial–ground coordination and motivate reliable relative perception between the two platforms. Within cooperative UAV–UGV systems, one recurring re-quirement is the ability of the aerial platform to align with, follow, rendezvous with, or land relative to the ground plat-form. These tasks depend not only on accurate perception, but also on robust decision making when sensory evidence becomes unreliable. The present work focuses specifically on this perception-to-decision interface and, more narrowly, on how predicted headings should be translated into issued commands under variable confidence. 
+
+B. Vision-Based Following and Landing on Moving Ground Platforms 
+
+Vision-based methods are widely used for relative localiza-tion and landing because they reduce dependence on external positioning infrastructure and can operate directly from on-board sensing [9]–[16]. Morales et al. present a vision-based method that enables an aerial robot to detect, follow, and land on a moving ground platform, demonstrating the practicality of visual perception for relative motion tasks between aerial and terrestrial robots [9]. Falanga et al. further show that a quadrotor can autonomously land on a moving platform using only onboard sensing and computing, highlighting the feasi-bility of high-performance vision-driven landing in dynamic scenarios [10]. Similarly, Wu et al. describe an autonomous UAV landing system based on visual navigation, reinforcing the role of image-based geometric information in landing-related control pipelines [11]. Other studies extend this line of work through marker-based landing, visual servoing, coarse-to-fine visual landing, and integrated sensing frameworks for degraded environments [12]–[16]. These studies establish that vision can provide the infor-mation required for relative alignment and landing. However, they do not by themselves resolve a separate systems question that arises when visual predictions are fed into a control loop: whether every predicted state or heading estimate should be executed immediately, and how the command stream should evolve when the current estimate is deemed unreliable. In other words, the existence of a visual predictor does not automatically provide a policy for deciding when the current estimate is reliable enough to act upon or how low-confidence intervals should be handled. 
+
+C. Uncertainty, Reliability, and Trust in Vision-Based Predic-tion 
+
+The uncertainty literature in computer vision and machine learning provides strong motivation for distinguishing between predictive output and action reliability. Kendall and Gal show 3
+
+that uncertainty in vision models is not monolithic and in-stead includes both aleatoric uncertainty, which reflects noise inherent in observations, and epistemic uncertainty, which reflects uncertainty in the model itself [19]. Gal and Ghahra-mani further show how practical uncertainty estimates can be obtained in deep networks through approximate Bayesian inference with dropout [18]. Guo et al. show that mod-ern neural networks can be poorly calibrated even when they achieve strong predictive accuracy, making confidence quality an important issue in downstream decision making [21]. Hendrycks and Gimpel provide an influential baseline for detecting misclassified and out-of-distribution examples, reinforcing the need to reason explicitly about confidence and abnormal inputs [22]. More recent work further emphasizes the importance of uncertainty quantification and OOD-aware evaluation in safety-critical perception systems [23]–[25], [35], [36]. Lakshminarayanan et al. demonstrate that predictive uncer-tainty estimation is important when neural models are used beyond point prediction, particularly when the system must reason about confidence in its outputs [20]. Ovadia et al. 
+
+further show that trustworthiness can degrade substantially under dataset shift even when a model appears accurate under standard test conditions [23]. This observation is directly relevant to autonomous control settings, where a model may encounter degraded detections or non-nominal visual condi-tions not fully represented in the original data distribution. Related work on selective prediction and reject-option learning also supports the principle that abstention or deferred action can be preferable when confidence is insufficient [26]–[28]. From the perspective of this paper, these works motivate a key design principle: low average prediction error does not imply that every prediction should be executed as acontrol command. In a heading-alignment context, short-term perception degradation can produce unstable predicted com-mands even when the underlying predictor remains accurate on average. Moreover, once execution is selectively withheld, the behavior of the issued command stream becomes part of the overall system design, since command quality then depends not only on the gate decision but also on how non-executed intervals are handled [25], [31], [32]. 
+
+D. Positioning of the Present Work 
+
+A prior work developed the vision-based heading predictor used in the present study [17]. The present paper is therefore not primarily a new visual predictor, nor does it attempt to estimate full Bayesian uncertainty inside the heading model. Instead, it addresses a distinct and practically important prob-lem: how to introduce a lightweight decision layer between perception and control once heading predictions are already available [37], [38]. The proposed framework takes the trained heading predictor as given and adds a confidence-gated decision layer using two interpretable reliability proxies available from the perception stream: a visibility-related proxy derived from bounding-box area and a stability-related proxy derived from short-window variability in predicted heading. In this sense, the work is complementary to prior studies on vision-based following and landing: rather than replacing the perception model, it focuses on the decision interface that determines whether the current predicted heading should be fully executed. A further contribution of the present work is to treat fallback behavior during low-confidence intervals as part of the decision problem itself. The baseline freeze-HOLD policy pro-vides a simple mechanism for withholding unreliable updates by retaining the previously issued command. However, the analysis shows that this behavior can lead to stale-command accumulation when execution becomes sparse under strong perturbation. To address this limitation, the paper also studies a bounded-blend fallback update that allows the issued com-mand to evolve conservatively during low-confidence intervals without fully trusting the current prediction. Accordingly, the contribution of the paper lies at the deci-sion level rather than the prediction level. It is conceptually motivated by the broader uncertainty literature, is complemen-tary to prior work on vision-based UAV–UGV interaction, and contributes a lightweight mechanism for deciding not only when a perception-driven heading command should be executed, but also how the issued command should evolve when full execution is withheld. III. P ROBLEM FORMULATION 
+
+This paper considers a vision-based heading-alignment problem in a UAV–UGV cooperative setting. A previously developed vision-based heading predictor from prior work [17] is treated as a fixed perception module. This section formulates the vision-based heading-alignment problem considered in this work. It defines the observation and prediction model, the execute/hold decision process, the issued-command update rule, and the problem objective used to characterize decision-level system behavior. 
+
+A. Observation and Prediction Model 
+
+Let t denote the observation index. For each observation, the perception stream provides image-space bounding-box information for the target platform. From this detection, a feature vector 
+
+xt = [ cx t, cy t, area t, aspect ratio t]⊤ ∈ R4 (1) is constructed, where cx t and cy t denote the bounding-box centroid coordinates, area t denotes the bounding-box area, and aspect ratio t denotes the bounding-box aspect ratio. The ground-truth heading at step t is denoted by 
+
+θt ∈ R,
+
+and the frozen heading predictor is represented by 
+
+f : R4 → R.
+
+The predicted heading is therefore 
+
+ˆθt = f (xt).
+
+In this work, f (·) is treated as a fixed, pre-trained heading predictor whose architecture, training, and standalone perfor-mance are reported in prior work [17]. The contribution of this paper lies in the decision layer that operates on top of the predictor outputs. 4
+
+B. Execute/Hold Decision Process 
+
+At each step t, the system must decide whether the current predicted heading should be issued directly as a control command. This decision is represented by the action variable 
+
+at ∈ { EXECUTE , HOLD }. (2) If at = EXECUTE , the current predicted heading is issued directly to the control system. If at = HOLD , the system does not fully commit to the current prediction; Instead, 
+
+this work introduces a conservative fallback update rule 
+
+that prevents indefinite command freezing by allowing the issued command to evolve cautiously during prolonged low-confidence intervals. Accordingly, this paper distinguishes between the predictor output sequence 
+
+{ˆθt}Tt=1 
+
+and the issued command sequence 
+
+{ut}Tt=1 ,
+
+where ut denotes the command actually passed to the control system. 
+
+C. Issued-Command Update 
+
+The issued command ut depends not only on the current prediction ˆθt, but also on the action at and the recent hold history. Let ht denote the number of consecutive HOLD steps up to time t. The issued-command update is defined as 
+
+ut =
+
+
+
+ˆθt, at = EXECUTE ,
+
+(1 − α)ut−1 + αˆθt, at = HOLD and ht ≤ ¯h, 
+
+(1 − ρ)ut−1 + ρˆθt, at = HOLD and ht > ¯h, 
+
+(3) where α is a short-hold blending factor, ¯h is the maximum bounded-hold duration, and ρ is a recovery blending factor for prolonged low-confidence intervals. Equation (3) reflects the intended behavior of the system. High-confidence observations are executed directly, whereas low-confidence observations do not trigger full execution but still allow the issued command to evolve conservatively. For reference, the baseline freeze-HOLD can be written as 
+
+ut = ut−1, if at = HOLD , (4) which indefinitely repeats the previous command during non-execution intervals. In contrast, the bounded-blend rule in (3) mitigates stale-command persistence when the gate remains closed for multiple consecutive steps. This formulation explicitly separates three components of the overall system:  
+
+> •
+
+The perception problem , handled by the fixed heading predictor f (·). 
+
+> •
+
+The decision problem , which determines whether the current prediction should be fully executed, and  
+
+> •
+
+the fallback command-update problem , which determines how the issued command evolves during low-confidence intervals. 
+
+D. Problem Objective 
+
+The objective of the proposed framework is to design a decision mechanism that determines when the output of the existing heading predictor should be executed and how the issued command should evolve when full execution is not jus-tified. The desired behavior is to balance three requirements: 1) preserve the usefulness of the inherited heading predic-tor, 2) execute only sufficiently reliable predicted commands, and 3) maintain accurate and smooth issued-command behavior under nominal and perturbed perception conditions. Accordingly, the overall problem addressed in this paper is not only one of heading prediction, but one of prediction-conditioned action selection : given a predicted heading ˆθt, de-termine whether it should be executed directly or incorporated through a conservative fallback update during low-confidence intervals. IV. M ETHODOLOGY 
+
+This section presents the proposed decision framework that operates on top of the frozen heading predictor and transforms its output into a more selective and reliability-aware command-issuance process. The methodology includes inter-pretable reliability proxies derived from the perception stream, a confidence-gated execute/hold policy, a comparison between the baseline freeze-HOLD policy and the bounded-blend HOLD policy during low-confidence intervals, a calibration-based threshold-selection procedure, and an evaluation proto-col for decision-level robustness and smoothness. 
+
+A. Overview of the Decision Layer 
+
+The proposed framework takes as input the predicted head-ing sequence generated by the frozen perception module and evaluates whether the current estimate is sufficiently reliable for direct execution. The decision process uses two comple-mentary reliability proxies:  
+
+> •
+
+A visibility-related proxy based on the detected target’s bounding-box area in image coordinates, and  
+
+> •
+
+a stability-related proxy based on short-window variation in predicted headings. The first proxy reflects how strongly the target is represented in the image through its detected bounding-box size, while the second reflects the short-term consistency of the predicted heading sequence. Heading commands are executed only when the target is sufficiently visible and the recent predictions are sufficiently stable. In this paper, a low-confidence interval refers to one or more consecutive time steps at which the reliability conditions for direct execution are not satisfied. Concretely, such intervals occur when the visibility proxy falls below its threshold and/or the stability proxy exceeds its threshold, so the gate selects 
+
+HOLD rather than EXECUTE , as formalized later in (7). If either condition is violated, the system assigns the action 
+
+at = HOLD rather than fully executing the current prediction. In that case, the issued command does not remain undefined; 5
+
+instead, it is updated according to the fallback rule in (3), which determines ut from the previous issued command, the current predicted heading, and the recent hold history. In this way, the framework separates two roles: the reliability proxies determine whether the current prediction should be executed, while the fallback update determines how the issued command evolves during low-confidence intervals. 
+
+B. Visibility-Related Reliability Proxy 
+
+The first reliability proxy is based on the area of the detected target bounding box in image coordinates. In the proposed framework, area t is used as a visibility-related proxy. A smaller area generally corresponds to weaker apparent target scale in the image and therefore potentially less reliable visual evidence, whereas a larger area indicates stronger visual presence, as illustrated in Fig. 1. The role of this quantity in the decision layer is not to serve as a geometric state estimate, but to provide a simple measure of whether the current observation is likely to be informative enough for safe command execution.     
+
+> Fig. 1. Illustration of the visibility-related proxy based on bounding-box area. Asmaller detected area corresponds to weaker apparent target scale in the image, whereas a larger detected area indicates stronger visual presence.
+
+C. Stability-Related Reliability Proxy 
+
+The second reliability proxy is based on short-window consistency in the predicted heading sequence. For a window size k ≥ 2, define the rolling mean 
+
+¯θt = 1
+
+k
+
+> k−1
+
+X
+
+> j=0
+
+ˆθt−j , (5) and the rolling population standard deviation 
+
+σθ (t) = 
+
+vuut 1
+
+k
+
+> k−1
+
+X
+
+> j=0
+
+ˆθt−j − ¯θt
+
+2
+
+, t ≥ k. (6) The quantity σθ (t) measures local variability in the re-cent predicted-heading sequence. A small value indicates that recent predictions are mutually consistent, whereas a larger value indicates short-term fluctuation. In this work, σθ (t) is interpreted as a stability-related reliability signal for decision making. 
+
+D. Confidence-Gated Execute/Hold Policy 
+
+Using the two reliability proxies, the decision layer applies a confidence-gated rule with thresholds τarea and τσ :
+
+at =
+
+(EXECUTE , if area t ≥ τarea ∧ σθ (t) ≤ τσ ,
+
+HOLD , otherwise. (7) Equation (7) reflects the intended behavior of the system:  
+
+> •
+
+Execute only when the target is sufficiently visible and the predicted heading is sufficiently stable;  
+
+> •
+
+Hold when visual evidence is weak or when the recent predicted-heading sequence is unstable. The resulting issued command sequence follows the update rule defined in (3): EXECUTE issues the current predicted heading directly, whereas HOLD triggers a bounded fallback update rather than indefinite freezing. 
+
+E. Fallback Behavior During HOLD 
+
+A HOLD decision indicates that the current perceptual evidence is not reliable enough for full command execution. In the baseline freeze-HOLD formulation, HOLD caused the system to indefinitely retain the previously issued command, as described by (4). While this strategy provides a simple baseline for suppressing unreliable updates, it can also produce stale-command accumulation when the gate remains closed for multiple consecutive steps under strong perturbation. To address this issue, the present framework adopts the bounded-blend fallback defined in (3). This design allows the issued command to evolve conservatively during low-confidence intervals without fully trusting the current pre-diction. As a result, the framework preserves decision-level selectivity while mitigating the stale-command persistence that can occur during prolonged baseline freeze-HOLD behavior. 
+
+F. Threshold Selection 
+
+The confidence gate depends on two thresholds: the vis-ibility threshold τarea and the stability threshold τσ . These thresholds are selected on a calibration subset rather than the final test subset in order to avoid direct tuning on evaluation data. In the present study, the thresholds are selected using a Pareto-grid search over candidate values of τarea and τσ
+
+[39]–[41]. Specifically, a predefined grid of threshold pairs 
+
+(τarea , τ σ ) is evaluated on the calibration subset, and each candidate operating point is assessed in terms of:  
+
+> •
+
+The fraction of executed observations,  
+
+> •
+
+the prediction accuracy on executed observations, and  
+
+> •
+
+the smoothness of the resulting issued command stream. The final operating point is selected from this grid as a data-driven trade-off among these competing objectives. Once selected, the same threshold pair is fixed for all subsequent clean and perturbed evaluations reported in the paper. 6
+
+G. Comparative Gate Variants 
+
+To isolate the role of each reliability proxy, four execution strategies are considered: 1) Always-execute baseline: every predicted heading is issued. 2) Area-only gate: a heading is executed only if area t ≥
+
+τarea .3) Stability-only gate: a heading is executed only if 
+
+σθ (t) ≤ τσ .4) Full confidence gate: a heading is executed only if both conditions are satisfied. For the gated strategies, the paper evaluates two fallback behaviors during HOLD:  
+
+> •
+
+The baseline freeze-HOLD policy (4), and  
+
+> •
+
+the bounded-blend HOLD policy (3). This comparison makes it possible to determine not only whether the observed effects arise primarily from the visibility proxy, the stability proxy, or their combination, but also how strongly the final system behavior depends on the fallback command-update design once execution becomes sparse. 
+
+H. Evaluation Metrics 
+
+The proposed framework is intended for decision-level improvement rather than predictor redesign. Accordingly, eval-uation is performed both at the predictor level and at the decision level. Predictor-level performance is measured using standard regression metrics applied to the inherited heading estimates ˆθt, while decision-level performance is measured using metrics derived from the execute/hold actions and the issued command sequence ut.Let T denote the number of evaluated observations. The mean absolute error is defined as 
+
+MAE = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+θt − ˆθt , (8) and the root mean squared error is defined as 
+
+RMSE = 
+
+vuut 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+
+
+θt − ˆθt
+
+2
+
+. (9) However, predictor-level error alone is not sufficient to char-acterize the behavior of the overall system, because the final control behavior depends on the issued command sequence 
+
+ut, not only on the raw predictions ˆθt. For this reason, the framework is also evaluated using the decision-level metrics defined below. 
+
+a) Executed fraction: Let I[·] denote the indicator func-tion. The executed fraction is defined as 
+
+ExecFrac = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+I[at = EXECUTE] , (10) which measures the proportion of observations for which the current predicted heading is issued directly. 
+
+b) MAE on executed observations only: Let 
+
+E = { t ∈ { 1, . . . , T } : at = EXECUTE }
+
+denote the set of executed observations, and let |E| denote its cardinality. The mean absolute error on executed observations is defined as 
+
+MAE exec = 1
+
+|E| 
+
+X
+
+> t∈E
+
+θt − ˆθt . (11) This metric evaluates the quality of the subset of predictions that the gate allows to be fully executed. 
+
+c) MAE of the issued command stream: Because the final control behavior depends on the issued command sequence ut,the issued-stream mean absolute error is defined as 
+
+MAE issued = 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+|θt − ut| . (12) This metric reflects the accuracy of the command actually passed to the control system rather than the raw predictor output alone. 
+
+d) Mean jerk: To quantify smoothness of the issued command stream, the second-difference magnitude is defined as 
+
+J(t) = |ut − 2ut−1 + ut−2|, t ≥ 3. (13) The reported smoothness statistic is the mean jerk, 
+
+J = 1
+
+T − 2
+
+> T
+
+X
+
+> t=3
+
+J(t), (14) where lower values indicate smoother evolution of the issued command stream. Together, these metrics characterize the main decision-level trade-off studied in this paper: predictor accuracy, execution availability, executed-subset quality, issued-command accu-racy, and command smoothness. 
+
+I. Robustness Evaluation Under Perception Perturbation 
+
+To study the behavior of the decision layer under degraded perception, controlled perturbations are applied to the input features during evaluation, while ground-truth headings remain unchanged. Two perturbation modes are considered. 
+
+a) Centroid perturbation: The centroid coordinates are perturbed additively: 
+
+cx ′ 
+
+> t
+
+= cx t + ϵ(cx ) 
+
+> t
+
+, cy ′ 
+
+> t
+
+= cy t + ϵ(cy ) 
+
+> t
+
+, (15) with 
+
+ϵ(cx ) 
+
+> t
+
+, ϵ (cy ) 
+
+> t
+
+∼ N (0 , σ 2 
+
+> c
+
+).
+
+b) Area perturbation: The area feature is perturbed mul-tiplicatively: 
+
+area ′ 
+
+> t
+
+= area t(1 + ϵ(a) 
+
+> t
+
+), (16) with 
+
+ϵ(a) 
+
+> t
+
+∼ N (0 , σ 2
+
+> a
+
+).
+
+These perturbations simulate perception variability without modifying the inherited heading predictor or the ground-truth labels. The resulting experiments evaluate how the exe-cute/hold policy changes as uncertainty increases and how that affects executed-frame accuracy, issued-command accuracy, and command smoothness. 7
+
+V. E XPERIMENTAL SETUP 
+
+The experiments evaluate the decision framework defined in Sections III and IV on a UAV–UGV dataset with ground-truth heading labels generated using a VICON motion-capture system. The inherited heading predictor is kept fixed through-out all experiments so that observed performance differences are attributable to the decision layer and fallback policy rather than to changes in the perception model. The experiments are designed to answer three questions: 1) How does the confidence-gated framework behave on the clean sequence relative to always-execute? 2) How do the gate variants respond to centroid and area perturbations under the baseline freeze-HOLD policy? 3) To what extent does the bounded-blend fallback miti-gate stale-command behavior once execution becomes sparse? 
+
+A. Data Partition and Calibration Protocol 
+
+The dataset used in this study is the real UAV–UGV visual-heading dataset originally collected and described in [17]. The data were collected in an indoor laboratory environment using a VICON motion-capture system to provide millimeter-level position ground truth. To avoid tuning the decision layer on final evaluation data, the available ordered sequence is divided into a calibration subset and a test subset. The calibration subset is used only to select the gate thresholds, and all final results are reported on the test subset. Threshold calibration follows the Pareto-style grid-search procedure described in Section IV. Candidate threshold pairs 
+
+(τarea , τ σ ) are evaluated on the calibration subset, and the selected operating point is then fixed for all subsequent clean and perturbed evaluations. No threshold re-tuning is performed on the test sequence or at individual perturbation levels. 
+
+B. Evaluated Execution Strategies 
+
+Four gate-level execution strategies are evaluated: 1) Always-execute baseline 
+
+2) Area-only gate 
+
+3) Stability-only gate 
+
+4) Full confidence gate 
+
+For the gated strategies, two HOLD behaviors are consid-ered:  
+
+> •
+
+The baseline freeze-HOLD policy, and  
+
+> •
+
+The bounded-blend HOLD policy. This comparison makes it possible to distinguish between the effect of execution selectivity and the effect of fallback behavior once execution becomes sparse. 
+
+C. Evaluation Protocol 
+
+All methods are evaluated under clean conditions and under the two perturbation modes defined in Section IV: centroid perturbation and area perturbation. For each condition, the predictor output, gate decision, and issued-command stream are recomputed using the same fixed predictor and the same fixed threshold pair. The reported quantities include predictor-level accuracy together with the decision-level metrics defined in Section IV, namely executed fraction, executed-only accuracy, issued-command accuracy, and issued-command smoothness. For the perturbation experiments, repeated Monte Carlo tri-als are used to reduce sensitivity to a single random realization and to summarize robustness trends across noise levels. VI. R ESULTS AND DISCUSSION 
+
+This section evaluates the proposed confidence-gated de-cision framework under clean and perturbed perception con-ditions. This section is organized in two stages. First, the baseline freeze-HOLD policy is analyzed to characterize the behavior of the baseline confidence-gated system and to iden-tify its limitations under sparse execution. Second, the updated bounded-blend HOLD policy is evaluated under the same predictor, threshold pair, and perturbation settings in order to determine whether it mitigates stale-command accumulation without changing the underlying gate decisions. The discus-sion therefore distinguishes between the effect of execution selectivity and the effect of the fallback command-update rule 
+
+once execution becomes sparse. 
+
+A. Threshold Calibration 
+
+The threshold pair used throughout all experiments was obtained from the calibration subset using the Pareto grid-search procedure described in Section IV. For each candidate threshold pair (τarea , τ σ ) in the predefined search grid, the confidence gate in (7) was applied on the calibration sequence, and the resulting operating point was evaluated in terms of executed fraction, executed-only MAE, and issued-command smoothness. This produced a set of candidate trade-off points between execution availability and command quality. The final threshold pair was selected from this candidate set as a calibration-based operating point that preserved high execution availability while improving the quality of the executed subset and maintaining acceptable smoothness of the issued command stream. Here, τarea is dimensionless because 
+
+area t is computed as the bounding-box area normalized by the total image area, while τσ is expressed in degrees because 
+
+σθ (t) is computed from predicted heading angles. The selected operating point corresponds to 
+
+τarea = 0 .025583 , τσ = 0 .256323 ◦. (17) Once selected on the calibration subset, this threshold pair was fixed for all subsequent clean and perturbed evaluations in both the freeze-HOLD and bounded-blend studies. Impor-tantly, the calibration outputs are identical across the two HOLD policies in terms of selected threshold pair, executed fraction, and executed-only accuracy. This confirms that the comparison between the baseline freeze-HOLD and updated HOLD behaviors isolates the effect of the fallback command-update rule rather than changes in the predictor, threshold selection, or gate decision logic. 8                     
+
+> TABLE I CLEAN -SEQUENCE COMPARISON UNDER THE BASELINE FREEZE -HOLD POLICY
+> Mode Execution Rate (%) MAE Executed (deg) MAE Issued (deg) Mean Jerk (deg/step 2)Always-execute 100.00 0.094285 0.094285 0.018487 Area-only 98.78 0.091493 0.092446 0.017173 Stability-only 97.24 0.089771 0.102562 0.026114 Full gate 96.35 0.088549 0.102184 0.025597
+
+B. Baseline Freeze-HOLD Policy 1) Clean-Sequence Behavior: Table I summarizes the clean-sequence performance of the baseline freeze-HOLD policy. Under nominal conditions, the always-execute baseline issues commands at every step, whereas the gated strategies execute slightly fewer observations: 0.987844 for area-only, 0.972447 for stability-only, and 0.963533 for the full gate. Thus, even on the clean sequence, the confidence gate behaves selectively rather than acting as a degenerate always-execute rule. At the same time, executed-only MAE improves as the gate becomes more selective. Relative to always-execute, area-only reduces executed-only MAE from 0.094285 to 0.091493, stability-only reduces it further to 0.089771, and the full gate achieves the lowest executed-only MAE of 0.088549. This indicates that even under clean conditions, the gate excludes a subset of observations that are less favorable for direct command execution. However, the issued-stream behavior of the baseline freeze-HOLD policy is mixed. Area-only slightly improves the baseline issued-stream MAE from 0.094285 to 0.092446 and also reduces mean jerk from 0.018487 to 0.017173. In con-trast, the more selective stability-only and full gates increase issued-stream MAE to 0.102562 and 0.102184, respectively, while also increasing mean jerk to 0.026114 and 0.025597. Therefore, under nominal conditions, mild gating produces the best overall balance, whereas stronger withholding does not improve the final issued command stream when HOLD is implemented as indefinite freezing. 
+
+2) Response to Centroid Perturbation: Centroid perturba-tion exposes the main limitation of the baseline freeze-HOLD policy. Figure 2 shows that always-execute remains fixed at full execution and area-only remains nearly unchanged across the full perturbation range, whereas stability-only and full gating become highly selective as centroid noise increases. Their executed fraction decreases only mildly at very small perturbation, drops sharply by σc = 0 .005 , falls to approx-imately 0.17 by σc = 0 .01 , and collapses to approximately 0.016 by σc = 0 .02 . This confirms that centroid perturbation primarily affects the stability-related reliability proxy rather than the area proxy. Figure 3 reports MAE on the executed subset. At the highest centroid perturbation level, always-execute and area-only both degrade to approximately 0.748, whereas stability-only and the full gate remain near 0.444 and 0.440, respectively. Thus, when the stability-based gates do execute under strong centroid noise, they preserve a substantially cleaner executed subset. Figure 4 shows the corresponding smoothness behavior. For always-execute and area-only, mean jerk rises rapidly   
+
+> Fig. 2. Baseline freeze-HOLD policy: executed fraction versus centroid perturbation magnitude. Stability-only and full gating become highly selective as centroid noise increases, whereas always-execute and area-only remain nearly unchanged.
+> Fig. 3. Baseline freeze-HOLD policy: executed-only MAE versus centroid perturbation magnitude. Stability-only and full gating preserve a cleaner executed subset at high centroid noise.
+
+with centroid noise and exceeds 1.79 at σc = 0.02 . In contrast, stability-only and the full gate reduce mean jerk to approximately 0.08 at the same perturbation level. On its own, this would suggest that strong gating produces a smoother command stream. 
+
+> Fig. 4. Baseline freeze-HOLD policy: mean jerk versus centroid perturbation magnitude. Stability-only and full gating remain very smooth at high centroid noise, but this smoothness is associated with sparse execution and stale-command persistence.
+
+However, Figure 5 reveals the critical failure mode: issued-stream MAE becomes extremely large once execution be-comes too sparse. 9 
+
+> Fig. 5. Baseline freeze-HOLD policy: issued-stream MAE versus centroid perturbation magnitude. Stability-only and full gating exhibit severe issued-stream degradation once execution becomes sparse.
+
+Specifically, at σc = 0.02 , the freeze-HOLD stability-only and full gates produce issued-stream MAE values of 3.2176 and 3.2152, respectively, far worse than always-execute and area-only. This behavior is summarized in Table II. The combination of very low jerk and very large issued-stream error indicates that the issued command becomes stale rather than simply smooth. In other words, the gate successfully suppresses unreliable executions, but freeze-HOLD causes the command stream to remain fixed for too long once updates become rare.    
+
+> TABLE II BASELINE FREEZE -HOLD POLICY AT HIGHEST CENTROID PERTURBATION LEVEL (σc= 0 .02)
+
+Mode Execution Rate (%) MAE Exec. Only (deg) MAE Issued (deg) Mean Jerk (deg/step 2)Always-execute 100.00 0.7477 0.7477 1.8128 Area-only 98.78 0.7484 0.7457 1.7921 Stability-only 1.66 0.4445 3.2177 0.0812 Full gate 1.63 0.4397 3.2153 0.0805 
+
+3) Response to Area Perturbation: The response to area perturbation is qualitatively different. Figure 6 shows that always-execute remains at full availability, while the gated strategies become progressively more selective as σa increases. Area-only remains relatively permissive, decreasing only to about 0.91 at σa = 0 .10 . Stability-only decreases to approx-imately 0.618, and the full gate becomes the most selective, dropping to approximately 0.540. This behavior is consistent with the role of area in the gate design, since the perturbation acts directly on the visibility-related reliability proxy.  
+
+> Fig. 6. Baseline freeze-HOLD policy: executed fraction versus area pertur-bation magnitude. The full gate becomes the most selective as area noise increases.
+
+Figure 7 shows that stronger gating again improves executed-only MAE. At σa = 0 .10 , always-execute and area-only remain near 0.228, whereas stability-only and full gating reduce executed-only MAE to approximately 0.170 and 0.166, respectively. Figure 8 further shows that the full gate achieves the lowest jerk at high area noise.   
+
+> Fig. 7. Baseline freeze-HOLD policy: executed-only MAE versus area perturbation magnitude. Stability-only and full gating preserve a cleaner executed subset at high area noise.
+> Fig. 8. Baseline freeze-HOLD policy: mean jerk versus area perturbation magnitude. The full gate provides the lowest jerk at high area noise, but this is accompanied by reduced availability and increased issued-stream error.
+
+However, the issued-stream MAE in Figure 9 shows that freeze-HOLD policy still degrades command-level accuracy once execution becomes sparse. At σa = 0 .10 , stability-only and full gating produce issued-stream MAE values of 0.3549 and 0.3504, both worse than always-execute and area-only.         
+
+> Fig. 9. Baseline freeze-HOLD policy: issued-stream MAE versus area perturbation magnitude. Sparse execution degrades the final command stream under the baseline freeze-HOLD policy.
+
+Table III summarizes this trade-off. Compared with the centroid-noise case, the degradation is less dramatic, but the same mechanism is present: selective gating improves the executed subset while the baseline freeze-HOLD policy degrades the final command stream when updates become infrequent. 10    
+
+> TABLE III BASELINE FREEZE -HOLD POLICY AT HIGHEST AREA PERTURBATION LEVEL (σa= 0 .10)
+
+Mode Execution Rate (%) MAE Exec. Only (deg) MAE Issued (deg) Mean Jerk (deg/step 2)Always-execute 100.00 0.2283 0.2283 0.4818 Area-only 91.03 0.2271 0.2230 0.4479 Stability-only 61.77 0.1702 0.3549 0.2281 Full gate 54.03 0.1657 0.3504 0.2011 
+
+C. Updated Bounded-Blend HOLD Policy 1) Clean-Sequence Behavior: The updated bounded-blend HOLD policy was evaluated under the same predictor, thresh-old pair, and gate decisions as the baseline freeze-HOLD policy. The differences therefore appear only in the issued-command behavior. Table IV shows that the bounded-blend update preserves the always-execute baseline exactly and yields small but meaningful improvements for the more selec-tive gates. In particular, issued-stream MAE decreases from 0.102562 to 0.099964 for stability-only and from 0.102184 to 0.099837 for the full gate. Mean jerk also decreases from 0.026114 to 0.022653 for stability-only and from 0.025597 to 0.022432 for the full gate. Thus, the bounded-blend up-date does not degrade clean-sequence behavior and slightly improves the final command stream even in the absence of perturbation. 
+
+2) Response to Centroid Perturbation: Under centroid perturbation, the executed-fraction and executed-only MAE curves remain identical to those of the baseline freeze-HOLD study, confirming that the bounded-blend update does not change the gate behavior itself. The crucial difference appears in the issued-stream MAE. As shown in Figure 10, the bounded-blend fallback sub-stantially reduces the command-level degradation observed under the freeze-HOLD. At σc = 0 .01 , issued-stream MAE decreases from approximately 0.75 to approximately 0.35 for both stability-only and full gating. At the highest perturbation level, σc = 0 .02 , issued-stream MAE decreases from 3.2176 to 0.4966 for stability-only and from 3.2152 to 0.4959 for the full gate. These values are summarized in Table V.  
+
+> Fig. 10. Updated bounded-blend HOLD policy: issued-stream MAE versus centroid perturbation magnitude. The bounded-blend fallback removes the severe stale-command growth observed under the baseline freeze-HOLD policy.
+
+Figure 11 shows that this improvement is accompanied by a modest increase in jerk at the highest centroid perturbation level. For the full gate, mean jerk increases from 0.0805 to 0.1244, and for stability-only from 0.0812 to 0.1247. This increase is expected, because the command is no longer frozen but is allowed to adapt conservatively during low-confidence intervals. The trade-off is clearly favorable: amoderate increase in motion activity prevents the severe stale-command accumulation observed under the baseline freeze-HOLD policy.          
+
+> Fig. 11. Updated bounded-blend HOLD policy: mean jerk versus centroid perturbation magnitude. Jerk increases modestly relative to the baseline freeze-HOLD policy, reflecting conservative adaptation rather than indefinite freezing.
+
+3) Response to Area Perturbation: The same pattern appears under area perturbation. Executed fractions and executed-only MAE values remain unchanged from the base-line freeze-HOLD case, indicating that the gate continues to make the same execution decisions. However, the issued-stream behavior improves under the bounded-blend fallback. Figure 12 shows that the issued-stream MAE decreases across the more selective gates. At σa = 0 .10 , issued-stream MAE decreases from 0.3549 to 0.2531 for stability-only and from 0.3504 to 0.2477 for the full gate. Unlike the centroid-noise case, smoothness also improves slightly:  
+
+> Fig. 12. Updated bounded-blend HOLD policy: issued-stream MAE versus area perturbation magnitude. The bounded-blend fallback improves command-level accuracy compared with the baseline freeze-HOLD policy.
+
+Figure 13 shows that mean jerk decreases from 0.2281 to 0.2169 for stability-only and from 0.2011 to 0.1915 for the full gate. Therefore, under area perturbation, the bounded-blend update provides a more favorable trade-off in both command accuracy and smoothness. 
+
+D. Comparative Discussion 
+
+The comparison between the baseline freeze-HOLD and updated HOLD policies reveals that the confidence gate and 11                                                    
+
+> TABLE IV CLEAN -SEQUENCE COMPARISON UNDER THE UPDATED BOUNDED -BLEND HOLD POLICY
+> Mode Execution Rate (%) MAE Executed (deg) MAE Issued (deg) Mean Jerk (deg/step 2)Always-execute 100.00 0.094285 0.094285 0.018487 Area-only 98.78 0.091493 0.092586 0.016980 Stability-only 97.24 0.089771 0.099964 0.022653 Full gate 96.35 0.088549 0.099837 0.022432 TABLE V COMPARISON BETWEEN THE BASELINE FREEZE -HOLD AND BOUNDED -BLEND HOLD POLICIES AT THE HIGHEST PERTURBATION LEVELS
+> Condition Mode Execution Rate (%) MAE Exec. Only (deg) MAE Issued Freeze (deg) MAE Issued Blend (deg)
+> σc= 0 .02 Stability-only 1.66 0.4445 3.2177 0.4966 Full gate 1.63 0.4397 3.2153 0.4959
+> σa= 0 .10 Stability-only 61.77 0.1702 0.3549 0.2531 Full gate 54.03 0.1657 0.3504 0.2477
+> Fig. 13. Updated bounded-blend HOLD policy: mean jerk versus area perturbation magnitude. The updated fallback slightly improves smoothness at high area perturbation.
+
+the fallback rule play distinct but tightly coupled roles. The gate determines how selectively the system accepts new predictions, whereas the fallback rule determines how the issued command evolves once execution becomes sparse. In the present study, the threshold pair, executed fractions, and executed-only accuracies remain unchanged between the two HOLD policies. Therefore, the observed differences in command-level behavior can be attributed directly to the fallback update mechanism. The baseline freeze-HOLD reveals an important limitation of relying on confidence gating alone. Under strong centroid perturbation, the gate successfully rejects unreliable predic-tions and preserves a cleaner executed subset, but indefinite freezing causes the issued command to become stale once updates become too rare. This failure mode is especially clear at σc = 0.02 , where stability-only and full gating reduce executed-only MAE to about 0.44 while issued-stream MAE rises above 3.21. The bounded-blend update addresses this limitation while preserving the same selective execution behavior. Because the issued command is allowed to adapt conservatively during HOLD, the severe stale-command growth is removed. At 
+
+σc = 0.02 , issued-stream MAE decreases from 3.2176 to 0.4966 for stability-only and from 3.2152 to 0.4959 for the full gate. Under area perturbation, the same update also improves the command-level trade-off, reducing issued-stream MAE and slightly improving jerk. The main quantitative comparison at the highest perturbation levels is summarized in Table V. These results show that confidence gating alone is not sufficient for reliable perception-to-action behavior once ex-ecution becomes sparse. The fallback policy is not merely an implementation detail; it is part of the decision frame-work itself. In the present study, the bounded-blend HOLD policy provides a substantially better command-level trade-off than the baseline freeze-HOLD policy, making the overall confidence-gated framework more robust to stale-command degradation while preserving conservative execution under uncertainty. VII. C ONCLUSION 
+
+This paper studied decision-level command issuance for vision-based UAV–UGV heading alignment using a fixed in-herited heading predictor. Instead of redesigning the perception model, the work focused on how predicted headings should be translated into issued commands when perceptual reliability varies over time. To address this problem, the paper intro-duced a confidence-gated framework based on two lightweight reliability proxies: a visibility-related proxy derived from bounding-box area and a stability-related proxy derived from short-window variation in the predicted heading sequence. The results showed that confidence gating creates a clear trade-off among execution availability, executed-frame ac-curacy, issued-command accuracy, and smoothness. Under degraded perception, the gate became more selective and preserved a cleaner executed subset. However, the experiments also showed that the baseline freeze-HOLD policy can cause severe issued-stream degradation when execution becomes too sparse. Under the same predictor, thresholds, and gate deci-sions, the bounded-blend HOLD policy substantially reduced stale-command accumulation and produced a more favorable command-level trade-off. Overall, the findings show that reliable perception-driven autonomy depends not only on deciding when a predicted command should be executed, but also on designing how the issued command should evolve when execution is withheld. Future work can extend this framework by incorporating additional reliability proxies, learning or adapting thresholds online, and evaluating the method in longer closed-loop ex-periments with more diverse operating conditions. 12 
+
+REFERENCES [1] I. Munasinghe, A. Perera, and R. C. Deo, “A comprehensive review of uav-ugv collaboration: Advancements and challenges,” Journal of Sensor and Actuator Networks , vol. 13, no. 6, p. 81, 2024. [2] C. Liu, J. Zhao, and N. Sun, “A review of collaborative air-ground robots research,” Journal of Intelligent & Robotic Systems , vol. 106, no. 3, p. 60, 2022. [3] Z. Ren, H. Zheng, J. Chen, T. Chen, P. Xie, Y. Xu, J. Deng, H. Wang, M. Sun, and W. Jiao, “Integrating uav, ugv and uav-ugv collaboration in future industrialized agriculture: Analysis, opportunities and challenges,” 
+
+Computers and Electronics in Agriculture , vol. 227, p. 109631, 2024. [4] F. S. Shahar, M. T. H. Sultan, M. Nowakowski, and A. Łukaszewicz, “Ugv-uav integration advancements for coordinated missions: A review,” 
+
+Journal of Intelligent & Robotic Systems , vol. 111, no. 2, p. 69, 2025. [5] W. Chen, W. Chi, S. Ji, H. Ye, J. Liu, Y. Jia, J. Yu, and J. Cheng, “A survey of autonomous robots and multi-robot navigation: Perception, planning and collaboration,” Biomimetic Intelligence and Robotics ,vol. 5, no. 2, p. 100203, 2025. [6] S. Vaidhun, Z. Guo, J. Bian, H. Xiong, and S. K. Das, “Dynamic path planning for unmanned aerial vehicles under deadline and sector capacity constraints,” IEEE Transactions on Emerging Topics in Com-putational Intelligence , vol. 6, no. 4, pp. 839–851, 2021. [7] K. Chen, W. Luo, X. Lin, Z. Song, and Y. Chang, “Evolutionary biparty multiobjective uav path planning: Problems and empirical comparisons,” 
+
+IEEE Transactions on Emerging Topics in Computational Intelligence ,vol. 8, no. 3, pp. 2433–2445, 2024. [8] R. Ahmari, V. Hemmati, A. Mohammadi, P. Kebria, M. Mahmoud, and A. Homaifar, “A data-driven approach for uav-ugv integration,” 
+
+Automation, Robotics & Communications for Industry 4.0/5.0 , p. 77, 2025. [9] J. Morales, I. Castelo, R. Serra, P. U. Lima, and M. Basiri, “Vision-based autonomous following of a moving platform and landing for an unmanned aerial vehicle,” Sensors , vol. 23, no. 2, p. 829, 2023. [10] D. Falanga, A. Zanchettin, A. Simovic, J. Delmerico, and D. Scara-muzza, “Vision-based autonomous quadrotor landing on a moving platform,” in 2017 IEEE International Symposium on Safety, Security and Rescue Robotics (SSRR) . IEEE, 2017, pp. 200–207. [11] Z. Wu, P. Han, R. Yao, L. Qiao, W. Zhang, T. Shen, M. Sun, Y. Zhu, M. Lin, and R. Fan, “Autonomous uav landing system based on visual navigation,” in 2019 IEEE International Conference on Imaging Systems and Techniques (IST) . IEEE, 2019, pp. 1–6. [12] O. Araar, N. Aouf, and I. Vitanov, “Vision based autonomous landing of multirotor uav on moving platform,” Journal of Intelligent & Robotic Systems , vol. 85, no. 2, pp. 369–384, 2017. [13] Y. Feng, C. Zhang, S. Baek, S. Rawashdeh, and A. Mohammadi, “Autonomous landing of a uav on a moving platform using model predictive control,” Drones , vol. 2, no. 4, p. 34, 2018. [14] A. Keipour, G. A. Pereira, R. Bonatti, R. Garg, P. Rastogi, G. Dubey, and S. Scherer, “Visual servoing approach to autonomous uav landing on a moving vehicle,” Sensors , vol. 22, no. 17, p. 6549, 2022. [15] Q. Cui, M. Liu, X. Huang, and M. Gao, “Coarse-to-fine visual au-tonomous unmanned aerial vehicle landing on a moving platform,” 
+
+Biomimetic Intelligence and Robotics , vol. 3, no. 1, p. 100088, 2023. [16] J. Liu and C. Yan, “An integrated uwb-vision framework for autonomous approach and landing of uavs in gps-denied environments,” Mathemat-ical Foundations of Computing , vol. 8, no. 5, pp. 710–724, 2025. [17] R. Ahmari, A. Mohammadi, V. Hemmati, M. Mynuddin, P. Kebria, M. N. Mahmoud, X. Yuan, and A. Homaifar, “Visual heading prediction for autonomous aerial vehicles,” arXiv preprint arXiv:2512.09898 , 2025. [18] Y. Gal and Z. Ghahramani, “Dropout as a bayesian approximation: Representing model uncertainty in deep learning,” in international conference on machine learning . PMLR, 2016, pp. 1050–1059. [19] A. Kendall and Y. Gal, “What uncertainties do we need in bayesian deep learning for computer vision?” Advances in neural information processing systems , vol. 30, 2017. [20] B. Lakshminarayanan, A. Pritzel, and C. Blundell, “Simple and scalable predictive uncertainty estimation using deep ensembles,” Advances in neural information processing systems , vol. 30, 2017. [21] C. Guo, G. Pleiss, Y. Sun, and K. Q. Weinberger, “On calibration of modern neural networks,” in International conference on machine learning . PMLR, 2017, pp. 1321–1330. [22] D. Hendrycks and K. Gimpel, “A baseline for detecting misclassified and out-of-distribution examples in neural networks,” arXiv preprint arXiv:1610.02136 , 2016. [23] Y. Ovadia, E. Fertig, J. Ren, Z. Nado, D. Sculley, S. Nowozin, J. Dillon, B. Lakshminarayanan, and J. Snoek, “Can you trust your model’s uncer-tainty? evaluating predictive uncertainty under dataset shift,” Advances in neural information processing systems , vol. 32, 2019. [24] A. Schwaiger, P. Sinhamahapatra, J. Gansloser, and K. Roscher, “Is un-certainty quantification in deep learning sufficient for out-of-distribution detection?” Aisafety@ ijcai , vol. 54, pp. 1–8, 2020. [25] B. Araujo, J. F. Teixeira, J. Fonseca, R. Cerqueira, and S. C. Beco, “The road to safety: A review of uncertainty and applications to autonomous driving perception,” Entropy , vol. 26, no. 8, p. 634, 2024. [26] Y. Geifman and R. El-Yaniv, “Selective classification for deep neural networks,” Advances in neural information processing systems , vol. 30, 2017. [27] ——, “Selectivenet: A deep neural network with an integrated reject option,” in International conference on machine learning . PMLR, 2019, pp. 2151–2159. [28] M. Y. Yildirim, M. Ozer, and H. Davulcu, “Leveraging uncer-tainty in deep learning for selective classification,” arXiv preprint arXiv:1905.09509 , 2019. [29] R. Ahmari, A. Mohammadi, V. Hemmati, M. Mynuddin, M. N. Mah-moud, P. Kebria, A. Homaifar, and M. Saif, “An experimental study of trojan vulnerabilities in uav autonomous landing,” in 2025 IEEE International Conference on Systems, Man, and Cybernetics (SMC) ,2025, pp. 6253–6258. [30] V. Hemmati, A. Mohammadi, M. Mynuddin, P. Kebria, and A. Homaifar, “Evaluating trojan attack vulnerabilities in autonomous landing systems for urban air mobility,” Automation, Robotics & Communications for Industry 4.0/5.0 , vol. 80, 2025. [31] R. Michelmore, M. Kwiatkowska, and Y. Gal, “Evaluating uncertainty quantification in end-to-end autonomous driving control,” arXiv preprint arXiv:1811.06817 , 2018. [32] P. Zhang, J. Wang, A. Farhadi, M. Hebert, and D. Parikh, “Predicting failures of vision systems,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition , 2014, pp. 3566–3573. [33] M. Mynuddin, Z. U. Chowdhury, R. Ahmari, M. Nabil, A. Alsharif, and A. Homaifar, “Decentralized federated learning using the metropolis-hastings for highly dynamic uavs,” in 2024 IEEE 100th Vehicular Technology Conference (VTC2024-Fall) , 2024, pp. 1–6. [34] M. Mynuddin, Z. U. Chowdhury, R. Ahmari, A. Alsharif, A. Homaifar, and M. N. Mahmoud, “Consensus-based fully decentralized and privacy-preserving federated learning in dynamic aav networks without key distribution center,” IEEE Internet of Things Journal , pp. 1–1, 2026. [35] A.-R. Nuhu, P. M. Kebria, V. Hemmati, B. Lartey, M. N. Mahmoud, A. Homaifar, and E. Tunstel, “A validation strategy for deep learning models: Evaluating and enhancing robustness,” IEEE Open Journal of the Computer Society , vol. 7, pp. 276–289, 2026. [36] L. Xue, S.-H. Chung, L. Yang, X.-L. Wang, and X. Zhang, “A unified uncertainty-informed approach for risk management of deep learning models in the open world,” IEEE Transactions on Emerging Topics in Computational Intelligence , 2026. [37] W. Zhao, K. Gangaraju, and F. Yuan, “Multimodal perception-driven decision-making for human-robot interaction: a survey,” Frontiers in Robotics and AI , vol. 12, p. 1604472, 2025. [38] J. Luo, X. Zhou, C. Zeng, Y. Jiang, W. Qi, K. Xiang, M. Pang, and B. Tang, “Robotics perception and control: Key technologies and applications,” Micromachines , vol. 15, no. 4, p. 531, 2024. [39] K. Deb, “Multi-objective optimisation using evolutionary algorithms: an introduction,” in Multi-objective evolutionary optimisation for product design and manufacturing . Springer, 2011, pp. 3–34. [40] K. Miettinen, Nonlinear multiobjective optimization . Springer Science & Business Media, 1999, vol. 12. [41] M. T. Emmerich and A. H. Deutz, “A tutorial on multiobjective opti-mization: fundamentals and evolutionary methods,” Natural computing ,vol. 17, no. 3, p. 585, 2018.
