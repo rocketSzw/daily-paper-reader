@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-26</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-27</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 15 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-26 21:15:54 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-27 21:31:42 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精选17篇论文，重点聚焦自动驾驶与越野环境感知两大前沿方向。</p>
-<p>最值得关注的是两篇8分精读：自动驾驶领域提出几何世界动作模型（GeoWorldAD），越野场景则通过全局可通行性先验蒸馏实现基于图像的可通过性预测。</p>
-<p>建议普通读者优先关注自动驾驶动作模型与越野环境感知的交叉应用，后续可跟踪对抗条件下无人系统任务规划的鲁棒性研究。</p>
+<p>今日共推荐15篇论文，精读2篇聚焦航空多模态大模型智能体零样本评估与嵌入式无人机LiDAR-惯性里程计。最值得关注的方向是航空MLLM智能体评估与无人机实时自主导航技术。建议优先精读两篇高分论文，它们直接关系到无人机在无先验场景下的智能决策与飞行稳定性。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GeoWorldAD: Geometry World Action Model for Autonomous Driving">GeoWorldAD: Geometry World Action Model for Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="Distilling Global Traversability Priors for Image-based Affordance Prediction in Off-road Environments">Distilling Global Traversability Priors for Image-based Affordance Prediction in Off-road Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Reinforcement Learning for Delivery Drone-Based Participatory Sensing in Dynamic Environments">Reinforcement Learning for Delivery Drone-Based Participatory Sensing in Dynamic Environments</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Zero-Shot Mission-Level Evaluation for Aerial MLLM Agents">Zero-Shot Mission-Level Evaluation for Aerial MLLM Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Flight-Ready LiDAR-Inertial Odometry for Embedded Drone Platforms">Flight-Ready LiDAR-Inertial Odometry for Embedded Drone Platforms</span></li><li><span class="dpr-home-dashboard-paper-title" title="Conformal Constraint Tightening for Chance-Constrained Motion Planning with Unknown Dynamics">Conformal Constraint Tightening for Chance-Constrained Motion Planning with Unknown Dynamics</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Planning for Mission Efficiency, Robustness, and Resilience for Unmanned Autonomous Systems (UASs) in Contested Environments">Planning for Mission Efficiency, Robustness, and Resilience for Unmanned Autonomous Systems (UASs) in Contested Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="On Optimal Event-Triggered Distributed Control for Stochastic Multi-Agent Systems via Reinforcement Learning">On Optimal Event-Triggered Distributed Control for Stochastic Multi-Agent Systems via Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="RT-SHCUA: Real-Time Self-Hosted Computer-Use Agent for UAV Control">RT-SHCUA: Real-Time Self-Hosted Computer-Use Agent for UAV Control</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="STeP: Signal Temporal Logic for Precise Specifications for Action Generation with Vision Language Models">STeP: Signal Temporal Logic for Precise Specifications for Action Generation with Vision Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="HypEMBER: Hypernetwork-based Ensemble for Robust Policy Learning of Parametrized Dynamical Systems">HypEMBER: Hypernetwork-based Ensemble for Robust Policy Learning of Parametrized Dynamical Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="EA-Nav: Learning Safe Visual Navigation Policies with Embodiment Awareness">EA-Nav: Learning Safe Visual Navigation Policies with Embodiment Awareness</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>9</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
 </section>
 </div>
 
