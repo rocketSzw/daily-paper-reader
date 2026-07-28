@@ -1,0 +1,315 @@
+Title: Declarative Problem Solving in UAM Strategic Deconfliction
+
+URL Source: https://arxiv.org/pdf/2607.21197v1
+
+Published Time: Fri, 24 Jul 2026 00:49:53 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+> W. Faber, L. Giordano, R. Rocha, V. Santos Costa (Eds.): 42nd International Conference on Logic Programming (ICLP 2026) EPTCS 450, 2026, pp. 256–269, doi:10.4204/EPTCS.450.20 © G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi This work is licensed under the Creative Commons Attribution License.
+
+# Declarative Problem Solving in UAM Strategic Deconfliction 
+
+Gioacchino Sterlicchio 
+
+> DMMM, Polytechnic University of Bari Bari, Italy
+> g.sterlicchio@phd.poliba.it
+
+Angelo Oddi 
+
+> ISTC-CNR Rome, Italy
+> angelo.oddi@istc.cnr.it
+
+Riccardo Rasconi 
+
+> ISTC-CNR Rome, Italy
+> riccardo.rasconi@istc.cnr.it
+
+Francesca Alessandra Lisi 
+
+> DIB and CILA, University of Bari Aldo Moro Bari, Italy
+> FrancescaAlessandra.Lisi@uniba.it
+
+The growing demand for Urban Air Mobility (UAM) introduces significant challenges in airspace management, particularly within densely populated metropolitan regions. As the number of aerial vehicles—such as drones, air taxis, and helicopters—continues to rise, so does the risk of mid-air collisions and conflicts with existing air traffic and obstacles. Ensuring safe and efficient UAM oper-ations requires robust strategic deconfliction mechanisms. We propose an Answer Set Programming (ASP) based approach for strategic deconfliction, focusing on time synchronization and route opti-mization for conflict-free flight plans. The solution is benchmarked against Constraint Programming (CP), emphasizing scalability and resource use. Results show that ASP offers faster execution and better scalability for small to medium cases, while CP maintains stable memory but degrades with complexity. 
+
+# 1 Introduction 
+
+Urban Air Mobility (UAM) is emerging as a transformative solution to mitigate urban traffic congestion, reduce emissions, and enhance transportation efficiency [17]. The UAM ecosystem includes various aerial vehicles based on electric Vertical Take-Off and Landing (eVTOL), such as drones, intended for operations in densely populated areas. Integrating these vehicles into existing airspace poses several issues related to safety, efficiency, and scalability. To address these issues, industry and regulators are revising UAM ConOps by designating dedicated air lanes for eVTOLs, reducing reliance on traditional Air Traffic Control [8]. However, a key challenge remains the prediction, detection, and resolution of po-tential conflicts among air vehicles, other traffic, obstacles, and restricted zones [29]. This paper extends a common framework to develop models and algorithms for UAM Strategic Deconfliction (SD), the first of three layers in Air Traffic Management [15]. SD addresses conflict detection and resolution prior to departure through resource allocation, airspace organization, demand-capacity balancing, and traffic syn-chronization. Subsequent layers include Tactical Deconfliction , which ensures in-flight separation using real-time data, and Collision Avoidance , which relies on onboard systems to prevent imminent collisions. Our focus is on traffic synchronization within SD, emphasizing proactive trajectory planning to reduce conflicts and optimize airspace utilization, supported by advanced algorithms and predictive analytics. We tackle the SD problem using Answer Set Programming (ASP), a declarative paradigm well-suited for complex combinatorial optimization. ASP enables modelling intricate constraints in air traffic man-agement and efficiently computing conflict-free trajectories under safety and operational requirements [14]. Our proposed framework, STRADA (Scalable Trajectory Resolution Architecture for Deconfliction using ASP), represents the first logic-based approach in this domain, contrasting with existing numerical G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 257 methods. Preliminary results obtained with a former version of STRADA have been presented in [25]. In this paper, a more extensive evaluation of STRADA focuses on scalability while varying flight volumes, airspace sizes, and take-off intervals, and includes a comparative analysis with an encoding in Constraint Programming (CP). CP is a declarative method, widely used in scheduling and optimization, for solving complex combinatorial problems by defining variables, their possible values (domains), and the rules (constraints) they must follow, letting to find solutions that satisfy all conditions [20]. The contributions of the paper are threefold: (1) an ASP formalisation of the SD problem, (2) the STRADA framework which consists of the air network topology modelling, the fleet of drones to be organised as well as the SD encoding, and (3) the empirical evaluation of the efficiency of STRADA through scalability tests aimed at assessing its strengths and weaknesses, and comparing them against CP. The paper is structured as follows. Section 2 reviews recent literature on the SD problem in UAM as well as ASP applications that can be considered related to our work. Section 3 introduces ASP and CP fundamentals. Section 4 formalizes the SD problem with a practical example, while Section 5 details the STRADA framework and its modelling rationale. Section 6 presents the evaluation methodology focusing on execution time and memory usage. Finally, Section 7 summarizes the findings and outlines future research directions. 
+
+# 2 Related Works 
+
+Recent research on SD in UAM explores diverse approaches for conflict-free trajectory planning and airspace management. In [21] an airspace structure inspired by roadway roundabouts, and a compu-tationally tractable trajectory scheduling algorithm for UAS Service Suppliers are presented. Another work addresses the design of a parcel delivery system using drones including strategic planning made by mixed integer linear programming [28]. Some authors proposed a mixed-integer Second-Order Cone program, a convex programming model that has second-order constraints [26]. Another work contributes on an efficient lane-based strategic deconfliction scheduling algorithm and a tactical deconfliction pro-tocol to handle dynamic contingencies (e.g., failure to follow the nominal flight plan) [24]. In [12], the SD problem in UAM is addressed with multi-agent reinforcement learning. A framework for gen-erating routes leveraging a rapidly-exploring random tree based algorithm [27] is also proposed. Areinforcement learning approach and mathematical programming for strategic conflict management [5] is also used. Another work introduces a stacked hexagonal tessellation to model the airspace and an optimization-based procedure based on integer programming for SD [15]. ASP has not yet been used in SD. Therefore, we mention here scheduling works that use ASP in seemingly equivalent application domains. Examples include employee team generation in seaports [19], nurse scheduling and rescheduling with optimal shift assignments [7, 3], and chemotherapy appointment scheduling in oncology clinics [6]. ASP has also been used for complex train scheduling tasks through hybrid approaches incorporating difference constraints via clingo[DL] [1, 2, 13]. Further applications include warehouse delivery scheduling, ensuring collision-free robot movements and task completion [18]. 
+
+# 3 Preliminaries on ASP and CP 
+
+Answer Set Programming (ASP) [14] is a declarative problem solving paradigm, where a problem in encoded as a logic program such that its answer sets or stable models [11] correspond to the solutions of the problem and are computable using ASP solvers, e.g., clingo [9]. An ASP program is a finite set of rules of the form a ← b1, . . . , bm, not b m+1, . . . , not b n where a and all bi and are first-order atoms of 258 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+form p(t1, . . . , tk) and all ti are terms, composed of function symbols and variables. The atom a is often called head atom, while b1, . . . , bm and not b m+1, . . . , not b n are also referred to as positive and negative body, respectively. An expression is said to be ground, if it contains no variables. As usual, not denotes default negation. A rule is called a fact if m = n = 0 and an integrity constraint if there is no head. In what follows, we deal with normal logic programs only, for which we can have rules with only one atom in the head or without head. Constraint Programming (CP) [20] is an alternative approach to programming which relies on a combination of techniques that deal with reasoning and computing . It has been successfully applied in a number of fields including molecular biology, electrical engineering, operations research and numerical analysis. Formally, a problem is defined as a triple (X, D,C), where: X = {x1, . . . , xn} is the set of variables of the problem; D = {D1, . . . , Dn} is the set of domains of the variables, i.e., for all k ∈ [1; n]
+
+we have xk ∈ Dk and C = {C1, . . . , Cm} is a set of constraints. A constraint Ci = ( Xi, Ri) is defined by a set Xi = xi1 , . . . xik of variables and a relation Ri ⊆ Di × · · · × Dik that defines the set of values allowed simultaneously for the variables of Xi. An evaluation is consistent if it does not violate any of the constraints. An evaluation is complete if it includes all variables. An evaluation is a solution if it is consistent and complete; such an evaluation is said to solve the problem. 
+
+# 4 The Strategic Deconfliction Problem 
+
+4.1 Lane-based airspace structure 
+
+The proposed approach adopts a lane-based airspace structure [24], where lanes are modelled as directed graphs with vertices representing entry/exit points and edges representing one-way corridors. Two-way traffic between vertexes can be achieved by having pairs of air lanes next to each other at the same altitude or at different altitudes. Compared to FAA-NASA strategic deconfliction (FNSD), lane-based methods reduce computational complexity but impose limitations such as increased travel distance and frequent turns [22]. Despite these drawbacks, lanes enable efficient real-time deconfliction and con-tingency management [23]. Lanes form 3D corridors with design constraints like headway for safe separation and may include properties such as speed limits. The combination of headway requirements and corridor design supports a variety of vehicle trajectory constraints, while the directed graph struc-ture imposed on the airspace provides agents with an organized environment for computation. This structured approach contrasts with zone-based and cell-based deconfliction, offering a more organized and computationally tractable environment for trajectory planning. Figure 1 shows a lane structure as a graph G = ( V, E), where V = {1, 2, 3, 4} and E = {(1, 2), (2, 3), (3, 4)} for the one-way structure and 
+
+E = {(1, 2), (2, 1), (2, 3), (3, 2), (3, 4), (4, 3)} for the two-way alternative. In particular, vertex 1 and 4 are ground nodes, while vertex 2 and 3 are waypoints at some altitude. The lanes allow only one direction of travel without overtaking. 1 2 3 4
+
+> (a)
+
+1 2 3 4
+
+> (b)
+
+Figure 1: A simple one-way (a) and two-way (b) three-lane layout G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 259 
+
+4.2 Problem introduction 
+
+The SD problem is to produce a set of scheduled flight paths such that no two aircraft ever get closer than a specified safety distance or headway h either in time or space. Consider Figure 1, a flight must schedule its entry-exit times through a sequence of lanes, where the exit time from the previous lane equals the entry time of the following lane. In order to determine whether flights have a conflict, we use the Space-Time Lane Diagram (STLD) [24] to represent the situation graphically, as shown in Figure 2. The horizontal axis represents time, while the vertical axis represents the distance along the lane. ASTDL is created for each lane. The two blue lines represent two scheduled flights f1 and f2 with start times of 1 and 4 in lane 1–2 with speeds 2 and 1, respectively. The STDL shows their progress through the three lanes; it can be seen that there is always a time headway of at least 1 unit. Suppose a new flight f3 must be scheduled, with speed 2, and the requested launch interval is [0, 21 ]. This means that the earliest launch time is 0 while the latest one is 21. The goal is to establish departure times that do not conflict with those already present and find the trajectory for all lanes that does not conflict with all flights travelling in their respective lanes. For example, consider f3 starting at time 10 (red line); then it exits Lane 1-2 and enters Lane 2-3 at time 15; the figure shows that f3 crosses the path of f2 and therefore is disallowed. On the other hand, if f3 starts at time 0, then its headway is always equal to 1 time unit from f1, and since both flights are characterized by the same speed, they never get any closer. Moreover, for Lane 2–3 and Lane 3–4 f3’s headway is still 1 unit from f1, so it is allowed. 
+
+> time
+> length
+> 1
+> 6
+> 4
+> 14
+> 10
+> 15
+> (a) lane 1–2
+> 6
+> 11
+> 14
+> 24
+> 15
+> 20
+> (b) lane 2–3
+> 11
+> 16
+> 24
+> 34
+> (c) lane 3–4
+> time
+> length
+> 1
+> 6
+> 4
+> 14
+> 0
+> 5
+> (d) lane 1–2
+> 6
+> 11
+> 14
+> 24
+> 5
+> 10
+> (e) lane 2–3
+> 11
+> 16
+> 24
+> 34
+> 10
+> 15
+> (f) lane 3–4
+
+Figure 2: STDL representation of the flights. Conflict case (a–c), no conflict case (d–f) 
+
+4.3 Problem formalization 
+
+We formalize the SD problem as a couple (N, F) where N is the airspace network and F is the set of flights to be scheduled in N. The network N is in its turn a tuple (V, E, Iv , Ev , l, h), where: (V, E) is a directed graph, Iv ⊂ V is the set of ground nodes where a flight starts its trip, Ev ⊂ V is the set of ground nodes where a flight ends its trip, l : E → N assigns the lane length and h ∈ N is the headway distance (time or space) between flights. The set F is represented by tuples fi = ( Si, Li, start i, end i, ei, li, si), where: 260 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+(Si, Li) is an acyclic sub-graph of (V, E) and represents the flight route, start i : F → Iv gives the ground vertex where a flight starts its trip, end i : F → Ev gives the ground vertex where a flight ends its trip, 
+
+ei : F → N gives the earliest time a flight can start its trip, li : F → N gives the latest time a flight can start its trip and si : F → N is the speed associated to a flight. Following Figure 1 (a), N is defined as: 
+
+V = {1, 2, 3, 4}, E = {(1, 2), (2, 3), (3, 4)}, Iv = {1}, Ev = {4}, l(1, 2) = 10, l(2, 3) = 10, l(3, 4) = 10 and 
+
+h = 1. Suppose that f1 and f2 have been scheduled, the new flight f3 ∈ F, to be scheduled, is defined as: S3 = {1, 2, 3, 4}, L3 = {(1, 2), (2, 3), (3, 4)}, start ( f3) = 1, end ( f3) = 4, e( f3) = 0, l( f3) = 21 and 
+
+s( f3) = 2. A solution to the SD problem (N, F) is represented by the pair (R, A), where: (i) R is a function that assigns to each flight a specific route in the network, and (ii) A is an assignment of arrival times to each flight at each node along their path, such that flights are pairwise deconflicted. A route is a sequence of nodes, pairwise connected by lanes. We write v ∈ r and (v, v′) ∈ r to denote that node v
+
+or lane (v, v′) are contained in the route r = ( v1, . . . , vn) that is, whenever v = vi for some 1 ≤ i ≤ n or this additionally v′ = vi+1, respectively. A route R( f ) = ( v1, . . . , vn) for f = ( S, L, start , end , e, l, s) ∈ F
+
+has to satisfy: (1) vi ∈ S ∀ i, 1 ≤ i ≤ n (2) (v j, v j+1) ∈ L ∀ j, 1 ≤ j ≤ n − 1 and (3) start ( f ) = v1 ∧
+
+end ( f ) = vn. Conditions 1 and 2 enforce routes to be connected and feasible for the flight in question and Condition 3 ensures that each route is between a possible start and end node. An assignment A
+
+is a function F × V → N, where A( f , v) is undefined whenever v /∈ R( f ). The function A assigns the arrival time of a flight f to a node v. Given a route function R and h ∈ N, an assignment A has to satisfy the following conditions: (4) A( f , start (f )) ≥ e( f ) and (5) A( f , start (f )) ≤ l( f ). Conditions 4 and 5 ensure that a flight starts its trip at the required departure time interval. Next, for all fi, f j ∈ F such that start (fi) = start (fj): (6) A( fi, start (fi)) ̸ = A( f j, start (fj)) (7) |A( fi, start (fi)) − A( f j, start (fj)) | ≥ h.Condition 6 ensures that flights departure times are pairwise different when flights share the same starting node. Finally, Condition 7 ensures a safety distance between two flights that begin their trip from the same node. For all f = ( S, L, start , end , e, l, s) ∈ F, R( f ) = ( v1, . . . , vn) such that 1 ≤ k ≤ n and h ∈ N (8) 
+
+|A( fi, v) − A( f j, v)| ≥ h (9) (A( fi, vk) ≤ A( f j, vk)) ∧ (A( fi, vk+1) ≤ A( f j, vk+1)) . Condition 8 guaranties safe distance between flights at the same node and Condition 9 resolves the conflict between two flights that share the same lane. The solution of the previous example, shown in Figure 2, is P( f3) = ( 1, 2, 3, 4)
+
+and A( f3, 1) = 0, A( f3, 2) = 5, A( f3, 3) = 10 , A( f3, 4) = 15. Strategic deconfliction involves pre-flight planning to prevent aircraft conflicts while optimizing efficiency, safety, and operational performance. To determine the quality of a solution, we have focused our attention on minimizing total delay with respect to the required earliest launch time. We chose this metric because it is the most widely used in the literature. Nothing prevents using a different metric or more than one to determine the best plan by assigning an evaluation priority. The quality of a solution (P, A) is determined using the following condition: min ∑ fi∈F A( fi, start (fi)) − e( fi).
+
+# 5 Solving Real-world SD Problems with STRADA 
+
+In this section, we present, STRADA, our ASP-based approach to solving a couple of variants of the SD problem. We first show how to represent flight data, followed by the actual encoding of the problem. 
+
+5.1 Data encoding 
+
+For a given SD problem (N, F), the airspace network N = ( V, E, Iv , Ev , l, h) is represented by the facts      
+
+> node ( v ). edge (v ,v ’). startn ( iv ). endn ( ev ). length (( v ,v ’) , l ). headway ( h ).
+
+G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 261 for each v ∈ V , v,v’ ∈ E, iv ∈ Iv , ev ∈ Ev , l ∈ N and h ∈ N.The set of flights F where each fi = ( Si, Li, start i, end i, ei, li, si) ∈ F is defined by                  
+
+> flight ( fi). lane ( fi,v ,v ’). start ( fi, iv ). end ( fi, ev ). speed ( fi,s ). requested ( fi,e , l ).
+
+with flight( fi) the flight identification and for each v ∈ Si, v,v’ ∈ Li, start ( fi) = iv , end ( fi) = ev ,
+
+e( fi) = e, l( fi) = l and s( f ) = s. For example, the following facts encode the network in Figure 1 plus the headway         
+
+> node (1..4). edge (1 ,2). edge (2 ,3). edge (3 ,4) startn (1). endn (4). length ((1 ,2) ,10). length ((2 ,3) ,10). length ((3 ,4) ,10). headway (1).
+
+while the set F = { f1, f2, f3} of flights to be scheduled, with the respective requested launch time interval, is given by                   
+
+> flight ( f1 ). speed ( f1 ,2). lane ( f1 ,1 ,2). lane ( f1 ,2 ,3). lane ( f1 ,3 ,4). start ( f1 ,1). end ( f1 ,4). requested ( f1 ,1 ,5). flight ( f2 ). speed ( f2 ,3). lane ( f2 ,1 ,2). lane ( f2 ,2 ,3). lane ( f2 ,3 ,4). start ( f2 ,1). end ( f2 ,4). requested ( f2 ,2 ,4). flight ( f3 ). speed ( f3 ,2). lane ( f3 ,1 ,2). lane ( f3 ,2 ,3). lane ( f3 ,3 ,4). start ( f3 ,1). end ( f3 ,4). requested ( f3 ,3 ,4).
+
+5.2 Problem encoding 
+
+In the following, we describe the general problem encoding of Listing 1. We encode one feasible plan as an answer set. Line 1 defines the headway with the predicate headway(h) where h is a constant taken as input. In Line 2, for each flight F is assigned a starting time point stpoint(F,X,T) from its requested launch time interval requested(F,E,L) at the starting node X with start(F,X) . This rule ensures that Conditions 4 and 5 are met. Line 3 is an integrity constraint and eliminate the answer sets where 1) at least two flights share the same starting time point for the same starting node, and 2) there is no safe distance between flights at the same starting point. This constraint implements Conditions 6 and 7 in the opposite way, or we look for plans that do not meet the constraint. Rules at Lines 5–7 compute the estimated time of arrival. The predicate eta(F,Y,T) (Line 5) is true if there is a flight F that starts its trip at time Ti at node X, F travel through the lane (X,Y) with speed S. The arrival time is calculated taking into account the lane length length((X,Y),D) applying the formula T = Ti + ( D/S). Line 7 is applied to all other nodes knowing the arrival time at the previous one. Line 9 guarantees a safe distance between flights at the same node and Lines 10–13 resolve the conflict between two flights that share the same lane, thus implementing Condition 8 and 9 respectively. Listing 1: ASP-based encoding of the SD problem with constant speed.                                                       
+
+> 1headway ( h ).
+> 21{ stpoint (F ,X , T ) :T = E .. L }1 : -flight ( F ) , requested (F ,E , L ) , start (F , X ).
+> 3: -headway ( H ) , stpoint ( F1 ,X , T1 ) , stpoint ( F2 ,X , T2 ) , F1 != F2 , | T1 - T2 | < H .
+> 45eta (F ,Y , T ) : -stpoint (F ,X , Ti ) , speed (F , S ) , lane (F ,X , Y ) , length (( X , Y ) , D ) ,
+> 6T =( Ti +( D / S )).
+> 7eta (F ,Y , T ) : -eta (F ,X , Ti ) , speed (F , S ) , lane (F ,X , Y ) , length (( X , Y ) , D ) , T =( Ti +( D / S )).
+> 89: -headway ( H ) , eta ( F1 ,X , T1 ) , eta ( F2 ,X , T2 ) , F1 != F2 , | T1 - T2 | < H .
+> 10 : -eta ( F1 ,X , Tx1 ) , eta ( F1 ,Y , Ty1 ) , eta ( F2 ,X , Tx2 ) , eta ( F2 ,Y , Ty2 ) , lane ( F1 ,X , Y ) ,
+> 11 lane ( F2 ,X , Y ) , F1 != F2 , Tx1 < Tx2 , Ty2 < Ty1 .
+> 12 : -stpoint ( F1 ,X , Tx1 ) , stpoint ( F2 ,X , Tx2 ) , eta ( F1 ,Y , Ty1 ) , eta ( F2 ,Y , Ty2 ) ,
+> 13 lane ( F1 ,X , Y ) , lane ( F2 ,X , Y ) , F1 != F2 , Tx1 < Tx2 , Ty2 < Ty1 .
+
+262 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+Encoding of Listing 1 assumes constant speed of all flights through all lanes. For example, to avoid potential collisions with other aircraft or obstacles, speed adjustments are made to maintain safe dis-tances or to avoid severe turbulence, speed is adjusted to reduce the impact of weather disturbances. To manage this kind of situation it is necessary to make a simple change for the predicate speed(f,s) 
+
+into speed(f,s,(x,y)) , where f flies at speed s through the lane (x,y) . At this point, Listing 1 sub-sumes a small variation for the rules that are necessary for estimated time of arrival. Listing 2 shows what is necessary to manage variable speed. In particular, the change is made only for for the predicate 
+
+speed(F,S,(X,Y)) .Listing 2: ASP-based encoding of the SD problem with variable speed.               
+
+> 5eta (F ,Y , T ) : -stpoint (F ,X , Ti ) , speed (F ,S ,( X , Y )) , lane (F ,X , Y ) , length (( X , Y ) , D ) ,
+> 6T =( Ti +( D / S )).
+> 7eta (F ,Y , T ) : -eta (F ,X , Ti ) , speed (F ,S ,( X , Y )) , lane (F ,X , Y ) , length (( X , Y ) , D ) ,
+> 8T =( Ti +( D / S )).
+
+Listing 3 explains the delay optimization process. The rule at Line 1 computes the delay delay(F,D) 
+
+of a flight F as the absolute difference between the actual launch time T and the earliest requested launch time E. Line 2 is a sum of all the delays in each flight. Finally, Line 3 gives the best scheduled plan based on the minimal delay of the entire set of flights. As an example, for the problem instance in Section 5.1, the best scheduled plan is graphically depicted in Figure 3. Listing 3: Delay optimization.                  
+
+> 1delay (F , D ) : -flight ( F ) , stpoint (F ,X , T ) , requested (F ,E , L ) , D =T - E .
+> 2sum_delay ( Sd ) : -Sd =# sum { D :flight ( F ) , delay (F , D )}.
+> 3# minimize { Sd :sum_delay ( Sd )}.
+> time
+> length
+> 4
+> 9
+> 2
+> 5
+> 3
+> 8
+> (a) lane 1–2
+> 9
+> 14
+> 5
+> 8
+> 8
+> 13
+> (b) lane 2–3
+> 14
+> 19
+> 8
+> 11
+> 13
+> 18
+> (c) lane 3–4
+
+Figure 3: STDL representation of the solution for flights f1 (blue), f2 (red) and f3 (green). 
+
+# 6 Evaluation 
+
+This section presents the experimental results obtained for the three presented use cases under three UAM and synthetic square grid network topologies. The SD problem instances are solved with the STRADA encodings and also with the CP approach for comparison purposes. We first present the experimental de-sign, that is, the test instances and the experimental setup, including the software used and the parameters chosen. G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 263 
+
+6.1 Test instances 
+
+We consider three UAM network topologies, illustrated in Figure 4. These represent different types of layout that might be encountered in future UAM cases [4]. Intracity/sub-urban focuses on air-based transportation within a city’s core, addressing urban congestion and enabling rapid point-to-point mo-bility. Intercity focuses on air-based transportation between cities or major regional hubs, filling gaps between traditional ground transit and commercial aviation. Airport shuttle transports passengers be-tween airports and urban centers, nearby cities, or transit hubs. This use case targets time-sensitive travellers seeking to bypass ground congestion and streamline airport access. The topologies are mod-elled as directed graphs, where ground nodes (vertiport or vertistop) are coloured in red, while blue nodes represent waypoints up in the air. Figure 4 (a) represents a single city with multiple stops that connects the city center with suburban areas like a “subway in the sky”. Figure 4 (b) represents different cities that are connected, and Figure 4 (c) represents an airport (node 1) that serves multiple cities. We have also defined an ASP way to generate synthetic square grid air network topologies. We did it for the evaluation of the scalability as the size of the network increases in the number of nodes and edges. The interested reader can find details about how the different air network topologies have been generated in the Supplementary Material 1.1 2 3 4 5 6 7
+
+> (a) Intracity/sub-urban
+
+1 2
+
+3
+
+4
+
+5 6
+
+> (b) Intercity
+
+2 6 1 8 5
+
+7
+
+3 4
+
+> (c) Airport shuttle
+
+Figure 4: Air network topologies. 
+
+6.2 Experimental setup 
+
+All experiments were run on a laptop computer with Ubuntu 20.04.4, AMD Ryzen 5 3500U @ 2.10 GHz and 8GB RAM. As solvers we used clingo [10] for ASP and Minizinc (Gecode solver) [16] for CP. We set default solving parameters without multi-threading mode of all solvers; only the timeout has been set to 900 seconds (15 minutes). The evaluation focuses on efficiency (time and memory requirements), as well as effectiveness (ability to find a suitable plan to schedule flights). Specifically, we define the following research questions. (RQ1) How efficient is STRADA by varying the number of flights, the size of the launch interval and the size of the air network topology? (RQ2) How efficient is STRADA, the ASP logical approach compared to the CP approach? To answer the RQs, we evaluated the encodings for the three air network topologies and synthetic square grid layouts. In the absence of public datasets used as benchmarks, we were forced to generate data for the layouts. The Supplementary Material explains how data were generated. The launch interval requested for each flight has been chosen to follow a 
+
+> 1https://figshare.com/s/00cf3c418a014fcc51f1
+
+264 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+uniform distribution given a set of parameters such as the time horizon and min-max launch interval size. We assume that the flight departure occurs at the beginning of the minute. We consider vehicle speed expressed in meters per second, time and headway in minutes, and lane length in meters. 
+
+6.3 Varying the number of flights and the take-off interval 
+
+In the following section, we evaluate and discuss the proposed approach by varying the different param-eters of the problem to understand the time and space requirements. The evaluation of our approach is based on analysing its efficiency through scalability tests by increasing both the number of flights to be scheduled and the size of the required launch interval. These two dimensions are also addressed by com-paring STRADA with CP (the model is available in the Supplementary Material) in order to understand the advantages and disadvantages of the two approaches. Figure 5 shows the results obtained by varying the number of flights. For this evaluation, the number of flights was increased from 15 to 400 over a 6-hours time horizon. The minimum headway is 1 minute with a required launch interval size ranging between 5 and 15 minutes. The Figure shows the time and memory requirements for the two approaches, ASP and CP, varying the number of flights in three scenarios: airport shuttle, intercity and intracity/sub-urban. When there is no marker, it means that an out-of-memory occurred during the computation. ASP generally demonstrates greater efficiency in terms of execution time and memory consumption up to a certain number of flights. However, it struggles with very high numbers of flights (from 300 on), often exceeding the time limit or running out of memory. Conversely, CP tends to require more time and less memory compared to ASP and faces significant challenges with small numbers of flights (from 75 in the intercity scenario), frequently exceeding the time limit or running out of memory earlier than ASP. Over-all, ASP appears to be more scalable and efficient in time while CP exhibits a more consistent memory usage but struggles significantly with the execution time as the problem complexity increases. However, we remind that the hardware used makes use of only 8 GB of memory. Therefore, with larger amounts of memory, we might not have any difficulties with the ASP approach. Furthermore, in the configuration used by the solvers, we did not use multi-threading. We now analyse the results shown in Figure 6. We left the number of flights constant at 100, while varying the size of the required launch interval from 5 to 50 minutes. ASP is more efficient in terms of execution time at smaller interval sizes, but struggles with larger interval sizes, often running out of memory. CP requires significantly more time. At larger interval sizes, CP fails to find the optimum within the time limit, though it manages memory usage better than ASP. Overall, ASP appears to be more suitable for scenarios with smaller interval sizes, while CP may be more robust in terms of memory management but less efficient in terms of execution time. ASP is generally more efficient in terms of execution time for smaller problem sizes (both in terms of the number of flights and interval sizes). However, as the problem size increases, ASP struggles to find the optimal solution within the memory limit, especially for larger interval sizes and higher numbers of flights. CP tends to require significantly more time to find the optimal solution compared to ASP, even for smaller problem sizes. CP consistently hits the time limit for larger interval sizes and higher numbers of flights. Memory consumption remains relatively stable across different problem sizes. CP manages memory usage better than ASP, even though it struggles with execution time. 
+
+6.4 Varying the size of the air network 
+
+The focus on the following section is the evaluation of STRADA by varying the size of the air network topologies. We used the ASP generator to generate square grids of sizes 3x3, 4x4, and 5x5. The minimum headway is 1 minute with a required launch interval size of 3 minutes. We measured time and memory G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 265 
+
+> (a) Intracity/sub-urban
+> (b) Intercity
+> (c) Airport shuttle
+
+Figure 5: Time and memory requirements varying the number of flights of the ASP approach compared with the CP approach. requirements as in the previous section. The results of the evaluation are showed in Table 1. The exper-imental results demonstrate a clear correlation between the increase in problem instances (Flights) and the consumption of computational resources (time and memory). The execution time exhibits a linear growth pattern as the number of flights increases. Specifically, in the 3×3 grid, increasing the flight load from 500 to 5,000 (a tenfold increase) results in an execution time jump from 2.26s to 248.33s. As the grid expands, the execution time for the same number of flights increases. For instance, at 3,000 flights, the execution time rises from 83.35s (3×3) to 165.16s (5×5). This is likely due to the increased number of atoms and rules generated during the grounding phase to represent the larger spatial domain. The memory consumption remains relatively stable and efficient for most configurations, staying well below 100 MB. However, a critical threshold is reached at the 5,000 flights-5×5 grid configuration. The peak memory jumps dramatically to 7.10 GB. This exponential surge indicates a “combinatorial explosion”, typical in ASP when the grounder generates a massive number of constraints that exceed the available memory. The results confirm that the proposed ASP approach is highly viable for real-time or near-real-time strategic deconfliction in UAM environments up to a certain density. The transition from 79.72 MB 266 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+> (a) Intracity/sub-urban
+> (b) Intercity
+> (c) Airport shuttle
+
+Figure 6: Time and memory requirements varying the launch interval size of the ASP approach compared with the CP approach. to 7.10 GB at the highest tested density highlights the limit of scalability for the current model formu-lation, suggesting that for larger networks or higher flight volumes, a more suitable representations may be required. Table 1: Execution time and memory peak. Only memory peak in case of out of memory. Flights 3x3 4x4 5x5 500 2.26 s, 16.36 MB 3.37s, 17.36 MB 4.36s, 17.93 MB 1000 8.85s, 21.18 MB 13.08s, 20.55 MB 17.44s, 22.51 MB 1500 20.02s, 22.26 MB 29.00s, 30.00 MB 40.29s, 26.90 MB 2000 36.07s, 32.62 MB 52.14s, 31.14 MB 71.76s, 38.29 MB 3000 83.35s, 39.72 MB 124.22s, 49.73 MB 165.16s, 53.09 MB 5000 248.33s, 62.36 MB 369.48s, 79.72 MB 7.10 GB G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 267 
+
+# 7 Conclusions 
+
+To the best of our knowledge, this work introduces the first ASP-based formulation for UAM Strategic Deconfliction, named STRADA. We define conditions to ensure separation in UAM settings and use ASP to model the air network topology, drone fleet, and the SD problem. ASP provides key advantages: 
+
+(I) simplified and readable modelling, (II) support for complex combinatorial optimization, and (III) 
+
+adaptability to specification changes without major reprogramming. Our model accommodates diverse operational UAM scenarios within realistic topologies envisioned for future services. Our study exam-ines the capabilities and limitations of ASP and CP in strategic deconfliction under varying conditions. It highlights key factors influencing SD complexity. ASP offers superior time efficiency for smaller prob-lems, defined by fewer flights and narrower intervals. However, as problem size grows, ASP struggles to find optimal solutions within memory constraints, especially with larger intervals and higher flight counts. In contrast, CP requires significantly more time than ASP, even for small problems, and often hits time limits for larger cases. Nonetheless, CP maintains stable and efficient memory usage across problem sizes, outperforming ASP in this regard despite its slower execution. While this study demonstrates the efficacy of ASP-based strategic deconfliction within a controlled environment, several avenues for future research remain to broaden these findings. To move beyond the current synthetic instances, future work will focus on validating the model against real-world datasets and diverse operational scenarios. Furthermore, to ensure the findings are not hardware-dependent, we intend to conduct an extensive cross-platform analysis involving varied computational architectures. A critical next step involves expanding the methodological scope by integrating multiple ASP solvers such as clingo[DL] and ALASPO and comparing their performance against a wider array of external opti-mization stacks beyond the MiniZinc/Gecode framework. In addition to hardware and solver diversi-fication, future evaluations will focus on scaling the problem dimensions by increasing the number of aircraft and expanding the complexity of airspace topologies. These experiments are designed to probe the operational limits and computational stress points of the proposed architecture, providing a definitive assessment of its scalability in high-density scenarios. Nevertheless, it should be noted that the flight volumes and environmental configurations employed in our current simulations remain strictly aligned with contemporary UAM benchmarks and existing literature. Given that the primary challenges of this aviation sector reside in constrained urban environments, the current experimental parameters accurately reflect the practical demands and deployment realities of real-world strategic deconfliction. By diversify-ing the experimental parameters and software environments, we aim to establish more robust conclusions regarding the general suitability and scalability of ASP for complex strategic deconfliction tasks. 
+
+# References            
+
+> [1] Dirk Abels, Julian Jordi, Max Ostrowski, Torsten Schaub, Ambra Toletti & Philipp Wanko (2019): Train Scheduling with Hybrid ASP .In Marcello Balduccini, Yuliya Lierler & Stefan Woltran, editors: Logic Programming and Nonmonotonic Reasoning - 15th International Conference, LPNMR 2019, Philadelphia, PA, USA, June 3-7, 2019, Proceedings ,Lecture Notes in Computer Science 11481, Springer, pp. 3–17, doi:10.1007/978-3-030-20528-7_1. [2] Dirk Abels, Julian Jordi, Max Ostrowski, Torsten Schaub, Ambra Toletti & Philipp Wanko (2021): Train Scheduling with Hybrid Answer Set Programming .Theory Pract. Log. Program. 21(3), pp. 317–347, doi:10.1017/S1471068420000046. [3] Mario Alviano, Carmine Dodaro & Marco Maratea (2018): Nurse (Re)scheduling via answer set program-ming .Intelligenza Artificiale 12(2), pp. 109–124, doi:10.3233/IA-170030.
+
+268 Declarative Problem Solving in UAM Strategic Deconfliction 
+
+[4] Lukas Asmer, Henry Pak, Prajwal S Prakasha, Bianca I Schuchardt, Peter Weiand, Frank Meller, Christoph Torens, Dennis Becker, Chen Zhu, Karolin Schweiger et al. (2021): Urban air mobility use cases, mis-sions and technology scenarios for the HorizonUAM project . In: AIAA Aviation 2021 Forum , p. 3198, doi:10.2514/6.2021-3198. [5] Shulu Chen, Antony Evans, Marc Brittain & Peng Wei (2024): Integrated Conflict Management for UAM With Strategic Demand Capacity Balancing and Learning-Based Tactical Deconfliction . IEEE Trans. Intell. Transp. Syst. 25(8), pp. 10049–10061, doi:10.1109/TITS.2024.3351049. [6] Carmine Dodaro, Giuseppe Galatà, Andrea Grioni, Marco Maratea, Marco Mochi & Ivan Porro (2021): An ASP-based Solution to the Chemotherapy Treatment Scheduling problem . Theory Pract. Log. Program. 21(6), pp. 835–851, doi:10.1017/S1471068421000363. [7] Carmine Dodaro & Marco Maratea (2017): Nurse Scheduling via Answer Set Programming . In Marcello Balduccini & Tomi Janhunen, editors: Logic Programming and Nonmonotonic Reasoning - 14th Interna-tional Conference, LPNMR 2017, Espoo, Finland, July 3-6, 2017, Proceedings , Lecture Notes in Computer Science 10377, Springer, pp. 301–307, doi:10.1007/978-3-319-61660-5_27. [8] FAA (April 2023): Urban Air Mobility Concepts of Operations (v2.0) . Technical Report. [9] Martin Gebser, Roland Kaminski, Benjamin Kaufmann & Torsten Schaub (2014): Clingo= ASP+ control: Preliminary report . arXiv preprint arXiv:1405.3694 .[10] Martin Gebser, Roland Kaminski, Benjamin Kaufmann & Torsten Schaub (2019): Multi-shot ASP solving with clingo . Theory Pract. Log. Program. 19(1), pp. 27–82, doi:10.1017/S1471068418000054. [11] Michael Gelfond & Vladimir Lifschitz (1988): The Stable Model Semantics for Logic Programming . In Robert A. Kowalski & Kenneth A. Bowen, editors: Logic Programming, Proceedings of the Fifth Interna-tional Conference and Symposium, Seattle, Washington, USA, August 15-19, 1988 (2 Volumes) , MIT Press, pp. 1070–1080. [12] Cheng Huang, Ivan Petrunin & Antonios Tsourdos (2022): Strategic conflict management for performance-based urban air mobility operations with multi-agent reinforcement learning . In: 
+
+2022 International Conference on Unmanned Aircraft Systems (ICUAS) , IEEE, pp. 442–451, doi:10.1109/ICUAS54217.2022.9836139. [13] Tomi Janhunen, Roland Kaminski, Max Ostrowski, Sebastian Schellhorn, Philipp Wanko & Torsten Schaub (2017): Clingo goes linear constraints over reals and integers . Theory Pract. Log. Program. 17(5-6), pp. 872–888, doi:10.1017/S1471068417000242. [14] Vladimir Lifschitz (2016): Answer Sets and the Language of Answer Set Programming . AI Mag. 37(3), pp. 7–12, doi:10.1609/AIMAG.V37I3.2670. [15] Yanchao Liu, Zhenyu Zhou, Waseem Naqvi & Jun Chen (2023): Strategic deconfliction of unmanned aircraft based on hexagonal tessellation and integer programming . Journal of Guidance, Control, and Dynamics 
+
+46(12), pp. 2362–2372, doi:10.2514/1.G007459. [16] Nicholas Nethercote, Peter J. Stuckey, Ralph Becket, Sebastian Brand, Gregory J. Duck & Guido Tack (2007): MiniZinc: Towards a Standard CP Modelling Language . In Christian Bessiere, editor: Principles and Practice of Constraint Programming - CP 2007, 13th International Conference, CP 2007, Providence, RI, USA, September 23-27, 2007, Proceedings , Lecture Notes in Computer Science 4741, Springer, pp. 529–543, doi:10.1007/978-3-540-74970-7_38. [17] Henry Pak, Lukas Asmer, Petra Kokus, Bianca I. Schuchardt, Albert End, Frank Meller, Karolin Schweiger, Christoph Torens, Carolina Barzantny, Dennis Becker, Johannes Maria Ernst, Florian Jäger, Tim Laudien, Nabih Naeem, Anne Papenfuß, Jan Pertz, Prajwal Shiva Prakasha, Patrick Ratei, Fabian Reimer, Patrick Sieb, Chen Zhu, Rabeb Abdellaoui, Richard-Gregor Becker, Oliver Bertram, Aditya Devta, Thomas Gerz, Roman Jaksche, Andreas König, Helge Lenz, Isabel C. Metz, Fares Naser, Lukas Schalk, Sebastian Schier-Morgenthal, Maria Stolz, Majed Swaid, Andreas Volkert & Kristin Wendt (2024): Can Urban Air Mobility become reality? Opportunities and challenges of UAM as innovative mode of transport and DLR contribution to ongoing research . CEAS Aeronautical Journal , doi:10.1007/s13272-024-00733-x. G. Sterlicchio, A. Oddi, R. Rasconi & F.A. Lisi 269 
+
+[18] David Rajaratnam, Torsten Schaub, Philipp Wanko, Kai Chen, Sirui Liu & Tran Cao Son (2023): Solving an Industrial-Scale Warehouse Delivery Problem with Answer Set Programming Modulo Difference Constraints .
+
+Algorithms 16(4), p. 216, doi:10.3390/A16040216. [19] Francesco Ricca, Giovanni Grasso, Mario Alviano, Marco Manna, Vincenzino Lio, Salvatore Iiritano & Nicola Leone (2012): Team-building with answer set programming in the Gioia-Tauro seaport . Theory Pract. Log. Program. 12(3), pp. 361–381, doi:10.1017/S147106841100007X. [20] Francesca Rossi, Peter van Beek & Toby Walsh, editors (2006): Handbook of Constraint Programming .
+
+Foundations of Artificial Intelligence 2, Elsevier. Available at https://www.sciencedirect.com/ science/bookseries/15746526/2 .[21] David Sacharny & Thomas C Henderson (2019): A lane-based approach for large-scale strategic conflict management for UAS service suppliers . In: 2019 International Conference on Unmanned Aircraft Systems (ICUAS) , IEEE, pp. 937–945, doi:10.1109/icuas.2019.8798157. [22] David Sacharny, Thomas C Henderson, Michael Cline, Benjamin Russon & EJay Guo (2020): FAA-NASA vs. lane-based strategic deconfliction . In: 2020 IEEE International Conference on Multisensor Fusion and Integration for Intelligent Systems (MFI) , IEEE, pp. 13–18, doi:10.1109/MFI49285.2020.9235239. [23] David Sacharny, Thomas C Henderson & Ejay Guo (2020): A DDDAS protocol for real-time large-scale UAS flight coordination . In: Dynamic Data Driven Applications Systems: Third International Conference, DDDAS 2020, Boston, MA, USA, October 2-4, 2020, Proceedings 3 , Springer, pp. 49–56, doi:10.1007/978-3-030-61725-7_8. [24] David Sacharny, Thomas C. Henderson & Vista Marston (2022): Lane-Based Large-Scale UAS Traffic Man-agement . IEEE Trans. Intell. Transp. Syst. 23(10), pp. 18835–18844, doi:10.1109/TITS.2022.3160378. [25] Gioacchino Sterlicchio, Angelo Oddi, Riccardo Rasconi & Francesca A. Lisi (2025): An ASP-based Ap-proach to UAM Strategic Deconfliction: preliminary results . In Dario Guidotti, Laura Pandolfo & Luca Pulina, editors: Proceedings of the 40th Italian Conference on Computational Logic, Alghero, Italy, June 25-27, 2025 , CEUR Workshop Proceedings 4003, CEUR-WS.org. Available at https://ceur-ws.org/ Vol-4003/short04.pdf .[26] Hualong Tang, Yu Zhang, Vahid Mohmoodian & Hadi Charkhgard (2021): Automated flight planning of high-density urban air mobility . Transportation Research Part C: Emerging Technologies 131, p. 103324, doi:10.1016/j.trc.2021.103324. [27] Ellis L Thompson, Yan Xu & Peng Wei (2023): A framework for operational volume generation for urban air mobility strategic deconfliction . In: 2023 International Conference on Unmanned Aircraft Systems (ICUAS) ,IEEE, pp. 71–78, doi:10.1109/ICUAS57906.2023.10156164. [28] Maryam Torabbeigi, Gino J. Lim & Seon Jin Kim (2020): Drone Delivery Scheduling Optimization Considering Payload-induced Battery Consumption Rates . J. Intell. Robotic Syst. 97(3), pp. 471–487, doi:10.1007/S10846-019-01034-W. [29] Min Xue (2020): Urban air mobility conflict resolution: Centralized or decentralized? In: AIAA aviation 2020 forum , p. 3192, doi:10.2514/6.2020-3192.

@@ -1,0 +1,641 @@
+Title: CRB-Driven Beamforming and Trajectory Optimization for UAV-assisted ISAC System
+
+URL Source: https://arxiv.org/pdf/2607.19609v1
+
+Published Time: Thu, 23 Jul 2026 00:14:13 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# CRB-Driven Beamforming and Trajectory Optimization for UAV-assisted ISAC System 
+
+Yi Yang, Qianqian Zhang, and Huaxia Wang 
+
+Department of Electrical and Computer Engineering, Rowan University, NJ, USA Emails: {yangyi57,zhangqia,wanghu }@rowan.edu 
+
+Abstract —In this paper, we study an unmanned aerial vehicle (UAV)-assisted integrated sensing and communication (ISAC) system, where a UAV enhances the sensing capability of abase station (BS) towards a target while ensuring reliable communication towards a downlink user. This architecture is practically attractive for future wireless networks due to the UAV’s controllable mobility and adaptive sensing coverage in wireless environments. The sensing performance is characterized by the average Cram´ er–Rao bound (CRB), which quantifies the minimum variance of the unbiased angle-of-arrival estimation. To enhance the sensing performance, the UAV trajectory and beam-forming parameters are jointly optimized under power and mo-bility constraints, while satisfying communication requirements to the downlink user. To address the resulting non-convex prob-lem, we employ null-space projection for beamforming design and adopt deep reinforcement learning for the trajectory optimization over a discrete-time scale. In each time slot, beamforming is optimized based on the channel state information to improve CRB performance while mitigating interference between the BS and the communication user. Simulation results demonstrate that the proposed method significantly reduces the time-averaged CRB by over 10%, compared with the ISAC system without UAV assistance, and also achieves a higher sensing accuracy than both the fixed-UAV-trajectory and the maximum-ratio-transmission-based beamforming benchmarks. 
+
+Index Terms —integrated sensing and communication, un-manned aerial vehicle, deep reinforcement learning. 
+
+I. I NTRODUCTION 
+
+The sixth-generation (6G) wireless network is expected to support a wide range of emerging applications, such as autonomous driving, smart home, and human activity sensing [1]. Meeting these heterogeneous communication and sensing demands under limited spectrum and hardware resources, however, poses significant challenges [2]. Integrated sensing and communication (ISAC) technology has emerged as a promising 6G technology, where the dual-functional node of ISAC transmits a unified waveform to simultaneously perform sensing and communication on a shared hardware platform, thereby improving spectrum, energy, and hardware efficiency [3]. To improve the system performance, artificial noise (AN) has been widely incorporated into ISAC systems [4]. Be-yond its traditional role in enhancing physical-layer secu-rity, recent researches have shown that AN can also support sensing. In particular, with appropriate beamforming design at the base station (BS), AN can degrade the interception capability of eavesdroppers while facilitating high-resolution sensing performance. In [5], the authors investigated the joint transmit beamforming of information and AN to maximize the communication secrecy rate under sensing constraints. In [6], a two-stage secure communication framework was proposed to use AN for sensing in the first stage and for jamming in the second stage, with the secrecy rate maximized via joint optimization of time allocation and beamforming designs. However, in most existing works, AN competes with information signals for the limited transmit power at the BS, which restricts the sensing performance. To provide additional power sources in the ISAC system, unmanned aerial vehicles (UAVs) have attracted increasing interest due to their independent energy source, as well as the controllable mobility and flexible deployment [7]. Benefiting from their high altitudes, UAVs often maintain strong line-of-sight (LoS) links for reliable sensing and communication services. In [8], the joint transmit beamforming and UAV trajectory design was investigated to maximize the average rate under sensing beampattern constraints. This line of work was extended in [9] by incorporating secrecy rate considerations, and further in [10] by introducing an intelligent reflecting surface (IRS) with joint optimization of UAV trajectory, transmit beamforming, and IRS phase shifts. However, most of the existing ISAC architectures in [8]–[10] consider the UAV as an aerial BS that directly performs both communication and sensing tasks, while the potential of UAVs to assist the BS in sensing remains largely unexplored. To address the aforementioned limitation, this paper pro-poses a practical architecture in which a UAV assists a BS in sensing via controllable AN transmission. While UAV-generated AN enhances the echo from the sensing target and improves the sensing capability of the BS, it also introduces interference through the UAV–BS link and to the communi-cation user. To mitigate the AN-induced interference, a null-space-based deep reinforcement learning (DRL) framework is proposed, in which the UAV beamforming is first projected onto the null space of the UAV–BS channel to suppress the direct interference, and then refined via convex optimization to maximize the sensing accuracy. Meanwhile, the UAV trajec-tory is optimized using the soft actor–critic (SAC) algorithm to further improve the sensing and communication performance. Simulation results show that the proposed method significantly reduces the time-averaged CRB by over 10%, compared with the ISAC system without UAV assistance. Moreover, compared with the benchmarks of the fixed UAV trajectory with the optimized beamforming and the maximum ratio arXiv:2607.19609v1 [cs.IT] 21 Jul 2026 Fig. 1: UAV-assisted ISAC system. transmission (MRT)-based beamforming, the proposed method achieves a noticeable improvement in the sensing accuracy. The remainder of this paper is organized as follows. Section II introduces the system model. Section III presents the proposed null-space-based DRL solution. Section IV provides simulation results, and Section V concludes the paper. II. S YSTEM MODEL 
+
+We consider an ISAC system in which a UAV assists a BS in detecting a sensing target, while ensuring that the signal to interference plus noise ratio (SINR) towards a communication user (CU) exceeds a predefined threshold. 1 As shown in Fig. 1, all signal links operate over the same frequency band. The UAV is equipped with a uniform linear array (ULA) consisting of L antennas, while the BS employs a ULA with M antennas, and the CU is equipped with a single antenna. The UAV’s initial and final positions are denoted by qI = [ xI , yI , zu]and qF = [ xF , yF , zu], respectively. It operates at a fixed altitude zu over a duration Tu, with a maximum speed of 
+
+Vmax . For tractability, the operation period is discretized into 
+
+Nu = Tu/∆t time slots, with the UAV position denoted by 
+
+q[n] for each time slot n ∈ 1, · · · , N u.
+
+A. Communication Model 
+
+For downlink transmission, the BS sends the communication signal to the CU as 
+
+sb[n] = wb[n]xb[n], (1) where wb[n] ∈ CM ×1 denotes the beamforming vector with transmit power Pbm , and xb[n] is the unit-power symbol. Meanwhile, the UAV transmits the AN 
+
+su[n] = wu[n]xu[n], (2) where wu[n] ∈ CL×1 is the UAV’s beamforming vector, and 
+
+xu[n] ∼ CN (0 , 1) represents the AN signal. The UAV’s trans-mit power is limited by the onboard energy, i.e., |wu[n]|2 ≤
+
+Pum . Therefore, the received signal at the CU is given as 2
+
+yc[n] = Hbc [n]sb[n] + Huc [n]su[n] + zc[n], (3) where Hbc [n] = 
+
+q β0 
+
+> (KR+1) d2
+> bc [n]
+
+(√KRGH 
+
+> 1
+
+[n] + GH 
+
+> 2
+
+[n]) ∈
+
+C1×M is the Rician channel between the BS and the CU 
+
+> 1Extensions to multi-user/multi-target scenarios will be explored in our future work.
+> 2The reflected signal from the sensing target to the CU is negligible compared with the direct links from the BS and the UAV.
+
+with KR as the Rician factor, β0 as the channel gain at a reference distance, and dbc [n] as the BS-CU distance. Here, G1[n] = [ e−j π(M −1) 2 sin θbc [n], e −j π(M −3) 2 sin θbc [n], · · · ,ej π(M −1) 2 sin θbc [n]]T is the steering vector of the BS with θbc [n]
+
+as angle-of-departure (AoD) and G2[n] ∼ CN (0, I) denotes a complex Gaussian random variable. The UAV-CU LoS channel is Huc [n] = √β0d−1 
+
+> uc
+
+[n]GHu [n] ∈ C1×L with duc [n] as the dis-tance, Gu[n] = [ e−j π(L−1) 2 sin θuc [n], e −j π(L−3) 2 sin θuc [n], · · · ,ej π(L−1) 2 sin θuc [n]]T as the UAV’s steering vector, and θuc [n]
+
+as the AoD of the UAV-CU link. Finally, zc[n] ∼ CN (0 , σ 2 
+
+> c
+
+)
+
+is the Gaussian noise. Assuming perfect channel state information is available at both the BS and the UAV, the received SINR at the CU in time slot n is given by 3
+
+τc[n] = |Hbc [n]wb[n]|2
+
+σ2 
+
+> c
+
++ |Huc [n]wu[n]|2 . (4) 
+
+B. Sensing Model 
+
+To estimate the location of the sensing target, the BS processes the reflected signal from the target. Meanwhile, the AN transmitted by the UAV aims to enhance the power of the reflected echo. At time n, the received echo signal 
+
+ys[n] ∈ CM ×1 at the BS can be expressed as 4
+
+ys[n] = αbs [n]ar (θbs [n]) aHt (θbs [n]) sb[n]+ αus [n]ar (θbs [n]) aHt (θus [n]) su[n] + zs[n], (5) where αbs [n] and αus [n] represent the combined path loss and radar cross section (RCS) coefficients of the BS–target-BS and UAV–target-BS links, respectively. θbs [n] and θus [n] are the AoD of the sensing target with respect to the BS and the UAV, respectively. at(θbs [n]) = ar (θbs [n]) = [ e−j π(M −1) 2 sin θbs [n],e−j π(M −3) 2 sin θbs [n], · · · , e j π(M −1) 2 sin θbs [n]]T are the transmit and receiving array vectors at the BS. Furthermore, the UAV’s transmit array vector is at(θus [n]) = [e−j π(L−1) 2 sin θus [n],e−j π(L−3) 2 sin θus [n], · · · , e j π(L−1) 2 sin θus [n]]T and zs[n] ∼CN (0, σ 2 
+
+> s
+
+I) is the received Gaussian noise. The goal of the BS is to accurately estimate the AoA θbs 
+
+(same as AoD) towards the sensing target, which is critical for target localization. To evaluate the estimation performance, CRB is adopted to characterize the fundamental lower bound on the variance of unbiased AoA estimation [11]. In particular, a smaller CRB implies higher estimation accuracy. For nota-tional simplicity, the CRB associated with estimating θbs [n] is denoted as CRB bs [n], as given in the following proposition. 
+
+Proposition 1: The CRB for estimating θbs [n] is 
+
+CRB bs [n] =[ 2
+
+σ2
+
+> s
+
+(|αbs [n]|2|aHt (θbs [n]) sb[n]|2
+
++ ζ2[n]Mσ2 
+
+> s
+
++ ζ[n]M )∥ ∂ar (θbs [n]) 
+
+∂θ bs [n] ∥2]−1,
+
+(6) where ζ[n] = |αus [n]aHt (θus [n]) su[n]|2.
+
+> 3The impact of channel estimation errors caused by mobility will be discussed in our future work.
+> 4The UAV beamforming will be designed to ensure zero interference toward the BS, as detailed later in Section II-C.
+
+P roof : See Appendix A. From Proposition 1, the value of CRB bs [n] decreases as 
+
+ζ[n] increases, where the value of ζ[n] is jointly determined by the UAV’s position q[n] and beamforming wu[n]. Specifically, 
+
+q[n] affects the reflection coefficient αus [n] and steering vector 
+
+aHt (θus [n]) , while wu[n] determines the UAV transmit power. The remaining parameters in (6) are dictated by the BS and the environment, which are not controllable. Therefore, improving the sensing accuracy requires minimizing CRB bs [n], which is equivalent to maximizing the value of ζ[n] via UAV control. 
+
+C. Problem Fromulation 
+
+Consequently, the objective of the UAV in the ISAC system is to minimize the time-averaged CRB of θbs by jointly optimizing its trajectory q and beamforming vector wu, while ensuring zero interference to the BS and maintaining a min-imum SINR towards the CU in each time slot. The resulting optimization problem can be formulated as: 
+
+min 
+
+> q[n],wu[n]
+
+1
+
+NuNuX
+
+> n=1
+
+CRB bs [n] (7a) s. t. τc[n] ≥ γ, (7b) 
+
+aHt (θbu [n]) wu[n] = 0 , (7c) 
+
+∥wu[n]∥2 ≤ Pum , (7d) 
+
+qu[1] = qI , qu[Nu] = qF , (7e) 
+
+∥qu[n] − qu[n − 1] ∥ ≤ Vmax ∆t, (7f) where (7b) ensures a minimum SINR at the CU, (7c) enforces zero interference over the UAV–BS link with θbu [n] denoting the AoD from the UAV to the BS, (7d) constrains the UAV transmit power, (7e) specifies the initial and final UAV po-sitions, and (7f) limits the UAV velocity. Based on the CRB definition in (6), problem (7) is challenging to solve due to the strong coupling between the UAV position and beamforming, leading to a non-convex formulation. Moreover, the trajectory design involves sequential decision-making, which further increases the problem complexity. III. P ROPOSED SOLUTION 
+
+To solve the non-convex problem (7) over multiple time slots, a two-step approach is proposed, where beamforming is first designed to satisfy constraints (7b)-(7d), followed by UAV trajectory optimization using DRL. 
+
+A. Beamforming Optimization via Null-Space Projection 
+
+To address the stringent constraint in (7c), a subproblem is first considered: assume the UAV position q to be fixed during each time n, then the beamforming optimization becomes 
+
+min  
+
+> wu[n]
+
+CRB bs [n] (8a) s. t. τc[n] ≥ γ, (8b) 
+
+aHt (θbu [n]) wu[n] = 0 , (8c) 
+
+∥wu[n]∥2 ≤ Pum . (8d) First, to satisfy the constraint (8c), an orthogonal projection matrix w⊥[n] is constructed onto the subspace orthogonal to the BS steering vector, given by 
+
+w⊥[n] = I − at(θbu [n]) aHt (θbu [n]) 
+
+aHt (θbu [n]) at(θbu [n]) . (9) That is, the null-space projection matrix w⊥[n] can project any vector onto the subspace orthogonal to the UAV-BS steering direction, thereby ensuring (7c). Accordingly, the beamforming vector can be rewritten as 
+
+wu[n] = w⊥[n]w1[n], (10) where w1[n] represents the beamforming weight vector within the projected subspace. The vector w1[n] is then optimized to satisfy the remaining constraints while minimizing the CRB. Thus, problem (8) can be equivalently reformulated as 
+
+max  
+
+> w1[n]
+
+|aHt (θus [n]) w⊥[n]w1[n]|2 (11a) s. t. |Hbc [n]wb[n]|2
+
+σ2 
+
+> c
+
++ |Huc [n]w⊥[n]w1[n]|2 ≥ γ, (11b) 
+
+∥w⊥[n]w1[n]∥2 ≤ Pum . (11c) Note that problem (11) is a non-convex quadratically con-strained quadratic program. To facilitate tractable optimiza-tion, a standard semidefinite relaxation (SDR) approach is applied by lifting the beamforming vector to a matrix vari-able. Specifically, define W1[n] = w1[n]wH 
+
+> 1
+
+[n], along with 
+
+A[n] = wH 
+
+> ⊥
+
+[n]at(θus [n]) aHt (θus [n]) w⊥[n], B[n] = wH 
+
+> ⊥
+
+[n]
+
+HHuc [n]Huc [n]w⊥[n], and C[n] = wH 
+
+> ⊥
+
+[n]w⊥[n]. Then, prob-lem (11) can be equivalently reformulated as 
+
+max  
+
+> W1[n]
+
+Tr( A[n]W1[n]) (12a) s. t. γ(σ2 
+
+> c
+
++ Tr( B[n]W1[n])) ≤ | Hbc [n]wb[n]|2, (12b) 
+
+Tr( C[n]W1[n]) ≤ Pum , (12c) 
+
+rank( W1[n]) = 1 , W1[n] ⪰ 0, (12d) where (12d) enforces W1[n] to be a rank-one positive semi-definite matrix, ensuring equivalence to the original vector formulation. To address this problem, SDR is applied by relaxing the rank constraint, which transforms the original non-convex problem into a convex semidefinite program that can be efficiently solved. The resulting relaxed optimization problem is given by 
+
+max  
+
+> W1[n]
+
+Tr( A[n]W1[n]) (13a) s. t. γ(σ2 
+
+> c
+
++ Tr( B[n]W1[n])) ≤ | Hbc [n]wb[n]|2, (13b) 
+
+Tr( C[n]W1[n]) ≤ Pum , (13c) 
+
+W1[n] ⪰ 0. (13d) Note that problem (13) is a standard SDP and can be efficiently solved by CVX. However, the obtained solution W+1 [n] is not guaranteed to be rank one. To recover a feasible solution to the original problem, Gaussian randomization [12] is applied to construct a high-quality rank-one approximation for (12). Specifically, Ngr candidate vectors will be generated from a complex Gaussian distribution with covariance matrix W+1 [n],and the candidate that achieves the maximum objective value while satisfying all constraints is selected. The beamforming optimization procedure is summarized in Algorithm 1. The resulting solution w∗
+
+> u
+
+[n] ensures that, for a given location, the UAV beamforming minimizes the CRB while satisfying all constraints in (8). Consequently, the original joint trajectory and beamforming design in (7) reduces to the trajectory optimization, which is addressed using reinforcement learning as next. 
+
+Algorithm 1 Null-Space-Based Beamforming Optimization  
+
+> 1:
+
+Input: A[n], B[n], C[n], w⊥[n], and the number of Gaussian random samples Ngr . 
+
+> 2:
+
+Get the solution W+1 [n] of problem (13) through CVX;  
+
+> 3:
+
+if rank( W+1 [n]) = 1 then  
+
+> 4:
+
+Perform eigenvalue decomposition of W+1 [n] and re-cover w∗
+
+> 1
+
+[n] from its principal eigenvector;  
+
+> 5:
+
+Get the optimized beamforming vector w∗
+
+> u
+
+[n] via (10);  
+
+> 6:
+
+else  
+
+> 7:
+
+Perform eigenvalue decomposition of W+1 [n] to get eigenvector matrix U and eigenvalue matrix Λ; 
+
+> 8:
+
+Generate Ngr complex Gaussian random vectors ˜vl ∼CN (0, I), l = 1 , · · · , N gr ; 
+
+> 9:
+
+Get Ngr candidate solutions ˜wl = UΛ 12 ˜vl; 
+
+> 10:
+
+Select the best solution w∗
+
+> 1
+
+[n] from all candidates that maximizes (12a) while satisfying (12b) and (12c);  
+
+> 11:
+
+Get the optimized beamforming vector w∗
+
+> u
+
+[n] via (10);  
+
+> 12:
+
+end if  
+
+> 13:
+
+Output: w∗
+
+> u
+
+[n].
+
+B. SAC-based Trajectory Optimization 
+
+After the beamforming optimization, the trajectory design can be considered as a Markov decision process (MDP) defined by a tuple < S, A, R >, where S is the state space, A
+
+is the action space, and R is the reward function. At each time slot n, the UAV observes the current state s[n] and selects the action a[n] according to its policy π(a|s). The environment then transitions to a new state s[n + 1] and returns a reward 
+
+r[n], which evaluates the action. The MDP formulation is defined as follows: 
+
+State space : The state at time slot n is defined as s[n] = 
+
+{x[n], y [n], d [n], log(CRB bs [n]) }, including the current UAV position, the relative distance to the destination d[n] =
+
+∥qu[n] − qF ]∥, and the log transformation of the CRB to improve the training stability. 
+
+Action space : Given the current state s[n], the UAV selects its action a[n] = {vx[n], v y [n]}, where vx[n] and vy [n] denote the UAV velocities along the x- and y-axes, respectively. 
+
+Reward : To minimize the CRB while satisfying the con-straints, the reward at time slot n is defined as 
+
+r[n] = Rd[n] + Rs[n] + Rti [n] + Rg [n], (14) where Rd[n] = ιd(d[n − 1] − d[n]) encourages progress toward the destination and Rs[n] = ιs(log(CRB bs [n − 1]) −
+
+Fig. 2: Framework of the soft Actor-Critic algorithm. 
+
+log(CRB bs [n])) promotes movement toward regions with lower CRB. Here, ιd > 0 and ιs > 0 are weighting factors. The time penalty Rti [n] is a constant negative number and 
+
+Rg [n] denotes a terminal reward, which is positive if the UAV reaches the destination and zero otherwise. Since the UAV control variables lie in a continuous action space, the soft actor–critic (SAC) algorithm with the off-policy DRL framework is adopted. Unlike traditional reinforcement learning methods that only aim to maximize cumulative rewards, SAC also maximizes policy entropy to encourage exploration and mitigate convergence to a local optimal [13]. The optimal policy function π∗ of SAC is defined as 
+
+π∗ = arg max  
+
+> π
+
+Eπ [X
+
+> n
+
+r(s[n], a [n]) + κH(π(·| s[n]))] , (15) where H(π(·| s[n])) represents the policy entropy and κ is the temperature parameter. The loss function of κ can be expressed as J(κ) = Es[n]∼D,a [n]∼π(·| s[n]) [−κ log π(a[n]|s[n]) − κH0],where D represents the replay buffer and H0 is desired minimum expected entropy. As shown in Fig. 2, the SAC architecture consists of an actor network π(ϕ) and two critic networks Qϑ1 and Qϑ2 with their corresponding target networks Qϑ1 and Qϑ2 . The actor network generates the policy which defines the distribution of actions given the state, while the critic networks evaluate the action and improve the policy. To mitigate the overestimation of Q-values, the minimum Q-value obtained from the two critic networks is used for policy evaluation. Accordingly, the action-value function Q(s[n], a [n]) and the state-value function V (s[n]) can be expressed as: 
+
+V (s[n]) = Ea[n]∼π [Q(s[n], a [n]) − κ log π(a[n]|s[n])] , (16) 
+
+Q(s[n], a [n]) = r(s[n], a [n]) + χEs[n+1] [V (s[n + 1])] , (17) where χ represents the discount coefficient. Thus, the temporal difference loss function of the Q network JQ(ϑ) is given as: 
+
+JQ(ϑ) = E(s[n],a [n],r [n],s [n+1]) ∼D[( Q(s[n], a [n]) 
+
+− (r[n] + χ( min  
+
+> i=1 ,2
+
+Qϑi (s[n + 1] , a [n + 1]) 
+
+− κ log π(a[n + 1] |s[n + 1])))) 2].
+
+(18) Based on the critic-estimated Q-values, the actor network updates its parameters by minimizing the Kullback-Leibler (KL) divergence. The loss function of the actor network J(ϕ)
+
+is given as: 
+
+J(ϕ) = Es[n]∼D,a [n]∼πϕ [κ log( πϕ(a[n]|s[n])) 
+
+− min  
+
+> i=1 ,2
+
+Qϑi (s[n], a [n])] . (19) TABLE I: S IMULATION PARAMETERS .
+
+Parameters Values Hyperarameters Values Num of BS antennas M 8 Num of layers N 3Num of UAV antennas L 8 Hidden units per layer 128 Target RCS ϵrcs 4 m2 Activation function ReLU Signal wavelength λ 0.125 m Optimizer Adam Antenna gain GT (GR) 8 dBi Batch size B 128 Noise power σ2 
+
+> s
+
+(σ2 
+
+> c
+
+) -40 dBm Loss MSE BS transmit power Pbm 48 dBm Discount factor χ 0.99 UAV transmit power Pum 40 dBm Soft update rate 0.005 Reference channel gain β0 -30 dB Rician factor KR 9
+
+Algorithm 2 summarizes the proposed null-space-based DRL framework for UAV-assisted ISAC system optimization. The complexity analysis of the proposed solution is given as follows. For Algorithm 1, given a solution accuracy ε, the computational complexity using the interior point method is 
+
+O(log( 1 
+
+> ε
+
+)L6.5) [14]. For the SAC solution part, let N denote the number of layers in the networks, ψ denote the number of nodes in each layer, and B denote the batch size in the training. Therefore, the complexity of the SAC framework is O(6 BN ψ 2). Consequently, the computational complexity of the proposed solution in Algorithm 2 is O(log( 1 
+
+> ε
+
+)L6.5 +6BN ψ 2).
+
+Algorithm 2 Null-Space-based DRL algorithm 
+
+1: Initialize the environment, replay buffer D, batch size B,and parameters ϑ1, ϑ2, ϕ.
+
+2: for each episode step do 
+
+3: for each environment step do 
+
+4: Get the state s[n] of the UAV; 
+
+5: Calculate the beamforming vector via Algorithm 1; 
+
+6: Select the action through πϕ(a[n]|s[n]) ;
+
+7: Perform the action and get reward r[n];
+
+8: Update the environment and get next state s[n + 1] ;
+
+9: Store < s [n], a [n], r [n], s [n + 1] > in replay buffer. 
+
+10: end for 
+
+11: for each gradient step do 
+
+12: Update the critic networks with (18); 
+
+13: Update the actor network with (19); 
+
+14: Update the temperature parameter; 
+
+15: Soft update the target critic networks. 
+
+16: end for 
+
+17: end for 
+
+IV. S IMULATION RESULTS 
+
+This section presents simulation results for the proposed UAV-assisted ISAC framework. As shown in Fig. 3, the BS, CU, and sensing target are located at (0 , 25) , (10 , 20) , and 
+
+(40 , 30) meters, respectively, and their positions are fixed throughout the process. The BS and UAV heights are 10 
+
+and 30 meters, while the CU and target are fixed at 1.5
+
+meters. The UAV flies from the initial position (25 , 0) to the destination (25 , 50) , with maximum speeds of 1 m/s along each of the x- and y-axes. The reflection coefficient is α =
+
+q GT GRλ2ϵrcs  
+
+> (4 π)3d2
+> Td2
+> R
+
+[15], where GT and GR represent X (m)           
+
+> 0510 15 20 25 30 35 40 45 50
+> Y (m)
+> 0510 15 20 25 30 35 40 45 50
+> Designed Trajectory Trajectory of Shortest Path Trajectory with MRT beamforming Base Station Communication User Sensing Target Start Point Destination
+
+Fig. 3: Trajectories of the proposed method and benchmarks. Episode          
+
+> 100 200 300 400 500 600 700 800 900 1000
+> Reward
+> 500 600 700 800 900 1000 1100 1200
+> Proposed Method Designed Path with MRT Beamforming
+
+Fig. 4: Convergence performance of the proposed method and the MRT-beamforming benchmark with trajectory design. the antenna gain of the sensing transmitter and receiver, respectively, ϵrcs represents the RCS of the sensing target, 
+
+dT represents the distance of between the sensing transmitter and target, dR represents the distance between the sensing receiver and target, and λ denotes the signal wavelength. System parameters and SAC hyperparameters are listed in Table I. To evaluate the performance of the proposed method, four benchmark schemes are considered: 1) the ISAC system that operates without UAV assistance; 2) UAV following the shortest path with beamforming optimization through Algo-rithm 1 but no trajectory design; 3) UAV using the shortest path and the MRT-based beamforming optimization instead of Algorithm 1. The resulting beamforming vector is given by 
+
+wu[n] = pPu[n] w⊥[n]at(θus [n])  
+
+> ∥w⊥[n]at(θus [n]) ∥
+
+, where the beamforming direction is designed and fixed to maximize the transmit gain toward the sensing target, and only the transmit power Pu[n] is optimized to minimize the CRB. 4) In the fourth benchmark, the beamforming direction is designed according to the MRT criterion, and the DRL algorithm will jointly optimize the UAV position and transmit power Pu[n], yielding an enlarged state and action space and increasing the coupling between the trajectory and power control. The resulting trajectories of the proposed method, the shortest-path benchmark, and the benchmark 4 (designed trajectory with MRT beamforming) are shown in Fig. 3. The difference between the proposed method and the benchmark 4 is mainly caused by the fact that the MRT-based approach UAV Power (W)     
+
+> 246810
+> 1.5 22.5 33.5 44.5 5
+> Average CRB
+> ×10 -3
+> Proposed Method Designed Path with MRT Beamforming Shortest Path with Proposed Beamforming Shortest Path with MRT Beamforming No UAV
+
+(a) Antenna Number      
+
+> 46810 12
+> 11.5 22.5 33.5 44.5 5
+> Average CRB
+> ×10 -3
+> Proposed Method Designed Path with MRT Beamforming Shortest Path with Proposed Beamforming Shortest Path with MRT Beamforming No UAV
+
+(b) SINR (dB)       
+
+> 6810 12 14 16
+> 1.5 22.5 33.5 44.5 5
+> Average CRB
+> ×10 -3
+> Proposed Method Designed Path with MRT Beamforming Shortest Path with Proposed Beamforming Shortest Path with MRT Beamforming No UAV
+
+(c) 
+
+Fig. 5: Average CRB vs. (a) UAV maximum transmit power, (b) UAV antenna number, and (c) CU SINR constraint. leaves the power optimization to the learning algorithm, thus enlarging the state-action space as well as the optimization complexity. Consequently, the learning process becomes more challenging, leading the UAV to adopt a more conservative tra-jectory and turn toward the destination at an earlier stage. Fig. 4 shows the convergence performance with the reward learning curve of the proposed method and the MRT-beamforming benchmark with trajectory design, which is smoothed using the 100-episode moving average. Both curves show that the training reward eventually reaches a steady stage, which verifies the convergence behavior of the learning algorithm. Moreover, Fig. 4 shows that the proposed method requires fewer training episodes to reach the steady stage than the state-of-the-art benchmark, owing to its smaller state and action spaces, as well as the reduced training complexity. Fig. 5a illustrates the average CRB performance of the proposed method and benchmarks as the maximum transmit power of the UAV increases from 2 to 10 watts. Compared with the ISAC system without UAV assistance, the proposed scheme achieves a consistently lower CRB, demonstrating the effectiveness of UAV-aided sensing. In addition, the average CRB of the optimized trajectory yields a better performance over the shortest-path approaches. Meanwhile, the proposed method outperforms the MRT-based beamforming benchmark, which validates the effectiveness of the proposed optimization of the beamforming direction and power allocation in our solution. Furthermore, as the transmission power of the UAV increases, the CRB is monotonically decreasing, indicating that the higher power improves the sensing performance. However, the gain from increased transmit power gradually saturates due to the SINR constraint. As the transmit power increases, the gap between the proposed method and all bench-marks becomes larger. This result highlights the great efficacy of the proposed method in enhancing sensing performance under system constraints. Next, we evaluate the impact of the UAV antennas number on the average CRB. As shown in Fig. 5b, the proposed method reduces the average CRB by over 10 %, compared with the ISAC without UAV assistance. As the number of antennas increases, the average CRB of our proposed method decreases monotonically due to the increase in array gain. Meanwhile, the proposed method consistently outperforms the shortest-path trajectory, indicating that trajectory optimization enables more effective utilization of the array gain. In addition, as the array gain increases, the CRB of the MRT-based beamforming benchmark saturates earlier than the proposed method. This is mainly because the MRT-based approach does not optimize the beamforming direction as efficiently as our proposed solution in Algorithm 1, making the benchmark more susceptible to the CU SINR constraint. Therefore, the UAV has to reduce the transmit power to satisfy the communication constraint, thereby sacrificing the sensing performance. Finally, Fig. 5c presents the variation of the CRB with the CU’s SINR constraint. The average CRB increases as the SINR constraint increases, which shows the trade-off between sensing and communication performance. For a larger SINR constraint, the UAV needs to restrict the transmit power to limit the interference to the CU, which in turn reduces the sensing capability of the system. Besides, compared with the performance of the shortest-path trajectory, the proposed method is less sensitive to the SINR constraint. This is because the proposed method jointly optimizes the trajectory and beamforming, providing additional flexibility to reduce the interference to CU. In addition, the proposed method achieves a slower CRB increase than the MRT-based benchmark as its beamforming vector is fully optimized with no limit to the fixed MRT direction. This additional flexibility enables more effective beamforming, transmit power allocation, and trajec-tory adaptation to better balance the sensing enhancement and communication constraint. V. C ONCLUSION 
+
+In this paper, a novel UAV-assisted ISAC system is pre-sented. By adopting the average CRB as the performance metric of sensing, the trajectory and transmit beamforming of the UAV are jointly optimized to minimize the average CRB while satisfying the communication constraints. To solve this problem, a framework that integrates null-space projection-based beamforming design with trajectory optimization via DRL is proposed. Simulation results demonstrate that the proposed method can effectively achieve a higher sensing ac-curacy while ensuring a satisfied communication performance, compared with multiple state-of-the-art benchmarks. APPENDIX AFor notational simplicity, the time index n is omitted in the following derivations. To derive the CRB, we first derive the Fisher information matrix (FIM) associated with the target angle estimation [16], and then compute the CRB accordingly. Let ξ = [ θbs , Re {αbs }, Im {αbs }]T ∈ R3×1 denote the vector of unknown parameters, where θbs is the parameter of interest. Since the reflection coefficient αbs is also unknown, it is treated as a nuisance parameter in the FIM. For notational convenience, we define ϱ = [Re {αbs }, Im {αbs }]. The FIM for estimate ξ is given by 
+
+J =
+
+Jθbs ,θ bs Jθbs ,ϱ 
+
+JTθbs ,ϱ Jϱ,ϱ 
+
+
+
+. (20) Based on (5), we can rewrite the received signal at the BS as 
+
+ys ∼ CN (μ(θbs ), C(θbs )) , where the mean vector is μ(θbs ) = 
+
+αbs ar (θbs )aHt (θbs )sb and the covariance matrix is C(θbs ) = [αus ar (θbs )aHt (θus )su][ αus ar (θbs )aHt (θus )su]H + σ2 
+
+> s
+
+I. Ac-cording to [16], the Gaussian expression of FIM is 
+
+Jθ,ϱ = 2Re[ ∂μH
+
+∂θ C−1 ∂μ
+
+∂ϱ ] + Tr[ C−1 ∂C
+
+∂θ C−1 ∂C
+
+∂ϱ ]. (21) Each element of J can be calculated as 
+
+Jθbs ,θ bs = 2|αbs |2∥ ∂ar (θbs ) 
+
+> ∂θ bs
+
+∥2|aHt (θbs )sb|2
+
+σ2
+
+> s
+
++ 2|αbs |2| ∂aHt (θbs )sb 
+
+> ∂θ bs
+
+|2Mσ2 
+
+> s
+
++ ζM + 2
+
+σ2
+
+> s
+
+ζ2Mσ2 
+
+> s
+
++ ζM ∥ ∂ar (θbs )
+
+∂θ bs 
+
+∥2,
+
+(22) 
+
+Jθbs ,ϱ = 2
+
+σ2
+
+> s
+
+Re {[α∗
+
+> bs
+
+sHb
+
+∂at(θbs )
+
+∂θ bs 
+
+M aHt (θbs )sb
+
+− ζM 2α∗
+
+> bs
+
+sHb∂at(θbs ) 
+
+> ∂θ bs
+
+aHt (θbs )sb
+
+σ2 
+
+> s
+
++ ζM ][1 , j ]},
+
+(23) 
+
+Jϱ,ϱ = 2M |aHt (θbs )sb|2
+
+σ2 
+
+> s
+
++ ζM I2. (24) According to the FIM definition, the CRB can be given by 
+
+CRB bs = [ J−1]11 = [ Jθbs ,θ bs − Jθbs ,ϱ J−1
+
+> ϱ,ϱ
+
+JTθbs ,ϱ ]−1. (25) Substituting (22), (23), and (24) in (25), we have 
+
+CRB bs = [ 2
+
+σ2
+
+> s
+
+(|αbs |2|aHt (θbs )sb|2+ ζ2Mσ2 
+
+> s
+
++ ζM )∥ ∂ar (θbs )
+
+∂θ bs 
+
+∥2]−1.
+
+(26) REFERENCES [1] N. Gonz´ alez-Prelcic, M. F. Keskin, O. Kaltiokallio, M. Valkama, D. Dardari, X. Shen, Y. Shen, M. Bayraktar, and H. Wymeersch, “The Integrated Sensing and Communication Revolution for 6G: Vision, Techniques, and Applications,” Proceedings of the IEEE , vol. 112, no. 7, pp. 676–723, 2024. [2] F. Liu, Y. Cui, C. Masouros, J. Xu, T. X. Han, Y. C. Eldar, and S. Buzzi, “Integrated Sensing and Communications: Toward Dual-Functional Wireless Networks for 6G and Beyond,” IEEE Journal on Selected Areas in Communications , vol. 40, no. 6, pp. 1728–1767, 2022. [3] F. Dong, F. Liu, Y. Cui, S. Lu, and Y. Li, “Sensing as a Service in 6G Perceptive Mobile networks: Architecture, Advances, and the Road Ahead,” IEEE Network , vol. 38, no. 2, pp. 87–96, 2024. [4] J. Zou, C. Masouros, F. Liu, and S. Sun, “Securing the Sensing Functionality in ISAC Networks: An Artificial Noise Design,” IEEE Transactions on Vehicular Technology , vol. 73, no. 11, pp. 17 800– 17 805, 2024. [5] K. Hou and S. Zhang, “Secure Integrated Sensing and Communication Exploiting Target Location Distribution,” in IEEE Global Communica-tions Conference , Kuala Lumpur, Malaysia, 2023, pp. 4933–4938. [6] L. Lv, J. Fu, Y. Feng, L. Yang, and A. Nallanathan, “ISAC-Enhanced Secrecy Communication: A Two-Stage Artificial Noise-Assisted Secure Beamforming Design,” IEEE Communications Letters , vol. 30, pp. 243– 247, 2025. [7] N. Huang, C. Dou, Y. Wu, L. Qian, B. Lin, and H. Zhou, “Unmanned-Aerial-Vehicle-Aided Integrated Sensing and Computation with Mobile-Edge Computing,” IEEE Internet of Things Journal , vol. 10, no. 19, pp. 16 830–16 844, 2023. [8] Z. Lyu, G. Zhu, and J. Xu, “Joint Trajectory and Beamforming Design for UAV-Enabled Integrated Sensing and Communication,” in IEEE International Conference on Communications , Seoul, Korea, 2022, pp. 1593–1598. [9] Y. Xiu, W. Lyu, P. L. Yeoh, Y. Ai, Y. Li, and N. Wei, “Improv-ing Physical-Layer Security in ISAC-AAV System: Beamforming and Trajectory Optimization,” IEEE Transactions on Vehicular Technology ,vol. 74, no. 2, pp. 3503–3508, 2024. [10] Y. Xiu, W. Lyu, P. L. Yeoh, Y. Ai, and N. Wei, “Secure Enhancement for RIS-Aided UAV With ISAC: Robust Design and Resource Allocation,” 
+
+IEEE Transactions on Vehicular Technology , vol. 75, no. 4, pp. 6776– 6791, 2026. [11] N. Su, F. Liu, and C. Masouros, “Sensing-Assisted Eavesdropper Es-timation: An ISAC Breakthrough in Physical Layer Security,” IEEE Transactions on Wireless Communications , vol. 23, no. 4, pp. 3162– 3174, 2023. [12] Z.-Q. Luo, W.-K. Ma, A. M.-C. So, Y. Ye, and S. Zhang, “Semidefinite Relaxation of Quadratic Optimization Problems,” IEEE Signal Process-ing Magazine , vol. 27, no. 3, pp. 20–34, 2010. [13] T. Haarnoja, A. Zhou, K. Hartikainen, G. Tucker, S. Ha, J. Tan, V. Kumar, H. Zhu, A. Gupta, P. Abbeel et al. , “Soft Actor-Critic Algorithms and Applications,” arXiv preprint arXiv:1812.05905 , 2018. [14] E. Karipidis, N. D. Sidiropoulos, and Z.-Q. Luo, “Quality of Service and Max-Min Fair Transmit Beamforming to Multiple Cochannel Multicast Groups,” IEEE Transactions on Signal Processing , vol. 56, no. 3, pp. 1268–1279, 2008. [15] M. Yuan, D. He, H. Yin, H. Wang, F. Liu, Z. Wang, and T. Q. Quek, “Hybrid Beamforming for mmWave Integrated Sensing and Communi-cation with Multi-Static Cooperative Localization,” IEEE Transactions on Wireless Communications , vol. 25, pp. 771–786, 2026. [16] O. Besson and Y. I. Abramovich, “On the Fisher Information Matrix for Multivariate Elliptically Contoured Distributions,” IEEE Signal Pro-cessing Letters , vol. 20, no. 11, pp. 1130–1133, 2013.

@@ -1,0 +1,194 @@
+Title: Embedded Firmware Development for Flight Control, Telemetry, and Video Streaming for DIY UAV Research
+
+URL Source: https://arxiv.org/pdf/2607.23220v1
+
+Published Time: Tue, 28 Jul 2026 00:46:28 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Embedded Firmware Development for Flight Control, Telemetry, and Video Streaming for DIY UAV Research 
+
+1st Ad-Deen Mahbub 
+
+Dept. of Electrical & Electronic Engineering Shahjalal University of Science & Technology Sylhet 3100, Bangladesh addeenmahbub@gmail.com 
+
+2nd Indroneel Roy 
+
+Dept. of Electrical & Electronic Engineering Shahjalal University of Science & Technology Sylhet 3100, Bangladesh indroneel@example.com 
+
+3rd Dr. Mohammad Kamruzzaman Khan Prince 
+
+Associate Professor Dept. of Electrical & Electronic Engineering Shahjalal University of Science & Technology Sylhet 3100, Bangladesh kamruzzaman-eee@sust.edu 
+
+Abstract —This paper presents the design and optimization of quadcoptor firmware for a low-cost UAV based on the dual-core ESP32-S3 microcontroller, targeting real-time flight control, telemetry, and video transmission within stringent embedded resource constraints. The firmware leverages dedicated task allocation across the two cores: 400Hz control loop on Core 1 implements sensor fusion with a Madgwick filter, a hybrid fixed-point PID controller enhanced by selective derivative scaling and feedforward braking. Core 2 handles 50 Hz telemetry encoding and UDP-based video and data streaming at 25FPS VGA frames, ensuring separation of control and communication workloads to prevent latency interference. Inter-core communication employs zero-copy buffers with mutex protection for minimal overhead and deterministic execution. Custom event-driven threading and RTOS-inspired static scheduling guarantee real-time respon-siveness and jitter-free operation despite ESP32-S3’s limited memory and floating-point performance. Experimental evalua-tion confirms that this firmware architecture provides precise, stable flight stabilization and robust telemetry support, enabling resource-constrained ESP32-S3 platforms to handle DIY projects and research with minimal investment and full customization capability. 
+
+Index Terms —ESP32-S3 Flight Control Firmware, Telemetry Transmission, Video Streaming, Sensor Fusion, Hybrid Cascaded PID Control with Feedforward Braking, Real-Time Operating System (RTOS). 
+
+I. I NTRODUCTION 
+
+Unmanned aerial vehicles (UAVs) are rapidly transforming numerous sectors, including environmental monitoring, disas-ter response, agriculture, logistics, and surveillance, making UAV technology critically important for the coming decades. Despite this growing significance, widespread research and innovation in UAVs face substantial financial barriers [1], [2]. Existing UAV systems often rely on expensive sensors, high-performance embedded processors, and commercial firmware solutions that come with restrictive licensing and limited access to low-level customization [3], [4]. These factors sig-nificantly limit the adaptability and extendability of UAV platforms for researchers, educators, and hobbyists operating under constrained budgets [5], [6]. Market-ready UAV firmwares typically offer flexibility for modification at the core control and telemetry layers,but most of them are built for arm - cortex architecture which do not provide built in wifi communication channel like Esp32S3 does and rely on external telemetry and Vtx modules in-creasing payload, energy consumption and closed modularity in data transmission system, hindering the ability of DIY researchers and small-scale developers to tailor system be-havior or integrate novel algorithms such as cutting-edge simultaneous localization and mapping (SLAM) methods [7], [8]. This lack of firmware transparency and customizability creates a bottleneck that slows down innovation and limits educational outreach. To bridge this gap, it is essential to democratize UAV technology by providing open, low-cost, and fully customiz-able platforms that empower researchers and students world-wide [9]. There are exisitng firmwares that offer opensource firmware but lacks full customization capability and ease of access and requires expensive and energy consuming commu-nication module interface. This work compliments the gap by developing and open-sourcing a UAV system based on a low-cost dual-core ESP32-S3 microcontroller, optimized scalable firmware, and an external PC-WiFi interface for computa-tionally intensive task offloading for further advanced UAV research. This platform enables anyone with limited resources to build, program, and modify miniaturized drones at the firmware level, eliminating reliance on costly, closed-access systems. By releasing the firmware and design openly, it was an attempt to foster a collaborative ecosystem where users can adapt the control, telemetry, and video transmission functions according to their specific research needs, this approach lowers the entry barrier, accelerates innovation, and cultivates a new arXiv:2607.23220v1 [eess.SY] 25 Jul 2026 generation of UAV developers prepared to tackle diverse real-world challenges with accessible, scalable drone technology [12]–[15]. II. M ETHODOLOGY 
+
+This section focuses on two critical components of the UAV firmware: Control Structure and Telemetry Optimization and Video Streaming . Each subsection is organized as key prob-lems encountered and corresponding solutions implemented. 
+
+A. Control Structure a) Problem 1: Shortcomings of Classical PID in Systems with Momentum [16]: Classical PID controllers often fail to stabilize UAVs effectively due to system momentum and nonlinearities affecting roll, pitch, and yaw dynamics. Single-loop PID may accumulate errors leading to sluggish and oscillatory flight behavior. 
+
+b) Solution: Cascading PID with Feedforward Braking: 
+
+To address this, a cascading PID control structure with three independent PID controllers was designed, managing roll, pitch, and yaw separately. This separation enables tailored tun-ing for each axis. Additionally, a feedforward braking model anticipates rotational velocity and angular position, applying pre-emptive braking with a tunable parameter analogous to PID gains. A proactive braking mechanism demonstrated in Figure 1 was introduced. Specifically, when the error derivative is negative and the absolute error is decreasing (i.e., the current state is approaching the target), a one-time braking pulse is applied proportional to the rate of convergence in (1): 
+
+ub = −kb · de (t)
+
+dt if e(t) > 0 and de (t)
+
+dt < 0 (1) This feedforward braking term ub is applied only once per convergence event and acts as a temporary suppressive force, altering the system dynamics so that the remaining correction can be handled with lighter derivative influence. As a result, the proportional gain Kp can be increased more aggressively without inducing oscillations. 
+
+c) Problem 2: Sensor Jitter Causing High Derivative Kick Close to Zero Error [17], [18]: Sensor noise around the stable state can cause noisy derivative terms, known as derivative kick, destabilizing the control loop during steady flight. 
+
+d) Solution: Let σ denote the influence spread , a tunable constant that controls the width of the modulation curve. In (2) & (3) smaller values of σ increase the effective spread of derivative influence across a wider error range, while larger values make the modulation more selective, confining derivative influence to small-error regions. 
+
+Sx(e) = min 
+
+
+
+1.0, max 
+
+
+
+0.0,
+
+10 (|e − 3| · | e + 3 | · σx) + 1 · 5
+
+ 
+
+(2) Where σx = 0 .2 is the influence spread for the roll axis. Similarly, for pitch stabilization (Y-axis), the modulation factor Sy (e) was given by: 
+
+Sy (e) = min 
+
+
+
+1.0, max 
+
+
+
+0.0,
+
+10 (|e − 5| · | e + 5 | · σy ) + 1 · 5
+
+ 
+
+(3) Where σy = 0 .067 is the influence spread for the pitch axis. Where Saxis (e) is either Sx(e) or Sy (e) depending on the control axis. This formulation allowed aggressive use of the proportional term during large-error phases while ensuring that derivative damping becomes effective only when convergence is near, leading to smoother and faster stabilization demon-strated in Figure 2. These functions are bounded between 0 and 1 using a clamping mechanism to prevent instability. The modulation factor peaks around e = ±3 for roll and e = ±5 for pitch — regions where precise damping is essential — and decays rapidly as the error magnitude increases. This approach sup-presses derivative opposition during high-error states, allowing the proportional term to dominate, and enables fine-grained derivative correction near the target. The final derivative term is then expressed as: 
+
+D(t) = Kd · Saxis (e) · de (t)
+
+dt (4) The hybrid control law produces individual control outputs for roll, pitch, and yaw axes as: 
+
+ui(t) = Kp,i · ei(t) + Ki,i 
+
+Z
+
+ei(t) dt 
+
++ Kd,i · Si(ei(t)) · de i(t)
+
+dt 
+
++ ub,i (t), i ∈ { x, y, z } (5) where ui(t) is the control signal along axis i; ei(t) is the track-ing error along axis i; Kp,i , Ki,i , and Kd,i are the proportional, integral, and derivative gains, respectively; Si(ei(t)) is a non-linear scaling function applied to the derivative term; ub,i (t)
+
+is the feedforward or bias input; and i ∈ { roll , pitch , yaw }
+
+denotes the three rotational degrees of freedom of the system. 
+
+e) Problem 3: CPU Starvation Due to Busy Loops Without Yielding [19]: Without calls to functions such as 
+
+delay() , yield() , or vTaskDelay() , the CPU remains occupied executing tight loops, starving FreeRTOS back-ground tasks responsible for WiFi, Bluetooth, and housekeep-ing, potentially causing device unresponsiveness. 
+
+f) Solution: Adaptive Yielding Strategies: The firmware design incorporates adaptive yield calls within control loops running at different frequencies (sensor data fetching, motor signal updates) to allow FreeRTOS background tasks execu-tion. This approach prevents watchdog timeouts and ensures system responsiveness demonstrated in Figure 4. Fig. 1. UAV Hybrid Control Loop with feed forward braking and selective derivative modeling  
+
+> Fig. 2. Selective Roll correction derivative scale model
+
+B. Telemetry and Computation Optimization a) Problem 4: Control Loop and Communication Inter-ference [20]: Executing WiFi telemetry communication within the same thread or core as the control loop can induce latency and jitter, destabilizing flight operation. 
+
+b) Solution: Dual-Core Task Segregation: ESP32-S3’s dual-core architecture was leveraged by dedicating one core to a 400 Hz flight control loop and the other to telemetry encod-ing and UDP transmission at 50 Hz. This separation minimizes interference, yielding consistent control and communication performance. The overview of the system demonstrated in Figure 3. 
+
+c) Problem 5: UDP Packet Loss and Telemetry Corrup-tion: UDP is unreliable due to possible packet loss, which can corrupt telemetry messages if spread across multiple packets. 
+
+d) Solution: Compact Single-Byte Telemetry Messages: 
+
+Telemetry data is compacted into UDP packet, ensuring each received packet contains a complete telemetry snapshot. This eliminates the need for complex synchronization or retransmis-sions and gracefully tolerates dropped packets without partial data reception. A single udp packet contain upto 65,535 bytes of data which was more than enough to communicate with the  
+
+> Fig. 3. Communication architecture and UDP data flow between UAV and ground station
+
+drone, when each byte can be compacted to transmit on block of control command. 
+
+C. VGA Video Streaming over UDP: Challenges and Solutions 
+
+Streaming VGA resolution (640 ×480) video at real-time frame rates over UDP presents inherent challenges due to the protocol’s unreliability and asynchronous nature. UDP does not guarantee packet delivery, order, or frame integrity, which causes issues like dropped packets, lost frames, and corrupted image reconstruction. 
+
+a) Key Problems::  
+
+> •
+
+Packet loss leading to complete frame drops: UDP packets carry segments of JPEG-compressed frames; los-ing a single packet may invalidate the whole frame, resulting in visible glitches or freezes.  
+
+> •
+
+Asynchronous transmission and synchronization re-quirements: Video packets arrive out-of-order and with varying latency, necessitating explicit synchronization to reconstruct frames correctly. Fig. 4. Timing Diagram of parallel threaded processes  
+
+> •
+
+Frame misconstruction: Incomplete or partial frames from missing packets can cause decoder errors or visual artifacts at the receiver. 
+
+b) Solution Pipeline: Hardware and Firmware Inte-gration: OV5640 5 MP CMOS image sensor was utilized with built-in JPEG compression, interfaced to an ESP32-S3 CAM WROOM module featuring a dedicated camera interface (DCMI) and sufficient external PSRAM. Due to lack of native driver support on low-cost ESP32-S3 clone boards, configura-tion from OV5640 datasheets and existing ESP32-S3 camera libraries was manually merged. This enabled continuous VGA JPEG frame capture and buffering (frame sizes 8–25 KB). Full overview is shocased in Figure 5. 
+
+Frame Buffering and UDP Segmentation: Captured frames are stored in a PSRAM FIFO buffer and segmented into fixed-size UDP packets (1000 bytes each), resulting in roughly 10–25 packets per frame. Each packet includes a Frame ID and 
+
+Patch ID for proper grouping and reordering at the receiver. 
+
+Robust Frame Reassembly Under Packet Loss: To mit-igate dropped frames due to packet loss, a lightweight blur-padding strategy was adopted. Missing chunks are replaced with blank patches locally blurred via Gaussian filtering, preserving image coherence and minimizing decoding errors without complex interpolation [22]. 
+
+Dual-Core Processing and Memory Optimization: The ESP32-S3 dual-core architecture was exploited by assign-ing one core to high-speed image acquisition and PSRAM buffering with overflow control, and the other core to JPEG chunk preparation and UDP transmission. Marking buffers 
+
+volatile ensured timely memory clearance, reducing lag and bounding memory usage [21].  
+
+> Fig. 5. Video Streaming pipeline
+
+This integrated hardware-software approach addresses UDP streaming challenges—packet loss, asynchronous arrival, and frame misconstruction—through a carefully designed pipeline. III. E XPERIMENTAL SETUP 
+
+To evaluate the UAV firmware control performance, a cus-tom low-cost DIY quadcopter platform based on the ESP32-S3 microcontroller and OV5640 camera module was contructed. To ensure controlled and reproducible testing conditions with-out risk of uncontrolled flight, the drone was securely clamped from above shown in Figure 6. IV. R ESULTS & D ISCUSSIONS 
+
+A series of flight tests was conducted, shown in in Figure 7 by commanding flight inputs via telemetry from command Fig. 6. DIY Drone clamped from above 
+
+station over wifi, comparing the classical reactive PID con-troller with the efficient hybrid controller integrating feed-forward braking and selective nonlinear derivative scaling demonstrated in Figure 8 & 9.  
+
+> Fig. 7. DIY Drone Hover state testing
+
+To simulate real-world disturbances and evaluate robustness, external noise was applied by manually agitating the drone stable hovering state with strings attached to the frame during neutral and commanded states. With standard PID control the  
+
+> Fig. 8. Reactive problem of controlling momentum with PID
+
+drone hovered successfully, but the problem arises when the drone is agitated mid flight (via strings) and PID struggles to stabilize momentum causing multiple overshoots & mis-positioning the drone. To overcome these shortcomings, a feedforward braking model was integrated within the PID control framework, forming a hybrid control network demon-strated in Figure 1.  
+
+> Fig. 9. Proactive braking results of controlling momentum with hybrid PID with feedforward braking model
+
+This feedforward element predicted rotational velocity and current angular position to proactively apply braking forces be-fore large deviations could occur. The effect was a significant improvement in stability and control responsiveness, reducing overshoot and oscillations notably in aggressive flight tests in 9. This tests demonstrated that this combined PID and feedforward control approach enabled sharper, more accurate maneuvering and faster convergence to setpoints compared with reactive PID control in Figure 8 alone, which was particularly evident in roll and pitch stabilization during rapid setpoint changes.  
+
+> Fig. 10. Loop rate shifts over iterations for Single Core And Dual core computational load distribution
+
+The ESP32-S3’s dual-core architecture separated tasks with dedicated timing. The control core ran sensor fusion, PID, and feedforward loops at 400 Hz for real-time flight control, while the second core handled telemetry and video streaming at 50 Hz, ensuring stable UDP transmission without disrupting con-trol. This design maintained both control precision and reliable communication under the system’s strict computational limits, as shown in Figure 11. This combination of improved control law and precise tim-ing hierarchy strongly validates the firmware design choices for low-cost, resource-constrained UAV autonomy using the ESP32-S3 microcontroller. Fig. 11. The robustness of stream consistancy not increasing with fluctuating packet loss(%) 
+
+Fig. 12. Live video transmission from the drone back to command station interfaced with ROS architecture 
+
+V. C ONCLUSION 
+
+This drone firmware, developed on the ESP32 platform, significantly lowers the entry barrier compared to widely-used ARM Cortex-based open source firmwares such as ArduPilot and PX4. By leveraging the ESP32’s integrated WiFi and camera modules, the approach consolidates flight control, telemetry, and video streaming within a single low-cost micro-controller, programmed using Arduino-compatible code with full source accessibility. This integration eliminates the need for external telemetry radios and video transmitters, which are typically required in ARM Cortex-based systems, thus reducing hardware complexity, cost, and power consumption. While ARM Cortex MCUs inherently provide robust real-time flight control and extensive peripheral support with industrial-grade reliability, they generally require additional specialized communication hardware and involve a moderate learning curve to navigate their sophisticated modular firmware archi-tectures. In contrast, the ESP32’s dual-core Tensilica processor and rich connectivity suite enable optimized real-time per-formance when properly programmed, along with seamless wireless telemetry and live video streaming capabilities. As a result, the system facilitates rapid prototyping and cost-effective design, democratizing access to drone development without compromising essential functionality. This approach aligns with recent trends emphasizing integrated wireless communication in drone platforms [10], [11], presenting a compelling alternative to traditional multi-module setups. REFERENCES [1] C. Cadena, L. Carlone, H. Carrillo, Y. Latif, D. Scaramuzza, J. Neira, I. Reid, and J. J. Leonard, “Past, present, and future of simultaneous localization and mapping: Towards the robust-perception age,” IEEE Transactions on Robotics , vol. 32, no. 6, pp. 1309–1332, Dec. 2016. [2] Walker, S. E.; Sheaves, M.; Waltham, N. J. “Barriers to using UAVs in conservation and environmental management: A systematic review.” 
+
+Environmental Management , vol. 71, no. 5, pp. 1052–1064, May 2023. Springer Science and Business Media LLC. [3] Kamat, A.; Shanker, S.; Barve, A.; Muduli, K.; Mangla, S. K.; Luthra, S. Uncovering interrelationships between barriers to unmanned aerial vehicles in humanitarian logistics. Operations Management Research ,vol. 15, no. 3-4, pp. 1134–1160, Dec. 2022. Springer Science and Business Media LLC. https://www.springernature.com/gp/researchers/ text-and-data-mining [4] Singh, A. K.; Mohandes, S. R.; Muhodir, S. H.; Zhang, W.; Antwi-Afari, M. F.; Shakor, P. Exploring barriers to unmanned aerial vehicle (UAV) technology for construction safety management using mixed-methods approach. Buildings , vol. 15, no. 12, Art. no. 2092, Jun. 2025. MDPI AG. https://creativecommons.org/licenses/by/4.0/ [5] Holton, A. E.; Lawson, S.; Love, C. Unmanned Aerial Vehicles. Journal of Practice , vol. 9, no. 5, pp. 634–650, Sep. 2015. Informa UK Limited. [6] St¨ ocker, C.; Bennett, R.; Nex, F.; Gerke, M.; Zevenbergen, J. Review of the current state of UAV regulations. Remote Sensing (Basel) , vol. 9, no. 5, Art. no. 459, May 2017. MDPI AG. https://creativecommons.org/ licenses/by/4.0/ [7] Ozbiltekin-Pala, M.; Yavas, V.; Ozkan-Ozen, Y. D. Drivers and barriers of unmanned aerial vehicles in emergency logistics operations. Technol-ogy in Society , vol. 82, Art. no. 102894, Sep. 2025. Elsevier BV. [8] Sørensen, L.; Jacobsen, L.; Hansen, J. Low cost and flexible UAV deployment of sensors. Sensors (Basel) , vol. 17, no. 1, Art. no. 154, Jan. 2017. MDPI AG. https://creativecommons.org/licenses/by/4.0/ [9] Ebeid, E.; Skriver, M.; Terkildsen, K. H.; Jensen, K.; Schultz, U. P. A survey of open-source UAV flight controllers and flight simulators. 
+
+Microprocessors and Microsystems , vol. 61, pp. 11–20, Sep. 2018. Elsevier BV. [10] Flywing Tech. STM32 vs ESP32: Which Microcontroller Is Right for Your Project? [Online]. Available: https://www.flywing-tech.com/ blog/stm32-vs-esp32-which-microcontroller-is-right-for-your-project/ Accessed: July 27, 2025. [11] Wikipedia contributors. ESP32. In Wikipedia, The Free Encyclope-dia , June 2025. Available: https://en.wikipedia.org/w/index.php?title= ESP32&oldid=1297897793. [12] Patil, D.; Pournouri, S. Evaluating the security of open-source Linux operating systems for unmanned aerial vehicles. In: Cybersecurity Chal-lenges in the Age of AI, Space Communications and Cyborgs , Springer Nature Switzerland, Cham, pp. 21–49, 2024. https://www.springernature. com/gp/researchers/text-and-data-mining [13] ISPRS Archives. Aerial surveying UAV based on open-source hardware and software. [Online]. Available: https://isprs-archives.copernicus.org/ articles/XXXVIII-1-C22/155/2011/ Accessed: July 27, 2025. [14] Kim, Y.; Cho, K.; Kim, S. Challenges in dynamic analysis of drone firmware and its solutions. IEEE Access , vol. 12, pp. 106593–106604, 2024. Institute of Electrical and Electronics Engineers (IEEE). https: //creativecommons.org/licenses/by-nc-nd/4.0/ [15] Glossner, J.; Murphy, S.; Iancu, D. An overview of the drone open-source ecosystem. arXiv preprint arXiv:2110.02260, Oct. 2021. Licensed under CC BY-SA 4.0. Available: https://arxiv.org/abs/2110.02260 [16] Guzm´ an, J. L.; H¨ agglund, T. Tuning rules for feedforward control from measurable disturbances combined with PID control: a review. 
+
+International Journal of Control , pp. 1–14, Sep. 2021. Informa UK Limited. [17] Lendek, A.; Tan, L. Mitigation of derivative kick using time-varying fractional-order PID control. IEEE Access , vol. 9, pp. 55974–55987, 2021. Institute of Electrical and Electronics Engineers (IEEE). https: //creativecommons.org/licenses/by/4.0/legalcode [18] Kumar, V.; Rana, K. P. S. Some investigations on hybrid fuzzy IPD con-trollers for proportional and derivative kick suppression. International Journal of Automation and Computing , vol. 13, no. 5, pp. 516–528, Oct. 2016. Springer Science and Business Media LLC. [19] Nikola Zlatanov. Architecture and Operation of a Watchdog Timer. [Online]. Available: https://www.researchgate.net/profile/ Nikola-Zlatanov/publication/295010877 Architecture and Operation of a Watchdog Timer/links/56c65d6b08ae0d3b1b603ee0/ Architecture-and-Operation-of-a-Watchdog-Timer.pdf Accessed: July 27, 2025. [20] Santoso, F.; Garratt, M. A.; Anavatti, S. G.; Petersen, I. Robust hybrid nonlinear control systems for the dynamics of a quadcopter drone. 
+
+IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 50, no. 8, pp. 1–13, Aug. 2018. Institute of Electrical and Electron-ics Engineers (IEEE). https://ieeexplore.ieee.org/Xplorehelp/downloads/ license-information/IEEE.html [21] Ratti, J.; Moon, J.-H.; Vachtsevanos, G. Towards low-power, low-profile avionics architecture and control for Micro Aerial Vehicles. In 2011 IEEE Aerospace Conference , Big Sky, USA, Mar. 2011. IEEE. [22] Katiyar, R.; Chakraborty, P.; Surana, R.; Holla, R.; Sanjana, S.; Acharya, S.; Singh, S.; Agrawal, Y. Real-time video PLC using in-painting. In 
+
+2024 16th International Conference on COMmunication Systems & NETworkS (COMSNETS) , Bengaluru, India, Jan. 2024. IEEE.
