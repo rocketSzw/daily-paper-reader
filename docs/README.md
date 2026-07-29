@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-28</span>
+      <span class="dpr-home-dashboard-kicker">2026-07-29</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 16 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>6</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-28 21:57:26 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-07-29 20:38:15 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共收录16篇论文，精读6篇、速读10篇，重点聚焦无人机安全导航与规划。最值得关注的两个方向是：利用前瞻性风险引导的强化学习实现动态密集环境中的安全飞行，以及针对非凸空中走廊的模型预测规划器。建议优先精读这两篇9.0分论文，以掌握无人机安全导航的最前沿方法。</p>
+<p>今日聚焦多智能体强化学习在无人机协同导航与引导中的突破，精读两篇9分论文。最值得看的是基于共享体素地图的MASAC室内无人机引导和复杂环境下的多无人机导航研究。建议普通读者优先阅读这两篇，深入理解DRL在无人机集群协作中的实际应用。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Anticipatory Risk-Guided Reinforcement Learning for Safe Flight Through Dynamic Clutter">Anticipatory Risk-Guided Reinforcement Learning for Safe Flight Through Dynamic Clutter</span></li><li><span class="dpr-home-dashboard-paper-title" title="Model Predictive Planner for UAV Navigation in Non-Convex Air Corridors">Model Predictive Planner for UAV Navigation in Non-Convex Air Corridors</span></li><li><span class="dpr-home-dashboard-paper-title" title="Embedded Firmware Development for Flight Control, Telemetry, and Video Streaming for DIY UAV Research">Embedded Firmware Development for Flight Control, Telemetry, and Video Streaming for DIY UAV Research</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Shared Voxel-Map-Based Cooperative Indoor UAV Guidance with a Multi-Agent Soft Actor-Critic Controller">Shared Voxel-Map-Based Cooperative Indoor UAV Guidance with a Multi-Agent Soft Actor-Critic Controller</span></li><li><span class="dpr-home-dashboard-paper-title" title="Cooperative Multi-UAV Navigation in Complex Environments via Systematic Multi-Agent Deep Reinforcement Learning">Cooperative Multi-UAV Navigation in Complex Environments via Systematic Multi-Agent Deep Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Physics-Aware End-to-End Deep Reinforcement Learning for Quadcopter Control with Actuator Dynamics">Physics-Aware End-to-End Deep Reinforcement Learning for Quadcopter Control with Actuator Dynamics</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CRB-Driven Beamforming and Trajectory Optimization for UAV-assisted ISAC System">CRB-Driven Beamforming and Trajectory Optimization for UAV-assisted ISAC System</span></li><li><span class="dpr-home-dashboard-paper-title" title="Declarative Problem Solving in UAM Strategic Deconfliction">Declarative Problem Solving in UAM Strategic Deconfliction</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning Input-Constrained Funnel Controllers from State Trajectory Data">Learning Input-Constrained Funnel Controllers from State Trajectory Data</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WorldDiT: A Unified Diffusion Architecture for World and Action Modeling">WorldDiT: A Unified Diffusion Architecture for World and Action Modeling</span></li><li><span class="dpr-home-dashboard-paper-title" title="Decentralized Scalable Exploration via Emergent Adaptive Lévy Walks on Minimal-Sensing Platforms">Decentralized Scalable Exploration via Emergent Adaptive Lévy Walks on Minimal-Sensing Platforms</span></li><li><span class="dpr-home-dashboard-paper-title" title="ReLATE: Reliability-Guided Evidence Fusion for Robust UAV--Satellite cross-view Geo-Localization">ReLATE: Reliability-Guided Evidence Fusion for Robust UAV--Satellite cross-view Geo-Localization</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 
