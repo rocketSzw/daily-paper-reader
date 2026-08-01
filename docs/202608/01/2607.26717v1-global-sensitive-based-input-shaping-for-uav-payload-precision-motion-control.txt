@@ -1,0 +1,439 @@
+Title: Global Sensitive-Based Input Shaping for UAV-Payload Precision Motion Control
+
+URL Source: https://arxiv.org/pdf/2607.26717v1
+
+Published Time: Thu, 30 Jul 2026 00:49:06 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Global Sensitive-Based Input Shaping for UAV-Payload Precision Motion Control 
+
+Karan Baker 1, Sanjay Maharjan 1, Tariq Hlayel 1, Oladapo Ogunbodede 2, Dutch Dunphy 1, and Adrian Stein 1
+
+Abstract— This work presents a comprehensive analysis and design of global sensitivity-based input shapers for a 3D Unmanned Aerial Vehicle-payload system, emphasizing robustness against uncertainties in payload mass and rope length. The proposed approach also leverages the Shapley value concept in controller design to systematically account for uncertainties, thereby reducing the controller’s sensitivity to unknown parameters. To validate the effectiveness of the methodology, numerical simulations are conducted, compar-ing the proposed controller against non-robust, robust, and minimax designs. The results demonstrate that the standard global sensitivity or Shapley-based input shapers improve performance and offer a promising framework for uncertainty-aware control in aerial payload transport. Index Terms— Input Shaping, UAV Control, Precision Motion Control, Global Sensitivity Analysis, Shapley Value 
+
+I. INTRODUCTION The rapid expansion of aerial robotics has fueled interest in unmanned aerial vehicles (UAVs) transporting suspended payloads. Such systems combine high ma-neuverability with mechanical simplicity, allowing them to perform tasks in environments that are inaccessible or impractical for ground vehicles [1]–[3]. Typical ap-plications include last-mile delivery [4], [5], cooperative transport of heavy loads using multiple UAVs [6], [7], and precision construction or additive manufacturing tasks where aerial robots act as mobile manipulators [8], [9]. These diverse cases highlight the versatility and promise of UAV-payload systems in advancing modern logistics, infrastructure, and emergency response. Despite these benefits, UAV-payload transport re-mains fundamentally difficult to control due to its underactuated and nonlinear nature. The suspended load introduces additional degrees of freedom, leading to complex coupled dynamics between the vehicle and the payload [10], [11]. Even small deviations in the UAV’s trajectory can excite oscillatory payload motion, which feeds back into the vehicle dynamics. This bidirectional coupling often results in residual swing that undermines trajectory tracking accuracy, reduces payload safety, and, in extreme cases, destabilizes the entire system                
+
+> 1K. Baker, S. Maharjan, T. Hlayel, D. Dunphy, and A. Stein are with the Department of Mechanical and Industrial Engi-neering, Louisiana State University, LA 70803, USA.
+
+(email: {kbake54,smaha12,thlaye1,ddunph3,astein}@lsu.edu) . 
+
+> 2O. Ogunbodede is with GE Aerospace, Cincinnati OH, USA.
+
+(email: dapo.ogunbodede@gmail.com) This work was supported by LaSPACE under 80NSSC20M0110 and 80NSSC25M7120. 
+
+[12], [13]. These challenges are further compounded by parameter uncertainties, such as variations in the payload mass or rope length, which are often unknown prior to flight or subject to change during operation [14]. To suppress payload swing while preserving tracking performance, many control methodologies have been proposed. Passivity-based controllers exploit the energy structure of the system to ensure stability under specific operating conditions [15]. Nonlinear feedback strategies have been shown to attenuate oscillations while remain-ing relatively simple to implement in real time [16], [17]. Adaptive controllers and sliding mode designs provide robustness by adjusting to uncertainties or enforcing invariance despite modeling errors [18], [19]. While each of these approaches demonstrates clear advantages, they are typically tuned for nominal operating points or bounded parameter variations. As a result, their per-formance may degrade significantly when the system is subject to broad or unstructured uncertainties. Input shaping offers a particularly attractive solu-tion for payload oscillations in uncertain systems. By modifying the reference command through convolution with a sequence of impulses, input shaping filters reduce residual vibrations without requiring additional feedback or high controller bandwidth. Early formulations, such as zero-vibration, zero-vibration-derivative, or minimax shapers, were later extended to robust designs that explicitly account for parameter variations [20], [21]. More recently, input shaper (IS) formulations have been introduced to balance vibration suppression and robust-ness while retaining closed-form solutions [22]. Parallel to these developments, global sensitivity analysis (GSA) methods have emerged as powerful tools for quantifying how system uncertainties affect performance, providing a systematic framework for designing controllers that are robust [23], [24]. This work demonstrates the feasibility of applying a GSA-based input shaper to a UAV-payload system. Furthermore, a GSA input shaper incorporating Shapley value constraints is proposed to analyze variations in the payload’s swinging angles. Originally introduced in cooperative game theory, the Shapley value offers aprincipled method for fairly attributing the contribution of each input variable to the overall system response un-der uncertainty [25]. Two key parameters, the payload’s length and mass, are treated as uncertain in this work. arXiv:2607.26717v1 [eess.SY] 29 Jul 2026 Fig. 1: Inertial and body frames of UAV-payload system. The remainder of this manuscript is organized as follows. Section II details the methodology for the UAV-payload modeling and implementation of GSA-based input shapers on a 3D UAV-payload system. Section III presents simulation results comparing different controller designs, including non-robust, robust, minimax, and the proposed GSA-based approach. Section IV outlines future experimental validation of the GSA-based input shaper in comparison to a shaper-less ”pulse” profile and classic input shaping pipelines. Finally, Section V provides a concise summary of the main findings and contributions. II. METHODOLOGY This section provides an overview of the UAV-payload dynamics, input shaper design, and input shaper opti-mization via a standard GSA formulation or the Shapley value theorem. A. UAV-Payload Model The UAV is modeled as a point mass with thrust forces generated by four rotors, each located a distance b from the UAV’s center of mass. A point mass payload ml is attached via a rigid cable of length L, such that the UAV’s position is Q = [ xq , y q , z q ]T and the payload’s position is P = [ xl, y l, z l]T . Fig. 1 illustrates the UAV-payload system with the inertial frame I and the body frames of the UAV and payload defined as A and D,respectively. The Euler angles denote the position of the body frame A to the inertial frame I and are given by the angles ϕ, θ, and ψ, which represent the roll, pitch, and yaw of the UAV. The gravitational acceleration is set to 9.81 m/s 2 and b = 0 .21 m. For simplicity, c(·) and 
+
+s(·) are used for cos( ·) and sin( ·). The transformation matrices for the UAV are: 
+
+Rx(ϕ) = 
+
+
+
+1 0 00 cϕ −sϕ 
+
+0 sϕ cϕ 
+
+ ; Ry (θ) = 
+
+
+
+cθ 0 sθ 
+
+0 1 0
+
+−sθ 0 cθ 
+
+ ,
+
+Rz (ψ) = 
+
+cψ −sψ 0
+
+sψ cψ 00 0 1
+
+ , (1) 
+
+Fig. 2: Transformation of the reference frames ACB and 
+
+> B
+
+CD .which results in the transformation from the UAV body to inertial frame as:  
+
+> I
+
+CA = Rz (ψ)Ry (θ)Rx(ϕ). (2) The transformation matrices from the UAV body frame 
+
+A to the payload’s reference frame D are: 
+
+⃗a 1⃗a 2⃗a 3
+
+ =
+
+
+
+1 0 00 cα −sα 
+
+0 sα cα 
+
+⃗b1⃗b2⃗b3
+
+ , (3a) 
+
+⃗b1⃗b2⃗b3
+
+ =
+
+ cβ 0 sβ 
+
+0 1 0
+
+−sβ 0 cβ 
+
+⃗d1⃗d2⃗d3
+
+ , (3b) where α and β are the swinging angles of the payload. The payload’s twist is not modeled in this work. Note that ACD = ACB B CD . Furthermore, these transforma-tions are illustrated in Fig. 2. The payload’s position and velocity in the inertial reference frame can then be written as:  
+
+> I
+
+rP,O =I rQ,O +I CA A CD
+
+ 00
+
+−L
+
+ , (4a) 
+
+→I vP,O =I ddt 
+
+(I rP,O 
+
+) , (4b) To calculate the rotational kinetic energy of the UAV, the derivative of the Euler angles to the body angular velocities is given as [26]: 
+
+[I ωA] 
+
+> A
+
+=
+
+
+
+pqr
+
+ =
+
+
+
+1 0 −sθ 
+
+0 cϕ cθsϕ 
+
+0 −sϕ cθcϕ 
+
+
+
+˙ϕ
+
+˙θ
+
+˙ψ
+
+ . (5) The Lagrangian L = Tsys − Usys yields the equations of motion through: 
+
+ddt 
+
+( ∂L
+
+∂ ˙γi
+
+)
+
+− ∂L
+
+∂γ i
+
+= Γi, (6) with γ being the generalized coordinate and 
+
+Γi = [ Fx, F y , F z , τ x, τ y , τ z ]T representing generalized forces, which are the external thrust and moments generated by the rotors. The kinetic energy Tsys of the coupled system includes the translational motion of the UAV, the payload swing, and the rotational energy of the UAV [27]: 
+
+Tsys = Mq
+
+2 || I vQ,O || 2 + ml
+
+2 || I vP,O || 2
+
++ 12
+
+[I ωA]T 
+
+> A
+
+[IQ]A
+
+[I ωA] 
+
+> A
+
+, (7) where [IQ]A is a 3 × 3 diagonal matrix consisting of the moments of inertia Ixx , Iyy , and Izz . In this work 
+
+Ixx = 0 .0465 , Iyy = 0 .0451 , and Izz = 0 .0697 . The mass of the UAV is Mq = 3 kg. The potential energy of the system is: 
+
+Vsys = ( Mq + ml) gz q − mlgLc (α)c(β). (8) In this work the payload’s mass ml and cable length 
+
+L are assumed uncertain with a uniform distribution of ml ∼ U [0 .2, 1] kg and L ∼ U [0 .2, 1.8] m. Uniform distributions are used in these simulations because pa-rameter bounds are set as given information, but this approach can utilize other probability distributions. The controller design of the UAV is based on work presented by Ogunbodede and Singh [27]. B. Input Shaper Design Input shaping is a feedforward control technique that modifies command signals by convolving them with designed impulses to reduce residual vibrations in flexible systems. This work focuses on different input shaping designs to reduce the swinging angles α and β of the payload during a point-to-point maneuver. Singh [21] defined an input shaper with one delay as: 
+
+Gnonrob (s) = A0 + A1e−sT , (9a) 
+
+A0 = e 
+
+> (ζπ
+> √1−ζ2
+> )
+
+1 + e  
+
+> (ζπ
+> √1−ζ2
+> )
+
+; A1 = 1 − A0; T = πωd
+
+, (9b) where A0 and A1 are the magnitudes of the proportional signal and T is the delay time. ωd is the damped natural frequency defined as ωd = ωn
+
+√1 − ζ2. This design places one set of zeros at the nominal location of the underdamped system poles and is referred to as a non-robust input shaper in this work. The nominal location is defined by modeling the system with the expected values of the uncertain parameters, chosen as payload mass ml,nom = 0 .6 kg and cable length Lnom = 1 m. Another shaper design is the robust input shaper which is selected to place two sets of zeros at the nominal location of the underdamped poles of the system resulting in: 
+
+Grob (s) = (A0 + A1e−sT )2 . (10) A third option is a minimax input shaper which has the 
+
+Fig. 3: Block diagram of different input shaper designs. following structure [21]: 
+
+Gminimax (s) = A0 + A1e−sT 1 + A2e−sT 2 , (11a) 
+
+A0 =2
+
+(
+
+1 + cos 
+
+( ωLπωd
+
+)) 
+
+5 + 4 cos 
+
+( ωLπωd
+
+)
+
+− cos 
+
+( 2ωLπωd
+
+) ,A1 = 1 − 2A0; A2 = A0; T1 = πωd
+
+; T2 = 2 T1, (11b) where ωd = ( ωU + ωL)/2 with ωL and ωU being user-defined. In this case ωL = 0 .7ωd and ωU = 1 .3ωd are chosen for each identified ωd for α and β, respectively. The robust and minimax input shapers, while seemingly similar, are quite distinct in effect. The robust shaper, by adding a second set of the same zero, can widen the notch at the location of the zero, which reduces the residual energy if the poles shift away from the zero’s location. The minimax shaper intends on giving more flexibility to splitting the original command signal, which improves minimization of residual energy away from the nominal poles. In this work the desired position and velocity are shaped. Fig. 3 illustrates the different input shaper options such as non-robust, robust, and GSA-based IS. 
+
+x∗(t) and x∗ 
+
+> IS
+
+(t) are the unshaped and shaped reference inputs while x(t) are the states. e(t) are the errors between the desired and actual states, and u(t) are the inputs for each state. Since α and β are dynamically cou-pled, both shapers are connected in sequence. Therefore a non-robust, robust, and minimax IS have 4, 9, and 9
+
+switches, respectively. C. Shapley Value Solution Concept For a model with n uncertain variables, Shapley values can be used as a solution to a coalition game, defined in [25] as: 
+
+Sh κ = 1
+
+n
+
+∑
+
+> h⊆−{ κ}
+
+(n − 1
+
+|h|
+
+)−1
+
+(w(h ∪ { κ}) − w(h)) , (12) where w(·) represents the worth of a coalition, and −{ κ}
+
+denotes the set of indices {1, . . . , n } excluding κ. Here, w(h ∪ { κ}) corresponds to a coalition containing variable 
+
+κ, whereas w(h) excludes it. Shapley values measure the marginal contribution of variable κ within the coalition. For probabilistic systems, the coalition value is expressed as [28]: 
+
+w(h) = V ar (E[Z|Xh]) 
+
+V ar (f ) , (13) where X = ( X1, . . . , Xd) is a set of independent con-tinuous inputs, and Xh denotes the subset of variables indexed by h ⊆ { 1, . . . , n }. f is the scalar model output. For multiple outputs, a superscript o can be added to indicate the output of interest, i.e., Sh oκ. Shapley values have the following characteristics when solving analytically [28]: each must be non-negative and, for a given model, the sum of all Shapley values must equal 
+
+1.For the purposes of the problem addressed in this work, the players for this ”game” are the system pa-rameters, which are the mass of the payload and the length of the rope. Furthermore, since minimizing the range of of the swinging angles through the IS is the goal, the shaper design parameters (the time delays and magnitudes of the delayed components) also have weight as players. D. Global Sensitivity-based IS Design The aim is to design an input shaper that reduces the range of swinging angles α and β, defined by the difference of maximum and minimum swinging angle, over the whole maneuver time for uncertain payload mass and cable length. The optimization problem can be formulated as follows: 
+
+min  
+
+> A,T
+
+J(A, T) = E [Rα(mℓ, L ; A, T)] + E [Rβ (mℓ, L ; A, T)] (14a) s.t. 
+
+> 9
+
+∑
+
+> i=1
+
+Ai = 1 , (14b) 
+
+0 ≤ Ai ≤ 1, i = 1 , . . . , 9, (14c) 
+
+0 < T 1 < T 2 < · · · < T 7 < T 8 = tf , (14d) where: ml ∼ U [0 .2, 1] ; L ∼ U [0 .2, 1.8] , (14e) 
+
+A = [ A1, A 2, · · · , A 9] ; T = [ T1, T 2, · · · , T 7] ,
+
+(14f) where A contains all the magnitudes for the IS and T
+
+represent all the switch times. The GSA IS magnitudes A
+
+are enforced to be positive and sum up to 1 to maintain the unity DC gain. A similar GSA IS design has been shown in work [23] but there the residual energy was used as a metric. For a fair comparison to established IS design, the final time of the GSA IS matches the end of the robust closed-form IS in (10), here tf = 3 .7898 s. Furthermore, the range of the swinging angles α and β
+
+TABLE I: Controller Gains for UAV                            
+
+> KpKpv Kiv Kdv
+> X-axis 1.000 0.900 0.200 0.005 Y-axis 1.000 0.900 0.200 0.005 Z-axis 1.000 0.400 0.070 0.000 Roll ( ϕ)6.000 0.300 0.100 0.005 Pitch ( θ)6.000 0.300 0.100 0.005 Yaw ( ψ)3.000 0.240 0.100 0.000
+
+can be written as: 
+
+Rα(mℓ, L ; A, T) = max   
+
+> t∈[0 ,T f]
+
+α(t; mℓ, L, A, T)
+
+− min   
+
+> t∈[0 ,T f]
+
+α(t; mℓ, L, A, T), (15a) 
+
+Rβ (mℓ, L ; A, T) = max   
+
+> t∈[0 ,T f]
+
+β(t; mℓ, L, A, T)
+
+− min   
+
+> t∈[0 ,T f]
+
+β(t; mℓ, L, A, T), (15b) where Tf is the final maneuver time. This design is referred to as the standard GSA IS. Additionally to the standard GSA IS, a Shapley-based GSA IS can be introduced by adding a con-straint Sh Rα 
+
+> L
+
+≤ 0.85 to the optimization problem de-scribed in (14). For clarification, this constraint could be formulated as the following question: when contending with uncertain parameters ml and L in the UAV-payload system, what is the influence of L on the range of a swinging angle? To solve this optimization problem, MATLAB’s fmincon-function with the interior-point method and 10 , 000 Monte Carlo samples is used for the uniformly distributed variables to solve the highly nonlinear problem. As mentioned prior, this approach can be altered to utilize different probability distribu-tions for uncertain parameters. While the computational cost of the offline design increases proportionally with the number of samples, the input shaper implemented online does not carry on this burden. Each UAV-payload flight is simulated for Tf = 15 s using MATLAB’s ode45 solver, with both absolute and relative tolerances set to 
+
+10 −12 . The initial conditions for A and T are the values from the robust IS. III. RESULTS The starting point of the UAV is at x0 = [0 , 0, 0] T and the final desired position is xf = [2 , 4, 10] T . Initially, all state variables are set to 0. The controller gains can be seen in Table I. A. System Identification To successfully implement and create an input shaper, the system needs to be identified. The parameters which are needed for the IS design are the natural frequency ωn
+
+and the damping ratio ζ. Fig. 5 (B) illustrates the time signal of α and β for a case where no IS is applied. Fig. 4 provides a single-sided amplitude spectrum of these swinging angles α and β. The natural frequencies for α and β are found to be 0.563 and 0.497 Hz. Fig. 4: Single-sided amplitude spectrum of swinging angles α and β.The damping ratios are 0.0330 and 0.0711 , which are identified via the logarithmic decrement. B. Classic Input Shaper Comparison This section showcases the performances of the non-robust, robust, and minimax IS. As shown in Fig. 5, the first simulation does not apply an IS to the system. The flight path of the UAV is shown in Fig. 5 (A). The results in (B) reveal large oscillations in the system’s response. Fig. 5 (C) and (D) show the results of multiple maneuvers resulting from a parameter sweep for different ml and 
+
+L without IS while plotting the range of both swinging angles. A key observation is that the maximum swinging angles showed a strong dependency on the length L,while the payload’s mass ml has a comparatively smaller influence. Such a detail is supported by the effects of length and mass on the dominant mode of a pendulum-like suspended mass. This significant sensitivity to L
+
+serves as a strong motivation to design a GSA-based shaper with the Shapley Value Theorem included for desensitizing the system’s behavior with respect to variations in L. Note that the non-robust, robust, and minimax IS are designed for the nominal parameters 
+
+Lnom = 1 m and ml,nom = 0 .6 kg. The final maneuver times for non-robust, robust, and minimax profiles are 
+
+1.8949 , 3.7898 , and 3.7898 s. Naturally, the non-robust IS converges faster with fewer switches compared to the robust and minimax designs. The magnitudes and switch times are shown in Table II. The individual values are more evenly distributed for the minimax IS compared to the robust IS, which is most apparent with the maximum magnitudes for the robust shaper and minimax shapers being 0.2462 and 0.1959 , respectively. Table III shows that minimax is slightly outperforming the robust design in terms of mean ( μ) and standard deviation ( σ) for the ranges Rα and Rβ . It is clear that the robust and minimax design deliver better performance than the pure PID and non-robust profiles, so they can be used for comparison with the GSA input shapers. C. GSA Input Shaper Comparison As mentioned previously, the non-robust, robust, and minimax input shapers have 4, 9, and 9 switches, 
+
+Fig. 5: Simulation for pure P-PID control. (A) Flight path in Cartesian coordinates, (B) Swinging angles α
+
+and β. (C)-(D) Range of α and β.TABLE II: Magnitudes and switch times for non-robust, robust, and minimax IS.                                                          
+
+> Switch Times non-robust robust minimax
+> T10.8882 0.8882 0.8882
+> T21.0067 1.0067 1.0067
+> T31.8949 1.7764 1.7764
+> T4-1.8949 1.8949
+> T5-2.0134 2.0134
+> T6-2.7831 2.7831
+> T7-2.9016 2.9016
+> T8-3.7898 3.7898 Magnitudes non-robust robust minimax
+> A00.2923 0.0854 0.0777
+> A10.2635 0.1540 0.1234
+> A20.2336 0.1366 0.1234
+> A30.2106 0.0694 0.0777
+> A4-0.2462 0.1956
+> A5-0.0546 0.0777
+> A6-0.1110 0.1234
+> A7-0.0984 0.1234
+> A8-0.0444 0.0777
+
+TABLE III: Mean and standard deviation of pure P-PID, non-robust, robust, and minimax IS.                           
+
+> Metric P-PID non-robust robust minimax
+> μ(Rα)[deg] 15.7166 9.6368 8.9806 8.7637
+> σ(Rα)[deg] 1.6721 1.4922 1.2422 1.2303
+> μ(Rβ)[deg] 31.4199 17.6050 13.1290 12.5919
+> σ(Rβ)[deg] 3.4905 5.5046 5.9510 6.3497
+
+TABLE IV: Magnitudes and switch times for standard and Shapley-based GSA IS.                                       
+
+> Switch Times standard GSA Shapley GSA
+> T10.6579 0.2994
+> T21.1374 0.3998
+> T31.4381 0.9713
+> T41.7447 1.5756
+> T52.1806 2.3869
+> T62.6691 2.7090
+> T73.1736 3.2766
+> T83.7898 3.7898 Magnitudes standard GSA Shapley GSA
+> A00.2175 0.1215
+> A10.1519 0.1067
+> A20.0920 0.0433
+> A30.0812 0.1839
+> A40.0879 0.1437
+> A50.1207 0.1543
+> A60.0956 0.0546
+> A70.0914 0.0896
+> A80.0618 0.1024
+
+respectively, all with a positive magnitude. For a fair comparison between classic robust/minimax shapers, the standard GSA and Shapley-based GSA IS also have 
+
+9 switches, and the final time of the robust/minimax IS is used for the Shapley-based GSA IS. In Table IV the magnitudes and switch times of the standard and Shapley-based GSA IS are compared. While the final times are the same between the GSA shapers, the magni-tudes deviate, with more spread among the switches seen for the Shapley-based GSA compared to the standard GSA. Fig. 6 shows Rα when the standard and Shapley-based GSA IS are applied. The variation of Rα is more aggressive in the standard GSA IS than in the Shapley-based GSA IS. Hence it is interesting to look at performance metrics, specifically mean and standard deviation, for the GSA-based IS. Table V illustrates the mean and standard deviation of the GSA shapers. It can be seen that the mean for the standard GSA IS is already much lower than that of any controller previously shown in Table III. This shows the clear advantage of a globally sensitive IS. Also, the standard deviation σ is much smaller with 0.8959 and 0.6097 for α and β, respectively, than its counterparts for any other controller in Table III. The Shapley value for Sh Rα 
+
+> L
+
+of the standard GSA IS is 
+
+0.8850 .We enforce with the Shapley-based GSA IS to con-strain the influence of L toward the range of Rα to be ≤ 0.85 . By reducing the sensitivity of Rα to the cable length uncertainty, the variance of the swing angle also shrinks. Table V shows for Rα that the mean is increasing compared to the standard GSA IS but the deviation is shrinking to 0.7807 , because the influence of 
+
+L is minimized. This shows that by enforcing the Shapley value constraint, the standard deviation with respect to an uncertain parameter can be minimized. As such, Shapley-value-based constraints can provide a means to mitigate sensitivity of certain performance objectives to 
+
+Fig. 6: Comparison between standard and Shapley GSA TDFs for range of α for changing payload mass ml and cable length L.TABLE V: Mean and standard deviation of the standard and Shapley-based GSA IS.                
+
+> Standard GSA Shapley GSA
+> μ(Rα)[deg] 7.8303 7.97427
+> σ(Rα)[deg] 0.8959 0.7807
+> μ(Rβ)[deg] 4.7433 7.6740
+> σ(Rβ)[deg] 0.6097 2.2978
+
+such uncertainty. Note that this desensitization comes at a cost to the μ and σ for the swing angle β, which is expected for a nonlinear, nonconvex optimization with multiple objectives. Table VI presents the Shapley values of the swinging angle ranges Rα and Rβ for both the standard and the Shapley-based GSA IS. The results show that the constraint Sh Rα 
+
+> L
+
+≤ 0.85 is satisfied, and that Sh Rα ml is increased compared to the standard GSA IS. It should be noted that, analytically, Shapley values are expected to sum to 1. However, since this study is conducted numerically on a nonlinear dynamical system, exact summation cannot be guaranteed, nor can it be ensured that all Shapley values are non-negative without increasing computational resources devoted to simulation. Based on the authors’ experience in [24], TABLE VI: Shapley Values for the GSA ISs.           
+
+> Metric Standard GSA Shapley GSA
+> Sh Rα
+> ml0.1090 0.1969
+> Sh Rα
+> L0.8850 0.8500
+> Sh Rβ
+> ml0.0256 -0.0178
+> Sh Rβ
+> L0.9932 0.9640
+
+these deviations can be mitigated by increasing the number of Monte Carlo simulations or by developing improved surrogate models for the UAV-payload system, accounting for uncertainties in rope length and payload mass. Despite these limitations, the authors assert that the presented results provide a promising new approach for precision motion control in aerial payload transport. IV. OUTLOOK: EXPERIMENTS To justify the usage of input shaping for this par-ticular application, and specifically the TDF designed through Shapley-based global sensitivity analysis, the drone shown in Fig. 7 will be mounted with a payload of 0.6 kg, attached by a cable with a length of 1m. For preliminary considerations to experimental data collection, a pulse profile for the system, with the drone maintaining a constant velocity of 5 m/s over 5 s in one direction, was collected, shown in Fig. 8. A ENC41270 rotary encoder with a resolution of 1000CPR was used to collect the swing angle of the payload. Future experimental work is reserved for applying the robust and GSA input shapers to this same system, and the pulse profile will serve as the benchmark for which the input shapers are judged against, as the shapers are expected to reduce the swinging angles. Furthermore, tests will also consider different masses for the payload, with 0.5 and 0.7 kg as the upper and lower bound. A cable length of 0.5 m will also be utilized for another portion of the tests, as the cable length as shown in Fig. 6 has more effect on the swinging angles than the payload mass. This is to show a range of swing angles as the mass and cable are varied between tests. V. CONCLUSIONS This work demonstrates that GSA-based controller design can effectively desensitize UAV-payload motion controllers to system uncertainties without increasing maneuver time, providing a robust alternative to con-ventional methods. Incorporating Shapley values as con-straints offered critical insights into handling parame-ter variability in the rope length and payload mass, though Monte Carlo simulations remain computationally intensive and using fewer samples results in numerical deviations. Future work will investigate the use of polynomial chaos expansion as a surrogate model to reduce computational cost, likely via a non-intrusive approach due to the system’s nonlinearity. Furthermore, 
+
+Fig. 7: Drone for experiments. 
+
+Fig. 8: Experimental results for a pulse input. as observed from desensitization of an uncertain param-eter on a single objective, there is a tradeoff in the performance of other objectives. Studying the effects of different Shapley-based constraints for achievement of different application requirements will thus be vital to augmenting this approach. Most importantly, the authors plan to demonstrate experiments with the dif-ferent input shapers to illustrate the feasibility of this work in hardware, as briefly introduced in Section IV. The developed desensitized precision motion controllers have broad applications, including high-accuracy aerial delivery, stable cinematography, precision surveying and mapping, infrastructure inspection, and payload stabi-lization under wind or turbulence. Experimental vali-dation is planned to confirm the practical effectiveness of these strategies through different applications, specifi-cally camera-oriented objectives and minimizing residual payload oscillations. References                
+
+> [1] H. Li, H. Wang, C. Feng, F. Gao, B. Zhou, and S. Shen, “AutoTrans: A Complete Planning and Control Framework for Autonomous UAV Payload Transportation,” IEEE Robotics and Automation Letters, vol. 8, no. 10, pp. 6859–6866, Oct. 2023. [2] S. Shelare, P. Belkhode, K. C. Nikam, B. Yelamasetti, and T. Gajbhiye, “A payload based detail study on design and simulation of hexacopter drone,” International Journal on Interactive Design and Manufacturing (IJIDeM), vol. 18, no. 5, pp. 2675–2692, Jul. 2024. [3] Mahesh, R. L. Baruah, Krishan, Preeti, and S. B. Dagar, “Fire fighter drone with robotic gripper,” Materials Today: Proceedings, vol. 79, pp. 334–337, Jan. 2023.
+
+[4] A. Akhtar, S. Saleem, and J. Shan, “Path Invariant Controllers for a Quadrotor With a Cable-Suspended Payload Using a Global Parameterization,” IEEE Transactions on Control Systems Technology, vol. 30, no. 5, pp. 2002–2017, Sep. 2022. [5] L. Qian, S. Graham, and H. H.-T. Liu, “Guidance and Control Law Design for a Slung Payload in Autonomous Landing: A Drone Delivery Case Study,” IEEE/ASME Transactions on Mechatronics, vol. 25, no. 4, pp. 1773–1782, Aug. 2020. [6] X. Han, R. Miyazaki, T. Gao, K. Tomita, and A. Kamimura, “Controller Design and Disturbance Rejection of Multi-Quadcopters for Cable Suspended Payload Transportation Using Virtual Structure,” IEEE Access, vol. 10, pp. 122 197– 122 210, 2022. [7] A. James, A. Seth, E. Kuantama, R. Han, and S. Mukhopad-hyay, “Cooperative Drone Delivery via Push-based Lift with Payload Stabilization,” in Proceedings of the 10th Workshop on Micro Aerial Vehicle Networks, Systems, and Applications, ser. DroNet ’24. New York, NY, USA: Association for Computing Machinery, Jun. 2024, pp. 31–36. [8] G. Hunt, F. Mitzalis, T. Alhinai, P. A. Hooper, and M. Kovac, “3D printing with flying robots,” in 2014 IEEE International Conference on Robotics and Automation (ICRA), May 2014, pp. 4493–4499. [9] A. Nettekoven and U. Topcu, “A 3D Printing Hexacopter: Design and Demonstration,” in 2021 International Conference on Unmanned Aircraft Systems (ICUAS), Jun. 2021, pp. 1472–1477. [10] S. Yang and B. Xian, “Energy-Based Nonlinear Adaptive Control Design for the Quadrotor UAV System With aSuspended Payload,” IEEE Transactions on Industrial Elec-tronics, vol. 67, no. 3, pp. 2054–2064, Mar. 2020. [11] Y. Zhu, Z. Zheng, J. Shao, H. Huang, and W. Xing Zheng, “Modeling, Robust Control Design, and Experimental Veri-fication for Quadrotor Carrying Cable-Suspended Payload,” IEEE Transactions on Automation Science and Engineering, vol. 22, pp. 6061–6075, 2025. [12] S. Yazdannik, S. Sanisales, and M. Tayefi, “A novel quadro-tor carrying payload concept via PID with Feedforward terms,” International Journal of Intelligent Unmanned Sys-tems, vol. 12, no. 3, pp. 331–347, May 2024. [13] R. S. Geronel and D. D. Bueno, “Adaptive sliding mode control for vibration reduction on UAV carrying a payload,” Journal of Vibration and Control, vol. 31, no. 5-6, pp. 721–737, Mar. 2025. [14] I. H. Imran, K. Wood, and A. Montazeri, “Adaptive Control of Unmanned Aerial Vehicles with Varying Payload and Full Parametric Uncertainties,” Electronics, vol. 13, no. 2, p. 347, Jan. 2024, number: 2. [15] K. Mohammadi, S. Sirouspour, and A. Grivani, “Passivity-Based Control of Multiple Quadrotors Carrying a Cable-Suspended Payload,” IEEE/ASME Transactions on Mecha-tronics, vol. 27, no. 4, pp. 2390–2400, Aug. 2022. [16] L. Ramli, N. H. I. M. Lazim, A. A. M. Awi, and A. S. M. Shukor, “PID Control and Input Shaping for Quadrotor UAV Stabilization and Payload Swing Reduction,” Applications of Modelling and Simulation, vol. 9, pp. 264–272, Jun. 2025. [17] A. Stein, D. Vexler, and T. Singh, “ArUco Based Reference Shaping for Real-time Precision Motion Control for Suspended Payloads,” in 2024 American Control Conference (ACC). IEEE, 2024, pp. 4390–4395. [18] A. Eltayeb, M. F. Rahmat, M. A. M. Basri, M. A. M. Eltoum, and M. S. Mahmoud, “Integral Adaptive Sliding Mode Control for Quadcopter UAV Under Variable Payload and Disturbance,” IEEE Access, vol. 10, pp. 94 754–94 764, 2022. [19] P. K. Muthusamy, M. Garratt, H. Pota, and R. Muthusamy, “Real-Time Adaptive Intelligent Control System for Quad-copter Unmanned Aerial Vehicles With Payload Uncertain-ties,” IEEE Transactions on Industrial Electronics, vol. 69, no. 2, pp. 1641–1653, Feb. 2022. [20] T. Singh and M. Muenchhof, “Closed-form mini-max time-delay filters for underdamped systems,” Optimal Control Applications and Methods, vol. 28, no. 3, pp. 157–173, 2007, _eprint: https://onlinelibrary.wiley.com/doi/pdf/10.1002/oca.790. [21] T. Singh, Optimal Reference Shaping for Dynamical Systems: Theory and Applications. Boca Raton: CRC Press, Oct. 2009. [22] A. Stein and T. Singh, “Minimum time control of a gantry crane system with rate constraints,” Mechanical Systems and Signal Processing, vol. 190, p. 110120, 2023. [23] ——, “Global Sensitivity Analysis based Design of Input Shapers,” IFAC-PapersOnLine, vol. 55, no. 36, pp. 67–72, Jan. 2022. [24] ——, “Shapley Effects as a Global Sensitivity Metric for Robust Design and Control,” Optimal Control Applications and Methods, p. oca.3323, Jun. 2025. [25] L. S. Shapley, “17. A Value for n-Person Games,” in Contri-butions to the Theory of Games (AM-28), Volume II, H. W. Kuhn and A. W. Tucker, Eds. Princeton University Press, Dec. 1953, pp. 307–318. [26] P. Wang, Z. Man, Z. Cao, J. Zheng, and Y. Zhao, “Dy-namics modelling and linear control of quadcopter,” in 2016 International Conference on Advanced Mechatronic Systems (ICAMechS), Nov. 2016, pp. 498–503. [27] O. Ogunbodede and T. Singh, “Load Vibration Mitigation in Unmanned Aerial Vehicles With Cable Suspended Load,” Journal of Autonomous Vehicles and Systems, vol. 1, no. 034502, Feb. 2022. [28] B. Iooss and C. Prieur, “Shapley effects for sensitivity anal-ysis with correlated inputs: comparisons with Sobol’ indices, numerical estimation and applications,” International Journal for Uncertainty Quantification, vol. 9, no. 5, 2019.

@@ -1,0 +1,1515 @@
+Title: jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics
+
+URL Source: https://arxiv.org/pdf/2607.23202v1
+
+Published Time: Tue, 28 Jul 2026 00:36:23 GMT
+
+Number of Pages: 39
+
+Markdown Content:
+# jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics 
+
+Chengyuan Li a,b , Shanfang Huang b, ∗, Jian Deng a
+
+> aNational Key Laboratory of Nuclear Reactor Technology, Nuclear Power Institute of China, Chengdu, 610213, China
+> bDepartment of Engineering Physics, Tsinghua University, Beijing, 100084, China
+
+Abstract 
+
+Many engineered models begin as partial differential equations. Spatial discretization converts them into ordinary differential equations coupled to algebraic constraints—conservation closures, constitutive laws, network topology—whose joint evolution is a differential-algebraic equation (DAE). Parameter inversion, uncertainty quantification, Bayesian inference, and optimal control all require gradients of this solve. The two software traditions that should supply them have not met: industrial acausal modeling tools simulate DAEs forward but stop at reverse-mode differentiation, while differentiable-physics frameworks in JAX handle explicit ODEs and PDEs but leave the algebraic-constraint layer untouched. Here we show that the forward DAE solve and its reverse-mode sensitivity can be unified in one JAX-native suite. jaxdae pairs adaptive BDF, Radau, and Rosenbrock integration with Pantelides index reduction and dummy derivatives, and makes the adaptive BDF path differentiable by freezing the accepted step grid and re-solving a variable-step BDF-2 on it for the backward pass. The full pipeline differentiates under one jax.grad call, XLA fuses a batched parameter sweep into one program whose wall time stays nearly flat from batch 1 to 1000, and the DAE becomes a differentiable primitive for inference, control, and design. 
+
+Keywords: Differential-algebraic equations; automatic differentiation; JAX; index reduction; parameter inversion; differentiable simulation 
+
+Program Summary 
+
+Program Title: jaxdae v0.28.0 — JAX-native differentiable DAE solver 
+
+CPC Library link to program files: The code archive will be deposited in the CPC Program Library (hosted on Mendeley Data) and assigned a catalog number upon acceptance. 
+
+Licensing provisions: Apache-2.0 
+
+Programming language: Python ( ≥3.11), JAX ( ≥0.9, <0.11) 
+
+Supplementary material: None. The full source code, benchmark suites, pre-computed data, and a re-production manifest ( paper_manifest.md ) are deposited alongside this manuscript in the CPC Program Library. 
+
+Journal Reference of previous version: None. 
+
+Does the new version supersede the previous version? Not applicable; this is the first release. 
+
+Reasons for the new version: Not applicable. 
+
+Summary of revisions: Not applicable. 
+
+Nature of problem: Many engineered systems couple time-evolving states with algebraic constraints that must hold instantaneously. These take the semi-explicit mass-matrix form M (t, y ) ˙ y = f (t, y, p ) together with 0 = g(t, y, p ), where y collects the states and p the parameters. Some equations are implicit in ˙y, and the differential index can exceed one, so naive time stepping drifts off the constraint manifold and eventually   
+
+> ∗Corresponding author
+> Email address: sfhuang@mail.tsinghua.edu.cn (Shanfang Huang) arXiv:2607.23202v1 [cs.MS] 25 Jul 2026
+
+diverges. The task is to advance y(t) while keeping every constraint satisfied to integration tolerance, for assembled plants that couple hundreds of variables and span milliseconds to hours. 
+
+Solution method: jaxdae advances the residual with adaptive implicit integration—BDF(1–5), Radau IIA, and Rosenbrock–Wanner—driven by a PI step-size and order controller. High-index input is reduced before integration: Pantelides’ structural analysis marks which equations to differentiate, and dummy derivatives restore a nonsingular augmented system. For differentiation, a custom reverse-mode rule freezes the accepted step grid and re-solves a variable-step BDF-2 on it with an implicit-function-theorem adjoint, so the adaptive controller never enters cotangent propagation. The differentiable paths are the BDF scan/replay-adjoint path and the fixed-step ROS2 path; Radau5 is provided as a forward-only solver. Every primitive is pure JAX, so jax.grad , vmap , and jit compose across these differentiable paths. 
+
+Additional comments including restrictions and unusual features: jaxdae assumes the DAE is index-1 after reduction: Pantelides and dummy derivatives accept higher-index input, but the integrator operates on the reduced system. Typed connectors spanning electrical, thermal, fluid, and mechanical domains assem-ble through connect semantics in the Modelica style. Restrictions: no distributed multi-GPU execution, and a subset of state-event types is verified numerically rather than by analytic jump-condition match-ing. The solver integrates with Optax, NumPyro, and Flax, and a test suite of 3,205 cases collected by 
+
+pytest -m "" --timeout=600 (3,177 passing at the pinned commit; the remaining 28 — 12 known failures reproducing identically at v0.27.1, 9 skipped, 7 xfailed — are documented in RELEASE_NOTES.md ) covers forward integration, index reduction, gradient correctness, and event handling. As a robustness feature, 
+
+solve_dae checks the initial residual at call time and repairs inconsistent initial conditions automatically (with a RuntimeWarning ) rather than failing on them. 
+
+References: Brenan, Campbell, and Petzold [1]; Ascher and Petzold [2]; Pantelides [3]; Mattsson and Söder-lind [4]; Cao, Li, Petzold, and Serban [5]. 
+
+1. Introduction 
+
+Beneath every simulation of a physical system lies a partial differential equation. Mass, momentum, energy, charge, and species each obey a balance law that pairs storage in a control volume with flux across its boundary [6]. A digital computer represents each field by sampling it at finitely many points, so the first step of any simulation is spatial discretization: finite differences, finite volumes, finite elements, or lumped-parameter networks replace the field with a finite set of nodal values. After this step the differen-tial variables—node temperatures, pressures, compositions—satisfy ordinary differential equations in time. Discretization does not, however, eliminate every relation that the continuum imposed. Conservation at junctions, constitutive laws, equation-of-state closures, network topology, and rigid-link conditions survive as constraints that must hold at every instant alongside the time evolution [1, 2]. The object that results— ordinary differential equations coupled to algebraic constraints—is a differential-algebraic equation (DAE), and it is the form in which most coupled multi-physics is actually integrated. Forward simulation is only the first ask. The questions that drive engineering all reduce to optimization over the same physical model: what parameter values fit the data, which design tolerances matter, how a controller should respond, what an experiment reveals [7]. Parameter inversion matches a model to measurements; uncertainty quantification propagates input uncertainties through the solve; Bayesian inference updates a posterior over parameters from a likelihood defined by the residual; optimal control and model-predictive control search over actuator trajectories; sensitivity analysis ranks which inputs a safety margin depends on. Each task demands the same primitive: the gradient of the solver output with respect to its input parameters. Automatic differen-tiation [8, 9] supplies this gradient at machine precision and turns a forward model into an inference engine. The gradient primitive is where the tooling fractures. Differentiable simulators have recast molecular dy-namics [10], soft- and rigid-body animation [11, 12], finite-element mechanics [13], and lattice Boltzmann flow [14] as programs whose derivatives come from reverse-mode automatic differentiation rather than hand-derived adjoints [15]. These efforts, however, target systems written as explicit ODEs or PDEs and leave 2the algebraic-constraint layer of a DAE untouched. The industrial tools that do solve DAEs took a different route decades earlier and have not adopted end-to-end differentiation. That industrial route is the acausal modeling tradition. Languages formalized in the Modelica standard [16] and popularized through textbooks and tools [17] let engineers assemble a plant from typed components joined by effort–flow pairs and compile the result into a DAE residual. A turbine, a heat exchanger, and a controller become blocks linked by 
+
+connect equations; the compiler flattens them into one mass-matrix system. This compositional style is why Modelica ecosystems dominate energy, automotive, and aerospace design. The compiled DAE, though, is built to be simulated forward, not differentiated end to end. The two currents need a common substrate, and JAX [18] supplies one. Its functional core—pure functions traced to XLA—turns reverse-mode AD, vec-torization ( vmap ), and just-in-time compilation into composable transformations of the same program. On this substrate, Neural ODEs reframed time evolution as a differentiable layer [19, 20], diffrax [21] gathered a library of adaptive solvers for ODEs, stochastic differential equations (SDEs), and controlled differential equations (CDEs), and supporting libraries for linear algebra [22] and root-finding [23] made the implicit solves that stiff systems require composable and differentiable. What JAX still lacks is a solver for the equa-tion class—DAEs—that industry actually writes. Neural-DAE research has meanwhile proliferated on top of ad hoc, hand-built pipelines. Model-integrated neural networks embed a battery electrochemical DAE in a recurrent cell and learn the algebraic root directly [24]. Kolmogorov–Arnold networks solve index-3 DAEs by collocation on the residual [25]. A multiscale Lagrangian formulation separates fast and slow dynamics to learn stiff multibody systems [26], and an operator-splitting scheme learns unknown component laws while enforcing known algebraic constraints [27]. These works confirm the demand: each wants gradients through a constrained dynamical system, and each builds its own projection layer, integrator, or penalty loss to ob-tain them. They differ in philosophy—soft penalty versus hard projection, a priori fitting versus a posteriori rollout—but share one unmet need, a reusable, differentiable, index-reducing DAE solver. jaxdae targets exactly that layer. DAEs differ from ODEs by more than the presence of constraints. The differential index counts how many times the algebraic equations must be differentiated before the system reduces to an ex-plicit ODE [1]. Index-1 systems are benign: the constraint Jacobian is invertible and the algebraic variables follow directly. Higher-index systems are not. Each differentiation of a constraint amplifies numerical error, so a naive integrator drifts off the constraint manifold and eventually diverges. Stiffness compounds the difficulty: coupled multi-physics routinely mixes fast transients with slow drift, separated by many orders of magnitude in time scale, a phenomenon first identified by Curtiss and Hirschfelder [28], and only implicit methods stay stable [29]. Index reduction is therefore mandatory before integration. Pantelides’ structural algorithm decides, by bipartite matching on the equation sparsity pattern, which equations to differentiate and how to construct consistent initial conditions [3]. Pryce’s signature-matrix method generalizes this to a broader class of systems [30, 31]. Dummy derivatives then restore a nonsingular augmented system without altering the solution trajectory [4]. For mechanical systems the Gear–Gupta–Leimkuhler stabilization [32] reduces index 3 to index 2 by enforcing position, velocity, and acceleration constraints simultaneously. These structural and stabilization steps are the entry ticket to robust high-index simulation, yet they are delicate and graph-theoretic, and they are rarely expressed in a differentiable form—which is why most differentiable-physics frameworks sidestep high-index DAEs altogether. The solvers that industry trusts do handle DAEs. SUNDIALS IDA and its predecessor DASSL integrate stiff, high-index systems in Fortran and C [33]. They are fast, validated, and battle-tested in reactor-safety and process-simulation codes. Their cost is an integra-tion model that predates AD: a user writes residual callbacks in C, links against a fixed library, and accepts a black-box forward solve. Obtaining a gradient from such a solver means deriving an adjoint by hand. The DAE adjoint sensitivity equations are well understood [5, 34, 35], and production adjoint solvers such as PETSc TSAdjoint [36] implement discrete adjoints for time-dependent problems with checkpointing [37]. The theoretical subtleties of discrete versus continuous adjoints are well studied [15, 38]. But encoding an adjoint for every new DAE model, managing checkpointing, and threading it through a controller that adapts step size is months of expert work. Modern implicit-differentiation frameworks [39, 40] automate the IFT gradient of a fixed-point solve but do not address the adaptive time-stepping and index-reduction pipeline of a DAE integrator. The practical outcome is a hard split: simulate forward in a trusted classical solver without gradients, or differentiate an ODE surrogate and lose the constraint structure. No widely used path does both at once. Recent work has begun to close this split, and Table 1 maps the landscape. 3diffrax [21] remains ODE-only; its DAE request has stayed open since 2022 [41]. A concurrent PyTorch counterpart, torchdae [42], integrates DAEs but ships hand-written adjoint code that neither vectorizes nor composes with torch.vmap . ModelingToolkit.jl [43], in the Julia ecosystem, performs acausal assembly, index reduction, and reverse-mode AD through the SciML sensitivity stack [44, 45], yet its batched path relies on ensemble threading rather than XLA fusion. Classical options complete the picture: SUNDIALS IDA [33] solves but differentiates only through a manual adjoint, and CasADi [46] offers symbolic sensitiv-ities restricted to index-1. PyBaMM [47] ships a JAX-native differentiable DAE solver for battery models, but it is domain-specific and does not perform index reduction or acausal assembly. Under the versions inspected (Table 1), no existing tool combines a differentiable DAE solve, automatic index reduction, and the fused, vectorized batched gradient that JAX compiles. 
+
+> Table 1: Capability comparison of differentiable and classical DAE solvers. Capabilities were verified by source-code inspection at the versions listed below (accessed July 2026). “Reverse AD” marks whether a reverse-mode gradient through the solve is available without hand-written adjoint code.
+
+Tool Ecosystem DAE Index red. Reverse AD vmap batch 
+
+jaxdae JAX ✓ ✓ ✓(one-line) ✓(fused) diffrax JAX ×(#62) × ODE only N/A torchdae PyTorch ✓ ✓ hand-written fwd ✓/grad ×
+
+ModelingToolkit.jl Julia ✓ ✓(+tearing) ✓(Zygote) ensemble (15 ×)SUNDIALS IDA C ✓ × manual ( ∼95 lines) ×
+
+CasADi Python ✓(idx-1) × symbolic CPU threads PyBaMM JAX ✓(battery) × ✓(battery) × 
+
+> Versions inspected (July 2026): jaxdae v0.28.0 (Program Summary); diffrax (GitHub patrick-kidger/diffrax , issue #62); torchdae ( yousef-rafat/torchdae , alpha); ModelingToolkit.jl ( SciML/ModelingToolkit.jl ); SUNDIALS IDA 7.5.0; CasADi 3.6 ( casadi/casadi ). “Index red.” includes Pantelides plus dummy-derivative or structural tearing. “manual ( ∼95 lines)” denotes the user-written IDA adjoint callback from the SUNDIALS examples.
+
+The broader landscape of differentiable physics in JAX has grown rapidly. Beyond the ODE solvers cited above, rigid-body engines for large-scale simulation [48], smoothed-particle hydrodynamics [49], and the second-generation JAX-Fluids framework [50] extend differentiable simulation to new equation classes. Outside JAX, accelerator modeling in Julia [51] and deep-potential training via AD [52] show that the demand for differentiable solvers spans languages and domains; both were published in CPC, underscoring the venue’s interest in this class of software. Neural controlled differential equations extend the adjoint approach to irregular time series [53], but still target ODE-class dynamics rather than algebraically con-strained systems. These observations fix four design goals for jaxdae. First, the solver must be native JAX, so that reverse-mode AD, vmap , and jit compose without wrappers. Second, index reduction—Pantelides plus dummy derivatives—must run automatically and stay in the same traced graph as the solve. Third, acausal assembly in the Modelica style must be differentiable end to end, from connect equations to the final loss. Fourth, the result must plug into the surrounding ML stack—Optax optimizers, NumPyro inference, Flax neural closures—as an ordinary differentiable function. jaxdae realizes these goals in three contribu-tions. C1 (infrastructure). To the best of our comparison under the versions listed in Table 1, jaxdae is the first JAX-native DAE solver suite to combine adaptive BDF, Radau, and Rosenbrock integration with Pantelides and dummy-derivative index reduction and Modelica-style acausal assembly of multi-physics connector types. The BDF and fixed-step Rosenbrock paths are differentiable end to end through a single 
+
+jax.grad call; Radau is provided as a forward-only solver. C2 (realization). A frozen-grid replay adjoint makes the adaptive BDF path differentiable: the forward solve runs adaptively, and the backward pass re-solves a variable-step BDF-2 on the accepted grid. The decoupling itself follows the controller-decoupling framework of Alexe and Sandu [54]; our contribution is the first correct, end-to-end jax.grad -compatible JAX realization of this idea for DAEs, which raw adaptive-controller AD cannot provide (its cotangents are silently wrong because the accept/reject branch breaks the chain rule). C3 (ecosystem). jaxdae fills the structural gap that has kept DAE modeling out of the JAX scientific stack, and its vmap -fused batched 4gradient makes parameter sweeps and ensemble inference practical on a single GPU. The remainder of the paper proceeds as follows. Section 2 states the DAE formulation and defines index and consistency. Section 3 develops the numerical methods: implicit integration, Newton–Krylov iteration, adaptive control, acausal assembly, index reduction, event handling, and the frozen-grid replay adjoint. Section 4 describes the soft-ware design. Section 5 validates jaxdae as a classical solver against standard test problems and cross-library references. Section 6 reports batched-gradient throughput. Sections 7 and 8 examine differentiability and three engineering applications, and Section 9 concludes. 
+
+2. Mathematical Model 
+
+2.1. DAE formulation 
+
+A differential-algebraic equation (DAE) couples evolution laws with algebraic constraints that hold at every instant. In its most general implicit form the model reads 
+
+F (t, y (t), ˙y(t), p ) = 0 , t ∈ [t0, t f ], (1) where y(t) ∈ Rnd is the state, p ∈ Rnp collects parameters, and the residual F may depend on t, y,and ˙y without being solvable for ˙y explicitly. When ∂F/∂ ˙y is singular the system is genuinely algebraically constrained and cannot be recast as an ODE; this is the property that separates DAEs from stiff ODEs [1, 2]. jaxdae targets the semi-explicit, mass-matrix partition that dominates engineering practice. Splitting the state into a differential component y and an algebraic component z, the model becomes 
+
+M (t, y ) ˙ y = f (t, y, z, p ), (2) 
+
+0 = g(t, y, z, p ), , (3) with M (t, y ) ∈ Rnd×nd the mass matrix on the differential block (independent of the algebraic block z in the systems treated here), f the dynamic residual, and g the algebraic constraint. The mass matrix acts only on the differential variables; the algebraic rows carry no ˙z term, so M is a block-diagonal projection rather than a general singular matrix. This is the input contract of every integrator in this paper: a residual F (t, x, ˙x, p )
+
+affine in ˙x together with the boolean differential/algebraic mask; fully implicit forms outside this contract are rejected at assembly time. The general implicit form (1) reduces to (2)–(3) when the residual is affine in 
+
+˙y (i.e., F ˙y is independent of ˙y), which covers the standard engineering DAEs. Equation (2) reduces to a pure ODE when M is nonsingular and no algebraic constraint is present, since ˙y = M −1f then eliminates the derivative. The partition in (2)–(3) is not merely notational: it fixes the sparsity pattern that the integrator, the index-reduction pass, and the adjoint each exploit [29]. The parameters p are first-class quantities. They enter M , f , and g and are exposed to jax.grad without source transformation, which is the property that makes the forward solve differentiable end-to-end. Table 2 fixes the notation used throughout the paper. 
+
+2.2. Differential index and index reduction 
+
+The differential index measures how far a DAE sits from an explicit ODE. Formally, the index ν of (1) is the smallest non-negative integer for which the augmented system obtained by differentiating the constraint 
+
+ν times, 
+
+F = 0 , dF dt = 0 , . . . , dν Fdt ν = 0 , (4) determines ˙y as a continuous function of (t, y ) via the implicit-function theorem [1]. An ODE has index 0. For the general implicit form, index 1 holds exactly when ∂F/∂ ˙y is nonsingular; for the semi-explicit system (2)– (3), index 1 reduces to the nonsingularity of the constraint Jacobian ∂g/∂z , which lets (3) be solved for z
+
+given y. Index matters because it controls numerical difficulty. Algebraic variables of an index-ν system carry ν units of hidden differentiation; a discretization that treats them as differential states incurs error that grows as h−ν , so the solution drifts off the constraint manifold and the iteration may fail outright [2]. Higher-index DAEs therefore require index reduction before time integration. Two ingredients suffice: astructural algorithm that identifies which constraints to differentiate [3], and a regularization that removes the resulting redundancy without changing the solution set [4]. Section 3.5 implements both. 5Table 2: Notation. The differential/algebraic split follows the semi-explicit form (2)–(3). 
+
+Symbol Meaning 
+
+t independent variable (time), t ∈ [t0, t f ]
+
+y(t) differential state vector, y ∈ Rnd
+
+z(t) algebraic state vector, z ∈ Rna
+
+˙y time derivative of the differential state 
+
+F general DAE residual, Eq. (1) 
+
+M (t, y ) mass matrix on the differential block 
+
+f dynamic residual, Eq. (2) 
+
+g algebraic constraint, Eq. (3) 
+
+p parameter vector exposed to jax.grad 
+
+hk accepted step size at step kλ adjoint costate, Sections 3.6–3.7 
+
+J iteration Jacobian ∂R/∂x σk scaled local error estimate at step k
+
+3. Numerical Methods 
+
+Figure 1 gives an overview of the solve pipeline that this section develops piece by piece: a problem is de-fined through the acausal assembly of Section 3.4, passes an initial-condition consistency layer (Section 4.2), is integrated by the adaptive implicit methods of Sections 3.1–3.3 under the credibility gates of Section 5, and yields both the trajectory output and the differentiable sensitivities of Section 3.7. 
+
+3.1. Implicit time integration: BDF, Radau, and Rosenbrock methods 
+
+DAEs from coupled multi-physics are stiff: the fastest stable mode runs orders of magnitude quicker than the slowest resolved transient, so explicit integrators are forced to prohibitive step sizes. jaxdae therefore ships three implicit families – BDF, Radau IIA, and Rosenbrock–Wanner – each written as a nonlinear stage residual that the Newton loop of Section 3.2 solves. BDF (orders 1–5). The backward differentiation formula replaces ˙y at tn+1 by a divided difference over the last q accepted states, 
+
+˙yn+1 ≈ 1
+
+hn+1 
+
+> q
+
+X
+
+> i=0
+
+α(q) 
+
+> i
+
+yn+1 −i, α(q)0 > 0, (5) with fixed coefficients α(q) 
+
+> i
+
+. Substituting (5) into (2)–(3) yields the stage residual 
+
+Rn+1 (xn+1 ) = 
+
+M (yn+1 ) 1
+
+hn+1 
+
+> q
+
+X
+
+> i=0
+
+α(q) 
+
+> i
+
+yn+1 −i − f (tn+1 , y n+1 , z n+1 )
+
+g(tn+1 , y n+1 , z n+1 )
+
+ = 0 , (6) where x = ( y, z ) concatenates the states. BDF is the workhorse for stiff DAEs and the default for variable-order adaptive stepping [29, 1], with origins in the work of Curtiss and Hirschfelder [28] and the variable-order implementation of Gear [55]. Radau IIA. For problems that demand high accuracy or strong damping we implement the three-stage Radau IIA collocation method (stiffly accurate, L-stable, classical order 5) [56]. The internal stages satisfy 
+
+Yi = xn + h
+
+> s
+
+X
+
+> j=1
+
+aij Feff (tn + cj h, Y j ) , i = 1 , . . . , s, (7) where Feff applies M −1f on the differential block and the identity on the algebraic block, i.e. Feff =(M −1f, g) acting on x = ( y, z ), so the collocation equations carry nd + na components; the new state 6Initial-condition consistency Adaptive BDF integration Credibility gate Sensitivities 
+
+Problem definition 
+
+,
+
+diff_vars  t_eval 
+
+Residual check 
+
+within Newton tolerance? 
+
+after index reduction 
+
+Automatic consistent-IC repair ★
+
+Newton solve on the algebraic manifold 
+
+loud RuntimeWarning ; if repair stalls, proceeds with the original IC + warning 
+
+Nordsieck predictor–corrector 
+
+variable order 1–5 
+
+endpoint clip rescales history ★
+
+Newton + cached Jacobian 
+
+stale failure: keep , refresh ★
+
+standard reject policy of production DAE solvers 
+
+Differentiable events 
+
+event chains + jump terms 
+
+root-finding with AD support 
+
+Step-size controller 
+
+LTE-based accept/reject 
+
+jit / scan / pyloop 
+
+Convergence audit 
+
+status flags + failure diagnosis + gradient credibility gate 
+
+non-converged trajectories are never reported as healthy 
+
+DAESolution 
+
+trajectory , step statistics, status 
+
+Reverse-mode AD 
+
+replay adjoint 
+
+jax.grad 
+
+Forward-mode AD ★
+
+sensitivities, Fisher information 
+
+jax.jacfwd / jax.jvp     
+
+> ★new in v0.28 ·monospace = API / backend names
+
+no 
+
+yes 
+
+> reject → retry
+
+7follows from xn+1 = xn + h P 
+
+> j
+
+bj Feff (tn + cj h, Y j ) with bj = asj by stiff accuracy. Rosenbrock–Wanner. 
+
+When the Jacobian is cheap to form but the Newton iteration is costly, a linearly implicit Rosenbrock– W method advances one step with a fixed number of linear solves and no outer iteration. The current implementation is the two-stage, order-2, L-stable ROS2 method at fixed step size, 
+
+ I − hγJ  ki = F
+
+tn + cih, x n + hX
+
+> j<i
+
+aij kj
+
+ + hJ X
+
+> j≤i
+
+γij kj , (8) followed by xn+1 = xn + h P 
+
+> i
+
+biki, with F here denoting the stage residual of Eq. (6). ROS2 is restricted to residuals that are affine in the derivative variable ( F ˙y independent of ˙y), which covers the standard index-1 mass-matrix form. Each stage is a single linear solve, so Rosenbrock steps are factorization-bound and need no convergence test; they suit moderately stiff DAEs and dense Jacobians [29, 57]. The differentiable solver paths evaluated in this work are the scan-based BDF path and the fixed-step ROS2 path; Radau5 is forward-only and is not included in the current end-to-end automatic-differentiation interface, because its adaptive loop uses Python step-accept/reject control flow that jax.grad cannot trace through. 
+
+3.2. Newton and Newton–Krylov iteration 
+
+Each implicit step reduces to solving Rn+1 (xn+1 ) = 0 for the stage unknown, with R given by (6) for BDF, by (7) for Radau, and by (8) for Rosenbrock. jaxdae applies inexact Newton, 
+
+x(m+1)  
+
+> n+1
+
+= x(m) 
+
+> n+1
+
+− δ(m), J δ (m) = −R
+
+
+
+x(m)
+
+> n+1
+
+
+
+, J = ∂R ∂x x(m)
+
+> n+1
+
+, (9) reusing J across several steps (chord iteration) until the contraction slows, then refreshing it. When a Newton iteration fails with a stale Jacobian, jaxdae refreshes the Jacobian and retries the step at the same 
+
+step size rather than immediately halving h—the standard DASSL policy. This avoids the step-size collapse pathology in which a single stale factorization triggers a cascade of halvings: on the pk_1d kinetics problem the policy reduces the step count from 50,000 (the step cap) to 453. The Jacobian J is formed by jax.jacfwd 
+
+on the stage residual, which keeps it exactly consistent with R and therefore with the adjoint of Section 3.7. For large assembled plants the Jacobian is never formed explicitly. We use Jacobian-free Newton–Krylov (JFNK): the Krylov solver (GMRES) needs only matrix–vector products, which we evaluate by an exact forward-mode Jacobian–vector product (JVP) rather than by a finite-difference perturbation, 
+
+JR v = jvp  R, (x), (v), (10) computed by jax.jvp on the stage residual. Using an exact JVP removes the step-size ε that one-sided finite differences require and keeps the linearization consistent with the reverse-mode adjoint, which composes through the same residual. When a colored sparse Jacobian is requested the coloring probes the same jvp 
+
+primitive column by column. The forcing sequence ηm controls inexactness so the linear error tracks the nonlinear residual and does not over-solve near convergence [29]. 
+
+3.3. Adaptive step-size and order control 
+
+Accuracy is regulated by a local error estimate σn+1 , the ratio of the predicted–corrected mismatch to a component-wise tolerance. A step is accepted when σn+1 ≤ 1 and rejected otherwise. The next step size follows a proportional–integral (PI) controller [29, 58, 59], 
+
+hn+1 = hn
+
+ 1
+
+σn+1 
+
+kP  σn
+
+σn+1 
+
+kI
+
+, (11) where kP , k I are controller gains tuned per method. The proportional term reacts to the current error and the integral term damps oscillation, which prevents the step-size hunting that single-term controllers exhibit on stiff transients. The initial step is selected by a two-stage Hairer–Wanner-style heuristic that 8estimates the first step from the initial residual and derivative scales, avoiding a cold-start overshoot. For BDF the order q is selected adaptively: each accepted step probes q−1, q, q +1 and keeps the order that maximizes the predicted step, subject to |∆q| ≤ 1 for stability. A further implementation detail matters for constraint fidelity: when the controller clips a step so that the integration lands exactly on the final time 
+
+tf , the Nordsieck history array—the scaled Taylor-coefficient representation of the multi-step history—must be rescaled consistently with the clipped step size. Omitting this rescaling leaves the history polynomials inconsistent with the accepted grid, which shows up as constraint drift on index-reduced problems. With the rescaling in place, the constraint drift on the cable3d multibody problem falls from 9 × 10 −6 to ∼ 10 −13 ,i.e. to the round-off floor. This coupling between the controller and the parameters is the main obstacle for adjoint sensitivities of adaptive solvers. The accept/reject branch and the dependence of hn+1 on the just-computed state make the accepted grid a function of p, which naive reverse-mode AD differentiates incorrectly. Section 3.7 treats the decoupling as a first-class design decision rather than a defect to repair. 
+
+3.4. Modelica-style acausal multi-physics assembly 
+
+The modeling abstraction in jaxdae is the acausal connector, borrowed from the Modelica language [16, 17]. A component declares typed ports; each port carries an effort variable e (a potential: voltage, pressure, temperature, position) and a flow variable φ (a flux: current, mass flow, heat flow, force), with the sign convention that flow is positive into the component. The connect equation system . c o n n e c t ( comp_a . port , comp_b . p o r t ) expands, per Modelica Specification §9.2 [16], into exactly two equations: an effort equality and a Kirchhoff flow balance, 
+
+ea = eb, (12) 
+
+X
+
+> i∈C
+
+φi = 0 , (13) where C is the set of ports joined at the connection node. Equation (12) identifies the across variables on the node; Equation (13) enforces conservation of the through variables. This effort/flow pairing is what makes the assembly acausal: neither side is designated input, so the same component model reads correctly in either causal direction. Assembly proceeds by flattening. Each component contributes its local residual – the constitutive law, e.g. a resistor φ = ( ea − eb)/R or an inertia M ˙v = φ – and each connect 
+
+contributes (12)–(13). jaxdae concatenates these into one global residual R(t, x, ˙x, p ) = 0 and assembles the mass matrix M from the inertia blocks of the differential components, leaving the algebraic rows zero. The result is exactly the semi-explicit system (2)–(3), now with dimensions nd, n a set by the plant rather than hand-coded. A minimal example makes the mechanism concrete: s y s = System ( ) s y s . add ( R e s i s t o r (R=1.0 , p o r t s =("a" , "b" ) ) ) s y s . add ( C a p a c i t o r (C=1.0 , p o r t s =("a" , "b" ) ) ) s y s . c o n n e c t ( "R. b" , "C. a" ) # e f f o r t eq + f l o w b a l a n c e 
+
+R, M, x0 = s y s . a s s e m b l e ( ) # f l a t t e n e d r e s i d u a l + mass m a t r i x 
+
+s o l = solve_dae (R, M, x0 , t_span = ( 0 . 0 , 1 0 . 0 ) ) grad = j a x . grad ( lambda p : l o s s ( s o l ( p ) ) ) ( p0 ) # end −to −end d i f f e r e n t i a b l e 
+
+Two properties of this pipeline are the differentiation point of the paper. First, the flattened residual is built from JAX array operations on typed pytrees, so it carries derivatives for free: the same code path that integrates the plant also supplies jax.grad , jax.jacrev , and jax.vmap without a symbolic front end. Second, the assembly is structure-preserving – conservation (13) enters as an exact zero row of M ,so the integrator never drifts off the constraint manifold within a step, and the index-reduction pass of Section 3.5 operates on the assembled graph rather than on user-written equations. CasADi [46] and ModelingToolkit [43] assemble acausal models too, but their symbolic front ends emit static code; jaxdae’s assembly stays a live, traceable JAX function, which is the precondition for the fused batched gradients of Section 6. 93.5. Pantelides index reduction and dummy derivatives 
+
+The assembled system may carry index higher than one – a rigid pendulum is index 3, an absolute nodal coordinate formulation (ANCF) beam index 2 – and Section 2 showed that direct integration of such systems drifts. jaxdae offers two distinct paths to index reduction, and stating their scope precisely matters for correct use. The Pantelides algorithm [3] treats the equations and the variables (including their time derivatives) as the two sides of a bipartite graph and seeks a matching that pairs every derivative variable with an equation. When a structural differentiation is required to complete the matching, the corresponding equation is differentiated once; the process repeats on the enlarged graph until a complete matching exists. The set of equations differentiated and the number of rounds give the structural index and identify which constraints must be turned into differential equations. Structural differentiation can over-determine the system, because a variable and its derivative may both appear after differentiation. The dummy-derivatives method of Mattsson and Söderlind [4] resolves this: each derivative that is structurally determined more than once is redeclared as an algebraic dummy variable, breaking the redundancy while preserving the solution manifold. The output is an index-1 DAE with the same solutions as the original, equipped with a nonsingular 
+
+∂g/∂z that the integrator of Section 3.1 handles directly. Pantelides also fixes consistent initial conditions: the matching prescribes which variables are free and which are solved for at t0, so z(t0) is determined from y(t0) rather than guessed. Two scope limits on this generic symbolic path must be stated. First, the generic Pantelides reducer targets symbolically expressible and structurally regular systems, which in practice means non-mechanical DAEs; it is not intended as a replacement for mechanics-specific formulations. Second, on Cartesian holonomic mechanics the generic reducer over-expands: it differentiates the position-level constraint redundantly and produces a near-singular augmented system. jaxdae detects this signature and records it in the reduction diagnostics; a dedicated flag ( raise_on_singular_reduction=True ) makes the reducer raise on near-singular output, so the user can choose between a diagnostic warning (the default) and a hard failure. Rank-deficient reductions set success=False unconditionally. Mechanical holonomic systems are therefore handled through a separate, mechanics-specific path: typed Lagrangian components that assemble the equations in generalized coordinates with a GGL-stabilized index-2 form, which enforces the position, velocity, and acceleration constraints simultaneously. The full-GGL pendulum example of the applications section uses this path, not the generic symbolic reducer. On a non-mechanical test DAE, without reduction the constraint forces drift and the integrator returns NaN within a few steps; after Pantelides and dummy-derivatives reduction the trajectory stays on the constraint manifold to the solver tolerance. 
+
+3.6. Event handling and the jump-condition adjoint 
+
+Plant-scale DAEs switch: a valve opens, a contact closes, a controller saturates. jaxdae detects state-dependent events as roots of a switching function s(t, x ) = 0 and applies a jump map x+ = h(t∗, x −, p )
+
+at the event time t∗. The event is assumed to be transversal: the switching velocity σ = st + sx ˙x−̸ = 0 ,where ˙x− is the differential velocity immediately before the event. Transversality guarantees that the root is simple and that t∗ depends smoothly on p. Differentiating a trajectory that crosses an event carries three contributions: the continuous costate between events, a discrete jump at t∗, and the sensitivity of t∗
+
+itself to p. The Galán–Feehery–Barton (GFB) adjoint [60] gives these three terms in closed form. Rather than hand-coding it, jaxdae recovers the GFB adjoint by composing the implicit-function-theorem (IFT) linearization of the event-time condition with the jump map and the continuous costate. The event time satisfies s(t∗, x (t∗; p), p ) = 0 ; differentiating under the transversality assumption, 
+
+dt ∗
+
+dp = −
+
+sx
+
+dx dp t∗ + sp
+
+sx ˙x− 
+
+> t∗
+
++ st
+
+| {z }
+
+> σ
+
+, (14) and the fixed-time post-event sensitivity chains the event-time sensitivity with the linearized jump map, 
+
+dx +
+
+dp = hx
+
+dx −
+
+dp + hp +  ht + hx ˙x− − ˙x+ dt ∗
+
+dp . (15) 10 The adjoint jump at t∗ is the transpose of this forward map. For reset maps without explicit time de-pendence, ht = 0 and the third term vanishes. Re-projection of the algebraic variables onto the consis-tency manifold after the jump is supported when the caller supplies the projection fields algebraic_g and 
+
+algebraic_indices on the event object, which enforce galg (t∗, y d, y a, p ) = 0 on the post-reset state; when both are None (the default), no projection is applied and post-event consistency of the algebraic state is the caller’s responsibility (via the on_event callback). The projection applies to index-1 DAEs only. The current event-adjoint path targets pure ODE and index-1 semi-explicit DAEs; the semi-explicit DAE algebraic-block adjoint through events is deferred to future work. The resulting formula matches the hybrid adjoint of Cor-ner, Sandu, and Sandu [61]. We verify the recovery term by term rather than only in aggregate, using a problem with a known analytic adjoint. Figure 2 reports the four channels. The continuous channel matches the analytic costate to machine precision ( 1.4 × 10 −14 ). The jump and time channels match to BDF-2 truncation order ( 2 × 10 −4 and 5 × 10 −5), limited by the forward discretization rather than by the adjoint assembly. The three channels add back to the total sensitivity at 8.6 × 10 −4, and the GFB additive recomposition closes at 7.9 × 10 −4. In short, we recover the GFB jump-condition adjoint via IFT-chain composition, and term-by-term verification confirms that the continuous channel is exact while the jump and time channels sit at the BDF-2 truncation floor. 
+
+Table 3: GFB event-adjoint term-by-term verification, bouncing ball. Analytic values versus jaxdae reverse-AD. Continuous channel at machine precision; remaining channels within BDF-2 truncation; GFB recomposition closes against the full reverse-AD total. 
+
+Channel Analytic jaxdae AD Rel. err. Continuous (pre-event) −7.0000 × 10 −1 −7.0000 × 10 −1 1.35 × 10 −14 
+
+Jump condition ∂L/∂e +4 .4294 × 10 0 +4 .4285 × 10 0 2.07 × 10 −4
+
+Event time ∂t ⋆/∂g −2.3013 × 10 −2 −2.3015 × 10 −2 5.17 × 10 −5
+
+Time →loss rendezvous −4.0637 × 10 −1 −4.0639 × 10 −1 5.17 × 10 −5
+
+Total (full reverse-AD) −2.9363 × 10 −1 −2.9388 × 10 −1 8.59 × 10 −4
+
+GFB recomposition vs. total — — 7.87 × 10 −4continuous              
+
+> (no-reset)
+> jump cond.
+> (dL/de)
+> time-sens
+> (dt */dg)
+> TOTAL
+> (full AD)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> gradient value
+> (a)
+> rel = 1.3 × 10 14
+> rel = 2.1 × 10 4
+> rel = 5.2 × 10 5rel = 8.6 × 10 4
+> analytic (GFB closed form)
+> jaxdae reverse-AD (isolated)
+> recomposed
+> (GFB additive)
+> total
+> (reverse-AD)
+> 0.2
+> 0.0
+> 0.2
+> 0.4
+> dv/dg
+> (b)
+> rel = 7.9 × 10 4
+> GFB recomp (explicit + time)
+> total reverse-AD
+
+Figure 2: Term-by-term recovery of the GFB jump-condition adjoint by AD-chain composition through the IFT-differentiated event time. Each channel matches its closed-form value (Table 3). 
+
+3.7. Frozen-grid replay adjoint 
+
+The adaptive controller of Section 3.3 makes the accepted step grid {tk, h k} an implicit function of p.Reverse-mode AD applied naively through the controller differentiates this dependence, but the accept/reject branch and the stop-gradient on rejected steps break the chain rule, so the resulting cotangents are silently 11 wrong. We do not repair the controller’s derivatives. Instead we decouple the controller from the backward pass. The forward solve runs unchanged with adaptive BDF and records the accepted grid {tk, h k}Nk=1 . The backward pass stops the gradient on the grid and re-solves a variable-step BDF-2 problem on the frozen nodes (using the recorded step ratios, with padding sanitized so trailing padded nodes are collapsed onto 
+
+tf ), then applies the IFT adjoint of the stage residual (6), 
+
+∂x n+1 
+
+∂p = − J−1
+
+ ∂R n+1 
+
+∂p 
+
+
+
+, J = ∂R n+1 
+
+∂x n+1 
+
+, (16) accumulating the adjoint from tf back to t0. Because the grid is frozen, no branch on p enters the backward pass; the only discretization error is the variable-step BDF-2 truncation on the recorded nodes. This is the controller-decoupling framework of Alexe and Sandu [54], here applied to a DAE and realized as a pure JAX custom VJP so that jax.grad , vmap , and jit compose across the adaptive solve. We do not claim a new method: the contribution is that adaptive implicit DAE solves now have a correct, usable, and composable gradient in the JAX ecosystem, which they previously lacked. We state the convergence behavior as a conditional scaling argument with explicit assumptions, not a general convergence theorem. 
+
+Conditional heuristic scaling argument (frozen-grid BDF-p adjoint rate under a per-step controller). Assume (i) the forward solution and residual are sufficiently smooth and the problem is index ≤1 with uniformly nonsingular primal and adjoint discrete Jacobians whose inverses remain bounded; (ii) the variable-step BDF-p replay uses frozen step ratios that satisfy the zero-stability bound; (iii) the frozen grid carries no event, branch, or active-set discontinuity; (iv) the forward controller satisfies the design contract hmax ∝ tol 1/(p+1) ; and (v) the padding sanitization applied to the frozen grid does not perturb the accepted nodes. Under these as-sumptions the discrete-adjoint gradient error scales as O(hp
+
+> max
+
+) = O(tol p/ (p+1) ); for BDF-2 this gives the conditional prediction O(tol 2/3) ≈ O(tol 0.667 ).The heuristic chain is: (a) the BDF-p local truncation error per step is O(hp+1 ); (b) a per-step controller drives it to the tolerance, hp+1 ∼ tol , hence h ∼ tol 1/(p+1) (the controller contract, verified symbolically); and (c) freezing the grid preserves adjoint consistency—differentiating the adaptive controller is what injects spurious adjoint terms [54] —so the BDF-p discrete adjoint converges to the continuous adjoint at the primal order p [62, 38], giving ∇-error ∼ hp ∼ tol p/ (p+1) . Two caveats keep this a conditional prediction rather than a universal theorem. First, assumption (iv) is the weakest link: real adaptive controllers sit between the per-step and per-unit-step regimes, and the _ADAPTIVE_RTOL_FLOOR clamp (Sec. 3.3) violates it below the floor. Second, the replay uses a variable-step BDF-2 on the frozen adaptive grid (not a uniform fixed-step BDF-2), so the zero-stability assumption (ii) must hold for the recorded step ratios. We therefore verify the conditional prediction numerically rather than claim it as a theorem. A further, structural caveat is worth stating plainly: the replay gradient is the exact discrete adjoint of the BDF-2 replay operator ,not of the forward adaptive BDF(1–5) operator . The two operators differ by local truncation terms of order O(hmin( forward order ,2) max ); this is the price of controller decoupling and is absorbed into the conditional 
+
+O(tol 2/3) rate. The claim is thus correctness of the replay adjoint relative to its own operator, not bit-level identity with a discrete adjoint of the forward adaptive path. Across three DAE types – the stiff Robertson kinetics, a cart–pole with one algebraic constraint, and an index-2 ANCF beam – the replay adjoint yields gradients that converge as the forward tolerance rtol is tightened, while the raw controller-AD gradients diverge (Figure 13, Table 7). Power-law fits against an independently discretised finite-difference reference give orders 0.19 , 0.38 , and 0.07 — sub-2/3 because the reference carries its own O(htruth ) discretisation error that floors the measured slope. On the scalar decay y′ = −ky with a grid-independent analytic-truth gradient (Fig. 13 panel (d), L = y(1) 2, dL/dk = −2e−2), the fitted order rises to 0.83 , broadly compatible with the conditional prediction of 2/3; the fit excludes the _ADAPTIVE_RTOL_FLOOR clamp at rtol = 10 −8,where the error rebounds. This slope should not be read as a precise verification of the asymptotic exponent 
+
+2/3, only as evidence that the replay error decreases with tolerance at a rate consistent with the conditional scaling argument. We therefore frame C2 as an engineering contribution rather than a methodological one: 12 the claim is not a new convergence theorem but that raw adaptive-controller AD is silently wrong while replay is consistent with the frozen-grid BDF-2 operator and converges at a rate consistent with the frozen-grid BDF-2 theory, and that the two are cleanly separated by a one-line stop_gradient on the step grid.                                                                
+
+> Table 4: Numerical methods in jaxdae. “Differentiable” marks whether the operation is transparent to jax.grad without a custom rule; “IFT” denotes an implicit-function-theorem adjoint; “structural” denotes compile-time graph manipulation; “empirical” denotes convergence established numerically (Section 3.7).
+> Capability Category Implemented Differentiable Validated BDF (orders 1–5) integrator ✓✓(scan/replay) order test (Fig. 6) Radau IIA (3-stage, order 5) integrator ✓forward only ✓
+> ROS2 (2-stage, fixed-step) integrator ✓affine-in-˙y✓
+> Newton–Krylov (JFNK) nonlinear solve ✓n/a ✓
+> PI control (adaptive) adaptivity ✓decoupled ✓
+> Pantelides index reduction ✓structural ✓
+> Dummy derivatives index reduction ✓structural ✓
+> Acausal connect assembly modeling ✓✓(pytree) ✓
+> Event jump-adjoint (GFB) sensitivity ✓IFT Fig. 2 Frozen-grid replay adjoint sensitivity ✓custom VJP empirical, Fig. 13 Forward-mode sensitivity sensitivity ✓jvp analytic anchor, Sec. 7.3
+> vmap (jax.grad )batching ✓fused Sec. 6
+> jit compilation ✓XLA ✓
+
+4. Software Implementation 
+
+4.1. JAX array programming 
+
+jaxdae stores every dynamic quantity as a JAX array with a leading batch axis handled by the surrounding 
+
+jax.vmap , never inside the residual. The DAE state is a flat vector y ∈ Rn, concatenating the differential variables yd and the algebraic variables ya in a fixed declaration order that is resolved once at compile time. A boolean companion array diff_vars ∈ { 0, 1}n records, position by position, whether the corresponding slot is a true state ( ˙yi appears in the residual) or an algebraic unknown ( ˙yi is absent). This flat layout keeps every linear-algebra primitive—the Newton Jacobian Fy + αF ˙y , the BDF predictor polynomial, the checkpointed scan body—expressible as ordinary jax.numpy operations on arrays of one shape. Two JAX invariants govern the design. First, any value that influences a shape or a loop count must be a Python integer, not a traced array. The step count n_steps and the Newton iteration cap are therefore closed over as static constants when we wrap the integrand in jax.jit ; this is the same discipline that static_argnums enforces on a top-level callable, but applied at the closure level so the user never names these arguments. Second, every container that must pass through jit , grad , vmap , or tree_map is registered as a JAX pytree. The solution objects ( DAESolution , DAEScanSolution ) and the component instances (Section 4.2) are all pytrees; their leaves are arrays, and the metadata (names, port topology, tolerance flags) travels as static auxiliary data that never reaches autodiff. The payoff is uniformity. A single residual definition drives the adaptive variable-step solver, the fixed-step scan solver, the Newton corrector, the forward Jacobian assembly, and the reverse-mode adjoint, because all of them consume the same array contract F (t, y, ˙y, params) → Rn.
+
+4.2. Object-oriented design in functional JAX 
+
+jaxdae reconciles the object-oriented mental model that engineers bring from Modelica with the func-tional, side-effect-free contract that JAX demands of differentiable code. We separate the two concerns into an assembly shell (Python objects, metadata, port topology) and a functional core (pure residuals, the only thing that is ever traced). Figure 3 shows the resulting class hierarchy. The shell has three layers. At the bottom sit the connectors , produced by a @connector class decorator that partitions each class’s annotated 13 fields into potential variables and flow variables. We ship four flagship connector types that mirror the Model-ica standard library: ElectricalPin (v, i), TranslationalFlange (s, f ), HeatPort (T , Q), and FluidPort 
+
+(p, ˙m, houtflow ). Above the connectors sits TypedComponent , the component base class: a subclass declares its ports and parameters as ordinary type annotations and implements equations(self, t) returning a list of residual expressions. At class-creation time __init_subclass__ walks the resolved annotations once, splits them into __typed_ports__ and __typed_params__ , generates a validating __init__ , and registers the subclass as a JAX pytree via jax.tree_util.register_pytree_node . The top layer is System : it holds an unordered list of components and a list of undirected connect(port_a, port_b) edges. The func-tional boundary is crossed in a single place: System.compile() . The compile pass resolves every connection through a union-find merge of port identifiers, assembles the global flat index over all variables, evaluates each component’s equations once symbolically to size the residual, and returns a four-tuple: the residual callable F (t, y, ˙y, params) , the initial-value seeds (y0, ˙y0), and the boolean diff_vars mask that marks which entries are differential. The returned (y0, ˙y0) are initial-value seeds, not guaranteed-consistent initial condi-tions. Consistent initial conditions (ICs) are computed when the caller passes solve_ic=True (or invokes 
+
+compute_consistent_ic explicitly), which runs a Newton projection of the algebraic variables onto the con-straint manifold. The solve_ic argument is tri-state and path-dependent. None (the default) auto-selects based on the assembly path: the mechanics-specific path runs the consistent-IC solve automatically, while the typed-connector path returns seed values as declared. True forces the IC solve on either path, and False 
+
+skips it. Independently of this assembly-time choice, solve_dae performs an eager initial-residual check at call time. If the residual norm at t0 exceeds a threshold, it invokes compute_consistent_ic_auto to repair the initial condition automatically and emits a RuntimeWarning , so a mildly inconsistent seed degrades to a warning rather than a failed integration. Setting the environment variable JAXDAE_SKIP_IC_REPAIR=1 
+
+restores the previous strict behavior. This moves the burden of initial-condition consistency from the caller to the solver, in the spirit of DASSL’s INFO(11) option but fully automatic. After compile, the System 
+
+object plays no role in tracing; the solver and the adjoint see only the pure residual. This is the only disci-pline that makes a Modelica-style acausal assembly coexist with end-to-end jax.grad . Figure 4 maps how the remaining capabilities—the initial-condition consistency layer, the forward- and reverse-mode sensitivity paths, event handling, parameter inversion, and the ahead-of-time (AOT) deployment path—attach to this functional core as independent modules over the same pure residual. ① Problem Definition     
+
+> User DAE residual
+> Python callable Pantelides index reduction (1988) + dummy derivatives
+> Modelica-style acausal assembly System.connect()
+> RuntimeParam (differentiable plant parameters) Consistent IC (Newton / Pantelides initialization)
+> ②Numerical Core (implicit, JAX-jit)
+> Adaptive BDF(1-5) + Radau IIA + Rosenbrock
+> Fixed-step BDF-2 solve_dae_scan (jit-stable, AD-ready)
+> Newton / JFNK (Jacobian-free GMRES) Events & resets (Hermite interp + jump-condition adjoint) Manifold projection (Baumgarte / CPM drift elimination)
+> ③Differentiation (reverse-mode AD through the solver)
+> IFT adjoint
+> (custom_vjp)
+> Frozen-grid replay adjoint (decouples controller) vmap batched grad jit(vmap(grad)) XLA fused kernel
+> Gradient checkpoint jax.remat
+> memory
+> ④ML Ecosystem
+> Optax (optimizers) NumPyro (Bayesian/NUTS) Flax/Lux (neural closures) jaxdae.doe / .bayes (Fisher, posterior) call / data flow core solver path (bold)
+
+Figure 3: Code structure of jaxdae. The @connector decorator and the TypedComponent base class form an object-oriented assembly shell; System.compile() crosses into the functional core, emitting a pure residual F (t, y, ˙y, params) that the solve_dae 
+
+family and the reverse-mode adjoint consume uniformly. Dashed arrows mark the tracing boundary: only the residual and the arrays to its right ever enter jax.jit or jax.grad .
+
+14 Core solver User-facing capabilities Enabled applications Deployment & interop        
+
+> Component model
+> typed connectors, Modelica connect
+> Index reduction
+> Pantelides, dummy derivatives, GGL
+> solve_dae
+> adaptive BDF, Newton + cached J
+> Scan kernel
+> lax.scan, JIT, vmap-fused
+> Codegen + SymPy
+> structural analysis, Jacobian
+> Forward simulation
+> t_eval , jit, vmap
+> Consistent-IC repair
+> automatic manifold Newton
+> Reverse-mode AD
+> replay adjoint, jax.grad
+> Forward-mode AD
+> Fisher, sensitivities
+> Differentiable events
+> chains, jump terms
+> Batch solve
+> per-member status isolation
+> Bayesian inversion
+> NUTS, Laplace
+> Sequential filters
+> EnKF, augmented UKF
+> Variational methods
+> 4D-Var, L-BFGS, Fisher OED
+> Reactor dynamics
+> point kinetics, LPF, MSLB
+> Power-system transient
+> IEEE-14 bus
+> AOT cache
+> cross-process warm start
+> Cross-platform
+> auto re-export on mismatch
+> Optax / Flax
+> optimizer interop
+> NumPyro
+> probabilistic programming
+> entry point ( solve_dae )core infrastructure user-facing capability enabled application deployment / interop dashed = enables downstream
+> monospace = API name· AD = automatic differentiation· IC = initial condition· GGL = Gear-Gupta-Leimkuhler· AOT = ahead-of-time
+
+Figure 4: Capability map of jaxdae. The core solver (adaptive BDF, Radau5, fixed-step ROS2) sits at the center; around it the initial-condition consistency layer (eager check and automatic repair), the forward- and reverse-mode sensitivity paths, event handling with the jump-condition adjoint, the parameter-inversion layer ( RuntimeParam , Fisher information), and the AOT deployment path ( fast_solve with automatic re-export) connect as independent modules over the same pure residual. 
+
+4.3. JIT compilation and pure-function constraints 
+
+jaxdae is compiled end to end by XLA. The fixed-step integrator wraps its entire body in a single 
+
+@jax.jit decorator, with the step count and Newton cap closed over as Python integers so that XLA unrolls the lax.scan into a static graph; the adaptive integrator expresses its step-accept/reject loop as a lax.while_loop whose iteration count is data-dependent but whose carry shape is fixed. Because the residual is the only traced entry point, the same compiled artifact serves the forward solve, the Newton Jacobian assembly, and the reverse-mode pass—there is no second source of truth to keep in sync. Two pure-function constraints shape the implementation. We never branch on the value of a traced quantity. Step rejection, event detection, and index-class checks are written with jnp.where masking so that both branches are evaluated and the result is selected, preserving a fixed shape for XLA. The alternative—a Python if on a traced boolean—would force a retrace and silently break gradients. The second constraint is shape stability: every container that crosses the tracing boundary must flatten to the same pytree structure on every call. This is why solution objects and components are registered pytrees with static auxiliary data, and why t_eval (whose length is part of the output shape) is treated as a static argument in the jit signature rather than a traced leaf. The practical consequence is a one-time compile cost, roughly one second for a moderate system, that is paid once and amortized over every subsequent solve and gradient evaluation on the same compiled artifact. For deployment, the fast_solve path exports the compiled artifact ahead of time and caches it on disk, so a production process starts without paying the trace-and-compile cost. Because an AOT artifact is platform-specific, fast_solve verifies the cache against the running platform. On a mismatch it automatically re-exports and refreshes the cache, emitting a RuntimeWarning rather than raising the hard error that earlier versions produced. A cached artifact can therefore be shipped across machines and heals itself on first call. 
+
+4.4. System assembly and solve loop 
+
+The end-to-end workflow is a four-stage pipeline, summarized in the code panels of Figure 5. Panel (a) shows assembly: the user adds components to a System , joins ports with connect , and calls compile() to obtain the pure residual, the initial-value seeds, and the diff_vars mask. Panel (b) shows the forward solve, 
+
+solve_dae , which integrates the DAE on [t0, t1] and returns dense output at t_eval . Panel (c) shows the end-to-end gradient through the solve, and panel (d) shows the batched gradient via jax.vmap . The solve algorithm proceeds in three nested loops, ordered by frequency. At the step level, the integrator forms the BDF predictor, builds the Newton residual G(yn+1 ) = F (tn+1 , y n+1 , ˙yn+1 (yn+1 )) , and iterates a Newton corrector until ∥G∥∞ falls below the scaled tolerance atol + rtol |y|. The Jacobian of the corrector is the 15 BDF-weighted matrix Fy + γF ˙y , with γ the BDF coefficient; we refactorize it only when the jac_max_age 
+
+staleness budget expires or a Newton step fails, and in the latter case the step is retried at the same step size after refactorization rather than halved immediately (Section 3.2). At the stage level, the adaptive controller compares the local truncation estimate against the tolerance, accepts or rejects the step, and updates the step size and BDF order through a standard controller. At the integration level, lax.scan (fixed step) or lax.while_loop (adaptive) threads the carry from t0 to t1. The linear algebra inside the corrector is delegated to the Lineax library. For small dense systems ( n < 100 ) we use dense LU; for larger or sparse systems we switch to GMRES with a compressed Jacobian whose coloring is probed once at the start of the integration. A cost gate suppresses the sparse path when the coloring compresses poorly, since a poorly colored sparse Jacobian is slower than a dense one.                      
+
+> (a) Acausal assembly: components are instantiated, con-nected through ports, and compiled to a pure residual.
+> from jaxdae.components import Pipe, Junction, Pump from jaxdae import System sys = System() sys.add(Pipe(length=10.0, diameter=0.1), name="main") sys.add(Pump(dp=2e5), name="circulator") sys.add(Junction(split="1to2"), name="branch") sys.connect("circulator.out", "main.in") sys.connect("main.out", "branch.in")
+> # assembled residual is jax.grad-able end-to-end
+> sys.assemble() # -> F(t, y, y ', p)
+> sol = solve_dae_scan(sys.residual, t_span, sys.y0, sys.yp0, sys.params, n_steps=2000)
+> (c) End-to-end reverse-mode gradient through the solve.
+> from jaxdae import solve_dae_scan import jax def residual(t, y, yp, p): # F(t, y, y ', p) = 0
+> return yp - p * y # y '= p * y
+> def loss(params): sol = solve_dae_scan(residual, t_span, y0, yp0, params, n_steps=1000) return jnp.sum(sol.y[:, 0] ** 2) grad = jax.jit(jax.value_and_grad(loss))(theta)
+> (b) Forward solve via solve_dae :implicit BDF returns dense output at requested times.
+> from jaxdae import solve_dae def residual(t, y, yp): # F(t, y, y ') = 0
+> return yp + 2.0 * y # y '= -2y
+> sol = solve_dae(residual, t_span=(0.0, 10.0), y0=y0, yp0=yp0, rtol=1e-8, atol=1e-10) trajectory = sol.y # shape [n_time, n_state]
+> (d) Batched gradient: jax.vmap(jax.grad) is fused by XLA into one kernel.
+> import jax def loss_one(p): sol = solve_dae_scan(residual, t_span, y0, yp0, p, n_steps=N) return jnp.sum((sol.y - target) ** 2) batch_grad = jax.jit(jax.vmap(jax.grad(loss_one))) grads = batch_grad(param_batch) # [N, n_params] in one kernel
+
+Figure 5: The four core jaxdae API surfaces, shown as native Python code. (a) Acausal multi-physics assembly: TypedComponent 
+
+subclasses are instantiated, connected through typed ports, and compiled to a pure residual. (b) Forward solve via solve_dae ,returning dense output at requested times. (c) End-to-end reverse-mode gradient through the solve; the RuntimeParam 
+
+sentinel routes the marked field into the residual’s params argument so jax.grad reaches it. (d) Batched gradient via 
+
+jax.vmap(jax.grad) , which XLA fuses into a single kernel (Section 6). All APIs are pure JAX, so jit , vmap , and grad 
+
+compose without glue code. 
+
+4.5. End-to-end jax.grad and RuntimeParam 
+
+The design goal of the differentiable layer is that a parameter buried inside an assembled plant model is reachable by a single jax.grad call, with no manual sensitivity bookkeeping. We meet this goal with one sen-tinel and one contract. The sentinel is RuntimeParam . By default, every numeric field of a TypedComponent —a pump’s rated head, a pipe’s wall heat flux—is frozen at construction time; it lives on the object as a plain value and never reaches the residual’s params argument. This “device nameplate” default is correct for forward simulation. For parameter inversion or digital-twin calibration the user marks a field with 
+
+RuntimeParam("name") , and the compile pass reroutes it: the compiled residual becomes a four-argument 
+
+F (t, y, ˙y, params) in which the marked field is read positionally from params instead of from the frozen ob-ject. Unmarked fields keep their frozen value, so existing forward models are unaffected. The contract is that the whole solve is a pure, differentiable function of params . The fixed-step solver solve_dae_scan integrates 16 with lax.scan and registers a reverse-mode rule via jax.checkpoint , so that a backward pass recomputes intermediate states from the stored checkpoints rather than holding the full trajectory tape [37, 19]. With gradient checkpointing the backward memory drops from O(nsteps ·n) to O(√nsteps ·n), at the cost of roughly a factor of two in forward compute. The chunk size can be set explicitly or chosen automatically against a memory budget. The net result is that the user writes jax.grad(loss)(params) and obtains the exact gradient of an objective defined on the terminal state—no finite differences, no hand-derived adjoint, no surrogate. 
+
+4.6. Integration with Optax, NumPyro, and Flax 
+
+Because jaxdae exposes only pure JAX functions and pytrees, it composes with the surrounding JAX machine-learning stack with no adapter code. Three integrations are exercised in the example suite. 
+
+Optax. supplies the optimizers for parameter inversion. A loss defined on the solver output—a terminal-state residual, a trajectory mismatch against measurement—is differentiated with jax.value_and_grad ,and an Optax transform ( adam , lbfgs ) updates the params pytree on each iteration. The solver’s compiled artifact persists across iterations, so only the forward and backward passes are paid for per step. 
+
+NumPyro. [63] supplies the Bayesian inference layer. The same forward solve serves as the likelihood mean inside a probabilistic model, and NumPyro’s no-U-turn sampler drives a Markov chain over the parameter posterior. Because the likelihood gradient is the reverse-mode gradient of the solve, the sampler uses gradient information that finite-difference samplers on classical solvers cannot afford. 
+
+Flax. supplies the neural-closure layer. A neural network represented as a Flax module can be embedded inside the residual as a constitutive correction, with its weights routed through the same params mechanism as a physical parameter. Training reduces to the same jax.grad pipeline, now differentiating through both the implicit solve and the network. This is the substrate for the neural-closed DAE results reported in Section 7.6. 
+
+5. Validation as a Classical DAE Solver 
+
+5.1. Convergence and order verification 
+
+The first question a differentiable solver must answer is whether it is a correct solver at all, independent of any gradient claim. We verify the full fixed-step BDF family—orders one through five—on the scalar decay equation ˙y = −y with known analytic solution y(t) = e−t, integrating to t = 1 over a step-size sequence refined from h = 0 .1 downward. Figure 6 reports the endpoint error versus step size for all five orders on a single log-log axis, and each method recovers its design order to within fitting noise: the fitted slopes are 
+
+0.99 for BDF-1, 2.01 for BDF-2, 3.02 for BDF-3, 4.04 for BDF-4, and 5.07 for BDF-5. The lower orders trace straight lines over the entire refinement range, while the higher orders (BDF-4 and BDF-5) bend over at the finest grids: their truncation error falls below the float64 round-off floor, so the measured error flattens at ∼ 10 −13 rather than continuing to decrease. This is the expected ceiling of a fixed-step order test in double precision, not a defect of the method. The two remaining integrators—the fixed-step Rosenbrock–W (ROS2) and the adaptive Radau IIA (Radau5)—are verified on the same ˙y = −y probe (Fig. 7). ROS2 is order-2 and L-stable; a fixed-step sweep gives a fitted order of 1.94 . Radau5 is order-5 locally, so under adaptive control its endpoint error tracks the tolerance, err ∼ tol 1.03 . Both recover their design behaviour, confirming the marks in Table 4. We state the test protocol explicitly. The order plots above use an 
+
+exact_history startup mode that seeds the multi-step history from the analytic solution rather than from a BDF-1 ramp; this isolates the truncation behavior of the target order and is the standard configuration for a pure order-of-accuracy test. The adaptive variable-order path—BDF orders one through five with step and order control—is implemented and documented in Table 4, but it does not lend itself to a clean order-of-accuracy plot because its effective order is selected dynamically by the controller rather than fixed by the user. Readers who wish to inspect the adaptive method’s accuracy are directed to the cross-library 17 10 3 10 2 10 1
+
+step size h 
+
+10 15 
+
+10 13 
+
+10 11 
+
+10 9
+
+10 7
+
+10 5
+
+10 3
+
+10 1     
+
+> error |y(1)  e 1|
+> fitted slope p
+> BDF-1 (p = 0.99)
+> BDF-2 (p = 2.00)
+> BDF-3 (p = 3.01)
+> BDF-4 (p = 4.04)
+> BDF-5 (p = 5.07)
+> reference O(h k)
+> round-off floor
+
+Figure 6: Order verification of the fixed-step BDF family (orders 1–5) on ˙y = −y, t ∈ [0 , 1] . Endpoint error versus step size for all five methods; fitted slopes are 0.99 , 2.01 , 3.02 , 4.04 , and 5.07 , matching the design orders. BDF-4 and BDF-5 flatten at the finest grids because their truncation error reaches the float64 round-off floor. 10 2 10 1
+
+step size h      
+
+> 10 6
+> 10 5
+> 10 4
+> 10 3
+> |y(1)  e 1|
+> err h1.94
+
+(a)        
+
+> ROS2
+> O(h 2)
+> 10 10 10 810 610 4
+
+relative tolerance rtol           
+
+> 10 15
+> 10 14
+> 10 13
+> 10 12
+> 10 11
+> 10 10
+> 10 9
+> 10 8
+> 10 7
+> |y(1)  e 1|
+> err rtol 1.03
+
+(b) 
+
+> Radau5
+> O(rtol )
+
+Figure 7: Order verification of Rosenbrock–W (ROS2, left) and Radau IIA (Radau5, right) on ˙y = −y. ROS2 recovers order 
+
+1.94 (design 2); Radau5 error tracks the tolerance as tol 1.03 (design 1). 
+
+18 comparison of the next subsection, where the adaptive path is held to the same reference solutions as two established solvers. Beyond the order tests, the solver is guarded by a substantial verification chassis. The full test suite comprises 3,205 cases collected by pytest -m "" --timeout=600 , of which 3,177 pass at the pinned commit; the remaining 28 (12 known failures reproducing identically at v0.27.1, 9 skipped, 7 xfailed) are documented in RELEASE_NOTES.md . Assembled-system accuracy is anchored against analytic references at scales far beyond the textbook benchmarks of this section. A capability matrix runs assembled plants up to n = 5 ,000 
+
+states against an erfc -based analytic anchor at relative error 1.5 × 10 −6, and up to n = 10 ,000 states at relative error 1.8 × 10 −4.1 Finally, the release process runs a cold smoke suite in a clean virtual environment: four example scripts executed from a fresh install on jax 0.10.2, all four passing. The pinned dependency window of the reproducibility appendix is therefore itself continuously verified. 
+
+5.2. Classical benchmarks and cross-library comparison 
+
+To establish the solver’s numerical credibility on problems beyond a textbook decay law, we run three canonical stiff benchmarks from the Bari/Testset literature [64] for trajectory validation (Figure 8) and perform a quantitative cross-library comparison on two of them against two independent solver libraries (Table 5). The conclusion is that jaxdae reproduces the reference dynamics to the tolerance we request, on stiff, oscillatory, and moderately sized problems alike, and that its post-compile forward wall is competi-tive with classical solvers on the warm-solve regime that matters for batched workflows. The Robertson 10 0 10 1 10 2 10 3 10 4                                
+
+> t (dimensionless)
+> 0.2
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> concentration (dimensionless)
+> (a) Robertson
+> y1y2y3
+> 10 110 010 110 2
+> t (dimensionless)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+> 1.50
+> 1.75
+> 2.00
+> state (dimensionless)
+> (b) Van der Pol
+> y1(slow manifold)
+> y2(fast snap)
+> 10 210 110 010 110 2
+> t (dimensionless)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> concentration (dimensionless)
+> (c) HIRES
+> y1
+> y4
+> y6
+> y7
+> Figure 8: Three canonical stiff benchmarks solved with solve_dae_scan .Left: Robertson autocatalytic reaction, showing the three orders-of-magnitude separation between the fast and slow species and the long induction tail. Centre: Van der Pol oscillator with μ= 1000 , displaying the slow-manifold drift punctuated by sharp transitions characteristic of a stiff relaxation limit cycle; y1(T)reaches the slow-attractor extreme of ≈1.78 .Right: HIRES eight-state transistor amplifier; the terminal state matches the Bari reference to the requested tolerance, with the first component at y(T)≈7.4×10 −4.
+
+problem [65] is the canonical stiff autocatalytic system, with rate constants spanning four orders of mag-nitude and a slow species whose concentration evolves over six orders of magnitude in time. jaxdae tracks the mass-conservation invariant to round-off (drift ∼ 10 −16 ). At the loose tolerance rtol = 10 −6 used for the cross-library comparison below, its terminal composition deviates from a tight-tolerance reference by 0.26–1.45 in componentwise relative terms, depending on the component. This is the well-known behavior of any tolerance-controlled integrator on this super-stiff problem at loose tolerance: the accepted steps are limited by the error controller, not by the method’s stability. It is a property of the method family at this tolerance rather than a defect specific to jaxdae. The Van der Pol oscillator at μ = 1000 is a stiff relaxation limit cycle: the trajectory spends long intervals drifting along the slow attractor before executing abrupt transitions. Integrating 20 000 scan steps, jaxdae resolves the slow-manifold extreme y1(T ) ≈ 1.78   
+
+> 1Generated by tests/test_capability_matrix_v028.py ; see paper_manifest.md .
+
+19 cleanly, where a non-stiff integrator would either fail or take orders of magnitude more steps. The HIRES 
+
+problem, an eight-state model of a transistor amplifier, is the standard mid-sized stiff benchmark; jaxdae’s terminal state y(T ) = [7 .4 × 10 −4, . . . ] agrees with the Bari reference. The cross-library comparison is re-ported within its stated regime. Forward wall times are post-compile, repeated-solve medians with device synchronization, at tolerances rtol = 10 −6, atol = 10 −9; jaxdae uses adaptive BDF, scipy_dae [66] uses Radau, and SUNDIALS IDA is driven through scikit-sundae [67] (SUNDIALS 7.5.0). This is the regime relevant to inversion, Bayesian, and batched workflows, where the same solver is called many times and the one-time XLA compile is amortized. Table 5 reports the full comparison. On the Robertson problem the median forward walls are 0.0019 s for jaxdae, 0.158 s for SUNDIALS IDA, and 0.322 s for scipy_dae ; on the n = 50 heat problem they are 0.023 s, 0.660 s, and 0.348 s respectively. The picture inverts for a single cold one-shot solve, where jaxdae pays a roughly one-second compile that the other two do not, so they win that regime—we state this plainly and refer the reader to the “when to use” guidance. The cross-library         
+
+> Table 5: Cross-library forward-solve comparison on the problems for which independent solver runs were performed ( scipy_dae
+> 0.1.0, SUNDIALS IDA 7.5.0 via scikit-sundae 1.1.3). Wall times measured on jaxdae v0.28.0 under jax 0.10.2 / jaxlib 0.10.2 (CPU backend, AMD Ryzen 9 9950X, WSL2 Ubuntu 24.04), 2026-07-24. Wall times are post-compile medians of 5 repeats with device synchronization at rtol = 10 −6,atol = 10 −9.Only jaxdae provides reverse-mode AD through the solve. The work–precision diagram of Fig. 9 uses a separate Julia-subprocess harness (SUNDIALS 6.1.0 via Sundials.jl ); the two IDA rows therefore come from different harnesses and are not directly comparable cell by cell.
+
+Problem Solver Wall (s) Reverse AD Robertson ( n=3 ) jaxdae (BDF) 0.0019 ✓
+
+SUNDIALS IDA 0.158 ×
+
+scipy_dae (Radau) 0.322 ×
+
+Heat mass-matrix ( n=50 ) jaxdae (BDF) 0.023 ✓
+
+SUNDIALS IDA 0.660 ×
+
+scipy_dae (Radau) 0.348 ×
+
+comparison is restricted to the Robertson and the n = 50 mass-matrix heat problem. Van der Pol and HIRES are used for trajectory validation against the Bari reference values but were not run head-to-head against the independent libraries. The regime-independent finding, and the reason the wall-time numbers are secondary, is the gradient column of the same table. Only jaxdae provides a reverse-mode jax.grad through the stiff solve; the other two libraries expose no Python reverse-mode automatic differentiation, so a param-eter gradient there costs nparams + 1 forward solves by finite differences. That capability gap, not a forward microbenchmark victory, is the capability that motivates jaxdae. A wall time quoted at a single tolerance conflates per-call dispatch overhead with integrator efficiency, so we complement Table 5 with a full work– precision diagram over five problems, three solver libraries, and a three-rung tolerance ladder (Figure 9). Three findings emerge. First, robustness: jaxdae is the only one of the three libraries that completes all 15 problem ×tolerance cells. scipy_dae (Radau) terminates the integration early on both index-3 mechanical systems at tight tolerance, reporting solver status −1 (“Required step size is less than spacing between numbers”): on the pendulum it returns 146 of 200 output points ( t = 3 .64 of the 5 s horizon) at rtol = 10 −6
+
+and 11 of 200 ( t = 0 .25 ) at rtol = 10 −8, and on the cart-pole 58 of 200 ( t = 0 .86 of the 3 s horizon) at 
+
+rtol = 10 −8. IDA exhibits its documented initial-condition startup convergence failure ( retcode=Unstable ,IDA return code −7, no step beyond t = 0 ) on the stiff index-1 RC circuit at rtol ≤ 10 −6, and exhausts its step budget ( retcode=MaxIters , 103 of 200 output points, t = 0 .102 of the 0.2 s horizon) on the transistor amplifier at the tightest rung. Second, tolerance tracking: jaxdae’s measured error follows the requested tol-erance across the two-decade ladder on all five problems, including the super-stiff Robertson problem, where every loose-tolerance run of every library shows the expected error-controller-limited deviation discussed above. Third, raw speed: on problems this small the compiled-C IDA is one to three orders of magnitude faster per call (sub-millisecond) than jaxdae’s Python-driven adaptive loop ( ∼0.4–0.7 s, nearly flat across the ladder because per-step dispatch dominates), while scipy_dae is slowest on the stiff transistor amplifier (up to 74 s). The WPD harness times a single warm pass per cell with the solver driven from Python; the fully-jitted protocol of Table 5 removes exactly this dispatch overhead, which is why the jaxdae walls 20 differ between the two protocols. The WPD therefore reinforces, rather than competes with, the central claim of this paper: jaxdae does not beat compiled C solvers on forward microbenchmarks, but it delivers robust, tolerance-tracking solves with reverse-mode AD and the batch-scaling behavior of Section 6, which neither baseline offers. We close with a note on the nuclear case. The NEA main-steam-line break (MSLB) 10 −4 10 −2 10 0
+
+twall (s) 
+
+10 −6
+
+10 −5
+
+10 −4
+
+10 −3
+
+10 −2
+
+10 −1
+
+10 0
+
+> max
+> i
+> |e i| / s i
+
+(a) rc_circuit (n = 10, index-1) 
+
+10 −4 10 −2 10 0
+
+twall (s) 
+
+10 −8
+
+10 −7
+
+10 −6
+
+10 −5
+
+10 −4
+
+> max
+> i
+> |e i|
+
+(b) robertson (n = 3, stiff) 
+
+10 −3 10 −2 10 −1 10 0
+
+twall (s) 
+
+10 −6
+
+10 −5
+
+10 −4
+
+10 −3
+
+10 −2
+
+10 −1
+
+10 0
+
+> max
+> i
+> |e i| / s i
+
+(c) pendulum (n = 5, index-3) 
+
+10 −4 10 −2 10 0
+
+twall (s) 
+
+10 −4
+
+10 −3
+
+10 −2
+
+10 −1
+
+10 0
+
+10 1
+
+> max
+> i
+> |e i| / s i
+
+(d) cart_pole (n = 8, index-3) 
+
+10 −2 10 0 10 2
+
+twall (s) 
+
+10 −5
+
+10 −4
+
+10 −3
+
+10 −2
+
+10 −1
+
+> max
+> i
+> |e i|
+
+(e) transistor (n = 8, Hairer) 
+
+> open markers: run failed, drawn
+> at measured wall time (shaded strip)
+> segments connect the rtol ladder
+> 10 −8, 10 −6, 10 −4
+> both axes logarithmic
+
+jaxdae 
+
+jaxdae (fail) 
+
+scipy_dae 
+
+scipy_dae (fail) 
+
+julia IDA 
+
+julia IDA (fail) 
+
+Figure 9: Work–precision diagram over five benchmark problems (panels a–e), three solver libraries, and the tolerance ladder 
+
+rtol ∈ { 10 −4, 10 −6, 10 −8} (atol = rtol ×10 −2). Each filled marker is one successful run: the abscissa is the warm (post-compile) wall time and the ordinate is the maximum error against a high-precision reference ( max i |ei|/s i with per-component scale 
+
+si for rc_circuit , pendulum , cart_pole ; max i |ei| absolute for robertson and transistor , whose solution components cross zero). Segments connect the tolerance ladder of each solver. Open markers in the shaded bottom strip denote failed runs (solver-reported convergence failure or early termination; failure records carry the solver status and the time reached), drawn at the measured wall time; repeated failures of one solver are staggered vertically inside the strip. Both axes are logarithmic. Protocol: benchmarks/run_all.py on jaxdae v0.28.0, jax 0.10.2 (CPU backend, AMD Ryzen 9 9950X, WSL2 Ubuntu 24.04), single timed warm pass per cell, 2026-07-24, data results_20260724_105930_wpd_v028r.json ; jaxdae = solve_dae adaptive BDF, scipy_dae 0.1.0 Radau, SUNDIALS IDA 6.1.0 via Sundials.jl (Julia 1.11.5). jaxdae is the only solver completing all 15 cells; see the text for the failure breakdown. 
+
+benchmark is included in the example suite as an illustrative case study of coupled reactor-thermal-hydraulic dynamics assembled through the connector framework, not as a quantitative validation. The publicly dis-tributed benchmark data are limited to prescribed boundary conditions, which constrains the bandwidth of the trajectories we can compare against [68]. We therefore treat the MSLB case as a demonstration that the assembly and solve pipeline handles a realistic multi-domain nuclear model, and we rely on the convergence and cross-library results of this section for the solver’s numerical credibility. 21 6. Batched Gradient Performance 
+
+Parameter inversion at scale calls for many gradients at once: Bayesian sampling (NumPyro’s no-U-turn sampler, NUTS), ensemble Kalman filtering, Fisher information design-of-experiments (DOE) sweeps, and leave-one-out cross-validation all evaluate the parameter-to-loss map for tens to thousands of parameter vectors. The dominant cost in these workflows is therefore not a single forward solve but a batched gradient. This section measures how jaxdae and its closest PyTorch counterpart, torchdae , behave as the batch dimension grows. 
+
+Measurement protocol.. All runs use an index-1 semi-explicit DAE with n = 2 states and Nsteps = 500 .Measurements were taken on a workstation equipped with a single NVIDIA GeForce RTX 5080 GPU (Black-well architecture, compute capability 12.0, 16 GB GDDR7 VRAM; NVIDIA driver 591.44, CUDA 13.1), paired with an AMD Ryzen 9 9950X CPU (16 cores) and 39 GB of RAM visible to the guest, running WSL2 (Linux kernel 6.18.33.2) hosting Ubuntu 24.04.4. All computations were performed in float64 with 
+
+jax_enable_x64=True . The benchmark output was recorded on JAX 0.10.2 and jaxlib 0.10.2 (CUDA 13 pjrt plugin), torch 2.9.1+cu128, torchdae 0.1.1, Python 3.13.12, 2026-07-24; the accompanying uv.lock 
+
+pins jax/jaxlib to the window ≥0.9, <0.11. jaxdae gradients are produced by the fully fused pipeline 
+
+jit(vmap(jax.grad(loss))) ; torchdae gradients use its documented adjoint path. Every number is a median of 3–5 replicates with an explicit jax.block_until_ready device synchronization barrier, on warm runs that exclude first-call JIT/compilation. The run-to-run timing noise on this WSL2 workstation is ap-proximately ±25% ; the claims below are therefore stated at the level of scaling behavior (batch-invariant versus batch-linear) rather than absolute seconds. Wall times exclude host–device transfer, which is negligi-ble relative to the solve. Compilation cost is reported separately where it changes the picture. In a batched solve, a divergent member is reported with resid_norm = + ∞ (rather than NaN ), so downstream masking over the batch is well defined; the success semantics are unchanged. We measure wall clock, not solver accuracy; accuracy is treated in Sec. 7. 
+
+jaxdae: batch-invariant wall time.. Figure 10(a) plots the wall time of one full batched gradient as a function of batch size B. jaxdae is effectively flat: from B = 1 to B = 1000 the median stays in the range 0.61– 0.85 s with no upward trend (Table 6). The mechanism is structural. vmap in JAX is a compile-time transformation: XLA sees the batched gradient as a single statically shaped program and fuses the per-instance solves into one kernel graph. For a small per-instance state ( n = 2 ) the cost is dominated by fixed per-program overhead—kernel launch, the adaptive controller, the linear solves—which was not observed to grow materially with B over the tested range. Increasing the batch therefore reuses the same compiled artifact rather than repeating work. 
+
+torchdae : linear in batch, no native vectorization.. The torchdae adjoint is implemented as a torch. autograd.Function , which is opaque to torch.vmap . Attempting vmap over the gradient raises a Runtime Error on requires_grad_ inside the vectorized function. The only supported path is a Python-level for-loop over the batch, so wall time grows with B. We measured this loop up to B = 10 ; beyond that a single batch exceeds the 120 s per-batch budget and is marked “not measured”. Two observations stand out. First, eager-mode wall time grows roughly with B (2.96 s at B = 1 , 29.0 s at B = 10 ), as expected for a serial loop. Second, torch.compile does not help: the compiled path tracks eager closely (3.42 s versus 2.96 s at 
+
+B = 1 ; 32.7 s versus 29.0 s at B = 10 ) and remains linear in B, so the compiled path is not a remedy for the batched-gradient case. Figure 10(b) reports the speedup; the dashed segment is a linear projection of the 
+
+torchdae trend and is not a measurement for B > 10 .
+
+A realistic workload: batched Fisher-DOE.. The toy problem isolates the compilation effect, but the practical question is whether the advantage survives a non-trivial model. We use a continuously stirred tank reactor (CSTR) with Arrhenius kinetics: N candidate operating temperatures each yield a Fisher information matrix FIM = (1 /σ 2)J⊤J for the Arrhenius pair (log 10 A, E a). jaxdae computes the batched Jacobian with 
+
+vmap(jax.jacrev) ; torchdae cannot retain the adjoint graph across the nonlinear parameter-in-residual term and falls back to central finite differences (four forward solves per candidate). Figure 11 shows jaxdae 22 again flat (0.25–0.36 s for N = 1 to N = 500 ) against a torchdae FD loop that costs 3.74 s at N = 1 and 33.3 s at N = 10 (the largest N measured for both). The jaxdae Jacobian matches finite differences to 
+
+1.8 × 10 −9 relative error, confirming the AD path is exact rather than merely fast.           
+
+> Table 6: Batched-gradient throughput (GPU, float64). jaxdae: jit(vmap(grad)) , XLA-fused, median of 5. torchdae : Python for-loop ( vmap unsupported on autograd.Function ), median of 3. All runs device-synchronized, warm, compile time excluded. Speedup is torchdae /jaxdae wall time; values >1favor jaxdae. torchdae inspected at alpha stage (accessed July 2026).
+
+Task jaxdae torchdae Speedup Measurement Scalar grad, B=1 0.745 s 2.96 s (eager) 4.0 × median ×3–5, sync 3.42 s (compiled) 4.6 × compiled tracks eager, still slower Scalar grad, B=10 0.705 s 29.0 s (eager) 41 × largest B measured both 32.7 s (compiled) 46 × compiled tracks eager (linear) Scalar grad, B=1000 0.749 s not measured — projected linear (Fig. 10, dashed) Fisher matrix, N =1 0.252 s 3.74 s (FD loop) 15 × AD-vs-FD 1.8 × 10 −9
+
+Fisher matrix, N =10 0.336 s 33.3 s (FD loop) 99 × largest N measured both Fisher matrix, N =500 0.344 s not measured — projected linear 
+
+n=20 chain, B=1 0.615 s not measured — 10-unit coupled DAE, flat B=1..1000 
+
+n=20 chain, B=1000 0.994 s not measured — wall ratio 1.6 × (<2× over 1000 × batch) 
+
+Scope and caveats.. Three limits bound these results. (i) The scalar-gradient toy has n = 2 states, so per-instance work is tiny and fixed per-program overhead dominates; this amplifies the flat-versus-linear contrast. We verify the flatness survives ten-fold larger per-instance work on an n = 20 coupled index-1 DAE chain (Table 6, last two rows): wall time grows by less than 2× over a 1000 × batch increase ( 0.62 → 0.99 s), far from the linear scaling a serial loop would show. The absolute speedup at very large n will be smaller because per-instance work then contributes more. (ii) At B = 1 jaxdae is already 4.0× faster than the best torch path (0.745 s vs 2.96 s eager), and the advantage widens with batch size, which is exactly the regime batched inversion needs. (iii) torchdae is alpha-stage software; the autograd.Function /vmap incompatibility and the retain_graph issue on nonlinear parameters may be resolved upstream. We therefore report no speedup for the unmeasured region ( B, N > 10 for torchdae ) and mark those entries as projected only. The defensible claim is the qualitative one: jaxdae wall time is batch-invariant, torchdae wall time grows with batch, and at the largest batch measured for both the ratio is 41–46 × (scalar) and 15–99 × (Fisher). 
+
+ModelingToolkit.jl as a throughput baseline.. Table 1 lists ModelingToolkit.jl (MTK) as the only other tool that combines acausal assembly, index reduction, and reverse AD. On the largest problem in our benchmark suite—an index-2 ANCF cantilever beam with n = 242 states after lumping—jaxdae’s batched-gradient path is measurably faster than every Julia-ecosystem path we could bring to bear, and the strongest Julia path is not MTK’s symbolic adjoint but a hand-written OrdinaryDiffEq solve with ForwardDiff. jaxdae differentiates the tip deflection with respect to a global stiffness scale on this problem in 6.5 s cold and 
+
+4.7 s warm; the gradient 8.07 × 10 −3 matches a central finite difference to 3.7 × 10 −9 relative error. Three Julia paths bracket the comparison. First, a hand-written mass-matrix ODEFunction solved with FBDF converges (retcode Success), and a ForwardDiff gradient through the same solve takes 161 .2 s and returns 
+
+8.14 ×10 −3. Second, MTK’s symbolic path does not converge on the forward pass: both FBDF and Rodas5P return MaxIters with a non-converged tip value, and the Zygote reverse pass fails with a compile-time 
+
+CompileError inside the MTK-generated code ( ArgumentError: array must be non-empty ). Third, a threaded EnsembleProblem gradient attempt was killed after exhausting memory. Against the strongest measurable Julia path, jaxdae is 25 × faster cold and 34 × faster warm ( 161 .2 s vs. 6.5 s and 4.7 s), and the two gradients agree to better than 1% . The gap is problem-dependent: this linear stiff DAE lets jaxdae’s fixed-step BDF-2 with chord Newton reuse one Jacobian LU factorization across all steps, whereas the adaptive Julia solvers refactorize at every step, so for strongly nonlinear DAEs the gap will narrow. All logs ship in the code archive under benchmarks/runners/julia/mtk_env/ (scan_direct_59.log , scan_grad_59.log ,23 correct_full.log , v2_full.log , v2_rodas.log , ensemble_grad.log ). We report this not as a criticism of MTK but as a measurement on this problem and configuration. Table 6 retains the alpha-stage torchdae 
+
+as its throughput competitor because that table compares batched-gradient APIs on the smaller benchmark problems rather than this n = 242 case. 10 0 10 1 10 2 10 3
+
+batch size B 
+
+> 10 3
+> 10 4
+> 10 5
+> wall time (ms)
+> torchdae large-B not measured
+> (per-instance loop > 120 s timeout)
+
+(a)           
+
+> jaxdae jit(vmap(grad)) (measured)
+> torchdae eager loop (measured)
+> torchdae + torch.compile (measured)
+> torchdae eager projected (linear)
+> 12510
+
+batch size B 
+
+> 0
+> 10
+> 20
+> 30
+> 40
+> jaxdae speedup over torchdae (×)
+
+(b)   
+
+> jaxdae vs torchdae eager (measured)
+> jaxdae vs torchdae compiled (measured)
+
+Figure 10: Batched scalar-gradient throughput (index-1 DAE, n = 2 , Nsteps = 500 , GPU float64). (a) Wall time: jaxdae 
+
+jit(vmap(grad)) is flat (0.61–0.85 s) from B = 1 to B = 1000 ; torchdae grows with batch (eager measured to B = 10 ;compiled tracks eager and remains linear). (b) Speedup torchdae /jaxdae; the dashed segment is a linear projection for the unmeasured region B > 10 , not a measurement. 
+
+7. Differentiability and Automatic Differentiation 
+
+7.1. Optimization fundamentals 
+
+A jaxdae solve returns a trajectory τ (t; p) over the time grid {tk} for a parameter vector p (masses, stiffnesses, rate constants, boundary values). Any scalar functional of the trajectory defines a loss L(τ ; p)—a tip deflection, a terminal concentration, a quadratic misfit to data. Because the entire pipeline (assembly, index reduction, time stepping, event handling) is pure JAX, the gradient ∂L/∂p is obtained in one line, 
+
+g = jax.grad(loss)(params) , or with the value, jax.value_and_grad . Differentiable parameters are exposed through the RuntimeParam type, which marks a typed-component field as a leaf of the parameter pytree without changing the residual code. The same gradient then plugs directly into Optax (optimizers), NumPyro (Bayesian inference), and Flax (neural closures), since jaxdae presents no custom object to the surrounding ML stack. 
+
+7.2. Reverse-mode AD through implicit DAE solves (IFT) 
+
+Each implicit step solves a nonlinear residual to convergence. Let 
+
+Rn(yn; yn−1, . . . , y n−q , p ) = 0 (17) denote the fully discretized stage residual at step n, where the history values yn−1, . . . , y n−q are held fixed when differentiating the current step. The implicit function theorem gives the sensitivity of the converged state yn to p as 
+
+∂y n
+
+∂p = −
+
+ ∂R n
+
+∂y n
+
+−1 ∂R n
+
+∂p . (18) For the BDF discretization of F (t, y, ˙y, p ) = 0 , the discrete Jacobian is Fy + ( α0/h n) F ˙y , where α0 is the current variable-step BDF coefficient; the scan solver reuses this same discrete Jacobian structure as 24 10 0 10 1 10 2 5×10 2
+
+# number of candidate T op values 
+
+# 10 3
+
+# 10 4
+
+# 10 5
+
+# 10 6
+
+> wall time (ms)
+
+torchdae large-N not measured 
+
+(FD loop > 120,000 ms timeout) 
+
+## jaxdae vmap(jacrev) (measured) 
+
+## torchdae FD loop (measured) 
+
+## torchdae FD projected (log-log linear) Figure 11: Batched Fisher-DOE sweep over candidate CSTR operating temperatures ( Nsteps = 200 , GPU float64). jaxdae 
+
+vmap(jacrev) is flat (0.25–0.36 s for N = 1 –500 ); torchdae falls back to a finite-difference loop (measured to N = 10 ). Jacobian AD-vs-FD relative error 1.8 × 10 −9.
+
+25 the forward Newton matrix Fy + γF ˙y . jaxdae does not hand-code (18). Instead it registers the solve as differentiable and lets reverse-mode AD compose through the Newton iterations under jax.checkpoint 
+
+(remat ), so the cotangent propagation uses the same discrete implicit Jacobian as the forward Newton step. This is full-function AD: the backward pass differentiates exactly what the forward pass computed. The default gradient mode for the adaptive solver is the frozen-grid replay adjoint (Sec. 3.7), which stops the gradient on the step grid; an unsafe_raw mode differentiates through the controller but produces wrong cotangents and is provided only for diagnosis. Two operational consequences follow. First, no separate adjoint equation is written or maintained, so the gradient cannot silently disagree with the forward solve on a given step grid. Second, although the controller is differentiable by construction, differentiating a controller that accepts and rejects steps produces wrong cotangents (Sec. 7.5); this is the problem the frozen-grid replay adjoint of Sec. 3.7 exists to fix. 
+
+7.3. Forward-mode sensitivities 
+
+Reverse mode is the right tool when one scalar loss depends on many parameters, but several workflows want the opposite direction: a full sensitivity matrix ∂τ /∂p for a handful of parameters, or the Jacobian J
+
+that enters the Fisher information matrix I = (1 /σ 2)J⊤J of Section 8.1. jaxdae therefore also exposes a forward-mode path, forward_sensitivity , which propagates parameter tangents through the solve with 
+
+jax.jvp at a cost of one tangential solve per parameter direction. This path was not always available. A Jacobian–vector product cannot propagate through a custom_vjp rule, so every forward-mode entry point previously failed outright. The two auxiliary custom_vjp rules that blocked the tangential pass were moved off the default path or rewritten as custom_jvp , so forward mode now composes with the same solved pipeline as reverse mode. We verify the two directions against each other and against analysis. The forward_sensitivity Jacobian agrees with the jax.jacrev Jacobian to a maximum deviation of 
+
+6.4 × 10 −14 , and the exponential-decay anchor (known analytic sensitivity ∂y/∂k = −t e −kt ) is recovered to the same floor. One restriction remains: under EQX_ON_ERROR=nan the forward-mode path is still limited, and reverse mode should be used in that setting. 
+
+7.4. AD-versus-FD gradient consistency 
+
+The first correctness check is internal: does the AD gradient agree with an independent finite-difference (FD) estimate to the order FD should achieve? We use a cart-pole testbed ( n = 7 , one algebraic constraint) and compare ∂L/∂p from jax.grad against a central FD stencil as the step εFD shrinks. Figure 12 shows clean second-order convergence: a log-log fit over the pure truncation branch ( ε = 10 −1 . . . 3.2 × 10 −4) gives an empirical order of 1.994 , and the relative error reaches a floor of 1.41 × 10 −8 at ε = 10 −7 before roundoff dominates. A second-order floor is exactly what a central difference on a correct gradient must produce. This confirms that the jaxdae gradient is exact to working precision on a non-trivial index-1 DAE; the remaining subsections stress this on stiffer and structured problems. 
+
+7.5. Frozen-grid replay adjoint: error behavior 
+
+Full-function AD through an adaptive controller is silently wrong: the controller’s accept/reject and step-size decisions are discontinuous in the parameters, so reverse-mode AD differentiates branches that did not occur on the forward path. The frozen-grid replay adjoint (Sec. 3.7) decouples the two: the forward solve runs adaptive BDF and records its accepted step grid {hk}, then the backward pass re-solves a variable-step BDF-2 plus the IFT adjoint on that frozen grid. The conditional scaling argument of Sec. 3.7 predicts an O(tol 2/3) replay-adjoint rate for BDF-2 under a per-step error controller. Figure 13 tests this on two classes of reference. Against three problems of increasing size, each benchmarked against a high-resolution fixed-step BDF-2 scan-adjoint gradient on a different grid (Table 7), the replay path converges with fitted orders 0.07 –0.38 — sub-2/3 because the reference carries its own O(htruth ) discretisation error that floors the slope. The floor is quantifiable. A central finite-difference cross-check against each scan-adjoint reference gives relative errors 6.8 × 10 −6 (Robertson, htruth grid N = 20000 ), 1.9 × 10 −9 (cart–pole, N = 8000 ), and 
+
+1.0 × 10 −8 (ANCF beam, N = 2000 ). Under an error-budget model in which the measured gradient error is the quadrature sum of the replay error and the reference error, err 2measured ≈ err 2replay (rtol) + err 2ref (htruth ),26 10 8 10 7 10 6 10 5 10 4 10 3 10 2 10 1
+
+FD step (relative) 
+
+10 14 
+
+10 12 
+
+10 10 
+
+10 8
+
+10 6
+
+10 4
+
+10 2
+
+> gFD  gAD  / g AD
+
+FP floor 
+
+min = 1.4e 08 
+
+AD vs central FD 
+
+fit | g| 2.0 Figure 12: AD-versus-FD gradient consistency, cart-pole ( n = 7 , one algebraic). Relative error |gAD − gFD |/|gAD | versus FD step ε. Fitted order 1.994 (second-order, as a central difference on a correct gradient requires); minimum relative error      
+
+> 1.41 ×10 −8at ε= 10 −7.
+
+the reference floor caps the measurable slope at the level the floor admits; the fitted orders 0.07 –0.38 are consistent with a 2/3-rate replay error buried under these reference floors, rather than with a genuinely slower replay convergence. Against the scalar decay y′ = −ky with the grid-independent analytic truth 
+
+dL/dk = −2e−2 (Fig. 13 panel (d)), the fitted order rises to 0.83 , consistent with the conditional prediction of 2/3; the _ADAPTIVE_RTOL_FLOOR clamp at rtol = 10 −8 causes the error to rebound there, and that point is excluded from the fit. The raw (adaptive-controller) AD path does not converge at all: it reports gradients of the wrong sign or orders of magnitude off (fitted raw orders −0.17 to +1 .20 across the three problems; on the scalar stiff-decay probe it returns +10 .9 against an analytic −0.271 ). The contribution is therefore not high convergence order. It is that raw adaptive-controller AD is silently wrong while replay is consistent with the stated frozen-grid BDF-2 operator and converges at the rate the frozen-grid BDF-2 theory predicts, and that the two are cleanly separated by a one-line stop_gradient on the step grid.     
+
+> Table 7: Frozen-grid replay adjoint: fitted error order versus an independently-discretised FD reference, three problems. Raw = full-function AD through the adaptive controller. The FD reference grid carries its own O(htruth )discretisation error, which floors the measured slope below the conditionally predicted 2/3; the analytic-truth scalar decay (Fig. 13d) recovers order 0.83 .
+
+Problem n Replay order Raw order FD-check rel. err. Robertson 3 +0 .19 −0.17 6.8 × 10 −6
+
+Cart-pole 7 +0 .38 +1 .20 1.9 × 10 −9
+
+ANCF cantilever 66 +0 .07 −4.55 1.0 × 10 −8       
+
+> ANCF run at Nelem = 15 (n= 66 ); n= 242 exceeded the 5 min gradient budget. Cart-pole raw “order” is spurious: the raw gradient is wrong-signed on sub-grids and the fit is meaningless.
+
+27 10 7                                    
+
+> 10 5
+> 10 3
+> integration tolerance rtol
+> 10 4
+> 10 2
+> 10 0
+> 10 2
+> 10 4
+> 10 6
+> relative gradient error |g  g * |/|g  * |
+> (a) preplay = 0.19
+> 10 7
+> 10 5
+> 10 3
+> integration tolerance rtol
+> 10 1
+> 10 3
+> 10 7
+> 10 11
+> 10 15
+> 10 19
+> 10 23
+> 10 27
+> (b) preplay = 0.38
+> 10 7
+> 10 5
+> 10 3
+> integration tolerance rtol
+> 10 1
+> 10 5
+> 10 9
+> 10 13
+> 10 17
+> 10 21
+> 10 25
+> 10 29
+> 10 33
+> (c) preplay = 0.07
+> 10 7
+> 10 5
+> 10 3
+> integration tolerance rtol
+> 10 7
+> 10 6
+> 10 5
+> 10 4
+> 10 3
+> 10 2
+> 10 1
+> 10 0
+> (d) preplay = 0.83
+> frozen-grid replay raw controller fitted O( rtol p)O( rtol 2/3 ) theory
+
+Figure 13: Replay-versus-raw gradient error versus solver tolerance, four panels. (a–c) Three DAEs benchmarked against an independently-discretised FD reference (floored by its own O(htruth ) error); (d) scalar decay against the grid-independent analytic truth. Replay (blue) converges; the green dotted line is the O(tol 2/3) rate predicted by the conditional scaling argument. Raw adaptive-controller AD (red) is wrong-signed or divergent. The analytic-truth panel (d) fits order 0.83 , broadly compatible with the predicted 2/3.
+
+7.6. Gradient correctness on stiff Neural-DAEs 
+
+A stringent correctness test puts jaxdae against continuous adjoints on a problem where the latter are known to fail silently. The testbed is the stiff Robertson kinetics with a frozen neural-network closure applied as a multiplicative perturbation on dy2/dt, cast as an index-1 mass-matrix DAE ( M = diag(1 , 1, 0) ,constraint y1 + y2 + y3 = 1 , t ∈ [0 , 10 4]). Forward solutions from both tools agree ( ∼10 −6 relative error against a reference). The question is the gradient ∂L/∂K of the closure weights. A first, cautionary result is about experimental design. When the terminal loss anchors the reference trajectory at the nominal parameters, L = mean(( y(T1, p 0) − y(T1, p 0)) 2), the residual at the evaluation point is at solver-noise scale ( ∼10 −6), and the gradient ∂L/∂K = (2 /3) δy J is dominated by that noise. Un-der this degenerate loss, every automatic-differentiation tool—jaxdae, the ForwardDiff reference itself, and the SciMLSensitivity continuous adjoints—measures noise against noise, and the comparison is meaningless. Worse, the noise can conspire to look systematic: in an earlier version of this experiment, four structurally different SciMLSensitivity adjoints (two InterpolatingAdjoint variants, GaussAdjoint, and QuadratureAd-joint) all returned the same 53 .1% relative error to four significant digits, which we initially read as a shared numerical defect. The offset was not a defect of the adjoints; it was an artifact of the degenerate loss. Once the reference trajectory is anchored at an offset parameter value ( K1 × 1.05 , so the residual at p0 is a genuine parameter response, |δy |/|yref | ≈ 10 −2, four orders of magnitude above the noise floor), the same four adjoints agree with the ForwardDiff truth to 1.25 × 10 −4 (Figure 14). The correct comparison, therefore, is the non-degenerate one. Figure 14 reports relative error against a ForwardDiff truth under the offset-parameter loss. jaxdae full-function AD returns a gradient that matches the truth to 4.5×10 −2% relative error, with all three K-component signs correct. The four SciMLSensitivity adjoints that share a common adjoint-DAE construction (two InterpolatingAdjoint variants, GaussAdjoint, and QuadratureAdjoint) also match the truth, to 1.3 × 10 −2%; their near-identical values are expected, since they assemble the same augmented index-1 adjoint DAE and differ only in the downstream parameter-gradient quadrature. The two genuine failures are BacksolveAdjoint, which returns a gradient off by ∼100% 
+
+because its reverse integration aborts 0.003 time units after T1 (dt forced below floating-point epsilon) and the adjoint solution’s return code is never checked, so a truncated gradient is returned silently; and TrackerVJP, which crashes. SciML’s own documentation warns that BacksolveAdjoint is “not recommended for DAEs” on account of their stiffness and algebraic-variable reinitialization, so its failure is a confirmation of that warning rather than a defect. ForwardDiff itself is correct but, as SciML documents, does not scale (a ∼100-parameter ceiling), so it is not a deployment path for realistic closures. The practical conclusion is not that jaxdae is correct where SciML is wrong—both are correct on this problem once the loss is non-degenerate. It is that jaxdae’s full-function AD with remat handles the same stiff DAE without the experimental-design fragility that made the continuous adjoints appear to fail, and 28 it does so while supporting the full 340-dimensional parameter gradient (three kinetic constants plus 337 neural-network weights) under a single jax.grad call. The continuous-adjoint path, by contrast, requires the practitioner to recognize and avoid the degenerate-loss trap that produced the 53 .1% artifact in the first place. jaxdae (full AD) 
+
+> MTK ForwardDiff
+> MTK InterpAdjoint +ZygoteVJP
+> MTK InterpAdjoint +ReverseDiffVJP
+> MTK GaussAdjoint
+> MTK QuadratureAdjoint
+> MTK BacksolveAdjoint
+
+gradient computation method         
+
+> 10 2
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> relative gradient error (%)
+> 0.045%
+> 0% (truth)
+> floor 8 × 10 3%0.013% 0.013% 0.013% 0.013%
+> 100%
+> correctness criterion: rel. error < 1%
+> reference tools SciML continuous adjoints
+> correct ( < 1%)
+> ForwardDiff truth (0%; floored on log axis)
+> BacksolveAdjoint failure (100%)
+
+Figure 14: Gradient correctness on a stiff Robertson + neural-closure index-1 DAE under a non-degenerate loss (reference trajectory anchored at an offset parameter, K1 × 1.05 ). Relative error of each method against a ForwardDiff truth. jaxdae full-function AD: 0.045% (all three K-component signs correct). SciMLSensitivity continuous adjoints sharing a common adjoint-DAE construction: ∼0.013% (Interpolating/Gauss/Quadrature). BacksolveAdjoint: ∼100% (reverse integration aborts after T1, truncated gradient returned silently; SciML documentation warns this method is not recommended for DAEs). TrackerVJP: crash. ForwardDiff is correct but does not scale. The green bars mark methods meeting a < 1% correctness criterion; the hatched brown bar marks the BacksolveAdjoint failure. 
+
+7.7. A consolidated view of gradient reliability, constraint satisfaction, and batched throughput 
+
+Figure 15 collects three properties of jaxdae into a single view. Panel (a) shows that only jaxdae produces reliable reverse-mode gradients—raw-controller adjoints diverge across all tested DAE types. Panel (b) demonstrates that the mechanics-specific GGL constraint-stabilization path keeps the algebraic constraint satisfied to machine precision, while unreduced integration drifts. Panel (c) confirms that the XLA-fused batched gradient remains flat as batch size grows, where the PyTorch competitor scales linearly. Under the versions compared in Table 1, no inspected tool combines these three capabilities in a single JAX-native implementation. 
+
+8. Applications 
+
+8.1. Chemical engineering: CSTR Arrhenius parameter inversion and experiment design 
+
+A continuously stirred tank reactor with an Arrhenius rate law is a canonical inverse problem in chemical engineering, and a hard one: the pre-exponential factor log 10 A and the activation energy Ea enter the rate as a product, so a single operating-temperature experiment leaves them identifiable only as a degenerate ridge. The standard resolution is to gather data at several operating temperatures and design those experiments to maximize the information they carry. jaxdae turns this into a batched gradient computation. The reactor dynamics are assembled as a DAE through the connector framework, with the Arrhenius parameters marked 29 10 2 10 4 10 6 10 8       
+
+> relative tolerance rtol
+> 10 4
+> 10 3
+> 10 2
+> 10 1
+> 10 0
+> 10 1
+> gradient rel-err vs FD reference
+> naive adjoint diverged (up to 10 27 , clipped)
+> ANCF n = 242: AD vs FD rel = 3.7e 09
+
+(a)                 
+
+> Robertson, idx-1, n = 3
+> cart-pole, idx-31, n = 7
+> raw adjoint (per class)
+> diverged ( > 1, clipped)
+> 10 610 810 10
+> relative tolerance rtol
+> 10 10
+> 10 8
+> 10 6
+> 10 4
+> 10 2
+> 10 0
+> constraint drift |g(t end )|  plateaus at 0.3
+> g = x 2+z 2L2
+
+(b)    
+
+> jaxdae (index-reduced)
+> SUNDIALS IDA (unreduced)
+> 10 010 110 210 3
+> batch size B
+> 10 3
+> 10 4
+> 10 5
+> batched-gradient wall (ms)
+> torchdae B > 10 not measured
+> (per-instance loop > 120s)
+
+(c)   
+
+> jaxdae jit(vmap(grad))
+> torchdae for-loop
+
+Figure 15: Three properties of jaxdae in one figure. (a) Gradient reliability: only the jaxdae frozen-grid replay adjoint converges; raw adaptive-controller AD diverges across DAE types. (b) Constraint satisfaction: the mechanics-specific GGL constraint-stabilization path holds the algebraic constraint to machine precision, while unreduced integration drifts off the manifold. (c) Batched-gradient throughput: the XLA-fused vmap(grad) stays flat with batch size, where the PyTorch loop scales linearly. 
+
+RuntimeParam so that the solve is a differentiable function of them. The Fisher information matrix at a candidate operating temperature is I(Top ) = (1 /σ 2) J⊤J, where J is the Jacobian of the measured output with respect to the parameters; its determinant is the D-optimal design criterion. Rather than looping over candidate temperatures in Python, we form N candidate temperatures as a batch axis and compute all N Fisher matrices in one jax.vmap(jax.jacrev) call, which XLA fuses into a single kernel. Figure 11 shows jaxdae throughput is flat across the sweep, and the Fisher-determinant curve across the operating-temperature range peaks where the experiment most tightly constrains the Arrhenius ridge, guiding the experimenter to the most informative operating point. The physical content is that batched differentiable simulation makes experiment design a forward sweep rather than a sequence of re-solves. 
+
+8.2. Nuclear engineering: PWR parameter inversion and Bayesian inference 
+
+A pressurized water reactor (PWR) loop is a coupled multi-physics DAE: neutron point kinetics feed thermal-hydraulic energy balances through feedback coefficients, and the flow channels impose algebraic mass and momentum constraints. We assemble the TMI-1 loop [69] through the connector framework and pose a five-parameter inversion on the resulting 104-state DAE. The parameters are the fuel Doppler temperature coefficient αD , three decay-heat amplitudes (a1, a 2, a 3) for a slow, a medium, and a fast precursor group, and the coolant mass flow rate ˙m. These are reactor-physics quantities difficult to measure directly but whose effects on the measurable reactivity and temperature traces are pronounced. The objective is a least-squares misfit against synthetic measurement data, 
+
+L(p) = 12
+
+X
+
+> k
+
+ρ(tk; p) − ˆρk 
+
+> 2
+
++ 12
+
+X
+
+> k
+
+Tfuel (tk; p) − ˆTk
+
+> 2
+
+,
+
+where ρ is the net reactivity (pcm) and Tfuel the average fuel temperature (K), sampled at Nt measurement times on the 30 s horizon. A single jax.grad call propagates the loss gradient through the assembled plant— point kinetics, decay heat, thermal hydraulics, and the pump—across the full 30 s horizon. The solve runs through solve_dae_scan , a fixed-step BDF-2 integrator paired with an implicit-function-theorem adjoint, over 300 steps ( ∆t = 0 .1 s). We cross-check the five analytic-derivative directions against central finite differences with step ε = 10 −5 (Table 8). All five gradients are finite and nonzero, and the maximum relative error is 1.1 × 10 −7. This is the central point for the application: jax.grad penetrates an assembled, multi-physics plant-scale DAE rather than a hand-written toy. The gradient evaluation takes 15 .4 s of wall time on a single GPU in float64, with a peak resident set of 4.8 GB. 30 Table 8: Five-parameter PWR inversion: AD gradient versus central finite difference over a 30 s horizon on the 104-state assembled plant. All five directions are finite and nonzero; maximum relative error 1.1 × 10 −7.
+
+Parameter Physical meaning AD grad AD-vs-FD rel. err. 
+
+αD fuel Doppler temperature coefficient +5 .47 × 10 2 5.8 × 10 −9
+
+a1 decay-heat amplitude (slow group) +2 .72 × 10 1 1.1 × 10 −11 
+
+a2 decay-heat amplitude (medium group) +4 .32 × 10 0 1.1 × 10 −9
+
+a3 decay-heat amplitude (fast group) +4 .65 × 10 −2 1.1 × 10 −7
+
+˙m coolant mass flow rate −4.80 × 10 −2 6.1 × 10 −9
+
+We are explicit about scope. Verified gradients make gradient-based inversion immediate, and they are not by themselves a sampled posterior. Full NUTS sampling through NumPyro is the capability the integration exposes, not a result we report here. The Fisher information matrix of the same model, computed by the same batched Jacobian machinery as the CSTR case, diagnoses which parameter combinations the available sensors can identify. Its eigenvalue spectrum separates the well-constrained modes from the near-null modes, and the corresponding eigenvector composition indicates which sensor placement would tighten the weak directions. The practical value is that inversion and sensor-placement design use one shared differentiable plant model, rather than a forward code for simulation and a separate adjoint code for sensitivity. As noted in Section 5.2, the associated NEA main-steam-line-break benchmark serves here as an illustrative demonstration of coupled dynamics rather than a quantitative validation, owing to the prescribed-boundary-condition limits of the public data. 
+
+8.3. Power systems: IEEE-14 bus transient stability 
+
+The IEEE 14-bus test system [70] is the standard reduced network for transient stability studies. Its dynamic model couples the synchronous-machine rotor-angle equations, the algebraic network power-balance constraints, and the exciter and load states into a single DAE, with the rotor angles as differential variables and the bus voltages as algebraic unknowns fixed at each instant by the network. jaxdae applies batched forward simulation to this problem: a set of contingencies—fault locations, clearing times, load levels—is stacked along a batch axis and integrated in one jax.vmap call, so a screening study over many scenarios runs as a single fused forward pass rather than a loop of sequential solves. Fig. 16 shows the rotor-angle response of the 14 buses to a three-phase fault at bus 4 cleared after 120 ms; the post-fault trajectories settle to a stable equilibrium within 5 s, with the maximum inter-machine angle spread decaying from 142 ◦
+
+at fault clearing to below 10 ◦ at t = 5 s. The simulation is integrated over 10 s with ∆t = 10 ms using the scan BDF-2 path. This is an illustrative application demonstrating that the assembled DAE reproduces the expected transient-stability behavior on the IEEE-14 benchmark; it is not a validation against a reference time-domain program. A natural extension, not exercised here, couples the same differentiable solve to a learned world-model: a Flax network embedded in the residual could be trained through the implicit solve, positioning the differentiable DAE as the physics backbone for load-following control and stability-constrained reinforcement learning. 
+
+9. Conclusion 
+
+We summarize the contribution of jaxdae in four points. 1. jaxdae addresses the DAE gap in the JAX scientific stack. diffrax handles ODE/SDE/CDE only; DAE support has been requested since 2022 (issue #62) and remains unimplemented. jaxdae supplies adaptive BDF/Radau/Rosenbrock integration, Pantelides plus dummy-derivatives index reduction, and Modelica-style acausal assembly; the BDF and fixed-step Rosenbrock paths are end-to-end differentiable through 
+
+jax.grad , while Radau5 is forward-only. 31 0 1 2 3 4 5 6 7 8
+
+t (s) 
+
+15.0 
+
+12.5 
+
+10.0 
+
+7.5 
+
+5.0 
+
+2.5 
+
+0.0  
+
+> (deg)
+> load step gen-1 outage
+
+(a) 
+
+0 1 2 3 4 5 6 7 8
+
+t (s) 
+
+30 
+
+20 
+
+10 
+
+0
+
+10 
+
+20 
+
+30  
+
+> i s (mHz)
+> load step gen-1 outage
+
+(b) 
+
+0 1 2 3 4 5 6 7 8
+
+t (s) 
+
+0.96 
+
+0.98 
+
+1.00 
+
+1.02 
+
+1.04 
+
+1.06  
+
+> Vm (p.u.)
+> load step gen-1 outage
+
+(c) 
+
+0 1 2 3 4 5 6 7 8
+
+t (s) 
+
+0.94 
+
+0.96 
+
+0.98 
+
+1.00 
+
+1.02 
+
+1.04 
+
+1.06  
+
+> Vm, 9  (p.u.)
+> load step gen-1 outage
+
++0.10 p.u. load (bus 9) 
+
+0.10 p.u. P m (gen-1) 
+
+(d) 
+
+gen bus 1: ,
+
+gen bus 2: ,
+
+gen bus 3: ,
+
+gen bus 6: ,
+
+gen bus 8: ,
+
+other buses: V m
+
+bus 1: V m
+
+bus 9: V m
+
+limits 0.95 1.05 p.u. Figure 16: IEEE 14-bus transient-stability forward simulation assembled and integrated in jaxdae. Rotor-angle response of the 14 buses to a three-phase fault cleared after 120 ms; trajectories settle to a stable post-fault equilibrium. 
+
+32 2. Batched-gradient throughput is batch-invariant in jaxdae and batch-linear in the PyTorch counterpart over the range measured for both. jaxdae jit(vmap(grad)) stays flat from B = 1 to B = 1000 (0.61– 0.85 s on the toy probe); torchdae cannot vectorize its adjoint and must loop, measured up to B = 10 .At the largest batch measured for both tools the ratio is 41–46 × (scalar gradient) and 15–99 × (Fisher matrix); larger torchdae batches are linear projections, not measurements. 3. The gradients agree with independent references. AD-versus-FD on a cart-pole DAE converges at empir-ical order 1.994 to a 1.41 × 10 −8 floor; on a stiff Neural-DAE under a non-degenerate loss, jaxdae matches a ForwardDiff reference to 4.5 × 10 −2% relative error (the shared-construction SciMLSensitivity adjoints reach 1.3 × 10 −2%, while BacksolveAdjoint fails at ∼100 % and TrackerVJP crashes); the forward- and reverse-mode paths agree to 6.4 × 10 −14 ; and the GFB event adjoint is recovered term by term, with the continuous channel at machine precision and the recomposition closing to 7.9 × 10 −4.4. The current release provides a tested and usable foundation for differentiable DAE workflows. The repos-itory contains 3,205 tests (3,177 passing, the remaining 28 — 12 known failures reproducing identically at v0.27.1, 9 skipped, 7 xfailed — documented in RELEASE_NOTES.md ) at the commit associated with this manuscript, and the benchmark suite spans chemical, nuclear, and power-systems DAEs. Several solver and interoperability limitations remain, as noted below. 
+
+Limitations.. The frozen-grid replay adjoint is an engineering realization of the controller-decoupling frame-work of Alexe and Sandu [54], not a new method. Its observed convergence on the analytic-truth scalar decay (order 0.83 ) is consistent with the conditional O(tol 2/3) scaling argument of Sec. 3.7; the three FD-reference problems show lower fitted orders ( 0.07 –0.38 ) because their independently-discretised truth grid floors the slope. We therefore claim C2 as a first correct, composable JAX implementation, not as a convergence-theorem contribution. Fixed-step BDF(1–5) is verified (Sec. 5.1), but the differentiable scan path currently uses BDF-2 in its backward pass; extension of the replay adjoint to higher-order fixed-step AD is straight-forward but not yet implemented. There is no distributed multi-GPU path ( pmap /sharding is future work). Event-term verification covers bouncing-ball and pendulum-impact problems; a broader class of event types is not yet jump-condition-verified. Nuclear bandwidth validation is data-limited and treated as illustrative. 
+
+Future work.. HPC parallelism for plant-scale models; a head-to-head with compile-time AD (Enzyme); and additional high-index applications in energy and aerospace. The computational environment is pinned by a 
+
+pyproject.toml with an accompanying uv.lock , which fixes exact versions of JAX, the CUDA stack, and all Python dependencies. The lockfile constrains jax/jaxlib to the window ≥0.9, <0.11 because the release smoke suite (four cold examples from a clean install) has not yet been validated on jax 0.11.0 (released 2026-07-16); validation is deferred to a future release. The suite passes on jax 0.10.2. Reproducing either snapshot is a single command: uv sync recreates the environment, and uv run python benchmarks/run_all.py --suite <name> reruns any benchmark suite end to end. The available suites and their expected runtimes are documented in benchmarks/README.md ; each suite regenerates the figures and tables of the correspond-ing section. Every figure and result table in this paper is traceable to its source data via the repository 
+
+paper_manifest.md . Each generating script records the git commit hash, the random seed, and the JAX and jaxlib versions alongside its output. The full source code, benchmarks, and pre-computed data are deposited in the CPC Program Library (hosted on Mendeley Data) under the Apache-2.0 license, pinned to the commit associated with this manuscript; a DOI is assigned at acceptance. 
+
+10. Reproducibility 
+
+The numerical results reported here correspond to the immutable commit identified in the repository at the time of submission, with the environment pinned by pyproject.toml and an accompanying uv.lock 
+
+(uv sync recreates it exactly). The entry point benchmarks/run_all.py runs the cross-library, batched-throughput, and gradient-verification benchmark suites end to end; each suite regenerates the figures and tables of its corresponding section. Application-specific figures (PWR, IEEE-14, event-adjoint verification) are produced by the individual scripts identified in the repository paper_manifest.md , which maps each 33 figure and result table to its generating script, input data, and software version; these are not all covered by a single benchmarks/run_all --suite all command. The Python version required is 3.11+; the uv.lock 
+
+fixes exact versions of JAX, the CUDA stack, and all dependencies, with jax/jaxlib constrained to ≥0.9, 
+
+<0.11 because the release smoke suite has not yet been validated on jax 0.11.0 (released 2026-07-16). 
+
+Acknowledgments 
+
+The authors thank colleagues at the National Key Laboratory of Nuclear Reactor Technology and the Department of Engineering Physics, Tsinghua University, for discussions on differentiable simulation and reactor dynamics. 
+
+Funding 
+
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors. 
+
+Declaration of generative AI and AI-assisted technologies in the writing process 
+
+During the preparation of this work the authors used Claude (Anthropic) and GitHub Copilot in order to assist with manuscript language editing and to draft boilerplate code scaffolding. After using these tools, the authors reviewed and edited the content as needed and take full responsibility for the content of the published article. 
+
+Declaration of competing interest 
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper. 
+
+CRediT authorship contribution statement Chengyuan Li: Conceptualization, Methodology, Software, Investigation, Formal analysis, Writing – original draft, Visualization. Shanfang Huang: Supervision, Funding acquisition, Writing – review & editing. Jian Deng: Methodology, Writing – review & editing. 
+
+Data availability 
+
+All numerical data underlying the figures and tables of this paper are regenerated by the packaged scripts included in the code repository. No external datasets were used. The data will be archived at Mendeley Data with a DOI assigned upon acceptance. 
+
+Code availability 
+
+The jaxdae source code, benchmark suites, and pre-computed data are deposited in the CPC Pro-gram Library (hosted on Mendeley Data) under the Apache-2.0 license, pinned to the commit associated with this manuscript. The environment is pinned by pyproject.toml with an accompanying uv.lock (uv sync recreates it exactly). The benchmark suites (cross-library, batched-throughput, gradient-verification) are rerun by benchmarks/run_all.py ; application-specific figures are generated by the scripts listed in 
+
+paper_manifest.md . A long-term archived version will be deposited at Mendeley Data upon acceptance. 34 References 
+
+[1] K. E. Brenan, S. L. Campbell, L. R. Petzold, Numerical Solution of Initial-Value Problems in Differential-Algebraic Equations, 2nd Edition, SIAM, 1996. [2] U. M. Ascher, L. R. Petzold, Computer Methods for Ordinary Differential Equations and Differential-Algebraic Equations, SIAM, 1998. [3] C. C. Pantelides, The consistent initialization of differential-algebraic systems, SIAM Journal on Sci-entific and Statistical Computing 9 (2) (1988) 213–231. doi:10.1137/0909014 .[4] S. E. Mattsson, G. Söderlind, Index reduction in differential-algebraic equations using dummy deriva-tives, SIAM Journal on Scientific Computing 14 (3) (1993) 677–692. doi:10.1137/0914043 .[5] Y. Cao, S. Li, L. Petzold, R. Serban, Adjoint sensitivity analysis for differential-algebraic equations: Algorithms and software, SIAM Journal on Scientific Computing 22 (5) (2003) 1816–1831. doi:10. 1137/S1064827501380630 .[6] R. J. LeVeque, Finite Volume Methods for Hyperbolic Problems, Cambridge University Press, 2002. [7] A. Tarantola, Inverse Problem Theory and Methods for Model Parameter Estimation, Society for Industrial and Applied Mathematics (SIAM), 2005. doi:10.1137/1.9780898717921 .[8] A. G. Baydin, B. A. Pearlmutter, A. A. Radul, J. M. Siskind, Automatic differentiation in machine learning: a survey, Journal of Machine Learning Research 18 (2018) 1–43. [9] C. C. Margossian, A review of automatic differentiation and its efficient implementation, WIREs Data Mining and Knowledge Discovery 9 (4) (2019) e1305. doi:10.1002/widm.1305 .[10] S. S. Schoenholz, E. D. Cubuk, Jax-md: End-to-end differentiable, hardware accelerated, molecular dynamics in pure python, in: Advances in Neural Information Processing Systems (NeurIPS), 2020. 
+
+arXiv:1912.04232 .[11] Y. Hu, X. Liu, X. Zhang, Y. Fu, C. Kuang, W. Gan, N. Wan, H. Zhao, D. Xie, S.-M. Shan, et al., Difftaichi: Differentiable programming for physical simulation, in: International Conference on Learning Representations (ICLR), 2020. arXiv:1910.00935 .[12] D. A. Bezgin, A. B. Buhendwa, N. A. Adams, Jax-fluids: A fully-differentiable high-order computational fluid dynamics solver for compressible two-phase flows, Computer Physics Communications 282 (2023) 108527. arXiv:2203.13760 , doi:10.1016/j.cpc.2022.108527 .[13] T.-K. Xue, H. Liao, P. Schmitz, S. Desai, A. Barmak, H. Gardin, W. Sun, G. Bauer, J. Zehnder, Q. Chen, et al., Jax-fem: A differentiable gpu-accelerated 3d finite element solver for automatically solving forward and inverse problems, Computer Physics Communications 291 (2023) 108802. arXiv: 2212.00964 , doi:10.1016/j.cpc.2023.108802 .[14] M. Ataei, H. Salehipour, XLB: A differentiable massively parallel lattice Boltzmann library in Python, Computer Physics Communications 300 (2024) 109187. doi:10.1016/j.cpc.2024.109187 .[15] M. B. Giles, E. Süli, Adjoint methods for PDEs: a review, Acta Numerica 11 (2002) 145–236. doi: 10.1017/S0962492902000033 .[16] Modelica Association, Modelica — a unified object-oriented language for systems modeling (language specification v3.6), https://specification.modelica.org (2023). [17] M. M. Tiller, Introduction to Physical Modeling with Modelica, Springer, 2001. 35 [18] J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, Q. Zhang, Jax: composable transformations of python+numpy programs, http://github.com/google/jax (2018). [19] R. T. Q. Chen, Y. Rubanova, J. Bettencourt, D. Duvenaud, Neural ordinary differential equations, in: Advances in Neural Information Processing Systems (NeurIPS), 2018. arXiv:1806.07366 .[20] P. Kidger, On neural differential equations, Ph.D. thesis, University of Oxford (2022). [21] P. Kidger, diffrax: numerical differential equations in jax, https://docs.kidger.site/diffrax 
+
+(2021). [22] J. M. Rader, T. Lyons, P. Kidger, Lineax: unified linear solves and linear least-squares in JAX and Equinox (2023). arXiv:2311.17283 .[23] J. Rader, T. Lyons, P. Kidger, Optimistix: modular optimisation in JAX and Equinox (2024). arXiv: 2402.09983 .[24] Y. Huang, C. Zou, Y. Li, T. Wik, MINN: Learning the dynamics of differential-algebraic equations and application to battery modeling, IEEE Transactions on Pattern Analysis and Machine Intelligence 46 (12) (2024) 11331–11344. arXiv:2304.14422 , doi:10.1109/TPAMI.2024.3456475 .[25] K. Luo, J. Tang, M. Cai, X. Zeng, M. Xie, M. Yan, DAE-KAN: A kolmogorov-arnold network model for high-index differential-algebraic equations (2025). arXiv:2504.15806 .[26] Y. Huang, J. Ding, A multiscale differential-algebraic neural network-based method for learning dy-namical systems, International Journal of Mechanical System Dynamics 4 (1) (2024) 77–87. doi: 10.1002/msd2.12102 .[27] J. Koch, M. Shapiro, et al., Learning neural differential algebraic equations via operator splitting, in: IEEE Conference on Decision and Control (CDC), 2024. arXiv:2403.12938 .[28] C. F. Curtiss, J. O. Hirschfelder, Integration of stiff equations, Proceedings of the National Academy of Sciences 38 (3) (1952) 235–243. doi:10.1073/pnas.38.3.235 .[29] E. Hairer, G. Wanner, Solving Ordinary Differential Equations II: Stiff and Differential-Algebraic Prob-lems, 2nd Edition, Springer Series in Computational Mathematics, Springer, 1996. [30] J. D. Pryce, A structural analysis method for DAEs, Applied Numerical Mathematics 39 (1) (2001) 41–71. doi:10.1016/S0168-9274(01)00076-9 .[31] N. S. Nedialkov, J. D. Pryce, G. Tan, Algorithm 948: DAESA—a MATLAB tool for structural analysis of differential-algebraic equations, ACM Transactions on Mathematical Software 41 (3) (2015) Article 12. doi:10.1145/2700586 .[32] C. W. Gear, B. Leimkuhler, G. K. Gupta, Automatic integration of the Euler–Lagrange equations with constraints, Journal of Computational and Applied Mathematics 12–13 (1985) 77–90. doi:10.1016/ 0377-0427(85)90008-1 .[33] A. C. Hindmarsh, P. N. Brown, K. E. Grant, S. L. Lee, R. Serban, D. E. Shumaker, C. S. Wood-ward, Sundials: Suite of nonlinear and differential/algebraic equation solvers, ACM Transactions on Mathematical Software (TOMS) 31 (3) (2005) 363–396. [34] L. Petzold, Y. Cao, S. Li, R. Serban, S. Li, Sensitivity analysis of differential-algebraic equations and partial differential equations, Computers & Chemical Engineering 30 (10–12) (2006) 1553–1559. 
+
+doi:10.1016/j.compchemeng.2006.05.015 .36 [35] J. E. Tolsma, P. I. Barton, Efficient sensitivity analysis of large-scale differential-algebraic systems, Jour-nal of Computational and Applied Mathematics 81 (1) (1997) 97–106. doi:10.1016/S0377-0427(97) 00050-0 .[36] H. Zhang, H. Sundar, R. Bui, C. Gao, L. Gao, B. Smith, L. Chandra, PETSc TSAdjoint: a discrete adjoint ODE solver for first-order and second-order sensitivity analysis, ACM Transactions on Mathe-matical Software 48 (2) (2022) 1–29. arXiv:1912.07696 , doi:10.1145/3547056 .[37] A. Griewank, A. Walther, Algorithm 799: revolve: an implementation of checkpointing for the reverse or adjoint mode of computational differentiation, ACM Transactions on Mathematical Software 26 (1) (2000) 19–45. doi:10.1145/347837.347846 .[38] J. M. Sanz-Serna, Symplectic Runge–Kutta schemes for adjoint equations, automatic differentiation, optimal control and more, SIAM Review 58 (1) (2016) 3–33. doi:10.1137/140980085 .[39] M. Blondel, Q. Berthet, M. Cuturi, F. Roy, B. Vincent-Colillas, Efficient and modular implicit differen-tiation, in: Advances in Neural Information Processing Systems (NeurIPS), 2021. arXiv:2105.15183 .[40] C. C. Margossian, M. Betancourt, Efficient automatic differentiation of implicit functions (2021). arXiv: 2112.14217 .[41] diffrax contributors, Feature request: differential algebraic equations, GitHub issue #62, patrick-kidger/diffrax (open since Feb 2022), https://github.com/patrick-kidger/diffrax/issues/62 
+
+(2022). [42] Y. Gamaleldin, Torchdae: numerical differential-algebraic equation solvers in pytorch, https:// github.com/yousef-rafat/torchdae ; PyTorch Discuss https://discuss.pytorch.org/t/225039 
+
+(2026). [43] Y. Ma, S. Gowda, R. Anantharaman, C. Laughman, S. Maddhashiya, V. B. Shah, C. Rackauckas, ModelingToolkit.jl: A composable graph transformation system for equation-based modeling (2021). 
+
+arXiv:2103.05244 .[44] C. Rackauckas, et al., Universal differential equations for scientific machine learning (2021). arXiv: 2001.04385 .[45] Y. Ma, V. Dixit, M. J. Innes, X. Guo, C. Rackauckas, A comparison of automatic differentiation and continuous adjoint sensitivity analysis (2021). arXiv:1812.01892 .[46] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, M. Diehl, Casadi — a software framework for nonlinear optimization and optimal control, Mathematical Programming Computation 11 (2019) 1–36. [47] V. Sulzer, S. G. Marquis, R. Timms, M. Robinson, S. J. Chapman, Python battery mathematical modelling (PyBaMM), Journal of Open Source Software 6 (61) (2021) 3422. doi:10.21105/joss. 03422 .[48] C. D. Freeman, E. Frey, A. Raichuk, S. Girgin, O. Bachem, Brax: A differentiable physics engine for large scale rigid body simulation, in: Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track, 2021. arXiv:2106.13281 .[49] A. Toshev, H. Ramachandran, J. A. Erbesdobler, G. Galletti, J. Brandstetter, N. A. Adams, JAX-SPH: A differentiable smoothed particle hydrodynamics framework, in: ICLR 2024 Workshop on AI for Differential Equations in Science, 2024. [50] D. A. Bezgin, S. M. Schmidt, N. A. Adams, Jax-fluids 2.0: What’s new and what’s next, Computer Physics Communications 308 (2024) 109433. arXiv:2402.05193 , doi:10.1016/j.cpc.2024.109433 .37 [51] S. Ehrlichmann, et al., JuTrack.jl: A Julia package for auto-differentiable accelerator modeling and particle tracking, Computer Physics Communications 305 (2024) 109338. doi:10.1016/j.cpc.2024. 109338 .[52] A. Gao, et al., chemtrain: Learning deep potential models via automatic differentiation, Computer Physics Communications 310 (2025) 109512. doi:10.1016/j.cpc.2025.109512 .[53] P. Kidger, J. Morrill, J. Verma, T. Lyons, Neural controlled differential equations for irregular time series, in: Advances in Neural Information Processing Systems (NeurIPS), 2020. arXiv:2005.08926 .[54] M. Alexe, A. Sandu, On the discrete adjoints of adaptive time stepping algorithms, Journal of Compu-tational and Applied Mathematics 233 (4) (2009) 1005–1020. doi:10.1016/j.cam.2009.08.109 .[55] C. W. Gear, The automatic integration of ordinary differential equations, Communications of the ACM 14 (3) (1971) 176–179. doi:10.1145/362566.362571 .[56] E. Hairer, G. Wanner, Stiff differential equations solved by Radau methods, Journal of Computational and Applied Mathematics 111 (1–2) (1999) 93–111. doi:10.1016/S0377-0427(99)00134-X .[57] J. Lang, Rosenbrock–wanner methods: construction and mission (2020). arXiv:2002.12028 .[58] K. Gustafsson, Control-theoretic techniques for stepsize selection in implicit Runge–Kutta methods, ACM Transactions on Mathematical Software 20 (4) (1994) 496–517. doi:10.1145/198429.198437 .[59] G. Söderlind, Digital filters in adaptive stepsize control, SIAM Journal on Scientific Computing 25 (3) (2003) 888–904. doi:10.1137/S1064827502407685 .[60] S. Galán, F. Feehery, P. I. Barton, Parametric sensitivity methods for the integration of flexible multi-body dynamic systems, Applied Numerical Mathematics 31 (1–2) (1999) 17–47, jump-condition adjoint original paper. [61] J. Corner, A. Sandu, C. Sandu, Hybrid adjoint sensitivity analysis for differential-algebraic equations with implicit event detection, SIAM Journal on Scientific Computing 40 (3) (2018) B689–B713. doi: 10.1137/17M1140276 .[62] D. Beigel, M. S. Mommer, L. Wirsching, H. G. Bock, Approximation of weak adjoints by reverse automatic differentiation of BDF methods (2011). arXiv:1109.3061 .[63] D. Phan, N. Pradhan, M. Jankowiak, Composable effects for flexible and accelerated probabilistic programming in NumPyro, in: NeurIPS 2019 Workshop on Program Transformations, 2019. arXiv: 1912.11554 .[64] E. Hairer, G. Wanner, INdAM Bari consortium, Ode/dae test set, https://unige.ch/~hairer/ software/settest/ and http://archimede.uniba.it/~testset (2023). [65] A. Robertson, Robertson autocatalytic reaction test problem, In Hairer-Wanner testset: http: //archimede.uniba.it/~testset/problems/rober.php (1966). [66] J. Breuning, scipy_dae: a python package for solving differential-algebraic equations, https://github. com/JonasBreuning/scipy_dae (2024). [67] National Renewable Energy Laboratory, scikit-sundae: Python bindings for sundials ida, https:// github.com/NREL/scikit-sundae (2024). [68] OECD/NEA, Nea/nsc/doc(2000)21: Main steam line break (mslb) benchmark, Tech. rep., Nuclear Energy Agency (2000). 38 [69] jaxdae authors, Three mile island unit 1 pwr loop parameters, Internal reactor-physics testbed assembled from publicly available TMI-1 design data; not a standardized validation benchmark (2026). [70] IEEE Power & Energy Society, Ieee 14-bus test system, Standard power system benchmark for transient stability; available via MATPOWER and PSAT, https://matpower.org/ (1962). 39

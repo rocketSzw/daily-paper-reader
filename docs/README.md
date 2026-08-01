@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-07-29</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-01</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-07-29 20:38:15 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-01 21:04:21 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日聚焦多智能体强化学习在无人机协同导航与引导中的突破，精读两篇9分论文。最值得看的是基于共享体素地图的MASAC室内无人机引导和复杂环境下的多无人机导航研究。建议普通读者优先阅读这两篇，深入理解DRL在无人机集群协作中的实际应用。</p>
+<p>今日精读7篇、速读11篇，共18篇论文，核心聚焦机器人导航与运动控制。最值得关注《X-NavDP》以9.0分刷新导航扩散策略通用性，以及《Safe Learning Predictive Control》在自我世界机器人安全控制上的8.0分突破。建议普通读者优先精读这两篇，把握具身智能中“泛化导航”与“安全预测”的前沿交叉方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Shared Voxel-Map-Based Cooperative Indoor UAV Guidance with a Multi-Agent Soft Actor-Critic Controller">Shared Voxel-Map-Based Cooperative Indoor UAV Guidance with a Multi-Agent Soft Actor-Critic Controller</span></li><li><span class="dpr-home-dashboard-paper-title" title="Cooperative Multi-UAV Navigation in Complex Environments via Systematic Multi-Agent Deep Reinforcement Learning">Cooperative Multi-UAV Navigation in Complex Environments via Systematic Multi-Agent Deep Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Physics-Aware End-to-End Deep Reinforcement Learning for Quadcopter Control with Actuator Dynamics">Physics-Aware End-to-End Deep Reinforcement Learning for Quadcopter Control with Actuator Dynamics</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="X-NavDP: Generalizing Navigation Diffusion Policy to Novel Behavior and Embodiments with Group Q-score Reweighted Matching">X-NavDP: Generalizing Navigation Diffusion Policy to Novel Behavior and Embodiments with Group Q-score Reweighted Matching</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safe Learning Predictive Control for Ego-World Robotic Systems">Safe Learning Predictive Control for Ego-World Robotic Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics">jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WorldDiT: A Unified Diffusion Architecture for World and Action Modeling">WorldDiT: A Unified Diffusion Architecture for World and Action Modeling</span></li><li><span class="dpr-home-dashboard-paper-title" title="Decentralized Scalable Exploration via Emergent Adaptive Lévy Walks on Minimal-Sensing Platforms">Decentralized Scalable Exploration via Emergent Adaptive Lévy Walks on Minimal-Sensing Platforms</span></li><li><span class="dpr-home-dashboard-paper-title" title="ReLATE: Reliability-Guided Evidence Fusion for Robust UAV--Satellite cross-view Geo-Localization">ReLATE: Reliability-Guided Evidence Fusion for Robust UAV--Satellite cross-view Geo-Localization</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Social Robot Navigation By Sensing Human Legs">Learning Social Robot Navigation By Sensing Human Legs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning Traversability-Aware Global Planners for Long Horizon Off-Road Navigation">Learning Traversability-Aware Global Planners for Long Horizon Off-Road Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="LeapBot-WA: World-Anchor Action Models via Predictive Latent Alignments">LeapBot-WA: World-Anchor Action Models via Predictive Latent Alignments</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
 </section>
 </div>
 

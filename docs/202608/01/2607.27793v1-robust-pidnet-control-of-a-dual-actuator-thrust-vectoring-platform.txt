@@ -1,0 +1,514 @@
+Title: Robust PIDNet Control of a Dual-Actuator Thrust Vectoring Platform
+
+URL Source: https://arxiv.org/pdf/2607.27793v1
+
+Published Time: Fri, 31 Jul 2026 00:36:50 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Connor Calme 
+
+Department of Aerospace Engineering, Embry-Riddle Aeronautical University, 3700 Willow Creek, Prescott, Arizona, USA email: calmec@my.erau.edu 
+
+# Lundon Salley 
+
+Department of Aerospace Engineering, Embry-Riddle Aeronautical University, 3700 Willow Creek, Prescott, Arizona, USA email: salleyl@my.erau.edu 
+
+# Luis F. Zapata-Rivera 
+
+Department of Computer, Electrical & Software Engineering, Embry-Riddle Aeronautical University, 3700 Willow Creek, Prescott, Arizona, USA email: zapatarl@erau.edu 
+
+# Aldo J. Munoz-Vazquez 1
+
+Department of Computer, Electrical & Software Engineering, Embry-Riddle Aeronautical University, 3700 Willow Creek, Prescott, Arizona, USA email: munozvaa@erau.edu 
+
+# Robust PIDNet Control of a Dual-Actuator Thrust Vectoring Platform 
+
+This paper presents a robust controller for attitude tracking on a dual-actuator thrust vectoring platform. The control objective is to track a desired thrust direction on the unit sphere using two linear actuators connected through a universal joint. The proposed framework combines a bounded nonlinear PD action with a radial basis function (RBF) network that generates state-dependent integral compensation through online weight adaptation, relying solely on tracking error and its time derivative from actuator-displacement measurements. The control law is formulated as a coupled multiple-input–multiple-output structure, enabling the RBF network to compensate cross-channel effects, including direction-dependent friction and geometric coupling, with model-free implementation. Stability is established through a convex Lyapunov function whose gradient is naturally bounded along the error manifold. An H∞ gain bound is derived for the extended error, with a local linearized interpretation in terms of tracking accuracy. The proposed controller is validated experimentally on a two-degree-of-freedom gimbal rig, achieving improved performance relative to a conventional PID and to a super-twisting controller, with online adaptation reducing the ITNE by 10% over the non-adaptive baseline at no additional control effort. Keywords: Thrust Vector Control; Nonlinear PID; Neural Network Control; Radial Basis Function; Lyapunov Stability. 
+
+Acknowledgment 
+
+The authors sincerely thank the Rocket Development Lab at Embry-Riddle Aeronautical University (Prescott campus) for designing and building the thrust vector control (TVC) platform and for allowing its use during summer research activities. 
+
+Funding Data 
+
+• The authors acknowledge support from Embry-Riddle Aero-nautical University through the Undergraduate Research In-stitute and its Summer Initiative Award program. 
+
+• The authors acknowledge the Department of Computer, Elec-trical, & Software Engineering at Embry-Riddle Aeronautical University for providing access to laboratory facilities and for technical support. 
+
+1 Introduction 
+
+Thrust vector control (TVC) has proven to be a reliable alterna-tive for steering a launch vehicle in cases where control surfaces are unreliable or unavailable [1]. Modern configurations usu-ally employ gimbaled propulsion systems powered by hydraulic or electromechanical actuators [2,3]. Classical approaches mainly rely on linear quadratic optimization and conventional PID con-trollers [4,5]. However, the presence of strong nonlinear coupling and external disturbances crave for robust techniques. Sliding mode control has been applied to TVC at the vehicle level [6–8], proving high accuracy and robust performance, but at the expense of high-frequency oscillations in the control signal, 
+
+> 1Corresponding Author. Version 1.18, July 31, 2026
+
+limiting its practicality in actuator-driven hardware. This has mo-tivated smooth alternatives based on neural networks or fuzzy ap-proximators [9,10], where unmodeled dynamics are compensated online without requiring explicit disturbance bounds. Classical adaptive neural network controllers for Euler-Lagrange systems combine Lyapunov-derived weight update laws, relying on the sigma modification to guarantee uniform ultimate bound-edness [11]. A parallel line of research, originated by Slotine and Li [12,13] and refined by Loría and Panteley [14] achieves stronger convergence guarantees by exploiting a linearly parame-terized regressor 𝑌 (𝑞, ̇ 𝑞, ̇ 𝑞 𝑟 ,̈𝑞 𝑟 ) 𝜃 , which is constructed from the complete symbolic expressions of the inertia, Coriolis, and gravi-tational matrices, with only a constant parameter vector 𝜃 treated as unknown. This structural requirement restricts the class of compensable uncertainty to parametric variation in an otherwise known model; unstructured nonlinearities such as stiction, back-lash, and direction-dependent friction, which dominate actuator-level dynamics in electromechanical TVC hardware, fall outside the regressor span and cannot be addressed within that framework. Moreover, the resulting control signals grow without bound as the tracking error increases, posing a practical risk of actuator satu-ration that the theory does not accommodate. More recent deep neural network extensions [15,16] remain limited to simulation studies. In the TVC domain, neural networks have been applied to attitude control [10], fault tolerant control [17], and actuator fric-tion compensation [18]; of these, only [10] includes experimental results, while the remaining studies are limited to simulation. This paper proposes a model-free controller that circumvents these limitations: control signals are bounded by construction through a nonlinear proportional–derivative (PD) action, and unstructured nonlinearities are compensated online by a radial basis function (RBF) network with sigma-modified weight adaptation, without requiring any plant model. The present work makes the following contributions: 
+
+Journal of Computational and Nonlinear Dynamics Copyright © 2026 by ASME PREPRINT FOR REVIEW / 1 arXiv:2607.27793v1 [eess.SY] 30 Jul 2026 Fig. 1 Experimental TVC platform. Actuator vectors 𝒂 1, 𝒂 2
+
+connect base pins to top-mount pins through the universal joint; 𝝀 is the thrust direction. 
+
+(1) A coupled MIMO PIDNet controller for a parallel thrust vectoring mechanism, combining a smooth and bounded nonlinear PD term with supervised RBF weight adaptation via sigma-modification, designed directly in actuator space and relying only on actuator-displacement measurements. (2) A stability proof using a convex Lyapunov candidate func-tion that yields an explicit H∞ gain from the RBF approx-imation error to the saturated extended error, with a local linearized extension to the actuator tracking error. (3) Experimental validation on a two-degree-of-freedom elec-tromechanical TVC rig, demonstrating improved tracking over PID and super-twisting baselines, with measurable gain from online adaptation. 
+
+2 Platform Geometry and Dynamics 
+
+2.1 Geometry in Thrust Direction Space. The platform constitutes a two-degree-of-freedom parallel mechanism: two linear actuators, which are mounted on a fixed base, drive a common top through a universal joint, forming a closed kinematic chain. Because both actuators act on the same rigid body, the forward kinematics are inherently coupled, as a consequence, the resulting cross-axis dynamics depend on friction, backlash, and geometric nonlinearities that resist tractable closed-form modeling. This motivates the model-free approach developed in Section 3. The platform consists of a fixed base and a tilting top mount connected by a rigid bar through a universal joint at height ℎ1
+
+above the base. The bar has length ℎ2, and the joint permits rotation about two orthogonal axes while blocking rotation about the bar axis. Two linear actuators connect pins on the base (at radius 𝑟 𝑏 along the 𝑥 - and 𝑦 -axes, respectively) to corresponding pins on the top mount (at radius 𝑟 𝑡 ), see Fig. 1. The orientation of the top plate is described by the rotation matrix 𝑅 = [ ˆ𝒓 1 ˆ𝒓 2, ˆ𝒓 3 ] ∈ 𝑆𝑂 (3), where the thrust direction is 
+
+𝝀 = ˆ𝒓 3 ∈ S2 . (1) Since the universal joint blocks axial rotation, the full rotation 𝑅 is uniquely determined by 𝝀 . Concretely, 𝑅 (𝝀 ) = 𝑅 𝑦 (𝜃 (𝝀 )) 𝑅 𝑥 (𝜙 (𝝀 )) 
+
+where 
+
+𝜙 = −arctan ⎛⎜⎜⎝
+
+𝜆 2√︂ 
+
+𝜆 21 + 𝜆 23
+
+⎞⎟⎟⎠
+
+, 𝜃 = arctan (︃ 𝜆 1
+
+𝜆 3)︃ , (2) are intermediate algebraic quantities (not independent coordinates) determined entirely by 𝝀 .The actuation vectors from base pin to mount pin can be found from the kinematic constraint in Fig. 2, this is, 
+
+𝒂 𝑖 (𝝀 ) = [ℎ1 𝐼 + ℎ2 𝑅 (𝝀 )] ˆ𝒆 3 + [ 𝑟 𝑡 𝑅 (𝝀 ) − 𝑟 𝑏 𝐼 ] ˆ𝒆 𝑖 |𝑖 =1, 2 , (3) and the actuator extensions can be found from 𝑞 𝑖 + ℓ = ∥ 𝒂 𝑖 ∥, for 
+
+𝑖 = 1, 2, where ℓ is the actuator rest length. 
+
+Fig. 2 Kinematic constraint of the parallel mechanism. Ac-tuator vectors 𝒂 1, 𝒂 2 form a closed chain through the univer-sal joint; tilting about either axis displaces both actuators simultaneously. 
+
+Definition 1 (Thrust-to-actuator map) The map 𝒒 : S2 → R2 is defined by 
+
+𝒒 (𝝀 ) = [ ∥ 𝒂 1 (𝝀 )∥ − ℓ, ∥ 𝒂 2 (𝝀 )∥ − ℓ ]⊤ (4) 
+
+Definition 2 (Actuator Jacobian) The Jacobian of the thrust-to-actuator map, restricted to the tangent space 𝑇 𝝀 S2, is 
+
+J(𝝀 ) = 𝜕 𝒒 
+
+𝜕 𝝀 |︁|︁|︁|︁ 𝑇 𝝀 S2
+
+∈ R2×2 . (5) 
+
+Proposition 1 (Local invertibility of J) The Jacobian J(𝝀 ) is lo-cally invertible in a neighborhood of the nominal configuration 
+
+𝝀 0 = ˆ𝒆 3, where det (J)|︁|︁ 𝝀 0 = 𝑟 𝑏 𝑟 𝑡 > 0.Proof. The map 𝝀 ↦ → det (J(𝝀 )) is continuous. Since det (J)| 𝝀 0 =
+
+𝑟 𝑏 𝑟 𝑡 > 0, there exists an open ball O(𝝀 0) ⊂ S2, centered at 𝝀 0,such that det (J(𝝀 )) > 0 for all 𝝀 ∈ O(𝝀 0). □
+
+2.2 Actuator-Space Dynamics. The coupled equation of mo-tion projected onto actuator space takes the standard Euler– Lagrange form 
+
+𝑀 𝑞 (𝒒 )̈ 𝒒 + 𝐶 𝑞 (𝒒 ,̇ 𝒒 )̇ 𝒒 + 𝒈 𝑞 = 𝒖 + 𝒅 , (6) where 𝑀 𝑞 ∈ R2×2 is symmetric, positive definite, and dominated by diagonal terms due to the gearbox-decoupled actuator inertias; 
+
+𝐶 𝑞 satisfies the skew-symmetry property ̇ 𝑀 𝑞 = 𝐶 𝑞 + 𝐶 ⊤ 
+
+> 𝑞
+
+; 𝒈 𝑞 =
+
+𝑚 act 𝑔 [1, 1]⊤ is the gravitational load, with 𝑚 act the actuator mass and 𝑔 the gravitational acceleration; 𝒖 = [𝑢 1, 𝑢 2]⊤ the actuator forces; and 𝒅 condenses unmodeled effects such as backlash, friction, and cross-coupling. The derivation from first principles is omitted, as the controller developed in Section III requires only the well-known structural properties of (6), not the explicit expressions for 𝑀 𝑞 or 𝐶 𝑞 .
+
+3 PIDNet Controller 
+
+3.1 Control Objective. Track a desired thrust direction 
+
+𝝀 des (𝑡 ) ∈ S2 using actuator forces 𝒖 ∈ R2. The reference is mapped to actuator space as 𝒒 des = 𝒒 (𝝀 des (𝑡 )) from (4), where local invertibility is guaranteed by Proposition 1. 
+
+2 / PREPRINT FOR REVIEW Transactions of the ASME 3.2 PD Extended Error. Define the tracking error and the PD extended error 
+
+˜𝒒 = 𝒒 − 𝒒 des , (7) 
+
+𝒔 =̇ ˜𝒒 + 𝛼 ˜𝒒 , (8) where 𝛼 > 0 is the desired convergence rate. When 𝒔 = 0, the error satisfies ̇ ˜𝒒 + 𝛼 ˜𝒒 = 0, which is exponentially stable. 
+
+3.3 Error Dynamics. Substituting ̈ 𝒒 =̇ 𝒔 − 𝛼 ̇ ˜𝒒 +̈ 𝒒 des into (6) yields 
+
+𝑀 𝑞 ̇ 𝒔 + 𝐶 𝑞 𝒔 = 𝒖 + 𝒅 − 𝒈 𝑞 + 𝒀 𝑟 , (9) where 𝒀 𝑟 collects inertial and Coriolis terms evaluated along the reference trajectory. The inertia matrix allows 𝑀 𝑞 (𝒒 ) = ¯𝑚 𝐼 + Δ𝑀 𝑞 (𝒒 ), where ¯𝑚 is the dominant diagonal entry set by the gearbox-reflected actuator inertia. Because the actuator gearboxes contribute inertias that are orders of magnitude larger than those of the upper mount, ∥︁∥︁ Δ𝑀 𝑞 ∥︁∥︁ 
+
+is small relative to ¯𝑚 over the compact operating region. Then 
+
+𝑀 𝑞 ̇ 𝒔 = ¯𝑚 ̇ 𝒔 + 𝝕 , 𝝕 = Δ 𝑀 𝑞 (𝒒 )̇ 𝒔 , (10) where 𝝕 is bounded because Δ𝑀 𝑞 is bounded on the compact set and ̇ 𝒔 is physically bounded by the actuator force and velocity limits. 
+
+Remark 1 Rather than relying on structural assumptions about the plant model, the proposed controller is designed to command hardware in the real-world, directly in actuator space, and without requiring explicit knowledge of the inertia, Coriolis, or gravitational terms. The mathematical guarantees developed in Section 4 are a consequence of the system mechanics, such as bounded actuation, compact operating region, and the passivity structure inherent to Euler–Lagrange systems, and these are not prerequisites imposed on a known or idealized model. 
+
+Grouping all the dynamical terms that the controller does not compute online, and invoking the universal approximation property of RBF networks [11] for the basis functions 𝚽 ( ˜𝒒 ,̇ ˜𝒒 ) ∈ R𝑝 ×2
+
+defined in (16), there exist ideal weights 𝜷 ∗ ∈ R𝑝 such that 
+
+𝒅 − 𝒈 𝑞 + 𝒀 𝑟 − 𝐶 𝑞 𝒔 − 𝝕 = 𝚽 ⊤ 𝜷 ∗ + 𝜺 , (11) where 𝜺 is the approximation residual, bounded in the sense that 
+
+lim sup 𝑡 →∞ ∥𝜺 (𝑡 )∥ ≤ ¯𝜀 < ∞, as 𝜺 is nonzero only when the supervisory gate (17) is active ( |𝑠 𝑖 | < 𝑠 𝑐 ). The closed-loop model then reads 
+
+¯𝑚 ̇ 𝒔 = 𝒖 + 𝚽 ⊤ 𝜷 ∗ + 𝜺 . (12) 
+
+3.4 Control Law. The PIDNet actuator force is composed of a bounded nonlinear PD action and a neural integral term: 
+
+𝒖 = −𝑘 𝑑 𝚿 (𝒔 ) − 𝚽 ⊤ 𝜷 , (13) where 𝚿 (𝒔 ) = tanh (𝜈 𝒔 ) is applied element-wise; 𝑘 𝑑 > 0 is the nonlinear PD gain, and 𝜈 > 0 controls the linear amplification near the origin. The weight vector 𝜷 ∈ R𝑝 evolves according to ̇
+
+𝜷 = 𝚪 𝚽 𝚿 (𝒔 ) , (14) with 𝚪 = diag (𝛾 1, . . . , 𝛾 𝑝 ) ≻ 0 the learning rate matrix. Integrat-ing (14) and substituting into (13) reveals the PID structure: 
+
+𝒖 = −𝑘 𝑑 𝚿 (𝒔 )
+
+⏞ˉˉˉˉˉ ⏟⏟ ˉˉˉˉˉ ⏞
+
+> nonlinear PD
+
+− 𝚽 ⊤ 𝚪 
+
+∫ 𝑡 
+
+> 0
+
+𝚽 𝚿 (𝒔 ) 𝑑𝜏 
+
+⏞ˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉ ⏟⏟ ˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉˉ ⏞
+
+> neural integral action
+
+, (15) where the product 𝚽 ⊤ 𝚪 plays the role of a state-dependent integral gain: unlike a constant 𝐾 𝑖 , it modulates the accumulation rate through the regressor 𝚽 , selectively integrating in regions of the phase plane where the corresponding basis functions are active. 
+
+Remark 2 In the presence of persistent approximation error, a sigma-modification term −𝛾 0 𝚪 𝜷 may be appended to (14) to prevent weight drift, at the cost of a nonzero steady-state bound. 
+
+3.5 RBF Basis Functions. The regressor 𝚽 ( ˜𝒒 ,̇ ˜𝒒 ) ∈ R𝑝 ×2 is constructed entirely from the tracking error and its time derivative, without any structural knowledge of the plant dynamics. Unlike model-based regressors that require explicit computation of the inertia, Coriolis, and gravitational matrices, 𝚽 depends only on the phase-plane coordinates 𝝃 𝑖 = [ ˜𝑞 𝑖 ,̇ ˜𝑞 𝑖 ]⊤ through a constant bias and Gaussian kernels, gated by a supervisory switch: 
+
+𝚽 =
+
+⎡⎢⎢⎢⎢⎢⎢⎣
+
+1 1
+
+𝜑 0,1 𝜑 0,2
+
+... ...𝜑 4,1 𝜑 4,2
+
+⎤⎥⎥⎥⎥⎥⎥⎦
+
+𝑆 𝑣 , 𝜑 𝑘,𝑖 = exp (︃ − ∥𝝃 𝑖 − 𝒄 𝑘 ∥2
+
+2𝜎 2)︃ , (16) where 𝒄 0 = 0 captures near-equilibrium effects, 𝒄 1–4 cover the four sign quadrants, and the bias row ensures a nonzero regressor. The diagonal gate 
+
+𝑆 𝑣 = diag (𝑠 𝑣, 1, 𝑠 𝑣, 2) , 𝑠 𝑣,𝑖 ={︃ 1 |𝑠 𝑖 | < 𝑠 𝑐 ,
+
+0 otherwise , (17) restricts the regressor and weight updates to the neighborhood of the error manifold. 
+
+3.6 Adaptation Law. In practice, the approximation error 𝜺 
+
+in (11) is nonzero, and the ideal integral law (14) may exhibit weight drift. Thus, to ensure bounded parameter evolution, a sigma-modification term is appended: ̇
+
+𝜷 = 𝚪 𝚽 𝚿 (𝒔 ) − 𝛾 0 𝚪 𝜷 , (18) where 𝛾 0 > 0 is the sigma-modification gain. The first term drives the adaptation in the direction that reduces the extended error, while the second provides a restoring force toward the origin in the weight-vector space, preventing unbounded growth at the cost of a nonzero residual bound quantified in Section IV-B. The diagonal matrix 𝚪 assigns independent learning rates to each basis function, where higher rates are assigned to same-sign error-velocity quadrants, and lower rates are used for opposite-sign error-velocity quadrants. 
+
+Remark 3 The control law (13) with adaptation (18) requires only actuator-displacement measurements 𝒒 and the precomputed reference 𝒒 des (𝝀 des ). Neither the Jacobian J, the inertia 𝑀 𝑞 , nor the Coriolis matrix 𝐶 𝑞 are computed online. 
+
+4 Stability Analysis 
+
+The results in this section are established for the closed-loop model (12), which retains the dominant actuator inertia and absorbs all unmodeled dynamics: friction, backlash, cross-coupling, and off-diagonal inertia residuals into the RBF approximation target. No explicit expressions for 𝑀 𝑞 , 𝐶 𝑞 , or 𝒈 𝑞 are required at any point in the analysis. 
+
+4.1 Ideal Case: ¯𝜺 = 0, 𝜸 0 = 0. Consider first the ideal adaptation law (14) with perfect approximation ( 𝜺 = 0). Define the composite storage function 
+
+𝑉 = ¯𝑚 𝜈 
+
+> 2
+
+∑︂ 
+
+> 𝑖 =1
+
+log cosh (𝜈 𝑠 𝑖 ) + 12 ˜𝜷 ⊤ 𝚪 −1 ˜𝜷 , (19) where ˜𝜷 = 𝜷 − 𝜷 ∗ is the weight estimation error. Since 
+
+log cosh (·) ≥ 0 with equality only at the origin, and 𝚪 −1 ≻ 0,one has 𝑉 > 0 for (𝒔 , ˜𝜷 ) ≠ 0 and 𝑉 = 0 only at the origin. 
+
+Journal of Computational and Nonlinear Dynamics 
+
+PREPRINT FOR REVIEW / 3 Differentiating (19) and using 𝑑 𝑑𝑠 log cosh (𝜈𝑠 ) = 𝜈 tanh (𝜈𝑠 )
+
+yields ̇
+
+𝑉 = ¯𝑚 𝚿 ⊤̇ 𝒔 + ˜𝜷 ⊤ 𝚪 −1̇ 𝜷 . (20) Now, substituting the error dynamics (12) with control (13) into the first term gives 
+
+¯𝑚 𝚿 ⊤̇ 𝒔 = −𝑘 𝑑 ∥𝚿 ∥2 − 𝚿 ⊤𝚽 ⊤ ˜𝜷 + 𝚿 ⊤𝜺 . (21) In addition, substituting the ideal adaptation law (14) into the second term produces 
+
+˜𝜷 ⊤ 𝚪 −1̇ 𝜷 = ˜𝜷 ⊤𝚽 𝚿 = 𝚿 ⊤𝚽 ⊤ ˜𝜷 . (22) Finally, summing (21) and (22), the cross terms ∓𝚿 ⊤𝚽 ⊤ ˜𝜷 cancel exactly, leaving ̇
+
+𝑉 = −𝑘 𝑑 ∥𝚿 ∥2 + 𝚿 ⊤𝜺 . (23) 
+
+Proposition 2 (Asymptotic stability) Consider the error dynam-ics (12) under control law (13) with ideal adaptation (14) .If lim sup 𝑡 →∞ ∥𝜺 (𝑡 )∥ = 0, then lim sup 𝑡 →∞ ∥𝒔 (𝑡 )∥ = 0 and 
+
+lim sup 𝑡 →∞ ∥ ˜𝒒 (𝑡 )∥ = 0.Proof. From (23), ̇ 𝑉 ≤ 0 whenever ∥𝚿 ∥ ≥ 1 
+
+> 𝑘 𝑑
+
+∥𝜺 ∥. Hence ∥𝚿 ∥
+
+converges in finite time to a ball of radius 1 
+
+> 𝑘 𝑑
+
+∥𝜺 ∥ centered at the origin. The result then follows from lim sup 𝑡 →∞ ∥𝜺 (𝑡 )∥ = 0. □
+
+4.2 Practical Case: ¯𝜺 > 0, 𝜸 0 > 0. When the approximation residual is persistently nonzero, the ideal law (14) may produce unbounded weight growth. The sigma-modified law (18) prevents this by introducing a restoring term that penalizes large weights. To quantify the resulting bound, note that ∥𝚿 (𝒔 )∥ ≤ √2 by the saturation of tanh (·) , and that each column of 𝚽 satisfies ∥︁∥︁ 
+
+𝚽 ·, 𝑗 ∥︁∥︁ ≤ √𝑝 , since the Gaussian kernels, bias, and gate are each bounded by unity. Together, these imply a uniform bound on the driving term in (18) as ∥𝚪𝚽𝚿 ∥ ≤ 𝛾 max √︁ 2𝑝 .
+
+Theorem 1 (Weight boundedness) Under the sigma-modified adaptation (18) with 𝛾 0 > 0, the weight vector 𝜷 (𝑡 ) is uniformly ultimately bounded, this is, lim sup 𝑡 →∞ ∥ 𝜷 (𝑡 )∥ ≤ 𝛽 max , where 
+
+𝛽 max = 𝛾 max √︁ 2𝑝 𝛾 0 𝛾 min 
+
+, 𝛾 max = max  
+
+> 𝑖
+
+𝛾 𝑖 , 𝛾 min = min  
+
+> 𝑖
+
+𝛾 𝑖 (24) where 𝛾 𝑖 is the 𝑖 -th diagonal element of the matrix Γ.Proof. Differentiating ∥ 𝜷 ∥ along (18) and applying the Cauchy– Schwarz inequality to the first term gives 
+
+𝑑 𝑑𝑡 ∥ 𝜷 ∥ = 𝜷 ⊤
+
+∥ 𝜷 ∥ 𝚪 𝚽 𝚿 (𝒔 ) − 𝛾 0
+
+𝜷 ⊤
+
+∥ 𝜷 ∥ 𝚪 𝜷 
+
+≤ 𝛾 max √︁ 2𝑝 − 𝛾 0 𝛾 min ∥ 𝜷 ∥ ,
+
+where the upper bound uses ∥𝚪𝚽𝚿 ∥ ≤ 𝛾 max √︁ 2𝑝 and the lower bound uses 𝜷 ⊤ 𝚪 𝜷 ≥ 𝛾 min ∥ 𝜷 ∥2. Therefore 𝑑 𝑑𝑡 ∥ 𝜷 ∥ ≤ 0 whenever 
+
+∥ 𝜷 ∥ ≥ 𝛽 max . □
+
+Remark 4 (Small-perturbation interpretation) Proposition 2establishes that the ideal closed loop ( ¯𝜀 = 0, 𝛾 0 = 0) drives 
+
+𝒔 (𝑡 ) → 0. Theorem 1 guarantees that the sigma-modified weights remain bounded for any 𝛾 0 > 0. Together, these two results imply that the difference between the ideal and the practical closed-loop systems is a bounded perturbation. Because the vector fields are uniformly bounded and locally Lipschitz on the compact operating region, continuous dependence of solutions guarantees that trajectories under ( ¯𝜀, 𝛾 0) → ( 0, 0) converge uniformly on every finite interval [0, 𝑇 ] to the ideal trajectory. In particular, for any tolerance 𝜌 > 0 and any finite horizon, sufficiently small ¯𝜀 
+
+and 𝛾 0 confine the practical extended error to a 𝜌 -neighborhood of the ideal solution. This connects the two preceding results: the ideal analysis provides the asymptotic target, and the weight bound ensures that the practical system remains close to it. 
+
+Remark 5 (Practical PD) When 𝛾 0 ≫ 1, the sigma-modification term dominates the adaptation law (18) , driving the weights toward the origin after a fast transient with time constant 1/𝛾 0. In this regime, 𝜷 ≈ 0 and the PIDNet controller reduces to the nonlinear PD action 𝒖 ≈ − 𝑘 𝑑 𝚿 (𝒔 ). This limiting case is realized experimentally as the PIDNet (off) configuration in Section 5, isolating the contribution of the bounded nonlinear PD from the adaptive layer and providing the non-adaptive baseline. 
+
+4.3 H∞ Gain Bound. Performance guarantees can be derived under either the ideal adaptation law (14) ( 𝛾 0 = 0) or the practical nonlinear PD of Remark 2 ( 𝛾 0 ≫ 1). In either case, the dissipation inequality (23) applies, giving ̇
+
+𝑉 = −𝑘 𝑑 ∥𝚿 ∥2 + 𝚿 ⊤𝜺 ; (25) however, here the residual 𝜺 plays a different role in each case: under ideal adaptation ( 𝛾 0 = 0), it is the RBF approximation residual; under the practical nonlinear PD ( 𝛾 0 ≫ 1, 𝜷 ≈ 0), it absorbs the full uncompensated dynamics 𝒅 − 𝒈 𝑞 +𝒀 𝑟 −𝐶 𝑞 𝒔 +𝝕 . In both cases, lim sup 𝑡 →∞ ∥𝜺 (𝑡 )∥ ≤ ¯𝜀 < ∞ over the compact operating region. Applying Young’s inequality with free parameter 𝜅 > 0, one gets 
+
+𝚿 ⊤𝜺 ≤ 12𝜅 2 ∥𝚿 ∥2 + 𝜅 2
+
+2 ∥𝜺 ∥2 , (26) which yields ̇
+
+𝑉 ≤ − (︃ 𝑘 𝑑 − 12𝜅 2)︃ ∥𝚿 ∥2 + 𝜅 2
+
+2 ∥𝜺 ∥2 . (27) Moreover, provided 
+
+𝑐 = 𝑘 𝑑 − 12𝜅 2 > 0, (28) integrating from 𝑡 1 to 𝑡 2 and using 𝑉 (𝑡 2) ≥ 0 gives 
+
+𝑐 
+
+∫ 𝑡 2
+
+> 𝑡 1
+
+∥𝚿 (𝑡 )∥ 2 𝑑𝑡 ≤ 𝑉 (𝑡 1) + 𝜅 2
+
+2
+
+∫ 𝑡 2
+
+> 𝑡 1
+
+∥𝜺 (𝑡 )∥ 2 𝑑𝑡. (29) 
+
+Theorem 2 ( H∞ attenuation of the saturated extended error) 
+
+Under the control law (13) with either ideal adaptation (14) 
+
+(𝛾 0 = 0) or the practical nonlinear PD ( 𝛾 0 ≫ 1), if 𝑘 𝑑 > 1/( 2𝜅 2),then the closed-loop system achieves finite L2 gain from the residual 𝜺 to the saturated extended error 𝚿 (𝒔 ) = tanh (𝜈 𝒔 ), with gain no greater than 𝜅 /√2𝑐 , where 𝑐 = 𝑘 𝑑 − 1/( 2𝜅 2).
+
+Remark 6 (From 𝚿 to ˜𝒒 ) Theorem 2 bounds the L2 gain to 𝚿 (𝒔 ),not directly to the tracking error ˜𝒒 . The two are connected as follows. First, in the non-saturated region |Ψ𝑖 | ≤ ¯𝜓 < 1, the inverse relation 𝑠 𝑖 = 1 
+
+> 𝜈
+
+artanh (Ψ𝑖 ) ensures that 𝒔 remains uniformly bounded. Second, the actuator tracking error satisfies ̇ ˜𝒒 + 𝛼 ˜𝒒 = 𝒔 ,so ˜𝒒 is obtained by filtering 𝒔 through a stable first-order system with gain 1/𝛼 . Finally, in the local linearized regime, where 
+
+𝚿 (𝒔 ) ≈ 𝜈 𝒔 , composing these bounds gives an end-to-end L2 gain from 𝜺 to ˜𝒒 , as 
+
+𝛾 𝜀 →𝑞 ≤ 𝜅 
+
+√2𝑐 𝛼𝜈 . (30) This quantity is the tunable performance certificate of the con-troller, where increasing 𝑘 𝑑 tightens the attenuation, while 𝛼 and 
+
+𝜈 set the convergence rate and linear amplification range, respec-tively. A nonzero ˜𝒒 (𝑡 1) contributes an additional transient, which is independent of 𝜺 and vanishes exponentially at rate 𝛼 .
+
+4 / PREPRINT FOR REVIEW Transactions of the ASME Remark 7 (Supervisory threshold selection) The threshold 𝑠 𝑐 
+
+in (17) should be chosen so that the adaptation remains active throughout the non-saturated region where Theorem 2 applies. Selecting 𝑠 𝑐 > 1/𝜈 ensures that the RBF update is active over the range where tanh (𝜈𝑠 𝑖 ) transitions from linear behavior toward saturation. 
+
+Remark 8 (Extension to thrust-direction space) Since 
+
+𝛿 𝒒 ≈ J 𝛿 𝝀 in the neighborhood of Proposition 1, the actuator-space tracking bound extends to the thrust direction as 
+
+∫∥︁∥︁ 
+
+˜𝝀 ∥︁∥︁ 2 𝑑𝑡 ≲ 𝜎 −2min (J)
+
+∫
+
+∥ ˜𝒒 ∥2 𝑑𝑡 , 
+
+where 𝜎 min (J) is the minimum singular value of the actuator Jacobian. Thus, reducing the sustained actuator error directly improves pointing accuracy. 
+
+5 Experimental Results 
+
+5.1 Hardware Setup. The experimental platform consists of two PA-HD2-4-2000-HS linear actuators with quadrature encoders, driven by BTS7960 H-bridges and controlled at 500 Hz through a Teensy 4.1/Raspberry Pi 4 architecture. The geometry is 
+
+ℎ1 = 33 .7 cm, ℎ2 = 24 .2 cm, and 𝑟 𝑏 = 𝑟 𝑡 = 15 .7 cm. A Levant differentiator [19] estimates velocity from encoder position. Safety limits enforce ±5.08 cm stroke and 45 ◦ total tilt. The supervisory threshold is set to 𝑠 𝑐 = 12 .7 cm s −1, satisfying the condition 
+
+𝑠 𝑐 > 1/𝜈 from Section 4. 
+
+Remark 9 The scalar ¯𝑚 appears in the Lyapunov function (19) as an analysis parameter; it does not enter the control law (13) or the adaptation law (18) and is never computed or estimated online. 
+
+5.2 Startup Ramp. To avoid an impulsive control action at startup, the effective error is ramped as ˜𝒒 eff (𝑡 ) = tanh 2 (𝜗𝑡 ) ˜𝒒 (𝑡 ),with 𝜗 > 0 large enough that ˜𝒒 eff and its first derivative both vanish at 𝑡 = 0 and recover the true error within a few seconds. 
+
+5.3 Reference Trajectory. The desired thrust vector traces a circle on the unit sphere: 
+
+𝝀 des (𝑡 ) =[︄ 
+
+sin 𝜔 0 cos (𝜔 1𝑡 )
+
+sin 𝜔 0 sin (𝜔 1𝑡 )
+
+cos 𝜔 0]︄ 
+
+, (31) with 𝜔 0 = 10 ◦ and 𝜔 1 = 0.2 rad/s, over a 60 s horizon. All controllers are evaluated under identical conditions from the same home position. 
+
+5.4 Controller Comparison. Four controllers are compared: a PID with anti-windup, a super-twisting algorithm (STA), the proposed PIDNet with adaptation disabled ( 𝚪 = 0), and the PIDNet with online adaptation. The PIDNet parameters are: nonlinear PD gain 𝑘 𝑑 = 0.9, convergence rate 𝛼 = 10 , linear amplification 
+
+𝜈 = 2.31 s cm −1, sigma-modification 𝛾 0 = 40 , learning rates 𝚪 =
+
+diag (10 −5, 0.5, 0.2, 0.07 , 0.2, 0.07 ), RBF centers at 𝒄 0 = 0 and 
+
+𝒄 1–4 = (± 0.51 , ±0.51 ) cm with kernel width 𝜎 = 0.51 cm. Same-sign quadrants receive higher learning rates to capture direction-dependent stiction compensation. The bias channel learning rate is set to 10 −5 to suppress drift from persistent activation. The PID gains ( 𝐾 𝑝 = 5×10 −3, 𝐾 𝑖 = 2×10 −4, 𝐾 𝑑 = 2×10 −4)were tuned by manual iteration, as classical rules are inapplicable to the nonlinear coupled plant; anti-windup at 𝐾 𝑎 = 0.5𝐾 𝑖 was added to mitigate integrator saturation. The STA gains ( 𝑘 1 = 0.02 ,
+
+𝑘 2 = 0.015 , 𝛼 = 10 ) were selected to minimize chattering while maintaining convergence. In both cases, tuning demanded multiple experimental runs with no systematic procedure. By contrast, PIDNet stability requires only 𝑘 𝑑 > 1/( 2𝜅 2) from (28), with the learning rates 𝚪 affecting only adaptation speed, not stability. The        
+
+> Table 1Performance Index Comparison (Circle, 60 s). Steady-state metrics
+
+¯ess and emax computed for t ≥ 20 s. 
+
+Controller ISE ITNE ISC ¯𝑒 ss 𝑒 max 
+
+[cm 2s] [cm s 2] [pwm 2s] [cm] [cm] PID 3.27 212.1 55.5 0.108 0.121 STA 2.11 189.3 52.0 0.104 0.113 PIDNet (off) 1.82 126.0 51.5 0.068 0.080 PIDNet (on) 1.66 113.0 51.6 0.061 0.072 PID and STA tuning process resulted in multiple driver failures due to sustained actuator saturation, underscoring the practical value of the bounded control structure in (13). 
+
+5.5 Results. Performance is quantified by the following in-dices: 
+
+ISE = ∫ 𝑇  
+
+> 0
+
+∥ ˜𝒒 ∥2 𝑑𝜏 , 
+
+ITNE = ∫ 𝑇  
+
+> 0
+
+𝑡 ∥ ˜𝒒 ∥ 𝑑𝜏 , 
+
+ISC = ∫ 𝑇  
+
+> 0
+
+∥𝒖 ∥2 𝑑𝜏 . 
+
+The steady-state tracking performance is characterized by ¯𝑒 ss = 
+
+> 1
+> 𝑇 −𝑡 0
+
+∫ 𝑇 𝑡 0 ∥ ˜𝒒 ∥ 𝑑𝜏 and 𝑒 max = max 𝑡 ≥𝑡 0 ∥ ˜𝒒 (𝑡 )∥ , with 𝑡 0 = 20 s to exclude the initial transient. The results exhibit two distinct layers of improvement. The first one is structural: the bounded nonlinear PD action 𝚿 (𝒔 ) forces the system onto the error manifold 𝒔 = 0 more effectively than either the PID or STA baselines, reducing the ITNE by 47% and 40%, respectively, with no increase in control effort. The second layer is the adaptive compensation. The supervisory gate (17) activates the RBF network only when |𝑠 𝑖 | < 𝑠 𝑐 ,restricting adaptation to the neighborhood of the error manifold where the basis functions provide valid approximation. The network selectively accumulates corrections for stiction, backlash, and direction-dependent friction that a fixed-gain controller cannot resolve, reducing the ITNE by a further 10% and the worst-case steady-state error from 0.080 cm to 0.072 cm. The ISC is unchanged, confirming that the improvement is achieved through targeted compensation rather than increased actuation effort. Although the adaptive improvement is modest in absolute laboratory units, it is meaningful for TVC because actuator tracking error maps through J−1 to thrust-direction error. Thus, reducing sustained actuator error directly improves pointing accuracy. The PID controller saturates at the actuator limits for 14.5% of the run (8.7 s), predominantly during transients and direction reversals; the STA saturates for 5.2% (3.1 s). In both cases, saturation invalidates the nominal stability analysis and requires auxiliary anti-windup mechanisms, whose interaction with the plant dynamics is difficult to certify. By contrast, the PIDNet control signal never exceeds |𝑢 𝑖 | = 0.95 : the tanh nonlinearity guarantees ∥𝒖 ∥ ≲ 𝑘 𝑑 by construction, so the Lyapunov analysis holds without modification throughout the entire operation. Fig. 3 shows the RBF weight evolution during the PIDNet (on) run. The per-weight trajectories (left) confirm that the origin-centered kernel 𝛽 1 dominates, capturing near-equilibrium com-pensation, while the quadrant weights 𝛽 2–𝛽 5 provide symmetric direction-dependent corrections. The bias weight 𝛽 0 remains ef-fectively frozen at the suppressed learning rate 𝛾 1 = 10 −5. The weight norm (right) remains uniformly bounded, consistent with Theorem 1. 
+
+6 Conclusion 
+
+This paper presented a model-free controller for a parallel thrust vectoring mechanism that guarantees bounded control signals by construction, eliminating the actuator saturation events that plagued 
+
+Journal of Computational and Nonlinear Dynamics 
+
+PREPRINT FOR REVIEW / 5 0 10 20 30 40 50 60             
+
+> Time [s]
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> Weight  βi
+> β0(bias)
+> β1(origin)
+> β2(+, + )
+> β3(−, + )
+> β4(−, − )
+> β5(+, − ) 010 20 30 40 50 60
+> Time [s]
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> ‖β‖
+
+Fig. 3 Weight evolution under PIDNet with adaptation. Left: per-weight trajectories βi (t ). Right: weight norm ∥ 𝜷 (t )∥ .−2       
+
+> 0
+> 2
+> q1 [cm]  q1, des
+> q1
+> 010 20 30 40 50 60
+
+Time [s] 
+
+> −2
+> 0
+> 2
+> q2 [cm]  q2, des
+> q2
+
+Fig. 4 Actuator tracking under PIDNet with adaptation: ref-erence (dashed) and measured extensions for both chan-nels. 
+
+the PID and super-twisting baselines during experimental tuning. Stability is established without requiring explicit knowledge of the plant dynamics: asymptotic convergence under ideal approxima-tion, bounded weight evolution under persistent error via sigma-modification, and a quantitative H∞ gain bound from the approx-imation residual to the actuator tracking error, extending to the thrust-direction error through the actuator Jacobian. Experimental validation on a two-degree-of-freedom electrome-chanical TVC rig demonstrates that the proposed PIDNet reduces the ITNE by 47% relative to PID and 40% relative to a super-twisting baseline, while tightening the worst-case steady-state error to 0.072 cm at no additional control effort. Disabling the adaptive layer isolates the two contributions: the bounded nonlinear PD pro-vides the dominant robustness margin, while the coupled MIMO RBF network compensates direction-dependent friction and geo-metric coupling that no fixed-gain single-axis design can resolve, improving accuracy by a further 10%. The controller requires only actuator-displacement measure-ments and a precomputed reference map 𝒒 des (𝝀 des ), with no online computation of the Jacobian, inertia, or Coriolis matrices. No model was identified, no regressor was constructed, and no driver was damaged during the experimental campaign. 
+
+References 
+
+[1] Sutton, G. P. and Biblarz, O., 2017, Rocket Propulsion Elements , 9th ed., Wiley-Blackwell. [2] Lazic, D. V. and Ristanovic, M. R., 2007, “Electrohydraulic thrust vector control of twin rocket engines with position feedback via angular transducers,” Control Engineering Practice, 15 (5), pp. 583–594. [3] Ensworth, C., 2013, “Thrust vector control for nuclear thermal rockets,” 49th AIAA/ASME/SAE/ASEE Joint Propulsion Conference , San Jose, CA, July 14–17, 2013, p. 4075. [4] Sopegno, L., Livreri, P., Stefanovic, M., and Valavanis, K. P., 2022, “Linear quadratic regulator: A simple thrust vector control system for rockets,” 30th Mediterranean Conference on Control and Automation (MED) , IEEE, Athens, Greece, June 28–July 1, 2022, pp. 591–597. [5] Ahmad, M. H., Osman, K., Zakeri, M. F. M., and Samsudin, S., 2021, “Mathematical modelling and PID controller design for two DOF gimbal system,” IEEE 17th International Colloquium on Signal Processing and Its 0 10 20 30 40 50 60 
+
+Time [s] 
+
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> ‖̃ q‖ [cm]
+
+̄
+
+ess = 0.061 cm 
+
+emax = 0.072 cm 
+
+Fig. 5 Tracking error norm ∥ ˜𝒒 ∥ for all four controllers. 0 10 20 30 40 50 60 
+
+Time [s] 
+
+> −1.0
+> −0.5
+> 0.0
+> 0.5
+> 1.0
+> Control  u
+
+u1
+
+u2
+
+Fig. 6 Control signals u1, u2 under PIDNet with adaptation. The tanh nonlinearity ensures bounded actuation through-out the maneuver. 
+
+Applications (CSPA) , IEEE, Langkawi, Malaysia, March 5–6, 2021, pp. 138– 143. [6] Utkin, V. I., 1992, Sliding Modes in Control and Optimization , Springer-Verlag. [7] Yeh, F.-K., 2013, “Sliding-mode-based contour-following controller for guid-ance and autopilot systems of launch vehicles,” Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering, 227 (2), pp. 285–302. [8] Wang, Z., Liu, Y., and Wang, J., 2018, “Thrust vector control of upper stage with a gimbaled thruster during orbit transfer,” Acta Astronautica, 153 , pp. 359–369. [9] Shi, G. and Zhu, Z. H., 2024, “New geometric formulation for libration dynamics and suppression of partial space elevator by fuzzy logic and thrust vectoring control,” Acta Astronautica, 217 , pp. 293–301. [10] García-Rodríguez, R., Martínez-Pérez, I., Ramos-Velasco, L. E., and Vega-Navarrete, M. A., 2024, “Rocket thrust vectoring attitude control based on convolutional neural networks,” Computación y Sistemas, 28 (2), pp. 647–662. [11] Lewis, F. L., Jagannathan, S., and Yesildirek, A., 1998, Neural Network Control of Robot Manipulators and Non-Linear Systems , Taylor & Francis. [12] Slotine, J.-J. E. and Li, W., 1987, “On the adaptive control of robot manipula-tors,” The International Journal of Robotics Research, 6(3), pp. 49–59. [13] Slotine, J.-J. E. and Li, W., 1988, “Adaptive manipulator control: A case study,” IEEE Transactions on Automatic Control, 33 (11), pp. 995–1003. [14] Loría, A. and Panteley, E., 2005, “Cascaded nonlinear time-varying systems: Analysis and design,” Lecture Notes in Control and Information Sciences, 311 ,pp. 23–64. [15] Patil, O. S., Le, D. M., Greene, M., and Dixon, W. E., 2022, “Lyapunov-derived control and adaptive update laws for inner and outer layer weights of a deep neural network,” IEEE Control Systems Letters, 6, pp. 1855–1860. [16] Patil, O. S., Le, D. M., Griffis, E., and Dixon, W. E., 2022, “Deep residual neural network (ResNet)-based adaptive control: A Lyapunov-based approach,” 
+
+Proceedings of the IEEE Conference on Decision and Control , Cancún, Mexico, December 6–9, 2022, pp. 3487–3492. [17] Yikilmaz, C. and Üre, N. K., 2022, “Deep learning based fault tolerant thrust vector control,” AIAA SCITECH 2022 Forum , San Diego, CA, January 3–7, 2022, p. 0970. [18] Ruan, W., Dong, Q., Zhang, X., and Li, Z., 2021, “Friction compensation control of electromechanical actuator based on neural network adaptive sliding mode,” Sensors, 21 (4), p. 1508. [19] Levant, A., 2003, “Higher-order sliding modes, differentiation and output-feedback control,” International Journal of Control, 76 (9–10), pp. 924–941. 
+
+6 / PREPRINT FOR REVIEW Transactions of the ASME
