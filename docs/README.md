@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-01</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-02</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 10 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-01 21:04:21 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-02 21:25:35 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读7篇、速读11篇，共18篇论文，核心聚焦机器人导航与运动控制。最值得关注《X-NavDP》以9.0分刷新导航扩散策略通用性，以及《Safe Learning Predictive Control》在自我世界机器人安全控制上的8.0分突破。建议普通读者优先精读这两篇，把握具身智能中“泛化导航”与“安全预测”的前沿交叉方向。</p>
+<p>今日精读1篇、速读9篇，聚焦因果世界模型与强化学习优化方法。</p>
+<p>最值得关注的是多智能体演示中隐式因果世界模型（8.0分），以及离线强化学习中悲观评论家缓解过估计的协作加权策略（7.0分）。</p>
+<p>建议优先阅读因果世界模型论文，并延伸了解其在多智能体决策中的应用。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="X-NavDP: Generalizing Navigation Diffusion Policy to Novel Behavior and Embodiments with Group Q-score Reweighted Matching">X-NavDP: Generalizing Navigation Diffusion Policy to Novel Behavior and Embodiments with Group Q-score Reweighted Matching</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safe Learning Predictive Control for Ego-World Robotic Systems">Safe Learning Predictive Control for Ego-World Robotic Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics">jaxdae: A JAX-native Differentiable Solver for Differential-Algebraic Equations in Coupled Multi-physics</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Implicit Causal World Models from Multi-Agent Demonstrations">Learning Implicit Causal World Models from Multi-Agent Demonstrations</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Social Robot Navigation By Sensing Human Legs">Learning Social Robot Navigation By Sensing Human Legs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning Traversability-Aware Global Planners for Long Horizon Off-Road Navigation">Learning Traversability-Aware Global Planners for Long Horizon Off-Road Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="LeapBot-WA: World-Anchor Action Models via Predictive Latent Alignments">LeapBot-WA: World-Anchor Action Models via Predictive Latent Alignments</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Collaborative Weighting with Pessimistic Critic for Mitigating Overestimation in Off-Policy Reinforcement Learning">Collaborative Weighting with Pessimistic Critic for Mitigating Overestimation in Off-Policy Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Estimated-State Adaptive Sliding Mode Control and Disturbance Observation Using Second-Order Surfaces for Spacecraft Formation Reconfiguration">Estimated-State Adaptive Sliding Mode Control and Disturbance Observation Using Second-Order Surfaces for Spacecraft Formation Reconfiguration</span></li><li><span class="dpr-home-dashboard-paper-title" title="QuantWAMs: Calibrating at the Right Granularity for World Action Models">QuantWAMs: Calibrating at the Right Granularity for World Action Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>9</strong></span></div>
 </section>
 </div>
 
