@@ -1,0 +1,1465 @@
+Title: Boundary-layer control with unstructured uncertainties with application to adaptive autopilots
+
+URL Source: https://arxiv.org/pdf/2607.28951v1
+
+Published Time: Mon, 03 Aug 2026 00:20:21 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> 1
+
+# Boundary-layer control with unstructured uncertainties with application to adaptive autopilots 
+
+Peng Li, Di Liu Member, IEEE , and Simone Baldi Senior member, IEEE 
+
+Abstract —Control with unstructured uncertainties refers to controlling systems where not only the parameters are unknown, but also the way the parameters appear in the dynamics. This problem becomes pivotal in autopilots, where a unified control architecture is sought for aerial/ground/marine vehicles with different structures . By only making use of basic Euler-Lagrange properties valid in most mechanical systems independently of their specific structure, this brief proposes an adaptive design that does not rely on structural knowledge of the uncertainties. The proposed adaptive method, here validated in the Ardu-Plane module of ArduPilot, applies also to other modules like ArduCopter, ArduRover, ArduSub. Enhanced performance with respect to state-of-the-art methods addressing unstructured and 
+
+state-dependent uncertainties is verified. 
+
+Index Terms —Unstructured uncertainty, state-dependent un-certainty , unmanned vehicles, autopilot, adaptive control 
+
+I. I NTRODUCTION 
+
+The most advanced autopilot suites aim at unified control architectures that can tackle unmanned vehicles with different structures, no matter if the vehicle is aerial [1]–[3], ground [4], [5], or marine [6] (cf. the ArduPlane, ArduCopter, Ar-duRover, ArduSub modules in ArduPilot, or similar modules in other autopilots). Such autopilot suites are the paradigmatic illustration of control with unstructured uncertainties , since 
+
+parametric perturbations and unmodeled dynamics [7], [8] are not only stemming from measurement noises and environmen-tal disturbances [9], [10], but also from the different struc-tures of aerial/ground/marine vehicles. Imposing structural assumptions is not viable since mismatches between a priori assumptions on the uncertainty and reality may fool the control law, degrade performance, and lose stability [11]. Avoiding structural assumptions plays a key role in such autopilots. As unmanned vehicles are mechanical systems, a convenient perspective to autopilot design is the control of uncertain Euler-Lagrange dynamics. These control methods can be roughly categorized according to robust methods and adaptive methods. Common robust methods, based on observers [12], passivity [13], or sliding mode control (SMC) [14], [15], eventually rely on some prior knowledge of the uncertainty, making it difficult to cope with uncertainties going beyond the expected bounds during system operation [11]. Even adaptive 
+
+This research was partly supported by the National Key R&D Program of China grant 2022YFE0198700, by the EU Horizon 2020 R&I programme Marie Sklodowska-Curie grant 899987, and by the Natural Science Foundation of China grant 62073074 (corresponding authors: S. Baldi and D. Liu) 
+
+P. Li is with School of Cyber Science and Engineering, Southeast University, China (email: lpeng_2013@163.com )D. Liu is with School of Computation, Information and Technology, Technical University of Munich, Germany (e-mail: di.liu@tum.de). S. Baldi is with Frontier Center for Mobile Information Communication and Security, Southeast University, China (email: s.baldi@tudelft.nl )
+
+methods are not free of prior knowledge of the uncertainty, appearing in the form of structural conditions (e.g. linear-in-parameter, matching conditions [16], [17]), or of constant bounds for the uncertainty and its time derivative [18]–[21]. 
+
+As structural uncertainty is intrinsically state-dependent, 
+
+imposing constant bounds restrictively amounts to assuming bounded states before proving stability [22], [23]. Recent years have seen progress in the control of Euler-Lagrange dynamics with reduced structural knowledge, but not all these methods can be seamlessly embedded in autopilots to fit the needs of their control architecture: e.g., several structure-free SMC methods do not allow integral action needed in autopilot loops [24]–[26], while structure-free methods based on prescribed performance or funnel functions [27], [28] pose the problem of large inputs. Finite-time stability is sought in autopilots to enhance robustness, but available finite-time methods typically rely on structural conditions on the uncertainty [29]–[32]. As a result, a systematic structure-free way to enhance robustness and adaptation of unified autopilot architectures is a notable open issue. This work contributes in this sense by: 
+
+a) Proposing a novel sliding surface that embeds a non-singular finite-time term and an integral term, useful to incorporate control law into existing autopilot loops. b) Removing structural knowledge of the uncertainty. Only basic Euler-Lagrange properties are used, valid for me-chanical systems independently on their specific structure. c) Proposing an adaptive law in the framework of finite-time control. The law tackles unstructured uncertainty by esti-mating a state-dependent bound of the uncertainty, whose 
+
+form is independent on the specific system structure .Section II formulates the control with unstructured uncer-tainty. Section III covers the design and analysis. Software-in-the-loop validations are in Section IV, with comparisons to the existing ArduPilot and to an adaptive SMC autopilot. 
+
+Additional comparisons are in the report [33]. 
+
+Notations : Let R and Rn×m be the sets of real numbers and real n×m matrices, and In be the n×n identity matrix. Vectors are denoted with bold, such as x = [ x1, · · · , x n]T . Let us use the short notations sign( x) = [sign( x1), · · · , sign( xn)] T ,
+
+sig v (x) = [ |x1|v sign( x1), · · · , |xn|v sign( xn)] T . Let ‖ · ‖ and 
+
+λmin (·) denote the Euclidean norm and minimum eigenvalue. II. P RELIMINARIES AND PROBLEM FORMULATION 
+
+Consider the following Euler-Lagrange (EL) dynamics 
+
+M(q)¨ q + C(q, ˙q) ˙ q + G(q) + F( ˙ q) + d = u, (1) with q, ˙q, ¨q ∈ Rn denoting the state and its time derivatives, 
+
+M(q) ∈ Rn×n the mass/inertia matrix, C(q, ˙q) ∈ Rn×n the arXiv:2607.28951v1 [eess.SY] 31 Jul 2026 2
+
+Coriolis matrix, G(q) ∈ Rn the gravity term, F( ˙ q) ∈ Rn the damping/friction term, d ∈ Rn the external disturbance, and 
+
+u ∈ Rn the control input. The Euler-Lagrange dynamics (1) can describe several real-world mechanical systems, such as robotic manipulators and aerial/ground/marine vehicles [22]–[24]. For all such systems, the following standard properties hold: 
+
+Property 1: There exist c, g, f, d ∈ R+ such that || C(q, ˙q)|| ≤ 
+
+c|| ˙q|| , || G(q)|| ≤ g, || F( ˙ q)|| ≤ f|| ˙q|| and || d(t)|| ≤ d.
+
+Property 2: The matrix M(q) is symmetric and uniformly positive, that is, ∃ m1, m 2 ∈ R+ such that 
+
+0 < m 1In ≤ M(q) ≤ m2In. (2) 
+
+Property 3: The matrix ˙M(q) − 2C(q, ˙q) is skew symmetric i.e. xT ( ˙M(q) − 2C(q, ˙q)) x = 0 for any non-zero vector x.
+
+Remark 1 (Unstructured uncertainty) . Properties 1-3 do not rely on the specific structure of the system. The structure of 
+
+M, C, F, G, d in (1) and the knowledge of m1, m 2, c, g, f, d 
+
+in their corresponding bounds will be unknown in this work. 
+
+Let us recall and extend a Lyapunov characterization of practical finite-time stability, to be used for stability analysis: 
+
+Lemma 1 [34]: Consider general nonlinear dynamics 
+
+˙x = ℏ(t, x ), x(0) = x0, (3) 
+
+with ℏ : R+ × Rn 7 → Rn a continuous function satisfying 
+
+g(t, 0) = 0 , ∀t. Suppose there exists a positive definite and continuous radially unbounded function V (x): Rn 7 → R such that ˙V (x) ≤ − ηV 1+ v 
+
+> 2
+
+(x) + ω, where η > 0, 0 < v ≤ 1,
+
+ω < ∞. Then, the origin of (3) is practical finite-time stable and the state x converges in finite time to the region 
+
+Ψ = {x| V 1+ v 
+
+> 2
+
+(x) ≤ ω
+
+(1 − ι)η }, 0 < ι < 1
+
+where an estimate for the finite time Ts is 
+
+Ts = 2
+
+> (1 −v)ιη
+
+[
+
+V 1−v 
+
+> 2
+
+(x(0)) −
+
+( ω
+
+> (1 −ι)η
+
+) 1−v
+
+> 1+ v
+
+]
+
+, if 0 < v < 1,
+
+and, by using L’Hôpital’s rule for lim v→1 Ts,
+
+Ts = 1 
+
+> ιη
+
+[ln V (x(0)) ω − ln (1 − ι)η], if v = 1 .
+
+Denote with qd, ˙qd, ¨qd ∈ Rn the desired state and its deriva-tives, which satisfy ‖ ˙qd(t)‖ ≤ qm, ‖¨qd(t)‖ ≤ qmm , ∀t. The following control question arises: 
+
+Problem: Without structural knowledge of the terms in (1) and of their bounds as in Remark 1, find a control u(·) such that the origin of the EL closed loop is practical finite-time stable with finite-time convergence of the tracking error e = q − qd.III. S LIDING SURFACE AND ADAPTIVE CONTROL DESIGN 
+
+The design is organized as follows: first, a novel sliding surface is proposed; then, the uncertainties affecting the error dynamics are analyzed (Sect. III-A), leading to an adaptive law to compensate them (Sect. III-B). The proposed sliding surface is 
+
+s = ˙ e + λ1e + λ2
+
+∫ t
+
+> 0
+
+e(τ )dτ + λ3∆( e), (4) where λk, k = 1 , 2, 3 are positive definite diagonal matrices with entries λki , i = 1 , 2, · · · , n , and ∆( e) is a vector with 
+
+entries ∆i(ei) defined as 
+
+∆i(ei) = 
+
+{ sig γ (ei), if |ei| > ε, α1ei + α2 sign( ei)e2 
+
+> i
+
+, if |ei| ≤ ε. (5) where 0 < γ < 1, ε is a small positive constant, and 
+
+α1 = (2 − γ)εγ−1, α2 = ( γ − 1) εγ−2.
+
+The time derivative of s is well defined in the entire state space 
+
+˙s = ¨ e + λ1 ˙e + λ2e + λ3 ˙∆( e), (6) with the entries of ˙∆( e) being 
+
+˙∆i(ei) = 
+
+{ γ|ei|γ−1 ˙ei, if |ei| > ε 
+
+(α1 + 2 α2|ei|) ˙ ei, if |ei| ≤ ε. (7) Note that the parameters α1, α2 ensure continuity of s and ˙s at the point |ei| = ε. The following lemma provides appropriate bounds on ∆( e) and ˙∆( e), useful for stability analysis: 
+
+Lemma 2 : For ∆( e), ˙∆( e) in (5) and (7), the following holds 
+
+‖∆( e)‖ ≤ ‖ sig γ (e)‖, ‖ ˙∆( e)‖ ≤ α1‖ ˙e‖. (8) 
+
+Proof. To prove the first bound in (8), substitute α1, α2 into (5) and define the function h(|ei|, ε ) = (2 − γ)εγ−1|ei| + ( γ −
+
+1) εγ−2|ei|2, ε ≥ | ei|. We have 
+
+∂h(|ei|, ε )
+
+∂ε = ( γ − 1)( γ − 2) |ei|εγ−3(|ei| − ε),
+
+which implies that the gradient of h(|ei|, ε ) with respect to ε is negative if ε ≥ | ei|. So f (|ei|, ε ) is monotonically decreasing with respect to ε, which implies 
+
+f (|ei|, ε ) ≤ f (|ei|, |ei|) = |ei|γ . (9) Substituting (9) into (5) gives |∆i(ei)| ≤ | ei|γ , from which we conclude that ‖∆( e)‖ ≤ ‖ sig γ (e)‖.To prove the second bound in (8), define the function 
+
+h(|ei|) = 
+
+{ γ|ei|γ−1, if |ei| > ε, α1 + 2 α2|ei|, if |ei| ≤ ε. 
+
+The function h(|ei|) is monotonically decreasing with respect to |ei| because of 0 < γ < 1 and α2 < 0, which implies 
+
+h(|ei|) ≤ g(0) = α1. (10) Substituting (10) into (7) gives | ˙∆i(ei)| ≤ α1| ˙ei|, from which we conclude that ‖ ˙∆( e)‖ ≤ α1‖ ˙e‖.
+
+A. Uncertainty structure 
+
+Based on the proposed sliding surface (4), a suitable upper bound structure for the uncertainty of (1) will be derived. Multiplying (6) by M and using (1) we obtain 
+
+M˙s = Mλ1 ˙e + Mλ2e + Mλ3 ˙∆( e) + M(¨ q − ¨qd)= u − Cs + ϕ, (11) where 
+
+ϕ , −(C ˙q + G + F + d
+
++ M¨qd − Mλ1 ˙e − Mλ2e − Mλ3 ˙∆( e) − Cs ), (12) 3
+
+represents an aggregate state-dependent uncertainty. By com-bining (4) and Properties 1-2, we obtain the following (state-dependent) bound for such uncertainty 
+
+‖ϕ‖ ≤ c‖ ˙q‖2 + g + f ‖ ˙q‖ + d
+
++ m2(‖¨qd‖ + ‖λ1‖‖ ˙e‖ + ‖λ2‖‖ e‖ + ‖λ3‖‖ ˙∆( e)‖)+ c‖ ˙q‖(‖ ˙e‖ + ‖λ1‖‖ e‖ + ‖λ2‖‖ 
+
+∫ t
+
+> 0
+
+e(τ )dτ ‖
+
++ ‖λ3‖‖ ∆( e)‖). (13) Define 
+
+ξ(t) = 
+
+[
+
+(e + sig γ (e)) T (t) ˙eT (t) (∫ t 
+
+> 0
+
+e(τ )dτ )T
+
+]T
+
+.
+
+Clearly, the following inequalities hold 
+
+‖ξ(t)‖ ≥ ‖ e(t)‖, ‖ξ(t)‖ ≥ ‖ sig γ (e)( t)‖,
+
+‖ξ(t)‖ ≥ ‖ ˙e(t)‖, ‖ξ(t)‖ ≥ ‖ 
+
+∫ t
+
+> 0
+
+e(τ )dτ ‖. (14) According to Lemma 2 and (14), we have 
+
+‖ϕ‖ ≤ θ∗ 
+
+> 0
+
++ θ∗ 
+
+> 1
+
+‖ξ(t)‖ + θ∗ 
+
+> 2
+
+‖ξ(t)‖2, (15) where θ∗ 
+
+> 0
+
+, θ∗ 
+
+> 1
+
+, θ∗ 
+
+> 2
+
+are positive unknown constants defined as 
+
+θ∗ 
+
+> 0
+
+, cq 2 
+
+> m
+
++ g + fqm + d + m2qmm ,θ∗ 
+
+> 1
+
+,cq m(3+ ‖λ1‖+‖λ2‖+‖λ3‖)+ f+m2(‖λ1‖+‖λ2‖+‖λ3‖α1),θ∗ 
+
+> 2
+
+, c(2 + ‖λ1‖ + ‖λ2‖ + ‖λ3‖).
+
+Note that the form (15) has been derived independently on the specific system structure. 
+
+B. Adaptive control law 
+
+Aiming at compensating the uncertainty (15), the following control input is proposed 
+
+u(t) = −Λs (t) − ρ(t)sign (s(t)) − σ sig v(s(t)) , (16) with Λ a positive definite matrix, μ > 0, σ > 0, 0 < v ≤ 1, and 
+
+ρ(t) = ˆθ0(t) + ˆθ1(t)|| ξ(t)|| + ˆθ2(t)|| ξ(t)|| 2. (17) The gains ˆθi, i = 0 , 1, 2 can be interpreted as estimates of θ∗
+
+> i
+
+in (15), updated by the following adaptive laws 
+
+˙ˆθi(t) = ‖s(t)‖‖ ξ(t)‖i − βi ˆθvi (t), ˆθi(0) > 0 (18) where βi, i = 0 , 1, 2 are positive constants. We now analyze the stability properties of the proposed method. 
+
+Lemma 3 : Consider the adaptive laws in (18) with initial condition ˆθi(0) > 0. Then, ˆθi(t) ≥ 0, ∀t ≥ 0.Proof. We use a proof by contradiction. Assume that ∃ˆθi(t) <
+
+0 under initial condition ˆθi(0) > 0. Then, there must exist 
+
+0 < τ < t such that ˆθi(τ ) = 0 and ˙ˆθi(τ ) < 0 because of continuity of ˆθi(t). However, substituting ˆθi(τ ) = 0 into (18) gives ˙ˆθi(τ ) = ‖s(τ )‖‖ ξ(τ )‖i ≥ 0, which does not satisfy the previously assumed negative time derivative. This verifies that 
+
+ˆθi(t) ≥ 0, ∀t ≥ 0 hold under initial condition ˆθi(0) > 0.
+
+Theorem 1. Under Properties 1-3, the origin of the closed-loop Euler-Lagrange dynamics (1) with control law (16)-(17) and adaptive law (18), are practical finite-time stable. Let ¯s
+
+be the bound for s in (4) after finite time: then, the tracking error e converges in finite time to the region 
+
+Φ = max {√nε, 
+
+√n¯s
+
+min i{λ1i} , √n
+
+( ¯s
+
+min i{λ3i}
+
+) 1
+
+> γ
+
+}.
+
+Proof. Select the Lyapunov function candidate: 
+
+V (s, ˜θ) = 1
+
+2 sT Ms + 1
+
+2
+
+> 2
+
+∑
+
+> i=0
+
+˜θ2 
+
+> i
+
+(19) with ˜θi = θ∗ 
+
+> i
+
+− ˆθi. The time derivative of V along the dynamics (11), (16) is 
+
+˙V = sT (u − Cs + ϕ) + 1
+
+2 sT ˙Ms −
+
+> 2
+
+∑
+
+> i=0
+
+˜θi ˙ˆθi
+
+= sT(−Λs −ρsign (s)−σ sig v(s)+ ϕ)+ 1
+
+2 sT( ˙M−2C)s−
+
+> 2
+
+∑
+
+> i=0
+
+˜θi ˙ˆθi.
+
+Using Property 3, we obtain 
+
+˙V = −sT Λs −σsT sig v(s)+ sT ϕ − ρsT sign (s)−
+
+> 2
+
+∑
+
+> i=0
+
+˜θi ˙ˆθi.
+
+Since ρ > 0 from Lemma 3, substituting (15), (17) and (18) in the Lyapunov time derivative gives 
+
+˙V ≤ − sT Λs − σsT sig v (s) + 
+
+> 2
+
+∑
+
+> i=0
+
+˜θi(‖ξ‖i‖s‖ − ˙ˆθi)
+
+≤ − sT Λs − σ
+
+> n
+
+∑
+
+> i=1
+
+(|si|2) 1+ v 
+
+> 2
+
++
+
+> 2
+
+∑
+
+> i=0
+
+βi ˜θi ˆθvi . (20) 
+
+In line with Lemma 1, we cover the cases 0 < v < 1 and 
+
+v = 1 , to make the design more flexible. 
+
+Design (a) : 0 < v < 1. Using Lemma 3 and the definitions of θ∗ 
+
+> i
+
+, ˜θi, we have θ∗ 
+
+> i
+
+> 0, ˆθi ≥ 0, and ˜θi ≤ θ∗ 
+
+> i
+
+. Then, let us analyze the term ˜θi ˆθvi by making use of [35, Lemmas 4,5] 
+
+˜θi ˆθvi = ˆθvi (θ∗ 
+
+> i
+
+− ˆθi)
+
+≤ 1
+
+1+ v (θ∗1+ v 
+
+> i
+
+− ˆθ1+ vi ) ≤ 1
+
+1+ v (θ∗1+ v 
+
+> i
+
+− (θ∗ 
+
+> i
+
+− | ˜θi|)1+ v)
+
+≤ 1
+
+1+ v (θ∗1+ v 
+
+> i
+
+−(|˜θi|1+ v
+
+− θ∗1+ v 
+
+> i
+
+))= 1
+
+1+ v (2 θ∗1+ v 
+
+> i
+
+−| ˜θi|1+ v). (21) Substituting (21) into (20) gives 
+
+˙V ≤ − λmin (Λ)‖s‖2 − σ
+
+> n
+
+∑
+
+> i=1
+
+(|si|2) 1+ v
+
+> 2
+
+− 1
+
+1 + v
+
+> 2
+
+∑
+
+> i=0
+
+βi|˜θi|1+ v + 2
+
+1 + v
+
+> 2
+
+∑
+
+> i=0
+
+βiθ∗1+ v
+
+> i
+
+≤ − σ
+
+> n
+
+∑
+
+> i=1
+
+(|si|2) 1+ v 
+
+> 2
+
+− 1
+
+1+ v
+
+> 2
+
+∑
+
+> i=0
+
+βi(|˜θi|2) 1+ v 
+
+> 2
+
++ 2
+
+1+ v
+
+> 2
+
+∑
+
+> i=0
+
+βiθ∗1+ v 
+
+> i
+
+.
+
+Then, using [36, Lemma 1] we have 
+
+˙V ≤ − η1
+
+(
+
+m2
+
+2
+
+> n
+
+∑
+
+> i=1
+
+|si|2 + 1
+
+2
+
+> 2
+
+∑
+
+> i=0
+
+|˜θi|2
+
+) 1+ v
+
+> 2
+
++ ω1, (22) 4
+
+where η1=min i{ 2σ 
+
+> m2
+
+, 2βi 
+
+> 1+ v
+
+} > 0 and ω1= 2
+
+> 1+ v
+
+∑2 
+
+> i=0
+
+βiθ∗1+ v 
+
+> i
+
+> 0.The Lyapunov function (19) can be upper bounded as 
+
+V ≤ m2
+
+2 ‖s‖2 + 1
+
+2
+
+> 2
+
+∑
+
+> i=0
+
+|˜θi|2, (23) and substituting (23) into (22) gives 
+
+˙V ≤ − η1V 1+ v 
+
+> 2
+
++ ω1. (24) We conclude from Lemma 1 that the states (s, ˜θ) are driven to the region Ψ in finite-time Ts, where 
+
+Ψ = {s, ˜θ| V 1+ v 
+
+> 2
+
+(s, ˜θ) ≤ ω1
+
+(1 − ι)η1
+
+}, 0 < ι < 1,Ts = 2
+
+(1 − v)ιη 1
+
+[
+
+V 1−v 
+
+> 2
+
+(s(0) , ˜θ(0)) −
+
+( ω1
+
+(1 − ι)η1
+
+) 1−v
+
+> 1+ v
+
+]
+
+.
+
+Design (b) : v = 1 . Note that (20) reduces to 
+
+˙V ≤ − sT Λs +
+
+> 2
+
+∑
+
+> i=0
+
+βi ˜θi ˆθi.
+
+With analogous steps as design (a), we have that the states 
+
+(s, ˜θ) are driven to the region Ψ in finite-time Ts, where 
+
+Ψ = {s, ˜θ| V 1+ v 
+
+> 2
+
+(s, ˜θ) ≤ ω2
+
+(1 − ι)η2
+
+},Ts = 1
+
+ιη 2
+
+[ln V (s(0) , ˜θ(0)) ω2 − ln (1 − ι)η2],
+
+where η2= min i{λmin (Λ),β i/2}  
+
+> max i{m2/2,1/2}
+
+>0 and ω2 = 1
+
+> 2
+
+∑2 
+
+> i=0
+
+βiθ∗2 
+
+> i
+
+> 0.
+
+To find a bound for the tracking error, consider the Lya-punov function Ve = 1 
+
+> 2
+
+e2 
+
+> i
+
++ 1 
+
+> 2
+
+λ2i(∫ t 
+
+> 0
+
+ei(τ )dτ )2 , giving 
+
+˙Ve = ei ˙ei + λ2iei
+
+∫ t
+
+> 0
+
+ei(τ )dτ. (25) Then, we proceed along two cases as follows. 
+
+Case I : |ei| > ε . According to (4) and (5) we have 
+
+˙ei + λ1iei + λ2i
+
+∫ t
+
+> 0
+
+ei(τ )dτ + λ3i sig γ (ei) = si, (26) which can be rewritten in three different forms as 
+
+˙ei + ( λ1i − si
+
+ei
+
+)ei + λ2i
+
+∫ t
+
+> 0
+
+ei(τ )dτ + λ3i sig γ (ei) = 0 , (27) 
+
+˙ei+λ1iei+( λ2i− si
+
+∫ t 
+
+> 0
+
+ei(τ )dτ )
+
+∫ t
+
+> 0
+
+ei(τ )dτ +λ3i sig γ (ei)=0 , (28) 
+
+˙ei+λ1iei+λ2i
+
+∫ t
+
+> 0
+
+ei(τ )dτ +( λ3i− si
+
+sig γ (ei) ) sig γ (ei)=0 . (29) Note that substituting the condition si = 0 into (4) gives 
+
+˙ei = −(λ1iei + λ2i
+
+∫ t
+
+> 0
+
+ei(τ )dτ + λ3i∆i(ei)) . (30) Then, substituting (30) into (25) gives 
+
+˙Ve = −ei(λ1iei +λ3i∆i(ei)) = −λ1ie2 
+
+> i
+
+−λ3i|ei|γ+1 ≤ 0.
+
+In the following, let us analyze the tracking errors assuming (30) holds. The fact that Ve > 0 and ˙Ve ≤ 0 implies 
+
+lim t→∞ Ve(t) = Ve(∞) < V e(0) , that is, ei and ∫ t 
+
+> 0
+
+ei(τ )dτ 
+
+are bounded. Meanwhile, ˙ei is also bounded according to (30). Furthermore, by integrating ˙Ve, we have 
+
+lim 
+
+> t→∞
+
+∫ t
+
+> 0
+
+λ1ie2 
+
+> i
+
+(τ ) + λ3i|ei|γ+1 (τ )dτ = Ve(0) − Ve(∞),
+
+which implies that ei has bounded 2-norm. Thus, assuming (30) holds, we get ei → 0 from Barbalat’s lemma. An ultimate bound for ∫ t 
+
+> 0
+
+ei(τ )dτ is obtained noting that, for zero initial conditions of the integrator, Ve(∞) < V e(0) = 1 
+
+> 2
+
+e2 
+
+> i
+
+(0) , and 
+
+Ve(∞) = 1 
+
+> 2
+
+e2 
+
+> i
+
+(∞)+lim t→∞ 1 
+
+> 2
+
+λ2i(∫ t 
+
+> 0
+
+e2 
+
+> i
+
+(τ )dτ )2< 1 
+
+> 2
+
+e2 
+
+> i
+
+(0) . This gives |ei(0) |
+
+> √λ2i
+
+as an ultimate bound for | ∫ t 
+
+> 0
+
+ei(τ )dτ |.With this in mind, we notice that (27), (28) and (29) are in the form of (30) whenever 
+
+λ1i − si
+
+ei
+
+> 0, λ2i − si
+
+∫ t 
+
+> 0
+
+ei(τ )dτ > 0, λ3i − si
+
+sig γ (ei) > 0.
+
+This implies that ei will converge to 
+
+|ei| ≤ ¯s
+
+min i{λ1i} or |ei| ≤ 
+
+( ¯s
+
+min i{λ3i}
+
+) 1
+
+> γ
+
+,
+
+whereas ∫ t 
+
+> 0
+
+ei(τ )dτ will converge to 
+
+|
+
+∫ t
+
+> 0
+
+ei(τ )dτ | ≤ ¯s
+
+min i{λ2i} or |
+
+∫ t
+
+> 0
+
+ei(τ )dτ | ≤ max  
+
+> i
+
+{ |ei(0) |
+
+√λ2i
+
+}.
+
+Case II : |ei| ≤ ε. Substituting (5) into (4) gives 
+
+˙ei+λ1iei+λ2i
+
+∫ t
+
+> 0
+
+ei(τ )dτ +λ3i (α1ei+α2 sign( ei)e2 
+
+> i
+
+) = si. (31) Along analogous steps as Case I, we can rewrite (31) as 
+
+˙ei + λ1iei + ( λ2i − si
+
+∫ t 
+
+> 0
+
+ei(τ )dτ )
+
+∫ t
+
+> 0
+
+ei(τ )dτ 
+
++ λ3i(α1ei + α2 sign( ei)e2 
+
+> i
+
+) = 0 ,
+
+and obtain boundedness of ei and ∫ t 
+
+> 0
+
+ei(τ )dτ . Proceeding as in Case I and combining the two cases, we obtain con-vergence of e in finite-time to the region Φ in Theorem 1, and convergence of ∫ t 
+
+> 0
+
+e(τ )dτ in finite-time to the region 
+
+¯Φ = max {√n max i{ |ei(0) |
+
+> √λ2i
+
+}, √n¯s  
+
+> min i{λ2i}
+
+}. The proof is com-pleted. 
+
+Remark 2 (Estimation of unstructured uncertainty) . The role of the adaptive law (17) is to estimate the uncertainty (15) without its structural knowledge. In fact, (15) has been derived from EL properties that hold independently of the specific system structure. It is known that nonparametric perturbations may destroy stability of classic adaptive control [37]. As the proposed method achieves stability in the presence of unstructured state-dependent perturbations, it is "robust" in the sense of robust adaptive control. 
+
+Remark 3 (Modularity) . To illustrate the modular nature of the proposed method, let use (4) and rewrite (16) as: 
+
+u(t) = −
+
+> PID action
+
+︷ ︸︸ ︷
+
+Λs 1(t) −
+
+> Robust-adaptive action
+
+︷ ︸︸ ︷
+
+ρ(t)sign( s(t)/μ )
+
+−
+
+> Finite-time action
+
+︷ ︸︸ ︷
+
+Λλ3∆( e) − σ sig v(s(t)) ,
+
+(32) 5 
+
+> Autopilot
+> TECS
+> Exchange between kinetic energy
+> (speed) and potential energy (height)
+> Target Airspeed Target Altitude
+> d
+> Va
+> d
+> h
+> Throttle
+> tG
+> Desired Pitch
+> d
+> T
+> SITL Simulator
+> Pitch
+> Controller
+> Elevator
+> eG
+> Roll
+> Controller
+> Yaw Controller
+> Aileron
+> aG
+> Rudder
+> rG
+> Yaw/YawRate
+> Roll/RollRate
+> Pitch/PitchRate
+> Sensor measurements
+> Navigate module L1 Controller
+> Stabilize module
+> Desired Roll
+> d
+> I
+> Attitude and position
+> measurements Flight States
+> Command Roll
+> c
+> I
+> Command Pitch
+> c
+> T
+
+Figure 1: SITL architecture in ArduPilot: the Navigate module sends guidance commands to the TECS and Stabilize modules; roll-pitch-yaw controllers act on the corresponding servos. 
+
+where s in (4) was split to highlight s1 = ˙e + λ1e +
+
+λ2
+
+∫ t 
+
+> 0
+
+e(τ )dτ . Similar to the AISMC in [23], (32) allows to augment existing PID loops. The novelty is to include a finite-time action to better control convergence. The effectiveness of this method will be verified in Sect. IV with comparative experiments with PID and AISMC loops. 
+
+IV. VALIDATION IN ARDU PILOT 
+
+We validate the proposed framework into ArduPlane, the autopilot module of ArduPilot for fixed-wing unmanned aerial vehicles. PID control and the authors’ previous AISMC work [23] are used for comparisons, where 
+
+uAISMC (t) = −Λs 1(t) − ρ sat( s1(t)/μ ),ρ(t) = ¯θ0(t) + ¯θ1(t)|| ξ(t)|| + ¯θ2(t)|| ξ(t)|| 2,
+
+˙¯θi(t) = ‖s1(t)‖‖ ξ(t)‖i − βi ¯θi(t),
+
+(33) with s1(t) being the PID term defined after (32) and sat( ·/μ ),
+
+μ > 0 the standard saturation function in ±1. In all the tests we report, we have tuned the gains to give the best possible performance for PID while we have tuned the gains in the adaptive law (33) to give the best possible performance for AISMC. To make the comparisons as fair as possible,  
+
+> •
+
+the same PID gains Λ, λ1, λ2 are also used in all other methods;  
+
+> •
+
+the same adaptive gains βi in AISMC are also used in the proposed method. By doing this, we are able to evaluate if and how much the additional terms in each strategy improve the performance. In AISMC and the proposed method, we use the term sat( ·/μ )
+
+to replace the corresponding sign function, to allow continuity of the control action that is of practical importance. 
+
+The validations adopt a software-in-the-loop (SITL) envi-ronment, meaning that we test the actual open-source ArduPi-lot suite [38]. Fig. 1 illustrates the SITL architecture. For con-trol, ArduPilot relies on a philosophy that aims to approximate the vehicle dynamics with second-order dynamics, and close them with PID loops [38]. Such a philosophy is supported by standard literature like [39], which we explain as follows. It is well known that the 6-DOF fixed-wing dynamics are coupled and complex [39, Chapt. 3]. So, several literature Table I: Parameter selection for the proposed method 
+
+Loop γ ε λ3 βi μ v σ   
+
+> i= 0 ,1,2
+
+pitch 10 −3 10 10 −3 10 420 0.8 3.6 
+
+roll 10 −3 10 10 −3 160 1000 0.95 0.001 
+
+yaw 10 −3 10 10 −3 0.001 0.001 0.5 1.4 
+
+TECS throttle 10 −3 10 10 −3 0.001 10.4 0.01 0.04 
+
+TECS pitch 10 −3 10 10 −3 4 44 0.47 0.05 
+
+suggests to simplify the control design via low-order models (refer to [39, Chapt. 5] for a details). For compactness, let us use the transfer function notation to describe the relation between the elevator deflection δe and the pitch angle θ,between the pitch angle θ and the altitude h, and between the throttle δt and pitch angle θ to the airspeed Va. These are the main components of the longitudinal dynamics: pitch θ(s) = aθ3
+
+s2 + aθ1s + aθ2
+
+(δe(s) + 1
+
+aθ3
+
+dθ2(s)) ,
+
+altitude h(s) = Va
+
+s (θ(s) + 1
+
+Va
+
+dh(s)) , (34) airspeed ¯Va(s) = 1
+
+s + av1
+
+(av2
+
+¯δt(s) − av3
+
+¯θ(s) + dv (s)) ,
+
+where aθ1 , − ρaV 2  
+
+> acS
+> 2Jy
+
+Cmq 
+
+> c
+> 2Va
+
+,aθ2 , − ρaV 2 
+
+> a
+
+cS 
+
+2Jy
+
+Cmα , aθ3 , ρaV 2 
+
+> a
+
+cS 
+
+2Jy
+
+Cmδe ,dθ2 ,Γ6(r2
+
+−p2)+Γ 5pr +ρaV 2 
+
+> a
+
+cS 
+
+2Jy
+
+[Cm0−Cmαγ−Cmq
+
+c
+
+2Va
+
+dθ1]+ ˙dθ1,dh , (u sin θ − Vaθ) − v sin φ cos θ − w cos φ cos θ, 
+
+¯Va , Va − V ∗ 
+
+> a
+
+is the deviation of Va from trim V ∗ 
+
+> a
+
+,
+
+¯θ , θ − θ∗ is the deviation of θ from trim θ∗,
+
+¯δt , δt − δ∗ 
+
+> t
+
+is the deviation of δt from trim δ∗ 
+
+> t
+
+,av1 , ρV ∗ 
+
+> a
+
+S
+
+mu
+
+(CD0 + CDα∗ + CDδe δ∗ 
+
+> e
+
+) + ρS prop 
+
+mu
+
+Cprop V ∗ 
+
+> a
+
+,av2 , ρS prop 
+
+mu
+
+Cprop k2
+
+> motor
+
+δ∗ 
+
+> t
+
+, av3 , g cos ( θ∗ − χ∗),
+
+Table II: Tracking error costs for proposed, original PID and AISMC autopilots. The percentage degradation with respect to the proposed method is indicated. 
+
+Mass Proposed autopilot 
+
+Roll Pitch Yaw TECS throttle TECS pitch Total 
+
+2 → 1kg 1.34 0.99 5.31 2.75 2.55 12.94 
+
+2kg 1.01 1.01 0.49 0.51 0.65 3.67 
+
+2 → 4kg 0.8 1.07 3.52 1.73 2.55 9.67 
+
+Mass Original PID autopilot 
+
+Roll Pitch Yaw TECS throttle TECS pitch Total 
+
+2 → 1kg 1.38 0.88 5.68 10.33 3.09 21.36 (+65.1%) 
+
+2kg 1 1 1 1 1 5.0 (+36.2%) 
+
+2 → 4kg 0.72 1.3 4.0 5.43 5.9 17.35 (+79.4%) 
+
+Mass AISMC autopilot 
+
+Roll Pitch Yaw TECS throttle TECS pitch Total 
+
+2 → 1kg 1.47 0.94 5.44 4.94 2.97 15.76 (+21.8%) 
+
+2kg 1 1 0.49 0.73 0.92 4.14 (+12.8%) 
+
+2 → 4kg 0.78 1.17 3.6 2.55 3.9 12.0 (+24.1%) 6                   
+
+> 020 40 60 80 100 120
+> 050 100
+> Altitude (m)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> Target altitude
+> 020 40 60 80 100 120
+> Time (s)
+> 050 100
+> Error (m)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 40 60 80
+> 98 100
+> 70 75 80 85 90 95
+> 0123
+> Mass change
+
+(a) Altitude and altitude error norm. The proposed solution has negligible altitude drop after mass change.               
+
+> 020 40 60 80 100 120
+> -0.2 -0.1 00.1 0.2
+> Pitch demand
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 020 40 60 80 100 120
+> Time (s)
+> -1 -0.5 00.5 1
+> Elevator
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 70 75 80
+> -0.15 -0.1 -0.05 00.05
+> Mass change
+> Mass change
+
+(b) TECS Pitch demand and elevator. The proposed solution is more reactive to mass change, with elevator input in reasonable range.                     
+
+> 020 40 60 80 100 120
+> 010 20
+> Airspeed (m/s)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> Target airspeed
+> 020 40 60 80 100
+> Time (s)
+> 0510 15 20
+> Error (m/s)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 40 50 60 70 80 90
+> 20 22
+> 70 75 80 85 90
+> 012
+> Mass change
+
+(c) Airspeed and airspeed error norm. The proposed solution has smaller overshoot with faster convergence after mass change.                 
+
+> 020 40 60 80 100
+> -0.2 00.2
+> Pitch error rate
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 020 40 60 80 100 120
+> Time (s)
+> 0.4 0.6 0.8 1
+> Throttle demand
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 70 72 74 76 78 80
+> -0.04 -0.02 00.02 0.04 0.06
+> Mass change
+> Mass change
+
+(d) Pitch error rate and TECS throttle. The proposed solution is more reactive to mass change. 
+
+Figure 2: Mass change 2.0kg → 1.0kg: comparison of proposed, original PID and AISMC [23] autopilots. where φ is the Euler roll angle, p, r are the roll rate and yaw rate in body frame, γ is flight path angle, χ∗ is the course angle trim and the terms Cmq , C mα , C mδe , C m0 , C D0 , C Dα∗ , CDδe 
+
+are Taylor approximations of aerodynamic coefficients. We do not report the lateral dynamics for compactness, the interested reader is referred to [39, Chapt. 5]. It is worth remarking that most coefficients in (34) are uncertain and difficult to identify, as they might change with time and with the operating conditions. Additionally, dθ2, dh, dv represent complex state-dependent disturbances coming from the coupled dynamics. 
+
+These issues make model-based or structure-based autopilots hard to implement in practice: meanwhile, non-adaptive PID loops may guarantee practical stability, but their guarantees in the presence of state-dependent uncertainty may be conserva-tive, as shown later in our tests. Since ArduPilot relies on closing the vehicle dynamics with PID loops [38], by recalling (32), we have the opportunity to test the proposed method by augmenting the original loops of ArduPilot. Indeed, the attitude control modules in Fig. 1 can either contain the original ArduPilot autopilot, or a user-designed autopilot (e.g., the AISMC [23] or the approach proposed in this work). As the original ArduPilot consists of a family of PID loops, one can choose Λ, λ1, λ2 in (16) as the PID gains set in the ArduPilot code [38]. The other parameters for the proposed approach are listed in Table I. To evaluate the robustness of the proposed autopilot under large uncertainty, the mass of the UAV will be changed during the flight (which can represent some change in the payload). The initial mass is 2kg, and it can change to half mass ( 1kg) or double mass ( 4kg) during flight. Neither the mass nor the mass change is known a priori, which allows to test how different autopilots cope with this uncertainty. The flight includes a take-off phase, a cruising phase (orbiting constant altitude and constant airspeed), and a landing phase. Note that the mass change occurs during the cruising phase. Table II reports the tracking error costs for the different autopilots under different 7                    
+
+> 020 40 60 80 100 120
+> 050 100
+> Altitude (m)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> Target altitude
+> 020 40 60 80 100 120
+> Time (s)
+> 050 100
+> Error (m)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 65 70 75 80 85
+> 98 99 100 101
+> 65 70 75 80 85
+> 01
+> Mass change
+
+(a) Altitude and altitude error norm. The proposed solution has negligible altitude drop after mass change.               
+
+> 020 40 60 80 100 120
+> -0.2 -0.1 00.1 0.2
+> Pitch demand
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 020 40 60 80 100 120
+> Time (s)
+> -1 -0.5 00.5 1
+> Elevator
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 70 75 80
+> 00.1 0.2
+> Mass change
+> Mass change
+
+(b) TECS pitch demand and elevator. The proposed solution is more reactive to mass change, with elevator input in reasonable range.                   
+
+> 020 40 60 80 100 120
+> 010 20 30
+> Airspeed (m/s)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> Target airspeed
+> 020 40 60 80 100 120
+> Time (s)
+> 0510 15 20
+> Error (m/s)
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 50 60 70 80
+> 22 23 24
+> 70 75 80 85
+> 012
+> Mass change
+
+(c) Airspeed and airspeed error norm. The proposed solution has smaller overshoot with faster convergence after mass change.                  
+
+> 020 40 60 80 100 120
+> -0.2 00.2
+> Pitch error rate
+> Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 020 40 60 80 100 120
+> Time (s)
+> 00.5 1
+> Throttle demand  Proposed autopilot
+> Original PID autopilot
+> AISMC autopilot
+> 70 72 74 76 78 80
+> 0.08 0.1 0.12 0.14 0.16 0.18
+> Mass change
+> Mass change
+
+(d) Pitch error rate and TECS throttle. The proposed solution is more reactive to mass change. 
+
+Figure 3: Mass change 2.0kg → 4.0kg: comparison of proposed, original PID and AISMC [23] autopilots. mass conditions. Five control loops are reported, representing the main loops of a fixed-wing UAV: roll, pitch, yaw, TECS throttle and TECS pitch. The term TECS means total energy control system, i.e. the control loops for altitude (potential energy) and speed (kinetic energy). The cost accounts for the tracking errors with respect to the desired roll, pitch, yaw, potential and kinetic energy. The performance of the original PID autopilot with constant 2kg mass is used as a normalizing factor, so that the cost is 5.0 in this scenario. The table shows that the tracking error costs of the proposed autopilot are smaller than other autopilots under both constant mass scenario and changing mass scenario: the proposed autopilot overcomes the original autopilot by more than 36.2% for the original PID autpilot and by more than 12.8% for the AISMC autopilot. The enhanced performance is especially evident in the changing mass scenario. To visualize the performance in the changing mass scenario, relevant flight variables are visualized in Figs. 2 and 3 for the proposed, the original PID and the AISMC autopilots. As shown in Figs. 2a and 3a, the proposed autopilot has negligible altitude drop after mass change. Figs. 2b and 3b show the faster reaction in pitch demand, with reasonable elevator input. Figs. 2c and 3c show that the airspeed of the proposed autopilot has smaller overshoot and converges faster. As shown in Figs. 2d and 3d, the throttle for the proposed solution is more reactive in response to the mass change. To conclude, the tests show that the proposed method over-comes the other ones in terms of robustness and adaptation, 
+
+suggesting more effectiveness in tackling state-dependent un-certainty typically arising in autopilot applications. Additional comparisons can be found in the report [33]. 
+
+V. C ONCLUSIONS AND FUTURE WORK 
+
+This paper explored a novel boundary-layer Euler-Lagrange (EL) control method not relying on structural knowledge of the 8
+
+system dynamics. Design considerations and software-in-the-loop tests have shown the capability of the proposed solution to be integrated in existing autopilot loops, with enhanced robustness and adaptation performance . Future work will aim to test several modules in open-source autopilots meant for vehicles with different structure (copters, vessels, rovers, etc.). A preliminary study in this sense is [40]. Another unsettled problem in the field of unstructured uncertainties is to consider unmatched/unactuated terms. 
+
+REFERENCES [1] F. Santoso, M. A. Garratt, and S. G. Anavatti, “Hybrid PD-fuzzy and PD controllers for trajectory tracking of a quadrotor unmanned aerial vehicle: Autopilot designs and real-time flight tests,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 51, no. 3, pp. 1817– 1829, 2021. [2] S. Baldi, S. Roy, K. Yang, and D. Liu, “An underactuated control system design for adaptive autopilot of fixed-wing drones,” IEEE/ASME Transactions on Mechatronics , pp. 1–12, 2022. [3] P. Li, D. Liu, and S. Baldi, “Plug-and-play adaptation in autopilot architectures for unmanned aerial vehicles,” in IECON 2021 – 47th Annual Conference of the IEEE Industrial Electronics Society , 2021, pp. 1–6. [4] H. Dong and J. Xi, “Model predictive longitudinal motion control for the unmanned ground vehicle with a trajectory tracking model,” IEEE Transactions on Vehicular Technology , vol. 71, no. 2, pp. 1397–1410, 2022. [5] K. D. von Ellenrieder, S. C. Licht, R. Belotti, and H. C. Henninger, “Shared human–robot path following control of an unmanned ground vehicle,” Mechatronics , vol. 83, p. 102750, 2022. [6] G. Rigatos and S. Tzafestas, “Adaptive fuzzy control for the ship steering problem,” Mechatronics , vol. 16, no. 8, pp. 479–489, 2006. [7] B. Kürkçü and C. Kasnako˘ glu, “Robust autopilot design based on a disturbance/uncertainty/coupling estimator,” IEEE Transactions on Control Systems Technology , vol. 27, no. 6, pp. 2622–2629, 2019. [8] C. Fu, A. Sarabakha, E. Kayacan, C. Wagner, R. John, and J. M. Garibaldi, “Input uncertainty sensitivity enhanced nonsingleton fuzzy logic controllers for long-term navigation of quadrotor UAVs,” 
+
+IEEE/ASME Transactions on Mechatronics , vol. 23, no. 2, pp. 725–734, 2018. [9] Z. Yang, J. Huang, H. Yin, D. Yang, and Z. Zhong, “Path tracking control for underactuated vehicles with matched-mismatched uncertainties: An uncertainty decomposition based constraint-following approach,” IEEE Transactions on Intelligent Transportation Systems , pp. 1–14, 2021. [10] S. Roy, S. Baldi, P. Li, and V. Narayanan, “Artificial-delay adaptive control for under-actuated Euler-Lagrange robotics,” IEEE/ASME Trans-actions on Mechatronics , pp. 1–1, 2021. [11] M. G. Safonov, “Robust control: Fooled by assumptions,” International Journal of Robust and Nonlinear Control , vol. 28, no. 12, pp. 3667– 3677, 2018. [12] M. M. Rayguru, R. E. Mohan, R. Parween, L. Yi, A. V. Le, and S. Roy, “An output feedback based robust saturated controller design for pave-ment sweeping self-reconfigurable robot,” IEEE/ASME Transactions on Mechatronics , vol. 26, no. 3, pp. 1236–1247, 2021. [13] E. Nuño and R. Ortega, “Achieving consensus of Euler–Lagrange agents with interconnecting delays and without velocity measurements via passivity-based control,” IEEE Transactions on Control Systems Technology , vol. 26, no. 1, pp. 222–232, 2018. [14] L. Yu, G. He, X. Wang, and S. Zhao, “Robust fixed-time sliding mode attitude control of tilt tri-rotor UAV in helicopter mode,” IEEE Transactions on Industrial Electronics , pp. 1–1, 2021. [15] L. Wan, Y.-J. Pan, and H. Shen, “Improving synchronization perfor-mance of multiple Euler-Lagrange systems using non-singular terminal sliding mode control with fuzzy logic,” IEEE/ASME Transactions on Mechatronics , pp. 1–1, 2021. [16] C. Ma, J. Lam, and F. L. Lewis, “Trajectory regulating model reference adaptive controller for robotic systems,” IEEE Transactions on Control Systems Technology , vol. 27, no. 6, pp. 2749–2756, 2019. [17] T. Souanef, “ L1 adaptive path-following of small fixed-wing unmanned aerial vehicles in wind,” IEEE Transactions on Aerospace and Electronic Systems , pp. 1–1, 2022. [18] K. Shao, J. Zheng, R. Tang, X. Li, Z. Man, and B. Liang, “Barrier function based adaptive sliding mode control for uncertain systems with input saturation,” IEEE/ASME Transactions on Mechatronics , vol. 27, no. 6, pp. 4258–4268, 2022. [19] F. Plestan, Y. Shtessel, V. Brégeault, and A. Poznyak, “New methodolo-gies for adaptive sliding mode control,” International Journal of Control ,vol. 83, no. 9, pp. 1907–1919, 2010. [20] C. Edwards and Y. B. Shtessel, “Adaptive continuous higher order sliding mode control,” Automatica , vol. 65, pp. 183–190, 2016. [21] Y. Hu, H. Wang, S. He, J. Zheng, and Z. Man, “Adaptive tracking control of an electronic throttle valve based on recursive terminal sliding mode,” 
+
+IEEE Transactions on Vehicular Technology , vol. 1, no. 1, pp. 1–11, 2020. [22] S. Roy, S. Baldi, and L. M. Fridman, “On adaptive sliding mode control without a priori bounded uncertainty,” Automatica , vol. 111, p. 108650, 2020. [23] P. Li, D. Liu, and S. Baldi, “Adaptive integral sliding mode control in the presence of state-dependent uncertainty,” IEEE/ASME Transactions on Mechatronics , vol. 27, no. 5, pp. 3885–3895, 2022. [24] S. Roy, J. Lee, and S. Baldi, “A new adaptive-robust design for time delay control under state-dependent stability condition,” IEEE Transactions on Control Systems Technology , vol. 29, no. 1, pp. 420– 427, 2021. [25] C. D. Cruz-Ancona, M. A. Estrada, and L. Fridman, “Barrier function-based adaptive lyapunov redesign for systems without a priori bounded perturbations,” IEEE Transactions on Automatic Control , vol. 67, no. 8, pp. 3851–3862, 2022. [26] H. Haimovich, L. Fridman, and J. A. Moreno, “Generalized super-twisting for control under time- and state-dependent perturbations: Breaking the algebraic loop,” IEEE Transactions on Automatic Control ,vol. 67, no. 10, pp. 5646–5652, 2022. [27] C. K. Verginis and D. V. Dimarogonas, “Asymptotic stability of uncertain lagrangian systems with prescribed transient response,” in 2019 IEEE 58th Conference on Decision and Control (CDC) , 2019, pp. 7037–7042. [28] ——, “Asymptotic tracking of second-order nonsmooth feedback sta-bilizable unknown systems with prescribed transient response,” IEEE Transactions on Automatic Control , vol. 66, no. 7, pp. 3296–3302, 2021. [29] N. Wang, C. Qian, J.-C. Sun, and Y.-C. Liu, “Adaptive robust finite-time trajectory tracking control of fully actuated marine surface vehicles,” 
+
+IEEE Transactions on Control Systems Technology , vol. 24, no. 4, pp. 1454–1462, 2016. [30] O. Mofid and S. Mobayen, “Adaptive finite-time back-stepping global sliding mode tracker of quad-rotor UAVs under model uncertainty, wind perturbation and input saturation,” IEEE Transactions on Aerospace and Electronic Systems , pp. 1–1, 2021. [31] X. Yu, Y. Feng, and Z. Man, “Terminal sliding mode control – an overview,” IEEE Open Journal of the Industrial Electronics Society ,vol. 2, pp. 36–52, 2021. [32] G. P. Incremona, M. Cucuzzella, and A. Ferrara, “Adaptive suboptimal second-order sliding mode control for microgrids,” International Journal of Control , vol. 89, no. 9, pp. 1849–1867, 2016. [33] “Technical report on boundary-layer control with unstructured uncertainties,” Online, https://github.com/Friend-Peng/Adaptive-ArduPilot-Autopilot/tree/Boundary-layer-control-with-application-to-adaptive-autopilots. [34] F. Wang, B. Chen, C. Lin, J. Zhang, and X. Meng, “Adaptive neural network finite-time output feedback control of quantized nonlinear systems,” IEEE Transactions on Cybernetics , vol. 48, no. 6, pp. 1839– 1848, 2018. [35] H. Yang and D. Ye, “Adaptive fixed-time bipartite tracking consensus control for unknown nonlinear multi-agent systems: An information classification mechanism,” Information Sciences , pp. 238–254, 2018. [36] Z. Zuo, “Nonsingular fixed-time consensus tracking for second-order multi-agent networks,” Automatica , vol. 54, pp. 305–309, 2015. [37] P. Ioannou and J. Sun, Robust Adaptive Control . Dover Publications, 2012. [38] “Open source for ardupilot open source autopilot,” Online, https://github.com/ArduPilot/ardupilot. [39] R. W. Beard and T. W. Mclain, Small Unmanned Aircraft Theory and Practice . Princeton University Press, 2012. [40] P. Li, D. Liu, X. Xia, and S. Baldi, “Embedding adaptive features in the ardupilot control architecture for unmanned aerial vehicles,” in 2022 IEEE 61st Conference on Decision and Control (CDC) , 2022, pp. 3773– 3780.
