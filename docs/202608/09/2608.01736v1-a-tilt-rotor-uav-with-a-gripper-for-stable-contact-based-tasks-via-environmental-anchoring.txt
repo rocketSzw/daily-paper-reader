@@ -1,0 +1,237 @@
+Title: A Tilt-Rotor UAV with a Gripper for Stable Contact-Based Tasks via Environmental Anchoring
+
+URL Source: https://arxiv.org/pdf/2608.01736v1
+
+Published Time: Tue, 04 Aug 2026 01:52:03 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# A Tilt-Rotor UAV with a Gripper for Stable Contact-Based Tasks via Environmental Anchoring 
+
+Joshua Taylor 1,2, Nursultan Imanberdiyev 2, Wei-Yun Yau 2, Guillaume Sartoretti 1, and Efe Camci 2
+
+Abstract — Maintaining a stable pose during physical inter-action is a significant challenge for aerial robots, often limiting their use in contact-based tasks. This paper presents a novel uncrewed aerial vehicle (UAV) platform designed to transition from unconstrained flight to a stable, constrained work plat-form via environmental anchoring. Our system comprises: 1) a multirotor with a tilt-rotor mechanism that decouples pitch from forward motion, enabling stable hover at non-zero pitch angles, and 2) a novel underactuated, cable-driven, prismatic gripper featuring compliance to adapt to irregular geometries, designed to stabilize the UAV by anchoring it to its environment. We present the design and prototyping of the complete system and validate its performance through a series of real-robot flight tests. Results demonstrate that anchoring significantly improves stability for interaction tasks, reducing positional drift RMSE by over 95% compared to a free-flight baseline, even under windy conditions. The anchored system can withstand longitudinal reaction forces up to 75 N while maintaining a stable pose. Furthermore, across a range of target geometries and orientations, the system demonstrated consistent stability with a positional drift RMSE that never exceeded 3 mm. These results establish the viability of our approach for complex physical interaction tasks, such as sampling tree health by drilling or sensor installation in hard-to-reach locations. Watch our UAV at: https://youtu.be/HDQ8S4ZW3Ls. 
+
+I. I NTRODUCTION 
+
+Uncrewed aerial vehicles (UAVs) are increasingly used for contact-based tasks in hard-to-reach locations [1], [2]. A particularly challenging research direction is deploying aerial robots in natural environments, such as for forest monitoring [3]. There, tasks like drilling into branches to assess tree health require the robot to exert controlled forces with high pose stability. This presents two key challenges for aerial manipulation. First, versatility : the environment is unstructured, with irreg-ular, rough branches at arbitrary angles. Second, stability :physical interaction often requires high stability to minimize damage to the tool and the environment, and introduces external forces that can destabilize a hovering platform. Current aerial platforms often fail to meet both require-ments simultaneously. While advanced tilt-rotor designs can generate forces at various orientations [4], [5], they typically lack suitable end-effectors for robustly anchoring to natural surfaces. Conversely, while perching mechanisms exist, they are often designed for specific conditions such as horizontal branches [3] or smooth vertical walls [1], or they require aggressive maneuvers to engage [6]. These mechanisms may not provide the necessary stability or versatility for perform-   
+
+> 1National University of Singapore (NUS), Singapore.
+> 2Institute for Infocomm Research (I 2R), A*STAR, Singapore.
+> Fig. 1. Tilt-rotor UAV with cable-driven gripper anchored onto a 60° over-hanging tree branch to establish a stable work platform.
+
+ing subsequent high-force tasks on the irregular, inclined surfaces found in natural environments. We present an aerial robot to address the versatility and stability required for contact-based tasks in natural envir-onments. Our robot integrates a tilt-rotor UAV with a novel cable-driven prismatic gripper. The tilt-rotors enable the UAV to hover perpendicularly to inclined branches, and the gripper allows for robust anchoring to irregular targets. We demon-strate that via anchoring, our robot achieves stability suitable for complex physical interaction tasks such as drilling, even under difficult flight conditions like windy environments and large-angle pitching, as shown in Fig. 1. The main contributions of our work are summarized as: 1) The design and build of a novel cable-driven, prismatic gripper for grasping a diverse range of targets. 2) Integration of the gripper into a tilt-rotor platform to achieve environmental anchoring. 3) Validation of the performance improvements gained by anchoring under various flight conditions. 4) Quantification of the gripper’s limits under high loads and its versatility across various target geometries. The remainder of this paper is structured as follows. Sec-tion II discusses the literature on aerial physical interaction, Sec. III introduces the UAV and gripper design, Sec. IV introduces the control scheme used, and Sec. V describes the experiments performed and the results obtained. Finally, Sec. VI provides key conclusions from our work. arXiv:2608.01736v1 [cs.RO] 3 Aug 2026 II. R ELATED WORK 
+
+To perform contact-based tasks, an aerial robot must be able to generate forces at arbitrary orientations to align with the target and ensure high pose stability during interaction. We review the state of the art in these two areas. 
+
+A. Force Generation for Aerial Interaction 
+
+Conventional underactuated multirotors are limited by coupled translational and rotational dynamics, which restricts their ability to apply sustained forces against non-horizontal surfaces [7]. Conversely, fully- and over-actuated platforms can generate forces and torques in all 6-degrees of freedom (DoF), often by employing individually tiltable rotors [4]. These designs enable capabilities like active force control for contact-based inspection [2]. However, the required mechan-ical complexity (e.g., additional actuators, complex linkages) increases weight and power consumption, thereby limit-ing flight endurance and payload capacity. Consequently, researchers have explored UAV designs with 5 controlled DoFs (CDoF) as a practical alternative [5], [8]. Typically requiring only one or two more actuators, such designs decouple longitudinal motion from the pitch axes, allowing the maneuverability needed to approach and interact with inclined surfaces without the excessive weight of 6-CDoF architectures. This balances performance and complexity for contact-based tasks like aerial drilling [8] or perching. 
+
+B. Perching and Grasping on Unstructured Surfaces 
+
+Leveraging the environment for support through perching can enhance stability and force exertion during interaction. The work in [9] showed that such support can overcome limitations of free-flight interaction, including high energy consumption and limited pose stability. However, the ef-fectiveness of this approach is dependent on the perching mechanism’s ability to interface with the target surface. On structured and smooth surfaces, suction cups have been used effectively for high-force tasks such as drilling [1]. However, such methods typically fail on rough, porous, or irregular surfaces common in natural environments. For perching onto branches, grippers with revolute joints are widely used. Designs such as [10] mimic avian claws to encircle and secure branches. The review in [11] indic-ates that most UAV-mounted grippers utilize similar multi-fingered revolute designs. While underactuation can enable compliance, this architecture is better suited to smaller, cylindrical shapes. Furthermore, these designs are typically mounted beneath the airframe, relying on agile or aggressive maneuvers to engage the target [6], [12]. Such approaches present a risk for heavier platforms or operations in cluttered spaces. The work in [13] used a front-mounted revolute gripper to improve pose stability against vertical branches, but found it less adept at forming a stable grasp on larger or unstructured surfaces. Generally, revolute grippers also suffer from grasp dynamics that are inherently sensitive to the target’s geometry and the joint angles during contact [14]. Furthermore, the fingers can generate unintended outward forces during the initial arcing movement of the grasp [15]. While we can look to concepts like reconfiguration through extendable fingers [16] to address grasping of a broader range of target shapes and sizes, they ultimately still suffer from these same undesired grasp behaviors. Alternatively, continuum-style grippers [17] offer strong compliance but typically lack the rigidity for a robust anchor. Conversely, prismatic grippers with parallel jaws provide predictable clamping forces independent of the target object size. The benefits of this architecture were demonstrated in the hybrid prismatic-revolute gripper in [15], suggesting that prismatic joints offer a strong direction for establishing stable work platforms in unstructured environments. The broader literature on prismatic grippers explores relevant areas like adaptability [18], as well as maximizing stroke length [19] and force output [20], but lacks a lightweight design capable of complying with a large range of target shapes and sizes while withstanding large interaction forces. Overall, the literature highlights a need for a system capable of perching on irregular, pole-like objects at various angles without aggressive maneuvers. Such a need could be fulfilled by the co-design of a capable aerial platform and a gripper with both predictable dynamics and compliance. III. UAV D ESIGN 
+
+To address the need for a stable and versatile UAV for contact-inspection tasks, we designed and built a tilt-rotor UAV with a gripper. While the tilt-rotors enable decoupling of forward motion from pitching, allowing the UAV to hover at pitch angles of up to -60° (nose up), the gripper enables robust anchoring against a range of target objects, including cylindrical, rectangular, and irregularly shaped columns and poles. This combination of capabilities is particularly benefi-cial for inspection work in natural environments, where, for example, tree branches of varying cross-sectional diameters, geometries, and angles can be found. The gripper is deliber-ately mounted to the front of the UAV to enable mounting of long-bodied instruments, such as the Resistograph® [21] used for internal wood inspection. The remainder of this section describes the design and build of our UAV. 
+
+A. Airframe 
+
+Our UAV is based on a 5-CDoF H-frame chassis, similar to that in [5]. The front-mounted gripper generates a constant pitch torque, which we compensate for with an asymmetric rotor configuration. Two coaxial sets of rotors are positioned on the front cross-arm and two single rotors on the parallel rear arm. All rotors tilt simultaneously using a timing belt system driven by a servo motor. This servo is placed towards the back of the UAV to further offset the gripper mass. The axis of rotation for the tilting mechanism is aligned with the longitudinal axis of each rotor arm. This configuration provides an additional degree of control, as tilting the rotors generates a net thrust vector in the UAV’s body-x direction, allowing for decoupled pitch and forward motion. 
+
+B. Gripper 
+
+We present our gripper for physical interaction. The design has two fingers, each consisting of two prismatic joints. As (a) Gripper Components 
+
+(b) Extensor Cable Set 
+
+(c) Flexor Cable Set        
+
+> Gripper Servo
+> Proximal Links
+> Distal Links
+> Intermediate Links
+> Pulley Differentials
+> Palm Pad Fig. 2. The gripper design and cable actuation. (a) Key mechanical components. (b) Routing of the extensor cable set showing how rotation of the gripper servo translates into opening the gripper. (c) Routing of the flexor cable set, viewed from the underside of the UAV, showing how opposite rotation of the gripper servo translates into closure of the gripper.
+
+(a) 
+
+(b) 
+
+(c)       
+
+> Fig. 3. An example sequence of the gripper grasping onto an irregularly shaped target object, including an isometric and top-down view of the scene. The gripper starts in the (a) open position. As the servo applies tension to the flexor cable set, the intermediate links move preferentially to the distal links due to their differing joint stiffnesses, resulting in the position shown in (b) . Once the intermediate links cannot close any further, the distal links form the (c) completed grasp, complying with the target object.
+
+shown in Fig. 2(a), each finger has a proximal link, which acts as a linear rail for an intermediate link, which in turn acts as a linear rail for the distal link. This configuration provides both a clamping force on the target object (between the intermediate links) and a pulling force that draws the target and the UAV together (due to the distal links). The gripper is underactuated, in that a single servo motor drives all four prismatic joints. The actuation is transmitted via a pair of antagonistic cable sets, highlighted in Fig. 2(b) and 2(c). Both sets are connected to a servo-mounted cable drum and terminate at the distal links. Rotating the servo in one direction tensions the extensor cable set, which opens the jaws. Opposite tensions the flexor set, applying a closing and clamping force. This cable-driven approach enables us to position a portion of the gripper mass (i.e., the servo) at the back end of the UAV, thereby reducing weight at the extremities and contributing to improved mass distribution. Each cable set runs through a set of pulleys and a pulley differential, allowing the separate joints to move independ-ently of one another. This enables a degree of compliance when grasping irregularly shaped or off-center objects. Note that by adjusting the tension on the carriages that run along the linear rails, we can fine-tune the sequence in which the gripper closes. For example, a tighter carriage on the distal link with respect to the carriage on the intermediate link will cause the intermediate link to move preferentially over the distal link when closing the gripper. This not only maximizes the possible workspace of the gripper by ensuring it can utilize the full extension of the distal joints, but also allows the gripper to function at different pitch angles when the end effectors are subject to gravity in the direction of the joint. Figure 3 demonstrates the preferential movement of the intermediate links and the gripper’s compliant nature. Our design offers three advantages over the more com-mon revolute-joint grippers. First, the linear caging motion pulls the UAV towards the static target, eliminating the 
+
+push-away effect of arcing revolute fingers and ensuring consistent UAV placement relative to the target. Second, the rectilinear workspace allows for robust interfacing with diverse geometries, including flat or rectangular objects, that are poorly matched to the crescent-shaped workspaces of revolute designs. Finally, clamping forces remain co-linear with the joint axes throughout the grasp, providing a consistent force vector and mechanical advantage. This ensures predictable dynamics and simplifies force control, in contrast to the angle-dependent forces inherent in rotational architectures. 
+
+C. Prototype 
+
+For real-robot experiments, we built a working prototype of the tilt-rotor UAV with the gripper, shown in Fig. 4. Table I shows the key electrical components used, and Table II shows the key characteristics and dimensions of the system. The airframe is fabricated from laser-cut acrylic, with carbon fiber tubes for the rotor arms. Custom structural components, gears, and pulleys were 3D-printed, primarily in Polylactic Acid (PLA), with Acrylonitrile Butadiene Styrene (ABS) used for heat-sensitive components such as rotor mounts. The tilt-rotor mechanism uses a T5 timing belt. The gripper’s assembly also leverages a combination of materials. Its linear rails are composed of 3D-printed PLA, reinforced internally with carbon fiber tubes for lightweight rigidity. The carriages, constructed from a mix of 3D-printed PLA and laser-cut acrylic, slide along these rails on roller bearings. Each carriage is equipped with three alternating roller bearings mounted on eccentric nuts, which allow for tuning of each joint’s stiffness. The cable-driven actuation relies on a hybrid cable system: a 1-mm steel cable, chosen for its high tensile stiffness, is used for sections closer to the UAV’s core, while a lighter 1-mm Dyneema line is employed for the gripper itself. Where the cables undergo a full 180° turn, we run the cables around bearing-mounted pulleys to minimize cable friction. At the distal links, the cables terminate at adjustable 3D-printed fixtures, allowing for individual tensioning of each cable set. Finally, all contact surfaces on the palm and distal links are covered in a 6-mm layer of silicone rubber, providing increased friction, compliance with target objects, and shock absorption. IV. C ONTROL 
+
+In this section, we introduce the control strategies used for the gripper and the UAV. 
+
+A. Gripper Control 
+
+We use the gripper servo’s current reading to control the grasp. Specifically, once a grasp is initiated, the gripper continues to close until the current exceeds a pre-defined threshold. At this moment, denoted by tg , the gripper stops and maintains its position for the duration of the grasp. The threshold was determined empirically to provide a secure grasp without damaging the target object and the gripper. 
+
+B. UAV Control 
+
+Our UAV controller builds on the PX4 [22] cascaded PID control architecture. Following [23], we modify the                                 
+
+> TABLE I KEY FLIGHT COMPONENTS USED ON THE UAV PROTOTYPE .
+> Component Specification
+> Flight controller Pixhawk 6X Electronic speed controller (ESC) T-Motor FPV C-55A-8S-8IN1 Motors T-Motor F90 2806.5 1300 KV Propellers HQ 7×4×3 Tilt servo Dynamixel XH540-W150-T Gripper servo Dynamixel XM540-W270-T Onboard computer Intel NUC i7 Battery 6S 6500mAh TABLE II KEY CHARACTERISTICS AND DIMENSIONS OF THE SYSTEM .
+> Characteristic Value
+> Overall System
+> Total mass 4.5 kg Longitudinal moment arm, d1165 mm Lateral moment arm, d2185 mm
+> Gripper
+> Gripper mass (including servo) 1 kg Intermediate link range, l1145 mm Distal link range, l2120 mm Minimum distal-distal link separation, l3,min 35 mm Minimum distal-palm pad separation, l4,min 25 mm f1
+> f2
+> f3
+> f4
+> f5
+> f6
+> XB
+> YB
+> ZB
+> d1d2
+> l1
+> l2
+> l3
+> l4
+> Fig. 4. The prototype of our UAV with gripper, with the body frame axes (XB, Y B, Z B), individual rotor thrusts ( f∗), and key dimensions of the airframe ( d∗) and gripper ( l∗) labeled.
+
+PX4 architecture to incorporate the tilt servo and include pitch as a fifth control input. The modified portion of the architecture is shown in Fig. 5, where ˙pB′ 
+
+> sp
+
+is the velocity setpoint in the B′ frame ( B frame leveled with respect to the horizon) generated by a position controller, and θsp , ϕsp ,and ψsp are the pitch, roll, and yaw setpoints, respectively. The terms δT , δ ϕ, δ θ , and δψ are the scalar thrust and torque inputs to the custom mixer matrix for our airframe. This matrix is defined by the airframe’s geometric parameters, 
+
+d = [ d1, d 2]T , and the motor drag-to-thrust coefficient, k.The control law for the tilt servo angle, β, is: 
+
+β(t) = Kp,β ev (t) + Ki,β 
+
+Z t
+
+> 0
+
+ev (τ )dτ + Kd,β 
+
+de v (t)
+
+dt − θsp (t)
+
+(1) where Kp,β , Ki,β , and Kd,β are the proportional, integral, and derivative (PID) gains of the velocity controller along 
+
+XB′
+
+axis, and ev (t) is the velocity error in XB′
+
+at time t.Note that β = 0 gives pure vertical thrust. Velocity   
+
+> Controller
+> (PID)
+> Attitude
+> Controller
+> (P-PID)
+> Mixer
+> +-Fig. 5. Our modified PX4 architecture with the UAV’s pitch angle as the fifth control input.
+
+This architecture enables the UAV to hover at non-zero pitch angles. Our flight tests have validated a stable hover envelope from -60° (nose-up) to 55° (nose-down). The archi-tecture also enables longitudinal motion through rotor tilting, providing a more stable approach for interaction. However, as shown in [13], position control with a fixed setpoint is ill-suited for physical interaction. The issue arises when the UAV transitions from free flight to a constrained state upon anchoring. If there is a mismatch between the setpoint and the current position, due to an existing position error or a displacement from the gripper pulling the UAV toward the target, conflict arises between the controller and the gripper. This leads to high power consumption, oscillations, instability, or even grasp failure. To mitigate this, we supplement the control architecture with a dynamic position setpoint. The position setpoint psp (t) is defined as a piecewise function dependent on tg . Before grasping, the setpoint is the fixed task position ptask . When the grasp is complete, it is set to the UAV’s current position p(tg ):
+
+psp (t) = 
+
+(
+
+ptask if t < t g
+
+p(tg ) if t ≥ tg
+
+(2) This drives the position error to zero, minimizing steady-state conflict between the controller and the physical constraint. While transient conflict remains during grasp formation, we found that its duration (typically < 4 s) is short enough to not induce instability or significant excess power consumption. V. T ESTING 
+
+We validate our system’s performance through real-robot flight tests. Our evaluation begins with characterizing the platform’s stabilization across diverse flight and disturbance conditions in Sec V-A. Subsequently, we quantify the grip-per’s mechanical limits and versatility across various target geometries in Sec. V-B. Finally, we qualitatively assess end-effector precision for contact-based tasks using a felt-tip pen as a contact proxy in Sec. V-C. We use two UAV configurations to quantify the stability gains provided by anchoring relative to the limits of active flight control: 1) Free Flight: A 3.67-kg version of our UAV with the gripper removed (excluding the gripper servo, which serves a structural purpose). This yields a baseline for typical UAV performance in interaction tasks. 2) Grasping: Our proposed system, where the UAV trans-itions to a constrained state via physical anchoring. Both configurations use individual controller gains with similar trial-and-error tuning effort. For the Free Flight (a)  (b)                
+
+> (c) (d)
+> (e) (f)
+> (g) (h)
+> Fig. 6. The eight experimental scenarios used to assess stabilization performance with (b, d, f, h) and without gripper (a, c, e, g) . They cover four primary conditions: Level : level flight without disturbance (a, b) ;Level + Wind : level flight with wind (c, d) ;Pitched : 60°-pitched flight without disturbance (e, f) ;Pitched + Wind : 60°-pitched flight with wind (g, h) .
+
+configuration, station-keeping performance was comparable to that demonstrated in other works [9]. We note that the coaxial rotor configuration for the front was retained for the Free Flight tests. While not an optimal configuration without the gripper mass to offset, there remains sufficient control headroom for stable flight in this configuration. At hover, throttle values are ≈ 60% / 50% (front/rear) with the gripper mounted and ≈ 40% / 60% with the gripper removed. To account for the UAV’s asymmetry, the pitch- and roll-axis gains were independently tuned for both configurations. In all experiments, we use an OptiTrack motion capture system for the UAV’s state estimation, and we assume the target object’s pose is fixed and known a priori. 
+
+A. Stabilization Performance 
+
+We evaluate the stabilization performance resulting from constraining the system using the gripper as an anchor. We refer to the following metrics for comparison: 1) 3D Positional Drift RMSE: The root mean square error of the time-series of 3D Euclidean distance (drift) values from the starting position. 2) Maximum 3D Positional Drift: The maximum value in the time-series above. 3) 3D Angular Drift RMSE: The root mean square error of the time-series of the 3D angular distance (drift) from the starting orientation. 4) Maximum 3D Angular Drift: The maximum value in the time-series above. TABLE III SUMMARY OF FLIGHT PERFORMANCE . A LL VALUES ARE REPORTED AS THE MEAN ± 1 SD OVER FIVE TRIALS .                                                                                                                                
+
+> No Wind With Wind Metric Free Flight Grasping Free Flight Grasping
+> Level Flight
+> 3D Positional Drift RMSE (m) 0.015 ±0.003 0.002 ±0.001 0.037 ±0.011 0.002 ±0.000 Max 3D Positional Drift (m) 0.027 ±0.006 0.004 ±0.001 0.062 ±0.017 0.004 ±0.001 3D Angular RMSE ( ◦)2.24 ±0.56 0.32 ±0.04 4.02 ±1.94 0.32 ±0.06 Max 3D Angular Drift ( ◦)4.09 ±0.98 0.62 ±0.06 7.15 ±2.74 0.64 ±0.15
+> Pitched Flight
+> 3D Positional Drift RMSE (m) 0.028 ±0.013 0.002 ±0.001 0.046 ±0.013 0.002 ±0.001 Max 3D Positional Drift (m) 0.047 ±0.016 0.004 ±0.001 0.076 ±0.021 0.005 ±0.001 3D Angular RMSE ( ◦)2.93 ±1.31 0.39 ±0.05 3.71 ±0.92 0.33 ±0.02 Max 3D Angular Drift ( ◦)5.24 ±1.63 0.74 ±0.10 7.46 ±1.82 0.67 ±0.08 8910 012345678910 00.02 0.04 0.06 0.08
+> Drift (m)
+> Free Flight, No Wind Free Flight, With Wind Grasping, No Wind Grasping, With Wind
+> 8910 012345678910
+> Time (s)
+> 0246810
+> Drift (deg)
+> (d) 60° Pitched Flight - Angular Drift
+> Free Flight, No Wind Free Flight, With Wind Grasping, No Wind Grasping, With Wind
+> Fig. 7. Transient stabilization performance for the 60°-pitched tests through quantifying positional drift over time. Each data point is the average of the five trials for that test case, and the shaded region represents 1 SD.
+
+We conducted tests under various flight conditions for both the Free Flight and Grasping configurations. These are: 1) Level : Operation against a vertical target with no external disturbances. 2) Level + Wind : Operation against a vertical target. There are wind disturbances created by two fans aimed at the level of the UAV. The fans are set to oscillation mode to create a varying disturbance. 3) Pitched : Operation against a 60°-overhanging target with no external disturbances. 4) Pitched + Wind : Operation against a 60°-overhanging target with the varying wind disturbance applied. Figure 6 shows our testing scenarios. The chosen target object is a 3D-printed target object with a diameter of approximately 200 mm and a textured surface to mimic tree bark. For these tests, ptask is chosen such that the front of the UAV is approximately 2 cm away from the target surface. While the actual operation duration may vary based on the task of interest (e.g., for resistograph-based inspection, based on the size of the tree and the cavity inside), we collect data for both Free Flight and Grasping over a standardized 10-second interaction period for consistent benchmarking. For the Free Flight tests, this period begins after the UAV has had sufficient time to settle in front of the target. We define this as at least 5 seconds at the final setpoint, supplemented by a pilot’s visual inspection. For the Grasping tests, the interaction begins at tg + 1 s. Each test was performed five times. For every grasping trial, the UAV achieved a stable anchor on the first attempt. The results are summarized in Table III. Figure 7 depicts positional stability across test cases for the more extreme pitched flights, showing mean positional drift over time, with the shaded region representing one standard deviation (SD). In the Level tests, the benefit of physical anchoring is immediately apparent. We see an 87% reduction in the positional drift RMSE in the Grasping configuration com-pared to the Free Flight baseline. This performance gap widens in Pitched tests because the Grasping performance is unaffected by the attitude change, while the Free Flight po-sitional drift RMSE nearly doubles from 0.015 m to 0.028 m. This is clearly visible in Fig. 7, where the Free Flight 
+
+configuration exhibits noticeable low-frequency oscillations while the grasped UAV maintains a near-zero positional drift. The benefits of grasping become more critical under wind disturbances. While the Free Flight positional RMSE more than doubles in the Level + Wind scenario, the grasped UAV’s performance is largely unaffected, resulting in a 95% reduction in error compared to the equivalent free-flight performance. This robustness extends to the Pitched + Wind 
+
+condition, as depicted in Fig. 7. Overall, physical anchoring ensures consistent, precise performance, with a positional drift RMSE never exceeding 3 mm across all scenarios. This stability is competitive with similar works in the literature, such as the 4 mm mean position deviation in [13] and the 5 mm position oscillations in [9]. Crucially, our system maintains this stability across four primary flight conditions, whereas [9] and [13] were only established during level flight. Despite the stability gains of our anchored system, this comes at the cost of an approximately 35% increase in energy consumed during the interaction period when compared to 
+
+Free Flight tests; a trade-off that remains consistent across all Grasping tests. This is primarily due to carrying the additional and offset weight of the gripper. We plan to alleviate this by a lighter gripper design in our future work. While we omit a full study on pitching downward for brevity, we performed a single grasping test while hovering at a maximum downward pitch angle of 55°. This yielded similar results to the equivalent maximum upward pitch test, with a positional drift RMSE of 0.002 m and an angular drift RMSE of 0.31°, indicating consistent performance across the UAV’s range of operation. 
+
+B. Gripper Quantification 
+
+While our experiments thus far demonstrate high stability when anchoring, these benefits are dependent on the grasp quality. Therefore, in this section, we conduct experiments to establish our gripper’s operational limits under high inter-action forces and ability to adapt to different targets. String            
+
+> F/T Sensor Fig. 8. Setup for the high-force pulling tests, in which a string is attached to the UAV, aligned with its longitudinal axis. Force is manually applied via the string, and the subsequent tension recorded using a F/T sensor. 020 40 60 80
+> Force (N)
+> 0510 15 20 25
+> Time (s)
+> 00.01 0.02 0.03
+> Drift (m)
+> Fig. 9. Maximum Force test results showing the synchronized force (top) and drift (bottom) relative to the interaction start. Dashed lines denote the failure point where the anchor supports a maximum load of ≈75 N.
+
+1) High-Force Tests: With the UAV anchored to the target, we attached a string to the rear of the airframe, aligned approximately with its longitudinal ( XB ) axis, as shown in Fig. 8. While not fully capturing the forces and torques of tasks like drilling, pulling this string preliminarily tests the UAV’s resistance to longitudinal forces common to contact-based tasks. A Bota Systems SensOne force torque (F/T) sensor measured this force during two loading scenarios: 1) Sustained Loading: The string is pulled until the UAV reaches a 3D positional drift of ≈ 10 mm. This force is then maintained for 10 seconds to evaluate the system’s behavior under sustained load. We characterize the performance by residual positional and angular RMSE (calculated relative to the mean of the hold period). 2) Maximum Force: We apply a ramp force until the anchor fails beyond flex of the structure to determine the maximum force capability of the system. We ran five Sustained Loading tests, and one Maximum Force test. Table IV summarizes these results, and Fig. 9 shows the force and drift profiles in Maximum Force test. Across the five Sustained Loading tests, the targeted 10 mm positional drift corresponded to an applied force of approximately 41 N. Throughout the holding period, this force was consistent with a mean RMSE force drift across the five tests of about 1.3 N relative to the test’s mean force. The pose of the UAV was very stable during the holding period with a mean residual positional drift RMSE of 1 mm. For the Maximum Force test, the system failed due to sudden reconfiguration of the gripper joints caused by finger pad slippage at ≈ 75 N, at which point the UAV reached a positional drift of 20 mm. These results show our platform’s ability to remain stable even when exposed to high interaction forces.                   
+
+> TABLE IV SUMMARY OF HIGH -FORCE TEST RESULTS . S USTAINED LOADING RESULTS ARE REPORTED AS THE MEAN ±1SD OVER FIVE TRIALS .
+> Metric Value
+> Sustained Loading
+> Residual 3D Positional Drift RMSE (m) 0.001 ±0.000 Max Residual Positional Drift (m) 0.001 ±0.000 Residual 3D Angular RMSE ( ◦)0.07 ±0.02 Max Residual 3D Angular Drift ( ◦)0.19 ±0.07
+> Maximum Force
+> Anchor Break Threshold ( N)75
+
+2) Grasping Versatility: We assess the gripper’s versatility using Level tests on various targets. These include tree branches of various diameters, simple geometries, and com-plex, asymmetric forms, as shown in Fig. 10. For all targets, a secure anchor without visible slippage at tg was achieved on the first attempt. The results show consistent anchoring across all objects with positional drift RMSE remaining at 
+
+≤ 3 mm for every target, and angular drift RMSE remaining at < 0.4°, comparable to our multi-run baseline established on the large branch . This stability held even for the angled column , where one finger could not wrap around the target. Here, the intermediate link provided a third contact point to secure a grasp. Overall, our gripper demonstrated versatility across varied geometries and orientations. 
+
+C. Precision Applications 
+
+To qualitatively evaluate the system’s ability to maintain a contact point, as required for tasks like drilling, we mounted a felt-tip pen as a dummy end-effector to the front of the UAV to make contact with the target surface. We performed an interaction test using this setup for both the Free Flight and 
+
+Grasping configurations, under the Level + Wind scenario. As shown in Fig. 11, the Free Flight trial resulted in dis-persed pen marks separated by up to ≈ 35 mm across the tar-get due to low-frequency pose oscillations and wind-induced drift. In contrast, the Grasping configuration maintained one contact point throughout the interaction (the second, smaller pen mark was made during initial grasping). This result validates the system’s ability to maintain precise contact in environments where free-flight interaction is unfeasible. VI. C ONCLUSION 
+
+We introduced a platform that integrates a novel compliant, cable-driven prismatic gripper into a pitch-decoupled tilt-rotor UAV to achieve enhanced stability during physical interaction. Through comprehensive real-robot experiments, we demonstrated that physically anchoring the UAV to a target establishes a significantly more stable work platform compared to the free-flight baseline. This stability holds across ideal, disturbed (windy), and pitched flight conditions. Furthermore, the anchored interface successfully resisted longitudinal reaction forces up to 75 N and demonstrated versatility across diverse target geometries, all while main-taining the high level of precision required for tasks such as drilling to sample tree health. These results validate our approach of using physical anchoring as a primary means of stabilization, enabling complex, contact-based aerial tasks that would be intractable for conventional multirotors. (a)  (b)  (c)  (d)  (e) 
+
+(f) Fig. 10. Testing our gripper’s performance on a range of target objects, including (a) the large branch ( d ≈ 200 mm), (b) a smaller 3D-printed tree branch ( d ≈ 120 mm), (c) a column (front on), (d) a column (angled), (e) a toy figure (around the legs), and (f) a toy figure (around the torso). (a)  (b) 
+
+Fig. 11. End-effector precision under wind disturbances: (a) Free Flight 
+
+trial results in dispersed pen markings on the target surface; (b) Grasping 
+
+configuration maintains a concentrated contact point. 
+
+Future work includes improving power efficiency via weight reduction, developing leaning strategies to offload rotor power, and designing deployable gripper architectures to stow the mass closer to the UAV’s center of mass when the gripper is not in use. We will also integrate task-specific end-effectors, like a drill, to evaluate the system’s resilience to task-generated forces and validate its real-world viability. ACKNOWLEDGMENT GitHub Copilot, powered by Gemini (Google), was used for code auto-completion and troubleshooting within the control software (Sec. IV) and data analysis scripts (Sec. V). Gemini was used to proofread the paper. Joshua Taylor is an A*STAR scholar under the Singapore International Graduate Award (SINGA) framework. REFERENCES [1] R. Dautzenberg, T. K¨ uster, T. Mathis, Y. Roth, C. Steinauer, G. K¨ appeli, J. Santen, A. Arranhado, F. Biffar, T. K¨ otter et al. , “A perching and tilting aerial robot for precise and versatile power tool work on vertical walls,” in Proceedings of IROS 2023 , pp. 1094–1101. [2] K. Bodie, M. Brunner, M. Pantic, S. Walser, P. Pf¨ andler, U. Angst, R. Siegwart, and J. Nieto, “Active interaction force control for contact-based inspection with a fully actuated aerial vehicle,” IEEE Transac-tions on Robotics , vol. 37, no. 3, pp. 709–722, 2020. [3] E. Aucone, S. Kirchgeorg, A. Valentini, L. Pellissier, K. Deiner, and S. Mintchev, “Drone-assisted collection of environmental dna from tree branches for biodiversity monitoring,” Science robotics , vol. 8, no. 74, p. eadd5762, 2023. [4] S. W. Hameed, A. L. J. Jie, N. Imanberdiyev, E. Camci, W.-Y. Yau, and M. Feroskhan, “Dragonfly drone: A novel tilt-rotor aerial platform with body-morphing capability,” in Proceedings of ICRA 2025 , pp. 8642–8648. [5] D. Lee, S. Hwang, C. Kim, S. J. Lee, and H. J. Kim, “Minimally actu-ated tiltrotor for perching and normal force exertion,” in Proceedings of IROS 2023 , pp. 5027–5033. [6] M. Askari, M. Benciolini, H.-V. Phan, W. Stewart, A. J. Ijspeert, and D. Floreano, “Crash-perching on vertical poles with a hugging-wing robot,” Communications Engineering , vol. 3, no. 1, p. 98, 2024. [7] J. L. Scholten, M. Fumagalli, S. Stramigioli, and R. Carloni, “Interac-tion control of an uav endowed with a manipulator,” in Proceedings of ICRA 2013 , pp. 4910–4915. [8] C. Ding, L. Lu, C. Wang, and C. Ding, “Design, sensing, and control of a novel uav platform for aerial drilling and screwing,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 3176–3183, 2021. [9] K. Hang, X. Lyu, H. Song, J. A. Stork, A. M. Dollar, D. Kragic, and F. Zhang, “Perching and resting—a paradigm for uav maneuvering with modularized landing gears,” Science Robotics , vol. 4, no. 28, p. eaau6637, 2019. [10] W. R. Roderick, M. R. Cutkosky, and D. Lentink, “Bird-inspired dynamic grasping and perching in arboreal environments,” Science Robotics , vol. 6, no. 61, p. eabj7562, 2021. [11] J. Meng, J. Buzzatto, Y. Liu, and M. Liarokapis, “On aerial robots with grasping and perching capabilities: A comprehensive review,” 
+
+Frontiers in Robotics and AI , vol. 8, p. 739173, 2022. [12] L. Zheng and S. Hamaza, “Albero: Agile landing on branches for environmental robotics operations,” IEEE Robotics and Automation Letters , vol. 9, no. 3, pp. 2845–2852, 2024. [13] J. Taylor, N. Imanberdiyev, M. Y. M. Chuah, W.-Y. Yau, G. Sartoretti, and E. Camci, “Reconfigurable multi-rotor for high-precision physical interaction,” in Proceedings of IROS 2024 , pp. 8069–8074. [14] R. Balasubramanian and A. M. Dollar, “A comparison of workspace and force capabilities between classes of underactuated mechanisms,” in Proceedings of ICRA 2011 , pp. 3489–3496. [15] S. B. Backus and A. M. Dollar, “A prismatic-revolute-revolute joint hand for grasping from unmanned aerial vehicles and other minimally constrained vehicles,” Journal of Mechanisms and Robotics , vol. 10, no. 2, p. 025006, 2018. [16] Y. Wang, K. Kakino, W. Li, S. Togo, H. Yokoi, and Y. Jiang, “A robot hand for versatile grasping with tendon-driven telescopic fingers,” 
+
+IEEE Robotics and Automation Letters , vol. 9, no. 3, pp. 2957–2964, 2024. [17] R. Peng, Y. Wang, M. Lu, and P. Lu, “A dexterous and compliant aerial continuum manipulator for cluttered and constrained environments,” 
+
+Nature Communications , vol. 16, no. 1, p. 889, 2025. [18] C. Lee, H. Kim, M. Oh, K. Ok, and S.-H. Ahn, “Frictional and prismatic pin-array gripper for universal gripping and stable tool manipulation,” IEEE Transactions on Robotics , vol. 41, pp. 6693– 6706, 2025. [19] A. Kobayashi, J. Kinugawa, S. Arai, and K. Kosuge, “Design and development of compactly folding parallel open-close gripper with wide stroke,” in Proceedings of IROS 2019 . IEEE, 2019, pp. 2408– 2414. [20] T. Takaki and T. Omata, “Grasp force magnifying mechanism for parallel jaw grippers,” in Proceedings of ICRA 2007 . IEEE, 2007, pp. 199–204. [21] Rinntech. (2026) Resistograph® - the resistance drill for detecting decay in wood. [Online]. Available: https://rinntech.info/products/ resistograph/ [22] L. Meier, D. Honegger, and M. Pollefeys, “Px4: A node-based multithreaded open source robotics framework for deeply embedded platforms,” in Proceedings of ICRA 2015 , pp. 6235–6240. [23] Y. T. Chen, J. Taylor, N. Imanberdiyev, and E. Camci, “Simulation of a tilt-rotor uav with a cable-driven gripper for high-precision physical interaction,” in Proceedings of ICUAS 2025 , pp. 332–339.

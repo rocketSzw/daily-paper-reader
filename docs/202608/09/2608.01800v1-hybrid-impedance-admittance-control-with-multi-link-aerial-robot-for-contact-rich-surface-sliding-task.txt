@@ -1,0 +1,406 @@
+Title: Hybrid Impedance-Admittance Control with Multi-Link Aerial Robot for Contact-Rich Surface Sliding Task
+
+URL Source: https://arxiv.org/pdf/2608.01800v1
+
+Published Time: Tue, 04 Aug 2026 02:24:02 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Hybrid Impedance–Admittance Control with Multi-Link Aerial Robot for Contact-Rich Surface Sliding Task 
+
+Zicheng Luo *, Maolin Lei *, Jinjie Li, Yicheng Chen, Zicen Xiong and Moju Zhao 
+
+Abstract — Multi-link aerial robots can actively deform their articulated structures during flight, giving them strong potential for aerial manipulation. However, they still face substantial challenges in contact-rich aerial manipulation tasks such as surface sliding, which requires both disturbance robustness and compliance to uncertain surface geometry. Force-control strategies such as impedance and admittance control are commonly employed to address these requirements. Although impedance control can provide disturbance-resistant interaction and admittance control can offer compliant adaptation, their opposite force–motion causalities prevent their simultaneous im-plementation when applied through the same actuation source, such as the rotor thrusts used by conventional aerial robots. To overcome this limitation, we propose a hybrid impedance– admittance control strategy for a multi-link aerial robot. The articulated morphology enables a functional separation of force and motion regulation across joint and rotor actuation sources. In this framework, admittance behavior is generated through joint angle regulation to enhance adaptive interaction, while impedance behavior is achieved by modulating rotor thrust to regulate the sliding motion. This structural coordination allows the robot to leverage the complementary strengths of both control paradigms. As a result, the multi-link aerial robot achieves resilient and adaptive surface sliding. Experimental results demonstrate robust and compliant sliding performance on unknown surfaces. 
+
+I. INTRODUCTION Multi-link aerial robots are capable of actively deforming their articulated serial-link structures in the air, and this deformability provides additional degrees of freedom for manipulation during flight [1]–[4]. Owing to these structural advantages, multi-link aerial robots have great potential for applications such as inspection and search-and-rescue tasks. Their effectiveness has been demonstrated in a variety of experimental tasks, such as grasping objects [4]–[6], opening sliding door [7] and manipulating valves [8]. However, before the multi-link aerial robots can be deployed in a broader range of aerial manipulation tasks, they must be able to handle more complex interaction scenarios involving sustained contact and environmental uncertainties. A representative interaction scenario is a contact-rich surface sliding task, in which a multi-link aerial robot is typically required to maintain a pressing contact between its end-effector and an unknown uneven surface while following a desired sliding trajectory [9]–[11]. Such tasks inherently involve a coupling between unmodeled surface geometry                 
+
+> *Corresponding authors. All authors are with the Department of Mechanical-Engineering, The University of Tokyo, Bunkyo-ku, Tokyo 113-8656, Japan. (email:
+
+{zicheng, maolin-lei, jinjie-li, yicheng-chen, zicen-xiong, chou }@dragon.t.u-tokyo.ac.jp ) 
+
+> Fig. 1. A multi-link aerial robot is tracking a circular trajectory on a sloped unmodeled board while maintaining contact. The desired trajectory is marked by a white dashed line. (a) Side view. (b) Top view.
+
+and frictional effects, which leads to significant uncertain-ties in both the external wrench and the contact geometry experienced by the robot. As a result, the controller must exhibit both robustness and compliant behavior, enabling the robot to remain resilient to force disturbances while adapting to unpredictable changing contact conditions. Nevertheless, existing control methods for multi-link aerial robots remain limited in achieving this unified combination of robustness and compliant interaction. This limitation primarily stems from their lack of perception of external conditions, which prevents the controller from adapting its force and motion responses to uncertainties in the external wrench and contact conditions. To execute tasks in interaction scenarios, previous work has commonly adopted force-control strategies such as impedance control and admittance control [12]. Among these strategies, impedance control has been extensively explored for aerial robots. Bodie et al. [9] introduced a six-DOF axis-selective impedance controller capable of adjusting its impedance gains according to the proximity to the surface, while Zhang et al. [13] employed learning-based techniques to adapt impedance parameters according to the interaction conditions. These methods can effectively respond to external force disturbances through gain modulation; however, there is limited evidence that they remain effective in environments with uneven or irregular surfaces. In addition to impedance approaches, admittance control has also been applied in aerial manipulation tasks. Ryll et al. [14] enabled an aerial arXiv:2608.01800v1 [cs.RO] 3 Aug 2026 robot to follow variations in the contact-plane geometry, yet the induced lateral force disturbances caused noticeable ro-tational deviations. Overall, while these studies demonstrate the potential of impedance- or admittance-based approaches for aerial manipulation tasks in interaction scenarios, each method inevitably inherits the limitations of its underlying control principle. Impedance control performs well in regulating interaction forces and resisting external force disturbances, but typically exhibits limited adaptability to changing contact geometry. In contrast, admittance control is effective in adapting to geometric variations but generally less robust against large interaction force disturbances. These differences originate from the complementary yet opposite causal relationships of impedance and admittance control paradigms [15]. Con-sequently, contact-rich tasks that simultaneously require dis-turbance rejection and adaptation to uncertain surface geom-etry cannot be reliably addressed by either approach alone, naturally motivating a combination of both control principles to achieve resilient and adaptive interaction capabilities. However, realizing such a combination is not trivial. Due to the opposite causality of impedance and admittance con-trol, a single actuation source cannot independently realize both interaction objectives and generally requires additional coordination mechanisms [15]. Conventional aerial robot platforms, which rely exclusively on rotor thrusts, inherently possess only a single actuation source and are therefore limited in their ability to simultaneously exploit the com-plementary properties of the two paradigms. Although some aerial manipulation platforms (e.g., [16], [17]) introduce joint actuation and therefore provide an additional actuation source, existing studies have not leveraged this structural characteristic to simultaneously employ both impedance and admittance control. This limitation further motivates the design of our control strategy. In this work, we propose a novel hybrid impedance– admittance control enabled by multi-link aerial robots, which exploits the two independent actuation sources of the robot by assigning them distinct control roles. In particular, rotor thrusts govern the global motion of the platform, whereas the joint actuators regulate the end-effector pose relative to the platform’s body. This structure enables impedance control to be implemented through rotor thrusts and admittance control through joint actuation, allowing both paradigms to be realized simultaneously on a single aerial platform. Within the proposed framework, impedance control regulates the aerial robot’s center-of-gravity (CoG) motion to achieve disturbance-resilient interaction, while admittance control adjusts joint angles to accommodate unmodeled surface geo-metric and contact-induced variations. Through this division of roles, the proposed strategy enables resilient and adaptive sliding along unknown surfaces. The task execution process is illustrated in Fig. 1. The main contributions of this article are: 1) We propose a novel hybrid impedance–admittance con-troller enabled by a multi-link aerial robot. Impedance behavior is achieved through rotor thrust modulation,  
+
+> Fig. 2. The mechanical design of the multi-link aerial robot. (a) Quad-type multi-link aerial robot used in this work. (b) End-effector. (c) Propeller vectoring module. (d) Joint module.
+
+whereas admittance behavior at the end-effector is generated by regulating the joint actuators. 2) We demonstrate that the proposed control strategy enables resilient and adaptive surface sliding under un-modeled geometric and contact conditions. The strat-egy maintains disturbance-resilient interaction under friction through impedance control and compensates for surface-induced unmodeled geometric variation via admittance control. 3) We validate the effectiveness of the proposed frame-work through comparative studies and real-world ex-periments, showing that it effectively combines the complementary advantages of existing impedance- and admittance-based approaches. The remainder of the article is organized as follows. The description and modeling for the multi-link aerial robot is introduced in Sec. II. The control strategy is presented in Sec. III. We then show the experimental results in Sec. IV and finally the conclusion in Sec. V. II. P RELIMINARY 
+
+A. Platform Description 
+
+The multi-link aerial robot used in this work is shown in Fig. 2. The platform consists of four links, each of which carries an independent propeller unit. The robot employs a serial-link structure with one rotational degree of freedom per joint, whose joint axes are aligned in parallel. Here, qi is used to represent the ith joint angle. Each propeller unit features a fixed tilt angle β and a 1-DoF yaw rotation mechanism to vector the thrust direction, whose vectoring angle is denoted by ψi. The design of the thrust-vectoring unit, shown in the top-right of Fig. 2, was originally developed in [18]. Additional hardware details can be found in [1]. 
+
+B. Modeling 
+
+We denote scalars by regular font x ∈ R, vectors by bold lowercase x ∈ Rn, and matrices by bold uppercase 
+
+X ∈ Rm×n. A vector expressed in frame {A} is written as Ap, and the rotation matrix from frame {A} to frame 
+
+{B} is denoted as ARB . In this paper, {W } represents the world frame, {C} represents the CoG frame, and {Fi}, i ∈{1, 2, 3, 4} are defined as the coordinate frames of each rotor. With these definitions, the dynamics of the multi-link aerial robot at the CoG, derived from the Newton–Euler equations, are given by: 
+
+m(W¨p + g) = Wf cmd + Wf ext , (1a) 
+
+IC ˙ω + Cω × ICω = Cτ cmd + Cτ ext , (1b) where m is the total mass, I is the total inertial matrix expressed in frame {C}, W p is the position of the CoG frame 
+
+{C} in the world frame {W }, C ω is the angular velocity expressed in the CoG frame {C}, g is the gravitational acceleration expressed in frame {W }, Wf cmd , Cτ cmd and 
+
+> W
+
+f ext , Cτ ext denote the command force and torque, and the external force and torque, respectively. Since the joint and vectoring angles vary during motion, the inertial matrix is configuration dependent and may vary accordingly. Here, we consider the multi-link aerial robot as a quasi-static system, meaning that the variations in the inertial matrix caused by joint and thrust-vectoring motions are negligible within a single control period [1]. The command force W f cmd and the command torque  
+
+> C
+
+τ cmd are obtained by aggregating the contributions of the four propeller rotors, whose individual forces and torques are expressed in frame {C}. We compute each rotor’s contribution as follows: 
+
+> C
+
+f i = λCi RFi (q, ψ)b3, (2) 
+
+> C
+
+τ i =CpFi (q, ψ) ×Cf i + κCi f i
+
+= λi(C ˆpFi (q, ψ) + κiE3)CRFi (q, ψ)b3, (3) where i ∈ { 1, 2, 3, 4}. q ∈ R3 and ψ ∈ R4 correspond to joint angles and vectoring angles, respectively. The joint angles and vectoring angles determine CRFi (q, ψ) ∈ R3×3
+
+and C pFi (q, ψ) ∈ R3, which denote the rotation matrix and the position vector of the rotor frame {Fi} with respect to the CoG frame {C}. The rotor frame {Fi} is attached to the rotor mount, and the thrust force λi is along the z axis of 
+
+{Fi}. The vector b3 = 0 0 1T is a unit vector and κi
+
+is the coefficient associated with the rotor drag moment. The operator ˆ· converts a vector into a skew-symmetric matrix, and E3 denotes the 3 × 3 identity matrix. Using (2) and (3), the mapping from the thrust vector λ =λ1 λ2 λ3 λ4
+
+T to the command wrench is given by: 
+
+Cf cmd Cτ cmd 
+
+
+
+=
+
+> 4
+
+X
+
+> i=1
+
+Cf iCτ i
+
+
+
+=
+
+Qt(q, ψ)
+
+Qr (q, ψ)
+
+
+
+λ, (4) where Qt(q, ψ) ∈ R3×4 and Qr (q, ψ) ∈ R3×4 denote the translational and rotational components of the allocation matrix, respectively. The command force in the world frame can be obtained by Wf cmd =WRC Cf cmd .III. C ONTROL 
+
+A. Framework Overview 
+
+The motivation for this hybrid impedance–admittance con-trol framework is to provide both resilience and adaptivity when sliding on an unmodeled surface, where geometry and friction introduce significant uncertainties. As illustrated in Fig. 3, impedance control manages the overall state of the aerial robot, which is represented by the pose of its CoG, while admittance control is applied to regulate the end-effector state, resulting in adjustments of the joint angles. Since variations in joint angles modify the robot’s configuration and thus influence the thrust allocation, this dependency is taken into account in the thrust computation. As illustrated in Fig. 4, by combining both controllers, the multi-link aerial robot can regulate its interaction with the surface in terms of either force or position along different directions. Detailed analysis of the advantages of this hybrid control is presented in the following section. 
+
+B. External Wrench Estimation 
+
+Both impedance control and admittance control require an external wrench in their formulations. To estimate the external forces acting on the CoG without introducing ad-ditional payload through force sensors, this section presents a momentum-based external wrench estimation method fol-lowing [19]:  
+
+> W
+
+˜f ext = Kti (mW ˙p −
+
+Z
+
+(Wf cmd − mg + W ˜f ext )d t),
+
+(5a) 
+
+> C
+
+˜τ ext = Kri (ICω −
+
+Z
+
+(Cτ cmd − Cω × ICω + C˜τ ext )d t),
+
+(5b) where W ˜f ext and C˜τ ext denote the estimated external force and torque, respectively, and are assumed to approximate the real external force Wf ext and the real external torque Cτ ext .
+
+Kti ∈ R3×3 and Kri ∈ R3×3are the estimator translational and rotational gain matrices, respectively. Differentiating (5) and substituting (1) into it yields a first-order low-pass filtered form:  
+
+> W
+
+˙˜f ext = Kti (Wf ext − W ˜f ext ), (6a)  
+
+> C
+
+˙˜τ ext = Kri (Cτ ext − C˜τ ext ). (6b) Note that (5) estimates external forces and torques with-out using acceleration measurements, relying solely on the estimated linear and angular velocities. By replacing the real external wrench terms in (1) with the estimated terms, the controller can be implemented without direct wrench measurements. 
+
+C. Hybrid Impedance–Admittance Control 1) Impedance Control : Impedance control models the robot as a second-order system, whose dynamic parameters can be freely designed to achieve the desired interaction behavior. Therefore, by adjusting the stiffness parameters, the robot can be made resilient in certain directions to resist disturbances, while remaining compliant in others to maintain safe contact interaction [9]. The translational motion is expressed in the world frame {W }, whereas the Fig. 3. Block diagram of the hybrid impedance–admittance control framework. Inputs for the admittance controller consist of the estimated external wrench. Inputs for the impedance controller include the state reference, estimated CoG state, and estimated external wrench.  
+
+> Fig. 4. Schematic diagram of the hybrid impedance–admittance control.
+
+rotational motion is expressed in the CoG frame {C}. Under this convention, the impedance equations are written as: 
+
+M dW¨p + Ctd ev + Ktd ep = W ˜f ext , (7a) 
+
+IdC ˙ω + Crd eω + Krd eR = C˜τ ext , (7b) where M d ∈ R3×3 is the desired virtual mass, Id ∈ R3×3 is the desired virtual inertia, Ctd ∈ R3×3, Crd ∈ R3×3 are the desired linear and rotational damping matrices, and Ktd ∈
+
+R3×3, Krd ∈ R3×3 are the desired linear and rotational stiffness matrices, respectively. All of these matrices are positive definite. Specifically, the error vectors in (7) are defined as: 
+
+ep = Wp − Wpref , (8a) 
+
+ev = W ˙p − W ˙pref , (8b) 
+
+eR = 12 (WRT
+
+> C,ref W
+
+RC − WRT
+
+> C W
+
+RC,ref )∨, (8c) 
+
+eω = Cω − WRT
+
+> C W
+
+ωref , (8d) where we use the vee-operator ∨ to extract a vector from a skew symmetric matrix. As we treat the multi-link aerial robot as an underactu-ated model [1], the translational and rotational motions are coupled, so the pose control is cascaded. By substituting (1) into (7) to eliminate ¨p and ˙ω, the command wrench added on the CoG can be derived. We begin with the translational component: 
+
+> W
+
+f cmd = ( mM −1 
+
+> d
+
+− E3)W ˜f ext 
+
+− mM −1 
+
+> d
+
+(Ctd ev + Ktd ep) + mg.
+
+(9) To simplify the expression, we define normalized linear damping and stiffness as ˜Ctd = M −1 
+
+> d
+
+Ctd and ˜Ktd =
+
+M −1 
+
+> d
+
+Ktd , respectively. Using these definitions, (9) can be rewritten as 
+
+> W
+
+f cmd = ( mM −1 
+
+> d
+
+−E3)W ˜f ext −m( ˜Ctd ev + ˜Ktd ep)+ mg.
+
+(10) To obtain the desired thrust vector, we first calculate the translational command force magnitude by 
+
+fcmd = ( WRC b3) · Wf cmd , (11) where WRC b3 represents the unit vector along the z axis of the CoG frame expressed in the world frame. Next, we define the following allocation relationship: 
+
+mf cmd 0 0 0T =
+
+Qtz 
+
+Qr
+
+
+
+λt, (12) where Qtz ∈ R1×4 is the third row of Qt. Solving (12) yields the translational thrust vector λt. Note that the purpose of the translational command force is to counteract gravity and generate the required translational acceleration, while ensuring that it does not affect the rotational direction. Next, we determine the thrust vector associated with the rotational component. The desired roll angle Wαtgt x and desired pitch angle Wαtgt y are computed as 
+
+> W
+
+αtgt x = atan −1(−W ¯fy,cmd ,
+
+qW ¯f 2 
+
+> x,cmd
+
++ W ¯f 2
+
+> z,cmd
+
+),
+
+(13a) 
+
+> W
+
+αtgt y = atan −1(W ¯fx,cmd , W ¯fz,cmd ), (13b) where 
+
+W ¯fx,cmd W ¯fy,cmd W ¯fz,cmd 
+
+T = R−1 
+
+> Z
+
+(Wαz )Wf cmd .
+
+(14) Here, RZ (·) is a rotation matrix that only rotates along the z axis with a certain angle. Employing the computed target roll Wαtgt x , target pitch Wαtgt y , and the reference yaw angle Wαref z , the reference rotation matrix WRC,ref in (8) is constructed, from which the rotation error vector eR is derived. After getting the error vectors eR, we can calculate the command torque  
+
+> C
+
+τ cmd = ( II −1 
+
+> d
+
+− E3)C ˜τ ext −
+
+II −1 
+
+> d
+
+(Crd eω + Krd eR) + C ω × IC ω. (15) We define the normalized rotation damping and rotation stiff-ness as ˜Crd = I−1 
+
+> d
+
+Crd and ˜Krd = I−1 
+
+> d
+
+Krd , respectively. Equation (15) can then be rewritten as  
+
+> C
+
+τ cmd = ( II −1 
+
+> d
+
+− E3)C ˜τ ext −
+
+I( ˜Crd eω + ˜Krd eα) + C ω × IC ω. (16) Then the rotation thrust vector can be obtained by 
+
+λr = Q† 
+
+> r C
+
+τ cmd , (17) where Q† 
+
+> r
+
+is the Moore–Penrose pseudoinverse of Qr .Finally, the total thrust required to be generated by the rotors can be obtained as 
+
+λ = λt + λr . (18) This gives the individual thrust values that each rotor needs to generate. The details of the thrust allocation process can be found in [1]. 
+
+2) Admittance Control : Similar to impedance control, ad-mittance control also regulates the robot’s response to exter-nal forces through a virtual dynamic relationship. However, impedance control generates a resisting force in response to displacement errors, whereas admittance control directly produces a compliant displacement in response to external forces. In this work, we employ admittance control to reg-ulate the end-effector state by adjusting the joint angles in response to the external forces induced by surface geometric variations, thereby mitigating both the force and position dis-turbances experienced by the CoG through deformation. For the surface sliding task considered in this study, as illustrated in Fig. 4, the x axis of the world frame is defined as the contact direction, while the y and z axes represent the sliding directions. Since the geometric variations occur primarily along the contact direction, admittance control is applied only along the x axis. This avoids unnecessary structural motions in non-contact directions that could compromise the stability of the aerial robot. The admittance dynamics along the x axis can then be written as: 
+
+ma(¨ rref − ¨r) + ca( ˙ rref − ˙r) + ka(rref − r)= ˆfext,x − fref,x , (19) where ˆfext,x is filtered from the first component of W ˜f ext ,and fref,x represents the reference external force along the 
+
+x axis. The position r is defined as the distance between the end effector and the CoG along the x axis, as shown in Fig. 4. The reference position rref corresponds to the distance between the end-effector and the CoG in the x axis at nominal surface-contact configuration, and the reference velocity and acceleration are set as ˙rref = 0 and ¨rref = 0 ,respectively. Finally, the parameters ma, ca, ka denote the admittance mass, damping, and stiffness, respectively. We then employ a discrete-time difference method to compute the distance r at each time step, denoted as r[k].The corresponding acceleration is calculated as: 
+
+¨r[k] = ( ˆfext,x − fref,x ) − ka(rref − r[k − 1]) + ca ˙r[k − 1] 
+
+ma
+
+.
+
+(20) Using this acceleration, the velocity and position can be updated iteratively according to: 
+
+˙r[k] = ˙ r[k − 1] + ¨ r[k]∆ t, (21a) 
+
+r[k] = r[k − 1] + ˙ r[k]∆ t, (21b) where ∆t is the control period. Given the desired end-effector pose, the joint angles are obtained by solving the inverse kinematics (IK). Conse-quently, admittance behavior is achieved by deforming the multi-link structure in response to external forces along the x
+
+axis. As a result, surface geometry variations are reflected as changes in the contact force. The admittance mechanism ab-sorbs part of the disturbances caused by geometric variations and external forces at the joints, significantly reducing those transmitted to the CoG and improving the overall motion behavior of the aerial robot. 
+
+D. Hybrid Control Mechanism 
+
+In surface sliding tasks, the contact and sliding directions exhibit fundamentally different physical characteristics: the sliding directions are dominated by friction-induced distur-bances, whereas the contact direction is shaped by geometric variations of the environment. Leveraging this distinction, the hybrid impedance–admittance controller assigns each axis the control behavior best suited to its interaction properties. As illustrated in Fig. 4, admittance control is applied along the contact direction ( x axis) to regulate geometry-driven variations, while impedance control governs the sliding di-rections ( y and z axes) to accommodate friction-affected motion. Through this task-aligned division of control responsibil-ities, the hybrid controller achieves what neither controller can provide alone: robust sliding performance in the sliding directions and adaptive behavior in the contact direction. This directional decomposition is enabled by the actuation structure of the multi-link aerial robot, which allows the two control paradigms to be realized simultaneously through independent actuation sources. This combination is therefore essential for achieving resilient interaction and adaptive contact behavior in surface sliding tasks. IV. E XPERIMENTS 
+
+A. Experimental Setup 
+
+Experiments are conducted using the multi-link aerial robot shown in Fig. 2. The platform is equipped with an UP-Board single-board computer featuring an Intel Atom x5-Z8350 CPU, and the Robot Operating System (ROS) is utilized for communication. A motion capture system pro-vides the full state of the robot throughout the experiments. A marker pen is attached to link 4 as shown in Fig. 5 serving as the end-effector for contacting with the environment. The actual experimental parameters are as follows. The estimator translation and rotation gain matrices are given by 
+
+Kti = diag (3 .0, 3.0, 3.0) and Kri = diag (1 .0, 1.0, 1.0) .We treat M d/m and IdI−1 as entities. Their values are set to M d/m = diag (1 .0, 3.0, 1.0) and IdI−1 =Fig. 5. The nominal surface-contact configuration of the multi-link aerial robot. The configuration angle θ = π/ 6, and the joint angles q1, q2, q3 are consequently π/ 3, π/ 3, −π/ 6, respectively. 
+
+diag (10 .0, 10 .0, 5.0) . By choosing these values greater than 
+
+1, the impedance controller exhibits more resilient behavior against environmental disturbances due to the increased designed stiffness. The normalized linear stiffness and ro-tational stiffness are given by ˜Ktd = diag (2 .5, 2.5, 1.5) and 
+
+˜Krd = diag (40 .0, 40 .0, 10 .0) . The normalized linear and ro-tational damping terms are not directly specified. Instead, we define the linear damping ratio Ztd = diag (0 .6, 0.6, 0.7) and the rotational damping ratio Zrd = diag (1 .1, 1.1, 0.8) , then compute the corresponding normalized damping matrices as follows: 
+
+˜Ctd = 2 Ztd ˜K 12
+
+> td
+
+, (22a) 
+
+˜Crd = 2 Zrd ˜K 12
+
+> rd
+
+. (22b) The admittance mass, damping and stiffness are given by 
+
+ma = 40 kg , ca = 55 N · s/m and ka = 16 N /m. The reference external force is given by fref,x = 0 .
+
+B. Comparative Study 
+
+As shown in Fig. 5, the robot started from its nominal configuration. Throughout the experiment, the yaw angle was adjusted according to the joint configuration such that link 4 remained aligned with the x axis in order to reduce external torque applied on the CoG. Specifically, here we defined the configuration angle θ as the variable in the admittance controller to determine the configuration solely and then computed the corresponding joint angles analytically through inverse kinematics. The angle of each joint was satisfied as 
+
+q1
+
+q2
+
+q3
+
+ =
+
+ 
+
+> π
+> 2
+
+− θ
+
+2θ
+
+−θ
+
+ , (23) where θ is shown in Fig. 5. The experimental environment is illustrated in Fig. 6. A vertical board was placed at a known location within the testing area. The board’s surface provided sufficient friction for stable contact while still allowing smooth sliding of the end-effector (marker pen). The board’s surface was intentionally sloped by approximately 20 ◦ with respect to the y axis, and the inclination angle was kept unknown to the robot. Although the surface is planar, its unknown inclination introduces unmodeled geometric variations that     
+
+> Fig. 6. Experiment setup: an board with known position, and unknown
+> sloped angle to the robot controller to mimic an uncertain surface geometric variation. The world frame is marked on the figure. (A) Front view. (b) Top view.
+
+serve the same role as curved surfaces in this study. The friction coefficient is also unknown. Consequently, both the contact forces and the surface geometry remain unmodeled in this experiment, which provides a challenging benchmark for evaluating the robot’s adaptive sliding capability. During the experiment, the reference trajectory of the multi-link aerial robot was defined on a plane perpendicular to the x axis. The robot was commanded to follow the predefined circular trajectory with a radius of 0.30 m and a period of 14 s within this plane. Due to the board’s unknown inclination angle, the desired circular trajectory experienced approximately 0.15 m of variation along the x
+
+axis during one cycle, introducing measurable geometry-induced deviations during contact. This geometric variation was not incorporated into the reference trajectory generation or controller design. Therefore, the robot was required to adapt to this geometric variation online during contact. To evaluate performance, comparative experiments were conducted between the proposed hybrid controller and a manually tuned PID baseline. The PID gains were selected for the best stable contact tracking performance. In the hybrid controller, impedance control was applied along the y and z
+
+axes to improve sliding resilience, while admittance control was applied along the x axis to enable adaptive surface interaction, with each controller operating independently. To demonstrate the necessity of of the hybrid design, we additionally performed experiments using only impedance control (without admittance-based joint adaptation) and only admittance control (where the CoG state was regulated solely by PID). Following this setup, four sets of experiments were per-formed. Fig. 7 shows the final trajectories drawn on the board. Overall, the only impedance controller produced a trajectory closest to the desired circle, while the hybrid controller showed a nearly circular path. In contrast, only admittance controller and PID controller resulted in notice-ably smaller and more distorted trajectories. Fig. 8 further illustrates how the multi-link aerial robot deformed to ac-commodate geometric variations during contact under hybrid controller. 
+
+1) Compare on Impedance-Related Directions : Fig. 9 presents the CoG trajectories together with the reference path under the four controllers. Note that during the sliding Fig. 7. Tracking trajectory on the board. (a) PID controller. (b) Only impedance controller. (c) Only admittance controller. (d) Hybrid impedance–admittance controller.  
+
+> Fig. 8. The hybrid controller enabled the multi-link aerial robot to deform appropriately when encountering surface geometric variation.
+
+task, the y and z axes corresponded to the sliding direc-tions, where friction-induced disturbances were dominant. Although Fig. 9 illustrates the overall trajectories of the four controllers, their performance differences become more evi-dent in the tracking error distributions shown in Fig. 10. The figure shows the distributions of tracking errors of the CoG in the y and z axes. In particular, the median y axis errors were approximately 0.134 m for PID controller, 0.079 m for only impedance controller, 0.105 m for only admittance controller, and 0.083 m for the hybrid controller. These results indicate that impedance-based methods provided more stable tracking performance than the conventional PID controller when sliding under friction. This part of the experiments shows that along the sliding directions, impedance controller provided a resilient response to frictional disturbances, enabling more accurate sliding without requiring explicit friction values while still approx-imately following the desired trajectory. 
+
+2) Compare on Admittance-Related Direction : Fig. 11 shows the CoG displacement and external force along the 
+
+x axis. As further quantified in Fig. 12, the PID and only impedance controllers produced similar CoG displacements (0.133 m and 0.137 m ), both largely reflecting the board’s de-formation. In contrast, the admittance and hybrid controllers reduced the CoG displacement to 0.088 m and 0.084 m ,demonstrating their effectiveness in mitigating geometric variation effects. Fig. 12 also shows that the median external forces on the CoG were approximately −1.190 N for the PID controller, 
+
+−0.453 N for the only impedance controller, −0.712 N for the only admittance controller, and −0.328 N for the hybrid controller. The hybrid controller achieved the smallest me-dian external force. In addition, the admittance and hybrid controllers exhibited relatively narrower force distributions      
+
+> Fig. 9. Circle trajectory tracking result of the CoG under four controllers. (a) PID controller. (b) Only impedance controller. (c) Only admittance controller. (d) Hybrid impedance–admittance controller. The yellow region denotes the contacting period.
+> Fig. 10. Box plots of position errors along the sliding directions (the y
+> and zaxes) under the four controllers during the contact period.
+
+than the PID controller, indicating more stable and adaptive interactions with the uncertain surface. These improvements demonstrate that the admittance con-troller enables the robot to adjust its configuration in response to surface geometric variations, thereby reducing the influ-ence of geometric variations on the CoG and improving the contact force behavior. 
+
+C. Discussion 
+
+The experiment highlights the complementary roles of the two strategies: impedance control improves sliding smooth-ness and reduces tracking error, whereas admittance control enhances adaptive interaction by decreasing CoG displace-Fig. 11. Plot of position variation and external force on the CoG in the 
+
+x axis. The yellow region denotes the contact period, and the pink region indicates the interval during which the admittance controller actively adjusts the configuration. 
+
+Fig. 12. Box plots of CoG position and CoG external force along the contact direction ( x axis) for the four controllers during the period when the admittance controller was active. 
+
+ment and improving contact behavior. By combining these two mechanisms, the hybrid controller achieves smaller tra-jectory deviations, reduced unintended CoG drift, and lower interaction forces simultaneously compared with the baseline PID controller, confirming its effectiveness for compliant contact-rich tasks. V. C ONCLUSION 
+
+This paper proposed a hybrid impedance–admittance con-trol framework for a multi-link aerial robot performing surface sliding tasks. By assigning impedance control to the force-sensitive sliding directions and admittance con-trol to the geometry-sensitive contact direction, the method exploits the distinct interaction characteristics of each axis. Experiments demonstrated improved trajectory tracking, re-duced contact forces, and smaller geometry-induced variation compared with a standard PID controller, validating its effectiveness for surface interaction. In future work, we aim to extend the framework to an overactuated multi-link aerial robot, which introduces higher-dimensional admittance behavior and requires handling spa-tial contact forces. We also plan to validate the method on more complex curved surfaces with larger geometric variations and spatially varying friction. REFERENCES [1] M. Zhao, T. Anzai, K. Okada, K. Kawasaki, and M. Inaba, “Singularity-free aerial deformation by two-dimensional multilinked aerial robot with 1-dof vectorable propeller,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 1367–1374, 2021. [2] M. Zhao, T. Anzai, F. Shi, X. Chen, K. Okada, and M. Inaba, “Design, modeling, and control of an aerial robot dragon: A dual-rotor-embedded multilink robot with the ability of multi-degree-of-freedom aerial transformation,” IEEE Robotics and Automation Letters , vol. 3, no. 2, pp. 1176–1183, 2018. [3] H. Yang, S. Park, J. Lee, J. Ahn, D. Son, and D. Lee, “Lasdra: Large-size aerial skeleton system with distributed rotor actuation,” in 2018 IEEE International Conference on Robotics and Automation (ICRA) .IEEE, 2018, pp. 7017–7023. [4] S. W. Hameed, A. L. J. Jie, N. Imanberdiyev, E. Camci, W.-Y. Yau, and M. Feroskhan, “Dragonfly drone: A novel tilt-rotor aerial platform with body-morphing capability,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 8642–8648. [5] F. Shi, M. Zhao, M. Murooka, K. Okada, and M. Inaba, “Aerial regrasping: Pivoting with transformable multilink aerial robot,” in 2020 IEEE international conference on robotics and automation (ICRA) .IEEE, 2020, pp. 200–207. [6] M. Zhao, K. Okada, and M. Inaba, “Versatile articulated aerial robot dragon: Aerial manipulation and grasping by vectorable thrust control,” The International Journal of Robotics Research , vol. 42, no. 4-5, pp. 214–248, 2023. [7] N. Sugito, M. Zhao, T. Anzai, T. Nishio, K. Okada, and M. Inaba, “Aerial manipulation using contact with the environment by thrust vectorable multilinked aerial robot,” in 2022 International Conference on Robotics and Automation (ICRA) . IEEE, 2022, pp. 54–60. [8] M. Zhao, K. Nagato, K. Okada, M. Inaba, and M. Nakao, “Force-ful valve manipulation with arbitrary direction by articulated aerial robot equipped with thrust vectoring apparatus,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 4893–4900, 2022. [9] K. Bodie, M. Brunner, M. Pantic, S. Walser, P. Pf¨ andler, U. Angst, R. Siegwart, and J. Nieto, “Active interaction force control for contact-based inspection with a fully actuated aerial vehicle,” IEEE Transac-tions on Robotics , vol. 37, no. 3, pp. 709–722, 2020. [10] M. ´A. Trujillo, J. R. Mart´ ınez-de Dios, C. Mart´ ın, A. Viguria, and A. Ollero, “Novel aerial manipulator for accurate and robust industrial ndt contact inspection: A new tool for the oil and gas inspection industry,” Sensors , vol. 19, no. 6, p. 1305, 2019. [11] M. Tognon, H. A. T. Ch´ avez, E. Gasparin, Q. Sabl´ e, D. Bicego, A. Mallet, M. Lany, G. Santi, B. Revaz, J. Cort´ es et al. , “A truly-redundant aerial manipulator system with application to push-and-slide inspection in industrial plants,” IEEE Robotics and Automation Letters ,vol. 4, no. 2, pp. 1846–1851, 2019. [12] A. Ollero, M. Tognon, A. Suarez, D. Lee, and A. Franchi, “Past, present, and future of aerial robotic manipulators,” IEEE Transactions on Robotics , vol. 38, no. 1, pp. 626–645, 2021. [13] W. Zhang, L. Ott, M. Tognon, and R. Siegwart, “Learning variable impedance control for aerial sliding on uneven heterogeneous surfaces by proprioceptive and tactile sensing,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 11 275–11 282, 2022. [14] M. Ryll, G. Muscio, F. Pierri, E. Cataldi, G. Antonelli, F. Caccav-ale, D. Bicego, and A. Franchi, “6d interaction control with aerial robots: The flying end-effector paradigm,” The International Journal of Robotics Research , vol. 38, no. 9, pp. 1045–1062, 2019. [15] C. Ott, R. Mukherjee, and Y. Nakamura, “Unified impedance and ad-mittance control,” in 2010 IEEE international conference on robotics and automation . IEEE, 2010, pp. 554–561. [16] V. Lippiello and F. Ruggiero, “Cartesian impedance control of a uav with a robotic arm,” IFAC Proceedings Volumes , vol. 45, no. 22, pp. 704–709, 2012. [17] E. Cataldi, G. Muscio, M. A. Trujillo, Y. Rodr´ ıguez, F. Pierri, G. Antonelli, F. Caccavale, A. Viguria, S. Chiaverini, and A. Ollero, “Impedance control of an aerial-manipulator: Preliminary results,” in 
+
+2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2016, pp. 3848–3853. [18] T. Anzai, M. Zhao, M. Murooka, F. Shi, K. Okada, and M. Inaba, “Design, modeling and control of fully actuated 2d transformable aerial robot with 1 dof thrust vectorable link module,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2019, pp. 2820–2826. [19] F. Ruggiero, J. Cacace, H. Sadeghian, and V. Lippiello, “Impedance control of vtol uavs with a momentum-based external generalized forces estimator,” in 2014 IEEE international conference on robotics and automation (ICRA) . IEEE, 2014, pp. 2093–2099.

@@ -1,0 +1,3841 @@
+Title: Flying over The Uncertain Nature (FORTUNE): Intelligent and Humanistic 3D Path Planning for Low-Altitude Collaboration
+
+URL Source: https://arxiv.org/pdf/2608.03408v1
+
+Published Time: Wed, 05 Aug 2026 01:01:51 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+> 1
+
+# Flying over The Uncertain Nature (FORTUNE): Intelligent and Humanistic 3D Path Planning for Low-Altitude Collaboration 
+
+Minghui Liwang, Senior Member , IEEE , Wenhan Jia, Xinlei Yi, Senior Member , IEEE , Wenbo Zhu, Yuhan Su, Xianbin Wang, Fellow , IEEE 
+
+Abstract —The proliferation of low-altitude intelligent agents is driving an increasing demand for timely and socially responsible collaborative sensing in dynamic urban environments. Nevertheless, jointly handling heterogeneous spatio-temporal sensing demands, real-time environmental uncertainty, and human-centered op-erational constraints within a unified multi-UAV optimization framework remains highly challenging. In this paper, we investigate three-dimensional (3D) multi-uncrewed aerial vehicle (UAV) path planning and joint task assignment for low-altitude collaboration under heterogeneous spatio-temporal uncertainty of ground points of interest (PoIs). Unlike existing studies that assume static and fully known PoIs, we formulate a unified model that simultaneously captures persistent (Type-I), temporally predictable (Type-II ), and emergent unpredictable (Type-III ) demands. Furthermore, following the principle of low-altitude for good , we explicitly model altitude-dependent societal and environmental costs, including noise exposure and public safety risks, thereby jointly optimizing sensing effectiveness and socially compliant UAV operations. To solve the resulting large-scale mixed-integer nonlinear optimization problem, we propose FORTUNE , a hierarchical offline-online cooperative framework. Offline, a Transformer-based predictor forecasts the activation windows of Type-II PoIs, while an enhanced sparrow search algorithm ( ES 2A), empowered by priority-aware decoding and danger-aware evolution, proactively generates globally coordinated flight plans. Online, a lightweight trajectory refinement module efficiently accommodates newly emerging Type-
+
+III PoIs while preserving global mission coherence. Extensive experiments on real-world traffic datasets and synthetic scenarios demonstrate that FORTUNE consistently outperforms state-of-the-art benchmarks, validating its effectiveness, scalability, and practical applicability to dynamic low-altitude systems. 
+
+Index Terms —Low-altitude economy, Multi-UAV collaboration, Socially-compliant, 3D path planning, Transformer 
+
+I. I NTRODUCTION 
+
+# DRIVEN by their flexibility and affordability of low-altitude platforms, rapid advances in sensing/communication/computing have accelerated the deployment of uncrewed aerial vehicles (UAV)-enabled applications in urban monitoring, environmental surveillance, and intelligent transportation [1]–[3]. As a representative paradigm, low-altitude collaborative sensing leverages multiple UAVs to serve timely and large-scale perception for missions such as crowd flow observation and abnormal event detection (e.g., sudden gatherings, traffic accidents, and emergency incidents) [4]–[7]. Meanwhile, the commercial expansion of the UAV industry, projected to surpass $48.5 billion by 2029 [8], [9], further highlights its transformative potential in supporting next-generation intelligent systems. Nevertheless, practical multi-UAV collaboration faces funda-mental challenges: ground points of interest (PoIs) are inherently dynamic and time-varying, with hotspots forming, shifting, and dissipating over short time scales (e.g., crowds relocating 
+
+> M. Liwang (minghuiliwang@tongji.edu.cn), W. Jia (hxjiawh@gmail.com), X. Yi (xinleiyi@tongji.edu.cn), W. Zhu (wbzhu@tongji.edu.cn) are with the Department of Control Science and Engineering, Shanghai Institute of Intelligent Scienceleiy Technology, Tongji University, Shanghai, China. X. Wang (xianbin.wang@uwo.ca) is with the Department of Electrical and Computer Engineering, Western University, Canada.
+
+across venues). Most existing studies oversimplify this reality by assuming PoIs are known a priori and static, or by merely adopting age-of-information (AoI) as a surrogate for data timeliness [1], [10], thereby limiting their applicability in real-world deployments. Meanwhile, the increasing density of low-altitude UAV operations also raises societal and operational concerns, including public anxiety over potential crashes and noise disturbance. 
+
+A. Motivations in Form of Q&A 
+
+The above observations suggest that the challenge of low-altitude collaborative sensing is not merely algorithmic, but structural: it concerns how dynamic task patterns should be abstracted , how anticipation and real-time adaptation should be reconciled , and how operational effectiveness should be balanced with humanistic impact within a unified optimization framework . Addressing these issues requires moving beyond incremental refinements of existing models toward a more principled formulation. Accordingly, answering the following research questions (RQs) forms our fundamental motivation. 
+
+• RQ1: How can multi-UAV systems fundamentally characterize and handle heterogeneous, time-evolving sensing demands, instead of relying on the oversimplified assumption of static and known PoIs? Existing studies typically assume that sensing targets are fixed and known a priori, which substantially simplifies trajectory planning but departs from real-world low-altitude scenarios where sensing demands exhibit heterogeneous spatio-temporal dynamics. To overcome this limitation, we adopt a structured view of task dynamics that distinguishes different levels of predictability and persistence in ground sensing demands, i.e., PoIs are classified into three types. This abstraction enables proactive planning over stable and partially predictable components while explicitly acknowledging intrinsic uncertainty, thereby bridging the gap between idealized static models and realistic dynamic environments. 
+
+• RQ2: How can environmental and societal impact be rigorously embedded into 3D multi-UAV path optimization, so that sensing effectiveness and public acceptability are jointly considered rather than treated as secondary constraints? 
+
+Low-altitude UAV operations inherently introduce trade-offs between sensing quality and societal impact, particularly due to altitude-dependent effects. For example, flying at low altitudes may inevitably generate noise, induce public anxiety over potential crashes, and raise privacy concerns regarding terrestrial environments, thereby disturbing both humans and wildlife on the ground. As this paper advocates the concept of “low-altitude for good (LA4Good)” , it is essential to explicitly account for socially-compliant and environmental implications of low-altitude UAV deployments. Rather than treating these factors as external constraints, we integrate them directly into our optimization goal. By modeling a certain penalty, the resulting framework achieves a principled balance between task effectiveness and socially responsible operation. 
+
+• RQ3: How can proactive planning and reactive adaptation be unified in multi-UAV 3D path design, such that predictable arXiv:2608.03408v1 [cs.RO] 4 Aug 2026 2场景 地图之类的                           
+
+> Multi -Head
+> Attention
+> Add & Norm
+> Input
+> Embedding
+> Output
+> Embedding
+> Feed
+> Forward
+> Add & Norm
+> Masked
+> Multi -Head
+> Attention
+> Add & Norm
+> Multi -Head
+> Attention
+> Add & Norm
+> Feed
+> Forward
+> Add & Norm
+> Linear
+> Softmax
+> Outputs (shifted right)
+> Positional
+> Encoding
+> Positional
+> Encoding
+> Inputs
+> (Historical PoI Data ）
+> Module A: Service
+> demand prediction
+> for Type -II PoIs
+> empowered by
+> Transformer
+> PoI I
+> PoI II
+> … …
+> Estimated active Time
+> windows for each Type -II PoIs
+> Module B: Evolutionary heuristic
+> for pre -path planning over Type -I
+> and Type -II PoIs
+> …
+> Timeline
+> …
+> Pre -planned
+> path
+> Adjustive p ath
+> Type -IPoI
+> Type -II PoI
+> Type -III PoI
+> Obstacle
+> UAV s
+> tt=1 t=2 t=3 t=4
+> PoI II -A
+> A
+> B
+> CD
+> PoI II -B
+> PoI II -C
+> PoI II -D
+> ……
+> ……
+> ……
+> ……
+> Active time window
+> Threshold
+> Observation value  Observation value  Observation value  Observation value
+> Threshold
+> Threshold
+> Threshold
+> Initialization
+> 𝑬𝑺 𝟐 𝑨
+> Global Search
+> Heuristic Decoder
+> Height and Avoidance: Joint 3D Avoidance -
+> Altitude Decision
+> Speed: Adaptive Selection
+> Levy Flight Update
+> Fitness
+> Feasible Task
+> Set Construction
+> Net -Benefit -
+> Guided Greedy
+> Allocation
+> Module C:
+> Online path
+> adjustment when
+> facing active
+> Type -III PoIs
+> Pre -planned paths
+
+Fig. 1: Schematic of FORTUNE, a 3D multi-UAV path planning framework over dynamic and uncertain PoIs, with three modules integrated solutions. 
+
+task patterns are efficiently exploited without sacrificing re-sponsiveness to unexpected events? A fundamental tension in dynamic collaborative sensing lies between long-term efficiency and short-term responsiveness. Purely reactive strategies lead to myopic decisions, whereas fully preplanned strategies fail under unforeseen events. We address this tension by developing a planning paradigm that integrates anticipative path generation with globally consistent online refinement. By preserving awareness of the overall mission state during adjustments, the framework enables rapid adaptation to emergent events while maintaining system-level coordination and efficiency. 
+
+B. Literature Review 
+
+We review existing related literature from various perspec-tives, further highlighting our key differences and novelty. 
+
+• View 1. Static/known PoIs vs. uncertain PoIs over spatio-temporal evolution. Most existing studies regarding UAV-assisted data collection focus on known or fixed PoIs, which are typically modeled with predetermined parameters such as quantity, location, and active time windows. For instance, He 
+
+et al. [11] implemented a two-timescale trajectory planning scheme within a leader-follower control framework for known hotspot areas. Guo et al. [12] investigated hierarchical incentive mechanisms for UAV-assisted crowdsensing while optimizing data freshness within a fixed set of subregions. Similarly, 
+
+Yuan et al. [13] integrated transfer learning with reinforcement learning (RL) to solve 3D trajectory planning problems for known ground user hotspots. Ye et al. [14] explored air-ground cooperative crowdsensing by optimizing the AoI metric, where vehicles dispatch UAVs from multiple stops to collect data from specific PoIs, with multi-agent curriculum learning (MACL). Furthermore, Wang et al. [15] focused on urban data collection to maintain AoI within specified thresholds across diverse but known PoIs. Hou et al. [16] proposed a hierarchical optimization framework for multi-UAV collaboration to jointly address trajectory planning, energy management, and load balancing, where each sensing task is tied to a specific target in a designated area. Li et al. [17] studied air-ground collaborative sensing where UAVs are guided along informative trajectories to reach target positions rapidly. Although these works contribute significantly to UAV path planning and data freshness (e.g., via AoI), they largely treat PoIs as static entities with a priori known locations. This assumption often falls short of reality, as real-world networks exhibit complex spatio-temporal dynamics. While Li et al. [10] explored multi-task-oriented UAV crowdsensing with diverse AoI requirements and introduced a “valid task handling index”, their work approaches the problem from a fundamentally different perspective with us. Unlike these studies, we concern dynamic and uncertain PoIs, where the varying activation windows of them lead to sensing tasks with disparate timing and locations. 
+
+• View 2. Way to optimize UAV paths. Path planning involves complex spatio-temporal coupling where current decisions propagate through the temporal horizon, leading to exponential complexity. Given the computational intractability of conven-tional integer programming in high-dimensional multi-agent systems, research has shifted toward RL-based approaches ,
+
+heuristic-driven methods , and hybrid ideas that integrate different methodologies .The rapid advancement of artificial intelligence (AI) has enabled an effective integration of deep neural networks with RL, which are widely adopted path planning problems [11], [13]–[16], [18]–[20]. For example, Yu et al. [20] studied multi-UAV 3D trajectory planning strategy using multi-agent deep reinforcement learning (MADRL), by employing multi-agent proximal policy optimization (MAPPO). Deng et al. [18] proposed a decentralized MADRL framework with multi-level state representations, facilitating personalized training and better exploitation of environmental information. Gao et al. [19] applied multi-agent deep deterministic policy gradient (MADDPG) to jointly optimize task allocation and trajectory planning. Despite the efficacy in navigating dynamic envi-ronments, its practical deployment remains constrained by suboptimal sample efficiency, stochastic training instability, and fragile scalability. Existing literature predominantly focuses on restricted coordination scenarios, typically involving fewer than 10 agents (usually around 4), whereas scaling to denser swarms triggers an exponential explosion of the joint state-action space. This frequently precipitates gradient divergence and computational collapse during policy optimization. To circumvent the above bottlenecks, a large body of research has pivoted toward heuristic-based frameworks. Although rooted in classical optimization principles, they exhibit superior architectural scalability, computational parsimony, and structural 3
+
+robustness, rendering them more viable for high-density, large-scale systems. Wang et al. [21] presented a multi-vehicle path planning method based on multi-group cooperative particle swarm optimization (PSO), handling diverse intersections and traffic conditions. He et al. [22] investigated adaptive heuristic with collaborative search to for multi-UAV inspection path planning. Liu et al. [23] considered UAV energy, mapping effi-ciency, and target structure coverage while respecting hardware constraints, with two-stage heuristic designed for trajectory planning. While heuristic methods enhance computational tractability in large-scale problems, their efficacy often hinges on idealized assumptions. Specifically, most existing models enforce a singleton visit constraint and assume stationary PoI distributions with deterministic activation windows. To tackle complex problems such as highly coupled and non-convex mixed-integer optimizations, research focus begins turning to hybrid solution design with multiple stages. For example, Yuan et al. [24] divide the problem into three stages, namely, clustering, trajectory planning, and resource allocation with algorithms designed respectively. Pan et al. [25] combined genetic algorithm (GA) and MADRL, to achieve the distributed multi-UAV 3D trajectory planning collaborative optimization. 
+
+Guo et al. [26] decomposed the main problem into tow sub-ones, while designing zero-forcing algorithm and successive convex approximation, respectively, to support UAV-assisted sensing and communication. Although these hybrid methodologies empowered solution design, dynamic and uncertain tasks (i.e., uncertain PoIs) are somehow overlooked. From a novel perspective, we propose a multi-module framework integrating prediction-enhanced PoI active time window estimation, UAV path pre-planning, and greedy online adjustment, enabling an effective solution to the complex problem. 
+
+• View 3. Obstacle avoidance vs. socially compliant navigation. 
+
+Existing UAV trajectory planning methods primarily formulate surrounding environments as physical obstacles, focusing on collision avoidance, energy efficiency, and mission completion while paying limited attention to human-centered social consid-erations [20], [25], [27]. However, as UAVs are increasingly deployed in low-altitude urban environments, socially compliant flight behavior has become equally important. Unlike conven-tional obstacle avoidance, UAVs inevitably share airspace with nearby pedestrians and residents. Flying at low altitudes or in close proximity to people may violate personal space, reduce perceived safety, and induce psychological discomfort, while rotor noise further degrades human comfort and environmental acceptability. These human-aware considerations have been extensively investigated in socially aware robot navigation and human-robot interaction, where factors such as proxemics, perceived safety, and social norms are explicitly incorporated into motion planning [28], [29]. Nevertheless, such socially compliant principles remain largely overlooked in existing UAV path planning frameworks. To bridge this gap, we explicitly incorporate a human-aware social cost into trajectory optimization, enabling UAVs to adapt their flight altitude and path according to the surrounding crowd distribution, thereby jointly optimizing sensing performance and social acceptability in accordance with LA4Good paradigm. 
+
+C. Spotlight and Contribution 
+
+Recall the above efforts and challenges, we propose FOR-TUNE , abbreviated from “Flying OveR The Uncertain NaturE” ,an intelligent and humanistic engine for efficient multi-UAV collaboration, over dynamic and heterogeneous PoIs. Main contributions are summarized below. TABLE I: Summary of related literature                                                  
+
+> Attributes Related Study Path PoI/UE Social Factor AoI Solution
+> 2D 3D Static Known Dynamic [11] ✓✓RL [12] ✓✓✓Contract [13], [20] ✓✓RL [14] ✓✓✓MACL [15] ✓✓✓RL [10], [17] ✓✓RL [25] ✓✓Hybrid [18] ✓✓RL [21], [22] ✓✓Heuristic [23] ✓✓Hybrid [24] ✓✓✓Hybrid
+> FORTUNE ✓✓✓✓Hybrid
+
+• We are interested in a novel 3D multi-UAV path planning and task scheduling problem for low-altitude collaborative sensing characterized by static obstacles and dynamic as well as uncertain PoIs. Specifically, we model PoIs into three heterogeneous types (Type-I, Type-II and Type-III ) to capture diverse spatio-temporal characteristics, thereby moving beyond conventional static and homogeneous assumptions. Furthermore, in line with the LA4Good principle, we explicitly incorporate altitude-induced societal and environmental impacts, such as noise disturbance and perceived safety risk, into the objective function as penalty terms. Together, we formulate a practi-cally meaningful yet mathematically challenging optimization problem that reflects the intrinsic trade-offs between sensing efficiency and socially responsible operation. 
+
+• To tackle the optimization with NP hardness, we propose FORTUNE, which establishes a hierarchical offline-online cooperative framework that decomposes it into one regression problem and two path optimization problems, integrating intelligent prediction (Module A), pre-planning (Module B), and online adjustment (Module C). In the offline stage, a Transformer-based module predicts the active time windows of Type-II PoIs, enabling anticipatory trajectory pre-planning for Type-I and -II PoIs via a dynamic evolutionary optimization scheme under practical constraints such as collision avoidance. In the online stage, when Type-III PoIs emerge, a time-efficient greedy adjustment module refines UAV trajectories in real time to enhance the overall objective. Collectively, these modules establish a prediction-aware and adaptively refined solution framework that balances proactive efficiency with real-time responsiveness under dynamic and uncertain sensing environments. 
+
+• We conduct comprehensive experiments on both real-world and numerical datasets, to verify our performance across diverse parameters. Experiments have shown good effectiveness as comparing to multi-dimension benchmark methods. II. C ORE MODELING 
+
+To describe spatial-temporal dynamism, the whole time horizon is discretized by set T = {1, . . . , 𝑡, . . . , |T|} , while 
+
+Δ𝑡 denotes the duration of each timeslot. 
+
+A. Modeling of PoIs 
+
+In real-world networks, PoIs can either be known, or dynamic and uncertain, on factors such as geographical location, significance, and data volume required for collection. In our modeling, different types of PoIs are considered to capture diverse data needs. For notational simplicity, we use 𝑖 as the index of PoIs across all types. 4
+
+• Type-I PoI. Type-I PoIs are defined as spatially fixed sensing targets with persistent validity over the entire mission horizon. Their sensing demands are temporally invariant and remain active regardless of external dynamics or contextual variations. Typical instances include permanent infrastructure inspection points, long-term environmental monitoring sites, and predefined land-use survey locations. The deterministic nature of their spatial distribution and sensing requirements enables efficient scheduling and proactive path optimization for UAV operations. In our modeling, let P(I) = {𝑝 (I) 
+
+> 1
+
+, . . . , 𝑝 (I) 
+
+> 𝑖
+
+, . . . , 𝑝 (I)|P| } be the set of type-I PoIs, where each 𝑝 (I) 
+
+> 𝑖
+
+∈ P(I) is assumed to carry a long-lasting task opening for data collection across the whole time domain (namely, this PoI type always has data collection needs). In particular, each 𝑝 (I) 
+
+> 𝑖
+
+can be represented by a tuple 
+
+l(I) 
+
+> 𝑖
+
+, 𝑑 (I) 
+
+> 𝑖
+
+, 𝑟 (I)
+
+> 𝑖
+
+
+
+, with l(I) 
+
+> 𝑖
+
+=
+
+
+
+𝑥 (I) 
+
+> 𝑖
+
+, 𝑦 (I) 
+
+> 𝑖
+
+, ℎ (I)
+
+> 𝑖
+
+
+
+denoting the 3D-space coordinate of 𝑝 (I) 
+
+> 𝑖
+
+; while 𝑑 (I) 
+
+> 𝑖
+
+and 𝑟 (I) 
+
+> 𝑖
+
+represent the data volume required by the task of 𝑝 (I) 
+
+> 𝑖
+
+, as well as the overall reward that the UAVs who have contributed to 𝑝 (I) 
+
+> 𝑖
+
+can get, after completing its task. 
+
+• Type-II PoI. Type-II PoIs are spatially fixed sensing targets whose demands exhibit predictable temporal dynamics. Their sensing requirements are activated only during specific time win-dows that recur according to underlying human behavioral pat-terns or environmental processes. Typical examples include rush-hour traffic monitoring at major intersections and air-quality sensing near heavily traveled roads during commuting periods. The temporal predictability of these demands allows UAVs to perform proactive mission planning through time-aware task assignment and path optimization. Accordingly, we involve a set of type-II PoIs denoted by P(II ) =
+
+n
+
+𝑝 (II ) 
+
+> 1
+
+, . . . , 𝑝 (II ) 
+
+> 𝑖
+
+, . . . , 𝑝 (II )|P(II ) |
+
+o
+
+,where each 𝑝 (II ) 
+
+> 𝑖
+
+∈ P(II ) is represented by a tuple 
+
+
+
+𝒍 (II ) 
+
+> 𝑖
+
+, 𝜏 (II )
+
+> 𝑖
+
+
+
+.Specifically, l(II ) 
+
+> 𝑖
+
+=
+
+
+
+𝑥 (II ) 
+
+> 𝑖
+
+, 𝑦 (II ) 
+
+> 𝑖
+
+, ℎ (II )
+
+> 𝑖
+
+
+
+denotes the 3D spatial coordinate of 𝑝 (II ) 
+
+> 𝑖
+
+. Recall the features of type-II PoIs, they may appear multiple times throughout the entire time horizon, and each appearance may last for several timeslots, just like stars shining on the map (e.g., a traffic intersection may have data collection requirement during rush hour, while remaining idle for the rest of the day). For ease of understanding, when a PoI has data demands, we say that it is active during the correspond-ing timeslot. Regarding the above, 𝜏 (II ) 
+
+> 𝑖
+
+=
+
+n
+
+˜𝜏 (𝑎 ) 
+
+> 𝑖
+
+0 ≤ 𝑎 ≤ 𝐴 𝑖 
+
+o
+
+is utilized to record the information of 𝑝 (II ) 
+
+> 𝑖
+
+across the whole time horizon, where ˜𝜏 (𝑎 ) 
+
+> 𝑖
+
+denotes an event corresponding to the 𝑎 -th appearance of PoI 𝑝 (II ) 
+
+> 𝑖
+
+, and 𝐴 𝑖 indicates the total number of occurrences of 𝑝 (II ) 
+
+> 𝑖
+
+on the considered map over the entire time horizon. To further capture the duration of 𝑝 (II ) 
+
+> 𝑖
+
+being active, we define each event ˜𝜏 (𝑎 ) 
+
+> 𝑖
+
+∈ 𝜏 (II ) 
+
+> 𝑖
+
+as 
+
+˜𝜏 (𝑎 ) 
+
+> 𝑖
+
+=
+
+n h 
+
+t(+ ,𝑎 ) 
+
+> 𝑖
+
+, t(− ,𝑎 )
+
+> 𝑖
+
+i
+
+, 𝑑 (II ,𝑎 ) 
+
+> 𝑖
+
+, 𝑟 (II ,𝑎 )
+
+> 𝑖
+
+o
+
+, where 
+
+h
+
+t(+ ,𝑎 ) 
+
+> 𝑖
+
+, t(− ,𝑎 )
+
+> 𝑖
+
+i
+
+forms an active time window, with t(+ ,𝑎 ) 
+
+> 𝑖
+
+∈ T and t(− ,𝑎 ) 
+
+> 𝑖
+
+∈ T
+
+describing the starting and closing timeslots of the 𝑎 -th appearance 
+
+
+
+t(+ ,𝑎 ) 
+
+> 𝑖
+
+≤ t(− ,𝑎 )
+
+> 𝑖
+
+
+
+, and satisfying t(− ,𝑎 ) 
+
+> 𝑖
+
+< t(+ ,𝑎 +1) 
+
+> 𝑖
+
+.Besides, assuming that a task arises along with each active event, we use 𝑑 (II ,𝑎 ) 
+
+> 𝑖
+
+and 𝑟 (II ,𝑎 ) 
+
+> 𝑖
+
+to indicate the corresponding data requirement and reward, respectively. To model the emergence of Type-II PoIs, we define an 
+
+observation value 𝑜 (II ) 
+
+> 𝑖
+
+that measures the potential information gain associated with a sensing target. The observation value acts as a trigger signal for PoI activation: a sensing demand is generated once 𝑜 (II ) 
+
+> 𝑖
+
+exceeds a predefined threshold. For instance, in intelligent transportation systems, traffic flow intensity can serve as the observation value of an intersection. High traffic volumes may induce sensing demands for traffic monitoring, incident detection, and emission assessment, thereby motivating UAV-assisted data collection. Such activation events can be autonomously identified through real-time observations collected and processed by edge intelligence infrastructures, including roadside units (RSUs) and edge servers. Accordingly, when 𝑜 (II ) 
+
+> 𝑖
+
+exceeds a pre-determined threshold 𝑜 (∗) , we consider 
+
+𝑝 (II ) 
+
+> 𝑖
+
+to be activated, whereas it becomes inactive once 𝑜 (II )
+
+> 𝑖
+
+falls below 𝑜 (∗) . Apparently, this enables capturing the active time windows of different PoIs. 
+
+• Type-III PoI. Type-III PoIs are characterized by both spatial and temporal uncertainty. These PoIs emerge unexpectedly in response to sudden events, with no prior knowledge of their location, timing, or sensing requirements. Despite their unpredictability, they often represent critical or high-priority sce-narios that demand immediate attention and rapid deployment. Examples involve unexpected traffic accidents on highways, crowd congestion incidents in public spaces, or emergency situations in large outdoor gatherings. Due to their dynamic and urgent nature, these PoIs require highly adaptive, leveraging real-time task updates and on-demand UAV redirection to ensure timely and effective responses. Accordingly, at the beginning of each timeslot 𝑡 , we let the set of type-III PoIs be P(III ,𝑡 ) = {𝑝 (III ,𝑡 ) 
+
+> 1
+
+, . . . , 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+, . . . }, with each PoI associated with a task. More importantly, the number of elements in P(III ,𝑡 ) ,namely, |P(III ,𝑡 ) |, can not be aware in advance (before 𝑡 ), due to the unpredictability and randomness of this type 1. Apparently, for each type-III PoI with starting time 𝑡 , we record it as 
+
+𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+∈ P(III ,𝑡 ) and describe it by a tuple 
+
+
+
+l(III ,𝑡 ) 
+
+> 𝑖
+
+, τ (III ,𝑡 )
+
+> 𝑖
+
+
+
+, where 
+
+l(III ,𝑡 ) 
+
+> 𝑖
+
+=
+
+
+
+𝑥 (III ,𝑡 ) 
+
+> 𝑖
+
+, 𝑦 (III ,𝑡 ) 
+
+> 𝑖
+
+, ℎ (III ,𝑡 )
+
+> 𝑖
+
+
+
+denotes the 3D spatial coordi-nate of 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+. Moreover, τ (III ,𝑡 ) 
+
+> 𝑖
+
+=
+
+n h 
+
+𝑡, t(− ,𝑡 )
+
+> 𝑖
+
+i
+
+, 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+, 𝑟 (III ,𝑡 )
+
+> 𝑖
+
+o
+
+collects the information of its active time window 
+
+h
+
+𝑡, t(− ,𝑡 )
+
+> 𝑖
+
+i
+
+,the corresponding data requirement 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+, and reward 𝑟 (III ,𝑡 )
+
+> 𝑖
+
+that can be paid to UAVs upon successful task completion. 
+
+B. Modeling of UAVs 
+
+Our model involves UAVs collected by U =𝑢 1, . . . , 𝑢 𝑚 , . . . , 𝑢 |U| , each equipped with advanced sensors and onboard processors to assist data collection. All UAVs depart from their designated starting locations I(start ) =
+
+n
+
+i(start ) 
+
+> 1
+
+, . . . , i(start ) 
+
+> 𝑚
+
+, . . . , i(start )|U|
+
+o
+
+and travel to their corresponding destinations 
+
+I(end ) =
+
+n
+
+i(end ) 
+
+> 1
+
+, . . . , i(end ) 
+
+> 𝑚
+
+, . . . , i(end )|U|
+
+o
+
+. In particular, each UAV 𝑢 𝑚 ∈ U can be described by atuple 
+
+n
+
+𝒍 (uav ,+)  
+
+> 𝑚
+
+, 𝒍 (uav ,−)  
+
+> 𝑚
+
+, 𝑑 (uav ,𝑡 ) 
+
+> 𝑚
+
+, 𝑒 (hov ) 
+
+> 𝑚
+
+, 𝑒 (move ,𝑣 ) 
+
+> 𝑚
+
+, 𝑒 (+) 
+
+> 𝑚
+
+o
+
+,where 𝒍 (uav ,+)  
+
+> 𝑚
+
+=
+
+
+
+𝑥 (uav ,+)  
+
+> 𝑚
+
+, 𝑦 (uav ,+)  
+
+> 𝑚
+
+, ℎ (uav ,+) 
+
+> 𝑚
+
+
+
+and 
+
+𝒍 (uav ,−)  
+
+> 𝑚
+
+=
+
+
+
+𝑥 (uav ,−)  
+
+> 𝑚
+
+, 𝑦 (uav ,−)  
+
+> 𝑚
+
+, ℎ (uav ,−) 
+
+> 𝑚
+
+
+
+denote the three-dimensional coordinates of the take-off location and destination of UAV 𝑢 𝑚 , respectively. To ensure the security and privacy of data collection (e.g., preventing sensitive PoIs from close-range 
+
+> 1We make a reasonable assumption that the appearance timeslot of a Type-III
+> PoI is uncertain; however, once it emerges, its duration is supposed to be known. Therefore, upon its occurrence, we are able to capture its active time window. 5
+
+reconnaissance by UAVs), each UAV is required to maintain a flight altitude no lower than the minimum safety altitude specified for the corresponding PoIs, denoted by ℎ(uav ,min )
+
+> 𝑚
+
+when performing sensing tasks. Moreover, 𝑑 (uav ,𝑡 ) 
+
+> 𝑚
+
+represents the data sensing capability of UAV 𝑢 𝑚 during each timeslot (e.g., measured in Mbits /Δ𝑡 ). Moreover, during 𝑡 , UAV 𝑢 𝑚 
+
+can take one of two actions, namely hovering and flying. Accordingly, 𝑒 (hov ) 
+
+> 𝑚
+
+denotes the unit energy consumption for hovering, while 𝑒 (mov , ˜𝑣 ) 
+
+> 𝑚
+
+represents the unit energy consumption when flying at velocity 2 ˜𝑣 . Due to the typically limited endurance of UAVs, we assume that each UAV is initially equipped with an energy budget 𝑒 (+)  
+
+> 𝑚
+
+at take-off 3.Also, each UAV should complete its planned flight from the designated starting location to the corresponding destina-tion before depleting its available energy. We further define 
+
+𝑞 (uav ,𝑡 ) 
+
+> 𝑚
+
+= 𝑓 (qua )
+
+
+
+𝜌 (uav ) 
+
+> 𝑚
+
+, ℎ (uav ,𝑡 )
+
+> 𝑚
+
+
+
+to denote the data quality achieved by UAV 𝑢 𝑚 at timeslot 𝑡 , where 𝑓 (qua ) (·) is a quality evaluation function depending on two key factors. Specifically, 
+
+(i) 𝜌 (uav ) 
+
+> 𝑚
+
+represents the inherent sensing capability of UAV 𝑢 𝑚 
+
+(e.g., being equipped with high-definition wide-angle cameras or high-accuracy air pollution sensing modules), which enables higher-quality data acquisition; and (ii) ℎ(uav ,𝑡 ) 
+
+> 𝑚
+
+denotes the flight altitude of UAV 𝑢 𝑚 at timeslot 𝑡 , for which an important trade-off arises from the following two aspects. 
+
+• How 𝜌 (uav ) 
+
+> 𝑚
+
+impacts 𝑞 (uav ,𝑡 ) )  
+
+> 𝑚
+
+: Hardware platforms with superior performance typically enable the collection of higher-quality data, for instance, producing clearer video of the assigned PoI 
+
+• How ℎ(uav ,𝑡 ) 
+
+> 𝑚
+
+impacts 𝑞 (uav ,𝑡 ) 
+
+> 𝑚
+
+: Subject to the minimum safety altitude constraint, a lower flight altitude generally enables a UAV to acquire higher-quality multi-modal sensing data, including images with finer spatial resolution and audio signals with improved clarity. Nevertheless, operating at lower altitudes may significantly increase the risk of collision with surrounding obstacles 4. Conversely, detouring to avoid such obstacles often results in longer travel distances and, consequently, substantially higher energy consumption. More critically, as this paper advocates the concept of “Low-Altitude for Good” (LA4Good) ,it is essential to account for social compliant and environmental implications of low-altitude UAV operations. Specifically, flying at low altitudes may inevitably generate noise, induce panic over potential UAV crashes, and raise privacy concerns regarding terrestrial environments, thereby disturbing humans and wildlife on the ground. Such disturbances can, in turn, diminish the rewards or utilities associated with certain PoIs, which will be formally modeled and discussed in Sec. II-D. To describe the location of UAV 𝑢 𝑚 at the beginning of 
+
+> 2To simplify the problem, we neglect the energy consumption caused by acceleration and consider only the energy associated with maintaining different constant flight speeds. This approximation reduces the modeling complexity while still capturing the key impact of speed on energy usage.
+> 3Since our goal is to investigate dynamic task scheduling and trajectory coordination rather than wireless resource management, the communication process is abstracted from the optimization. Specifically, once a PoI is sensed, the generated data are assumed to be streamed to the nearest AP during subsequent flight whenever connectivity is available. Such an abstraction is consistent with cellular-connected UAV networks, where communication and mobility are naturally pipelined, allowing data uploading to overlap with flight instead of introducing additional mission delay [30]. As a result, the mission completion time in our model is dominated by the physical sensing process and UAV mobility, while communication latency is assumed to be non-blocking.
+> 4Obviously, note that UAV is not allowed to arbitrarily minimize its altitude; it should satisfy the PoI-specific minimum altitude constraint, and only above this threshold can it adjust its altitude selection.
+
+each timeslot, we use l(uav ,𝑡 ) 
+
+> 𝑚
+
+=
+
+
+
+𝑥 (uav ,𝑡 ) 
+
+> 𝑚
+
+, 𝑦 (uav ,𝑡 ) 
+
+> 𝑚
+
+, ℎ (uav ,𝑡 )
+
+> 𝑚
+
+
+
+to denote the coordinate of 𝑢 𝑚 at timeslot 𝑡 , and 𝑣 (xy ,𝑡 ) 
+
+> 𝑚
+
+,
+
+𝑣 (h,𝑡 ) 
+
+> 𝑚
+
+show the horizontal and vertical moving velocities of 
+
+𝑢 𝑚 , respectively. Apparently, the acceleration of each UAV should not exceed a threshold due to hardware limitations, for example, 𝑣 (xy ,𝑡 +1) 
+
+> 𝑚
+
+− 𝑣 (xy ,𝑡 ) 
+
+> 𝑚
+
+≤ 𝑣 (xy ,max ) , 𝑣 (h,𝑡 +1) 
+
+> 𝑚
+
+− 𝑣 (h,𝑡 ) 
+
+> 𝑚
+
+≤
+
+𝑣 (h,max ) , where 𝑣 (xy ,max ) and 𝑣 (h,max ) are the maximum horizontal and vertical accelerations. Therefore, the flying distance within Δ𝑡 of each UAV can also be constrained such that l(uav ,𝑡 +1) 
+
+> 𝑚
+
+− l(uav ,𝑡 ) 
+
+> 𝑚
+
+≤ 𝑙 (max ) , where 𝑙 (max ) is the maximum flying distance in a certain period of time. Accordingly, the trajectory of UAV 𝑢 𝑚 can be defined by 
+
+L𝑚 =
+
+n
+
+l(uav ,1) 
+
+> 𝑚
+
+, l(uav ,2) 
+
+> 𝑚
+
+, . . . , l(uav ,𝑡 ) 
+
+> 𝑚
+
+, . . . , l(uav , |𝑇 | ) 
+
+> 𝑚
+
+o
+
+.
+
+C. Analysis on Task Completion and Reward Way to evaluate the completion of a task. To better describe the assignment between UAVs and different types of PoIs across various timeslots, we use binary indicator 𝛼 to show whether a UAV is assigned to the task of a corresponding PoI. The answer is yes when 𝛼 = 1; while 𝛼 = 0, otherwise. In addition, another binary variable 𝛽 is introduced to indicate whether the UAV’s flight path covers the location of the corresponding PoI, ensuring the spatial feasibility of the assigned task. Specifically, the UAV task can be executed only when the PoI lies within the UAV’s flight path and the PoI has been assigned to this UAV (i.e., 𝛼𝛽 = 1). Due to that diverse PoI types may have different active time windows 5, they have different modeling regarding 𝛼 and 𝛽 , and thus the description of task completion can also be different. 
+
+• For type-I PoIs. We first define 𝛼 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+= 1 to indicate that the task of type-I PoI 𝑝 (I) 
+
+> 𝑖
+
+is assigned to UAV 𝑢 𝑚 at timeslot 𝑡 .Correspondingly, 𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+can be given by 
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+=
+
+
+
+1, if 𝛼 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+= 1, 𝑥 (uav ,𝑡 ) 
+
+> 𝑚
+
+= 𝑥 (I) 
+
+> 𝑖
+
+,𝑦 (uav ,𝑡 ) 
+
+> 𝑚
+
+= 𝑦 (I) 
+
+> 𝑖
+
+, ℎ (uav ,𝑡 ) 
+
+> 𝑚
+
+> ℎ (I) 
+
+> 𝑖
+
+,
+
+0, otherwise ,
+
+(1) which indicates that the trajectory of 𝑢 𝑚 should also be appropriate for this task to be accomplished. Since the task regarding each PoI should be completed (i.e., the collected data must reach the required data volume of the task) in order to earn the corresponding reward, for type-I PoI, we use ˆ𝑑 (I)
+
+> 𝑖
+
+to represent the overall received data volume of 𝑝 (I) 
+
+> 𝑖
+
+over the entire time domain, and it can be calculated by: 
+
+ˆ𝑑 (I) 
+
+> 𝑖
+
+=
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+𝑑 (uav ,𝑡 ) 
+
+> 𝑚
+
+. (2) Accordingly, we denote 𝑐 (I) 
+
+> 𝑖
+
+as the indicator of whether the task of 𝑝 (I) 
+
+> 𝑖
+
+has been completed, given by: 
+
+𝑐 (I) 
+
+> 𝑖
+
+=
+
+(
+
+1, ˆ𝑑 (I) 
+
+> 𝑖
+
+≥ 𝑑 (I) 
+
+> 𝑖
+
+,
+
+0, otherwise . (3) Apparently, 𝑐 (I) 
+
+> 𝑖
+
+= 1 means that the task has been completed. 
+
+• For type-II PoIs. Then, the modeling of 𝛼 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+and 𝛽 (II ,𝑎,𝑡 )
+
+> 𝑖,𝑚
+
+for type-II PoIs has a slight difference compared to that of the  
+
+> 5To facilitate analysis, to determine whether the UAV has arrived at the location of the PoI (i.e., whether the PoI lies on the UAV’s flight trajectory), we assume that the PoI and the UAV share the same horizontal coordinate at time 𝑡 . However, in real-world scenarios, certain deviations inevitably exist. This simplification is adopted for the purpose of mathematical modeling in this paper. 6
+
+other types, for which we update their definitions by introducing an integer 𝑎 , with 1 ≤ 𝑎 ≤ 𝐴 𝑖 . Thus, we have 𝛼 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+= 1
+
+indicating that the task associated with the 𝑎 th appearance of type-II PoI 𝑝 (II ) 
+
+> 𝑖
+
+is assigned to UAV 𝑢 𝑚 at timeslot 𝑡 ; while 
+
+𝛼 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+= 0, otherwise. Accordingly, 𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+can be given by 
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+=
+
+
+
+1, if 𝛼 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+= 1, 𝑥 (uav ,𝑡 ) 
+
+> 𝑚
+
+= 𝑥 (II ) 
+
+> 𝑖
+
+, 𝑦 (uav ,𝑡 ) 
+
+> 𝑚
+
+= 𝑦 (II ) 
+
+> 𝑖
+
+,ℎ(uav ,𝑡 ) 
+
+> 𝑚
+
+> ℎ (II ) 
+
+> 𝑖
+
+, 𝑡 ∈
+
+h
+
+t(+ ,𝑎 ) 
+
+> 𝑖
+
+, t(− ,𝑎 )
+
+> 𝑖
+
+i
+
+,
+
+0, otherwise ,
+
+(4) meaning that the UAV should arrive at the mapped PoI within its active time window. Similar to previous discussions, for the 
+
+𝑎 -th task (the 𝑎 -th appearance) of 𝑝 (II ) 
+
+> 𝑖
+
+, we have 
+
+ˆ𝑑 (II ,𝑎 ) 
+
+> 𝑖
+
+=
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+𝑑 (uav ,𝑡 ) 
+
+> 𝑚
+
+, (5) and 
+
+𝑐 (II ,𝑎 ) 
+
+> 𝑖
+
+=
+
+(
+
+1, ˆ𝑑 (II ,𝑎 ) 
+
+> 𝑖
+
+≥ 𝑑 (II ,𝑎 ) 
+
+> 𝑖
+
+,
+
+0, otherwise . (6) 
+
+• For type-III PoIs. For 𝛼 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+and 𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+of type-III PoIs, we update their definitions by reinterpreting 𝑡 as the start time (i.e., activation time) of a type-III PoI, and introducing 𝑡 ′ as the timeslot index with 𝑡 ≤ 𝑡 ′. Thus, 𝛼 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+= 1 indicates that UAV 𝑢 𝑚 is scheduled to perform the task of 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+during timeslot 𝑡 ′. Based on this, 𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+is calculated by 
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+=
+
+
+
+1,
+
+if 𝛼 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+= 1, 𝑥 (uav ,𝑡 ′ ) 
+
+> 𝑚
+
+= 𝑥 (III ,𝑡 ) 
+
+> 𝑖
+
+, 𝑦 (uav ,𝑡 ′ ) 
+
+> 𝑚
+
+= 𝑦 (III ,𝑡 ) 
+
+> 𝑖
+
+,ℎ(uav ,𝑡 ′ ) 
+
+> 𝑚
+
+> ℎ (III ,𝑡 ) 
+
+> 𝑖
+
+, 𝑡 ′ ∈
+
+h
+
+𝑡, t(− ,𝑡 )
+
+> 𝑖
+
+i
+
+,
+
+0, otherwise ,
+
+(7) In other words, 𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+= 1 shows that the UAV can arrive at the location of a type-III PoI that emerged at time 𝑡 and is still active at 𝑡 ′, when 𝛼 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+= 1. Besides, for the task being active at the beginning of timeslot 𝑡 , we have 
+
+ˆ𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+=
+
+> |T|
+
+∑︁ 
+
+> 𝑡 ′=1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+𝑑 (uav ,𝑡 ′ ) 
+
+> 𝑚
+
+, (8) and 
+
+𝑐 (III ,𝑡 ) 
+
+> 𝑖
+
+=
+
+(
+
+1, ˆ𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+≥ 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+,
+
+0, otherwise . (9) 
+
+• Way to calculate the reward offered by different types of PoIs. 
+
+Note that for different PoI types, their rewards, i.e., 𝑟 (I) 
+
+> 𝑖
+
+, 𝑟 (II ,𝑎 ) 
+
+> 𝑖
+
+,and 𝑟 (III ,𝑡 ) 
+
+> 𝑖
+
+, actually depend on two key factors: (i) the reward of task completion (RoTC) in time, e.g., reflected by 𝑐 (I) 
+
+> 𝑖
+
+, 𝑐 (II ,𝑎 ) 
+
+> 𝑖
+
+,
+
+𝑐 (III ,𝑡 ) 
+
+> 𝑖
+
+; and (ii) the reward of data quality (RoDQ), where higher quality can definitely bring increasing reward. Note that if a task associated with a PoI has not been completed, we have its reward equals to zero. we calculate the reward of different types of PoIs as following: 
+
+• Reward of type-I PoIs. Correspondingly, for a type-I PoI, we have its reward 𝑟 (I) 
+
+> 𝑖
+
+calculated by: 
+
+𝑟 (I) 
+
+> 𝑖
+
+= 𝑐 (I) 
+
+> 𝑖
+
+˜𝑟 (I)
+
+> 𝑖
+
+| {z }
+
+> RoTC of Type I PoI
+
++ 𝑐 (I) 
+
+> 𝑖
+
+Δ ˜𝑟 
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+𝑞 (uav ,𝑡 )
+
+> 𝑚
+
+| {z }
+
+> RoDQ of Type I PoI
+
+, (10) where Δ ˜𝑟 indicates the marginal gain in reward with respect to data quality. 
+
+• Reward of type-II PoIs. Similar to type-I PoIs, we write the reward of task of type-II PoI for its 𝑎 -th appearance as: 
+
+𝑟 (II ,𝑎 ) 
+
+> 𝑖
+
+= 𝑐 (II ,𝑎 ) 
+
+> 𝑖
+
+˜𝑟 (II )
+
+> 𝑖
+
+| {z }
+
+> RoTC of Type II PoI
+
++ 𝑐 (II ,𝑎 ) 
+
+> 𝑖
+
+Δ ˜𝑟 
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+𝑞 (uav ,𝑡 )
+
+> 𝑚
+
+| {z }
+
+> EoDC of Type II PoI
+
+,
+
+(11) 
+
+• Reward of type-III PoIs. Similarly, the reward of a type-III 
+
+PoI emerging at timeslot 𝑡 is defined by 
+
+𝑟 (III ,𝑡 ) 
+
+> 𝑖
+
+= 𝑐 (III ,𝑡 ) 
+
+> 𝑖
+
+˜𝑟 (III )
+
+> 𝑖
+
+| {z }
+
+> RoTC of Type III PoI
+
++ 𝑐 (III ,𝑡 ) 
+
+> 𝑖
+
+Δ ˜𝑟 
+
+> |T|
+
+∑︁ 
+
+> 𝑡 ′=1
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+𝑞 (uav ,𝑡 ′ )
+
+> 𝑚
+
+| {z }
+
+> EoDC of Type III PoI
+
+,
+
+(12) 
+
+D. Modeling of Environmental and Societal Impacts Brought by UAVs 
+
+In our modeling, we provide a novel perspective on LA4Good, by explicitly evaluating the potential impacts of low-altitude intelligent agents on public safety and the surrounding envi-ronment. In particular, we characterize the negative effects associated with UAV flight altitude ℎ(uav ,𝑡 ) 
+
+> 𝑚
+
+, which become increasingly significant as UAVs operate at lower heights. For example, low-altitude flights may generate substantial noise, increase the perceived risk of crashes, and disturb local wildlife, especially birds, thereby leading to ecological disruptions as well as raising public safety and environmental concerns. Thus, we define the ecological penalty function as 𝑓 (eco ,𝑡 )
+
+
+
+ℎ(uav ,𝑡 )
+
+> 𝑚
+
+
+
+,which reflects the penalty to the ecology incurred by the altitude of UAVs during timeslot 𝑡 . This function is an inverse function of ℎ(uav ,𝑡 ) 
+
+> 𝑚
+
+: the lower the UAV flies, the greater the negative impact it imposes on the ground environment (e.g., pedestrians and vehicles) as well as the low-altitude ecosystem (e.g., birds). The form of this function can vary in many ways. For example, it can be modeled by a sigmoid function: 
+
+𝑓 (eco ,𝑡 ) 
+
+ℎ(uav ,𝑡 )
+
+> 𝑚
+
+
+
+=
+
+> |U|
+
+∑︁ 
+
+> 𝑚 =1
+
+𝜀 
+
+1 + 𝑒 𝜆 (×)    
+
+> 
+> ℎ(uav ,𝑡 )
+> 𝑚 −ℎ(0)
+> 
+
+, (13) where 𝜀 is the coefficient of penalty, while ℎ(0) is interpreted as a critical altitude: below it, the UAV has a strong negative effect; above it, the impact becomes progressively smaller. 
+
+E. Modeling of UAV Collision Risks (Including Obstacles and Mid-Air Collisions) 
+
+While excessively low UAV flight altitudes may cause negative impacts, this paper promotes the broader vision of LA4Good by also addressing two critical dimensions of risk management: (i) strict control over UAV-obstacle collisions and (ii) soft control over mid-air collisions. In the following, we offer details regarding these two aspects. 
+
+• Strict control over UAV-obstacle collisions. Given the in-evitable presence of obstacles such as tall buildings, especially in urban environments, this paper enforces a strict constraint to prevent UAVs from colliding with them during flight or task execution. Let B = {𝑏 1, . . . , 𝑏 𝑛 , . . . , 𝑏 |B| } be the set of obstacles, where 𝑏 𝑛 is represented by a tuple 
+
+
+
+l(obs ) 
+
+> 𝑛
+
+, 𝑐 (obs )
+
+> 𝑛
+
+
+
+.In particular, l(obs ) 
+
+> 𝑛
+
+=
+
+
+
+𝑥 (obs ) 
+
+> 𝑛
+
+, 𝑦 (obs ) 
+
+> 𝑛
+
+, ℎ (obs )
+
+> 𝑛
+
+
+
+denotes the 3D coordinate of obstacle 𝑏 𝑛 , while 𝑐 (obs ) 
+
+> 𝑛
+
+represents the cost 7
+
+𝜃 (I,𝑡 ) 
+
+> 𝑖
+
+=
+
+
+
+0, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+≤ 𝑠 (max ) ,      
+
+> 21+𝑒 −𝜆 (num )
+> Í|U|
+> 𝑚 =1𝛽 (I,𝑡 )
+> 𝑖,𝑚 −𝑠 (max )
+> 
+
+− 1, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+> 𝑠 (max ) , (14) 
+
+𝜃 (II ,𝑎,𝑡 ) 
+
+> 𝑖
+
+=
+
+
+
+0, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+≤ 𝑠 (max ) ,      
+
+> 21+𝑒 −𝜆 (num )
+> Í|U|
+> 𝑚 =1𝛽 (II ,𝑎,𝑡 )
+> 𝑖,𝑚 −𝑠 (max )
+> 
+
+− 1, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+> 𝑠 (max ) , (15) 
+
+𝜃 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖
+
+=
+
+
+
+0, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+≤ 𝑠 (max ) ,     
+
+> 21+𝑒 −𝜆 (num )
+> Í|U|
+> 𝑚 =1𝛽 (III ,𝑡,𝑡 ′ )
+> 𝑖,𝑚 −𝑠 (max )
+> 
+
+− 1, if Í|U| 
+
+> 𝑚 =1
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+> 𝑠 (max ) . (16) of detour (e.g., the length of the additional route that needs to be taken) when a UAV passes by 𝑏 𝑛 . When an obstacle is encountered along the UAV’s trajectory, we enforce strict control by providing two possible options: (i) the UAV adjusts its altitude to overfly the obstacle (and correspondingly consumes energy), or (ii) it performs a lateral detour to circumvent the obstacle, which may result in additional travel costs. 
+
+• Soft control over mid-air collisions. The potential for UAV-to-UAV collisions increases as more UAVs operate simultaneously within the same region (e.g., location of a PoI). However, such collisions are not always inevitable. In our modeling, we adopt a soft manner to manage this: instead of directly limiting the number of UAVs, we constrain the probabilistic risk of collision, which increases with UAV density. This allows for flexibility in UAV deployment while maintaining safety-aware operation. For type-I PoI 𝑝 (I) 
+
+> 𝑖
+
+∈ P(I) , type-II PoI 𝑝 (II ) 
+
+> 𝑖
+
+∈ P(II ) , and type-
+
+III PoI 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+∈ P(III ,𝑡 ) , the number of UAVs that may gather at the corresponding location during timeslot 𝑡 (or 𝑡 ′ for type-
+
+III PoI) can be calculated by Í|U| 
+
+> 𝑚 =1
+
+𝛽 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+, Í|U| 
+
+> 𝑚 =1
+
+𝛽 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+(with 
+
+1 ≤ 𝑎 ≤ 𝐴 𝑖 ), and Í|U| 
+
+> 𝑚 =1
+
+𝛽 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+, respectively. To ensure a safe low-altitude operating environment, a reference metric is intro-duced to control UAV density, representing the recommended maximum number of UAVs that can simultaneously occupy a given location, denoted as 𝑠 (max ) . Based on the above, the risk of UAV collision at a certain timeslot regarding different PoIs can be modeled using a shifted-and-normalized sigmoid function to keep the risk value within the interval [0, 1], given as formulas (14)-(16). III. 3D M ULTI -UAV P ATH PLANNING AND TASK 
+
+SCHEDULING OVER DIVERSE POIS WITH 
+
+SOCIALLY -C OMPLIANT CONCERNS 
+
+A. Problem Description 
+
+Our primary goal is to optimize 3D paths of multiple UAVs coupled with task scheduling over heterogeneous PoIs, in environments with dynamic and uncertain nature. To achieve this, the designed optimization process aims to maximize the net reward derived from UAV services, which strives to achieve a well-balanced trade-off between service quality and the mitigation of potential negative impacts that low-altitude intelligent agents may have on human populations and surrounding ecosystems, while simultaneously incorporating multi-dimensional risk control. Recall our previous discussions, we first write the positive reward that UAVs can obtain for serving diverse PoI types as: 
+
+R(+) = 
+
+> |P(I)|
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑟 (I) 
+
+> 𝑖
+
++ 
+
+> |P(II )|
+
+∑︁ 
+
+> 𝑖 =1
+> 𝐴 𝑖
+
+∑︁ 
+
+> 𝑎 =1
+
+𝑟 (II ,𝑎 ) 
+
+> 𝑖
+
++
+
+> |T|
+
+∑︁   
+
+> 𝑡 =1
+> |P(III ,𝑡 )|
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑟 (III ,𝑡 ) 
+
+> 𝑖
+
+, (17) Then, the overall negative impacts across the whole time domain can be calculated by: 
+
+R(−) =
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+
+𝑓 (eco ,𝑡 ) 
+
+ℎ(uav ,𝑡 )
+
+> 𝑚
+
+
+
+, (18) Accordingly, combining these two, we have the net reward computed by: 
+
+R(net ) = R(+) − R(−) . (19) Accordingly, the optimization problem of our interest is defined as the following PP : argmax    
+
+> α,{L𝑚 }𝑢𝑚 ∈U
+
+R(net ) (20) 
+
+s.t. 
+
+(C1): 
+
+> |T|
+
+∑︁ 
+
+> 𝑡 =1
+
+𝑒 (𝑡 ) 
+
+> 𝑚
+
+≤ 𝑒 (+)  
+
+> 𝑚
+
+, ∀ 𝑢 𝑚 ∈ U
+
+(C2): 𝜃 (I,𝑡 ) 
+
+> 𝑖
+
+≤ 𝜃 max , 𝜃 (II ,𝑎,𝑡 ) 
+
+> 𝑖
+
+≤ 𝜃 max , 𝜃 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖
+
+≤ 𝜃 max 
+
+(C3): l(uav ,+) = Istart , l(uav ,−) = Iend 
+
+(C4): l(uav ,𝑡 ) ≠ l(obs ) 
+
+> 𝑛
+
+, ∀𝑏 𝑛 ∈ B
+
+(C5): 𝑣 (xy ,𝑡 +1) 
+
+> 𝑚
+
+− 𝑣 (xy ,𝑡 ) 
+
+> 𝑚
+
+≤ 𝑣 (xy ,max ) , 𝑣 (h,𝑡 +1) 
+
+> 𝑚
+
+− 𝑣 (h,𝑡 ) 
+
+> 𝑚
+
+≤ 𝑣 (h,max ) ,
+
+where α denotes the profile of all 𝛼 (I,𝑡 ) 
+
+> 𝑖,𝑚
+
+, 𝛼 (II ,𝑎,𝑡 ) 
+
+> 𝑖,𝑚
+
+and 𝛼 (III ,𝑡 ,𝑡 ′ ) 
+
+> 𝑖,𝑚
+
+,and {L𝑚 }𝑢 𝑚 ∈U collects all the paths cross UAVs. Particularly, in 
+
+P, constraint (C1) limits the energy available to each UAV, while 
+
+Í|T| 
+
+> 𝑡 =1
+
+𝑒 (𝑡 ) 
+
+> 𝑚
+
+depens on factors such as 𝑒 (hov ) 
+
+> 𝑚
+
+, 𝑒 (mov , ˜v) . Constraint (C2) constrains the collision risk among UAVs, while (C3) ensures that each UAV departs from its origin and lands at the designated destination to accomplish the assigned task, and (C4) enforces obstacle avoidance. Moreover, (C5) bounds the horizontal and vertical accelerations within the maximum allowable limits. In particular, problem P involves tightly coupled decision variables. Specifically, the binary assignment variable determines the task-UAV matching, while the path variable characterizes the continuous spatial-temporal flight path of each UAV, including geographical coordinates and altitude profiles. Notably, the path is not uniquely determined by the assignment decision, as it should be jointly optimized to enhance task completion quality, mitigate ground impact, and accommodate flight behaviors such as hovering. Consequently, the problem entails the coupling of discrete assignment variables and high-dimensional continuous trajectory variables, leading to a large-scale mixed-integer optimization problem. 
+
+B. Problem Transformation and Solution Design 
+
+To tackle the resulting complexity, we decompose the problem into two sequential stages, embedded with three sub-problems detailed below: (i) Offline planning stage (before 𝑡 = 1): During 8
+
+this time, we first estimate the future service demands of type-
+
+II PoIs by solving a regression problem, with a Transformer-based forecasting module (Module A) developed. Based on these predictions, we further formulate an offline optimization problem, employing a carefully designed evolutionary heuristic to pre-plan efficient UAV paths over type-I and type-II PoIs, with the aim to maximize the expected net reward (Module B, only associated with these two PoI types). Such a design is motivated by the fact that the information of type-III PoIs is unavailable until they actually emerge in the operational area. (ii) Online adaptation stage (from 𝑡 = 1): In this stage, UAVs initially follow the pre-determined paths obtained in the former stage. Once any type-III PoI becomes active, we dynamically adjust the current paths by solving an online optimization problem, for which we investigate a greedy-empowered yet time-efficient refinement strategy (Module C), so as to promptly adapt to the newly revealed information and further improve the achieved net reward. This hybrid two-stage framework effectively balances planning optimality and decision-making efficiency, enabling fast responses to unexpected events while preserving high-quality solutions under practical computational constraints. In the following, we delve into details associated with the three modules, forming our FORTUNE. 
+
+1) Module A: Transformer-based service demand prediction for Type-II PoIs (Stage 1): Type-II PoIs are spatially fixed but temporally dynamic, with demands confined to specific time windows. Before take-off, Module A designs a Transformer-based predictor to estimate their demand evolution and maps the forecasts to active intervals, which are then fed into offline path pre-planning. Accordingly, for a Type-II PoI 𝑝 (II ) 
+
+> 𝑖
+
+, we use its historical observation values as the input of the prediction model. Let 𝑡 be the current timeslot and 𝐿 (his ) denote the length of the historical observation window, the input sequence is 
+
+X(in ,𝑡 ) 
+
+> 𝑖
+
+=
+
+h
+
+x(𝑡 −𝐿 (his ) ) 
+
+> 𝑖
+
+, x(𝑡 −𝐿 (his ) +1) 
+
+> 𝑖
+
+, . . . , x(𝑡 −1)
+
+> 𝑖
+
+i⊤
+
+∈ R𝐿 (his ) ×𝑑 (model )
+
+,
+
+(21) where x( 𝜏 ) 
+
+> 𝑖
+
+denotes the normalized observation feature of 𝑝 (II )
+
+> 𝑖
+
+at timeslot 𝜏 ∈ { 𝑡 − 𝐿 (his ) , ..., 𝑡 − 1} , e.g., traffic-flow intensity, and 𝑑 model is the feature embedding dimension. Since the Transformer does not rely on recurrent structures, positional information is added to preserve the temporal order of the sequence. Specifically, for the 𝑜 -th position, the sinusoidal positional encoding can be given by 
+
+E𝑜, 2 𝑗 = sin 
+
+ 𝑜 
+
+10000 2 𝑗 /𝑑 model 
+
+
+
+, (22) 
+
+E𝑜, 2 𝑗 +1 = cos 
+
+ 𝑜 
+
+10000 2 𝑗 /𝑑 model 
+
+
+
+, (23) where 𝑗 denotes the dimension index. Then, the embedded input can be obtained by 
+
+Z(0,𝑡 ) 
+
+> 𝑖
+
+= X(in ,𝑡 ) 
+
+> 𝑖
+
++ E. (24) Based on the embedded sequence, the designed Transformer encoder extracts temporal correlations through multi-head self-attention. In each attention head, the input is linearly projected into the query, key, and value matrices, denoted by Q, K, and 
+
+V, respectively. The scaled dot-product attention is 
+
+A(Q, K, V) = softmax 
+
+ QK ⊤
+
+√𝑑 𝑘 
+
+
+
+V, (25) where 𝑑 𝑘 denotes the dimension of key vector. By performing attention in multiple representation subspaces, the model can capture both local fluctuations and long-range temporal dependencies of service demands. The outputs of different heads are concatenated and further processed by feed-forward layers with residual connections and normalization. After several stacked Transformer layers, a linear prediction head maps the learned temporal representation into the future observation sequence: 
+
+ˆo(II ,𝑡 :𝑡 +𝐿 (pred ) −1) 
+
+> 𝑖
+
+= 𝐹 Θ
+
+
+
+X(in ,𝑡 )
+
+> 𝑖
+
+
+
+, (26) where 𝐹 Θ (·) denotes Transformer predictor parameterized by 
+
+Θ, and 𝐿 (pred ) is the prediction horizon. Apparently, the model can be trained by minimizing the prediction error. Then, the predicted observation values are used to infer the activation states of Type-II PoIs (Type-II PoI is regarded as active at timeslot 𝑡 if its predicted observation value satisfies ˆ𝑜 (II ,𝑡 ) 
+
+> 𝑖
+
+≥
+
+𝑜 (∗) ). The consecutive active timeslots are further treated as the predicted active windows of PoIs, while, together with Type-I
+
+PoIs that remain valid over the whole time horizon, announcing the service demand for Module B. 
+
+2) Module B: Offline 3D path pre-planning via ES 2A:
+
+Thanks to Module A predictor, Module B aims to perform offline path pre-planning for Type-I and Type-II PoIs by design-ing three sub-modules (abbreviated as SubM for simplicity). However, directly optimizing task assignments and 3D paths for multiple UAVs is still computationally expensive, since both discrete scheduling decisions and continuous position variables are involved. To this end, we design an enhanced sparrow search 
+
+algorithm ( ES 2A), where each individual searches over the task priority space rather than directly encoding UAV waypoints. 
+
+• SubM B.1: priority-driven encoding and tent chaotic mapping-based population initialization. One key challenge in multi-UAV path planning is achieving swarm-level coordination while preserving individual autonomy. Conventional coordinate-based representations lead to rapidly growing search dimensions with increasing UAVs and waypoints, causing a combinatorial explosion and the curse of dimensionality, which severely hampers convergence. To address this, we develop a task-priority-based real-valued encoding strategy, searching the global task execution order rather than directly optimizing path coordinates (by optimizing task response order, swarm coordination is implicitly achieved). Moreover, Tent mapping is incorporated to initialize the population, thereby improving population diversity while mitigating premature convergence to local optima. Let T (off ) = {𝜙 1, 𝜙 2, . . . , 𝜙 𝑠 , . . . , 𝜙 𝑁 (task ) } denote the offline task set (with 𝑁 (task ) tasks), consisting of all Type-I
+
+and predicted Type-II tasks. Also, we denote 𝑔 as the generation index. In our ES 2A, key definition are detailed by follows. 
+
+Definition 1 (Population): A population in ES 2A denotes a set of candidate individuals, given by 
+
+X (𝑔 ) =
+
+n
+
+x(𝑔 ) 
+
+> 1
+
+, x(𝑔 ) 
+
+> 2
+
+, . . . , x(𝑔 ) 
+
+> 𝑜
+
+, . . . , x(𝑔 ) 
+
+> 𝑁 (p)
+
+o
+
+, (27) where 𝑁 (p) is the population size and x(𝑔 ) 
+
+> 𝑜
+
+denotes the 𝑜 -th individual at generation 𝑔 .
+
+Definition 2 (Individual): An individual x(𝑔 ) 
+
+> 𝑜
+
+denotes a swarm-level path set (i.e., a candidate task-scheduling solution) and serves as the basic optimization unit in ES 2A, with search conducted at both individual and population levels. Each individual is uniquely mapped to a priority vector, establishing a one-to-one correspondence. Rather than directly encoding UAV paths, an individual encodes task priorities, determining the global execution order, while specific UAV paths are generated by a decoder. 
+
+Definition 3 (Priority vector and priority weight): Priority vector determines the task execution order of the correspond-ing individual. For x(𝑔 ) 
+
+> 𝑜
+
+, its priority vector is defined as h
+
+𝑥 (𝑔 ) 
+
+> 𝑜, 1
+
+, 𝑥 (𝑔 ) 
+
+> 𝑜, 2
+
+, . . . , 𝑥 (𝑔 ) 
+
+> 𝑜,𝑠
+
+, . . . , 𝑥 (𝑔 ) 
+
+> 𝑜, 𝑁 (task )
+
+i
+
+, where 𝑥 (𝑔 ) 
+
+> 𝑜,𝑠
+
+∈ [ 0, 1] is the 9
+
+priority weight of task 𝜙 𝑠 in individual x(𝑔 ) 
+
+> 𝑜
+
+. A larger 𝑥 (𝑔 )
+
+> 𝑜,𝑠
+
+implies higher priority for task 𝜙 𝑠 , leading to earlier consider-ation during decoding. For each individual, tasks are ranked by descending priority weights to form a global execution sequence for decoding. This approach converts the original discrete scheduling problem into a continuous optimization in the priority space. In standard S2A, the initial population is usually generated by pseudo-random numbers. However, when 𝑁 (task ) is large, random initialization may lead to clustered individuals and insufficient diversity. To enhance the coverage of the initial search space, Tent chaotic mapping is adopted to initialize the population X (0) , as given by 
+
+𝑧 𝑘 +1 =
+
+2𝑧 𝑘 , 0 ≤ 𝑧 𝑘 < 0.5,
+
+2(1 − 𝑧 𝑘 ), 0.5 ≤ 𝑧 𝑘 ≤ 1. (28) where 𝑧 𝑘 ∈ [ 0, 1] denotes the chaotic variable generated at the 
+
+𝑘 -th iteration during random number generation. The generated chaotic sequence is used to assign the priority weights 𝑥 (0) 
+
+> 𝑜,𝑠
+
+for all individuals in X (0) . Benefiting from its uniform distribution property, it helps generate diverse task-priority patterns at the beginning of the search, thereby improving the global exploration capability of ES 2A.
+
+• SubM B.2: Hierarchical heuristic decoding and evaluation. 
+
+Due to the strict task active time-window and energy constraints of UAVs, a priority sequence cannot be directly converted into executable UAV path. Therefore, we design a hierarchical heuristic decoder to translate each priority-encoded individual into feasible paths. The decoder contains three serially coupled decision strategies, namely, joint obstacle avoidance and flight-altitude decision, collection-altitude decision, and adaptive discrete speed selection. 
+
+Strategy 1: Joint obstacle avoidance and flight-altitude decision. 
+
+When UAV 𝑢 𝑚 flies from PoI 𝑝 𝑖 to PoI 𝑝 𝑖 ′ , it needs to determine a proper flight altitude 6. Recall discussions in Sec. II, the flight altitude is affected by the ecological penalty related to low-altitude operation and the obstacle-avoidance cost caused by vertical climbing or horizontal detouring. Thus, consider a flight segment from (𝑥 𝑖 , 𝑦 𝑖 , ℎ 𝑖 ) to (𝑥 𝑖 ′ , 𝑦 𝑖 ′ , ℎ 𝑖 ′ ), we first check the obstacles intersecting the straight line between two PoIs in the horizontal plane, and collect them into the set b(path ) 
+
+> 𝑖,𝑖 ′
+
+,and let ℎ(obs ) 
+
+> 𝑖,𝑖 ′
+
+denote the maximum obstacle altitude in b(path ) 
+
+> 𝑖,𝑖 ′
+
+.The optimal flight altitude can be obtained by (29). 
+
+ℎ(uav ,𝑡 )∗  
+
+> 𝑚
+
+= arg min 
+
+> ℎ
+
+©«
+
+> ˆ𝑡 𝑝 𝑖 ′
+
+∑︁ 
+
+> 𝜏 =ˆ𝑡 𝑝 𝑖
+
+𝛾 1 𝑓 (eco , 𝜏 ) (ℎ(uav , 𝜏 ) 
+
+> 𝑚
+
+) + 𝛾 2∑︁ 
+
+> b(path )
+> 𝑖,𝑖 ′
+
+𝑐 (obs )
+
+> 𝑛
+
+ª®®¬
+
+(29) Here, ℎ ∈ [ ℎmin , ℎ max ], ˆ𝑡 𝑝 𝑖 denotes the time when UAV 𝑢 𝑚 
+
+finishes data collection at 𝑝 𝑖 , and ˆ𝑡 𝑝 𝑖 ′ represents the time when it arrives at 𝑝 𝑖 ′ ; 𝛾 1 and 𝛾 2 are weighting coefficient. Since (29) contains nonlinear terms and the feasible altitude space is bounded, we design joint 3D avoidance-altitude decision, transforming the path planning process into a multi-cost trade-off over a discrete set of representative altitude strategies, to balance energy consumption, time cost, and ecological impact. Then, four representative candidate altitudes are considered (since they work for all pairs of 𝑝 𝑖 and 𝑝 𝑖 ′ , we omit 𝑖 and 𝑖 ′
+
+for simplicity):  
+
+> •
+
+Current-or-target altitude ℎ(ct ) : ℎ(ct ) = max (ℎ𝑖 , ℎ 𝑖 ′ ). The maximum altitude between the current point and the target     
+
+> 6Note that here we use 𝑝 𝑖 and 𝑝 𝑖 ′to denote PoIs while do not care their types, since Module B only preplans the paths for the former two types of PoIs.
+
+point is selected, making the additional vertical climbing energy consumption equal to zero, and to minimize the ecological penalty on this basis.  
+
+> •
+
+Physical lower-bound altitude ℎ(limit ) : ℎ(limit ) = ℎ(obs ) +
+
+𝛿 (safe ) , where 𝛿 (safe ) denotes the safety margin for ver-tical flight. In general, this corresponds to the minimum climbing range that does not require horizontal detouring.  
+
+> •
+
+Ecological escape altitude ℎ(eco ) : For the continuous ecological penalty function 𝑓 (eco ) (ℎ) (see (13)), ℎ(eco )
+
+is selected such that 𝑓 (eco ) (ℎ(eco ) ) = 𝜘 eco , meaning that flying at ℎ(eco ) can have slight ecological penalty. This may trade increased climbing energy consumption for an extremely low ecological penalty.  
+
+> •
+
+Ecological critical altitude ℎ(mid ) : ℎ(mid ) is selected for 
+
+𝑓 (eco ) (ℎ(mid ) ) = 𝜘 mid , i.e., the inflection-point altitude of sigmoid function. Detouring at this altitude is compro-mise, avoiding high-altitude climbing while keeping the ecological impact within an acceptable range. For each of the above, obstacle detection is performed along the corresponding flight route. When obstacles are present, the Manhattan detour distance 𝐷 (mht ) is estimated accordingly; oth-erwise, the UAV directly flies from 𝑝 𝑖 to 𝑝 𝑖 ′ along the straight line. Accordingly, the horizontal detour energy is calculated as 𝑐 (obs ,lvl ) (ℎ). Meanwhile, based on the altitude difference between ℎ and ℎ𝑖 , the vertical climbing or descending energy is calculated as 𝑐 (obs ,vtl ) (ℎ). Thus, the obstacle-related cost is given by 𝑐 (obs ) (ℎ) = 𝑐 (obs ,lvl ) (ℎ) + 𝑐 (obs ,vtl ) (ℎ). Then, the total altitude cost is evaluated by combining ecological penalty and obstacle-related cost: 𝐽 (alt ) (ℎ) = 𝑓 (eco ) (ℎ) + 𝑐 (obs ) (ℎ). Finally, the optimal flight altitude for this segment is selected as 
+
+ℎ∗ = arg min  
+
+> ℎ∈ H
+
+𝐽 (alt ) (ℎ). (30) 
+
+Strategy 2: Optimal data-collection altitude decision. After UAV 𝑢 𝑚 arrives at 𝑝 𝑖 ′ , it further needs to determine the optimal altitude for data collection. Different from the flight-altitude, the collection-altitude decision should additionally consider the data quality 𝑞 (uav ,𝑡 ) 
+
+> 𝑚
+
+, since lower altitude may improve the sensing quality while also increasing the ecological penalty and altitude-changing cost. Therefore, we apply a grid search over the interval. Specifically, during data collection, the UAV searches the altitude interval (ℎ(uav ,min ) 
+
+> 𝑖 ′
+
+, ℎ (eco ) ) with a step size of 𝑙 (search ) . For each candidate altitude, the decoder calculates the corresponding ecological penalty, additional energy consumption, and data collection quality. The collection altitude is then selected by maximizing the difference between service quality and the sum of the ecological penalty and additional energy consumption. Through the above stepwise grid search, the decoder reduces computational complexity while jointly considering obstacle avoidance, ecological impact, and data-collection quality. Algorithms related to the former two strategies are presented in Alg. 1 (see Appendix). 
+
+Strategy 3: Adaptive discrete speed selection. After determining the flight and collection altitudes, the decoder plans the flying speed toward the target task. For analytical simplicity, the speed is discretized into several candidate levels: V =𝑣 (slow ) , 𝑣 (mid ) , 𝑣 (fast ) . For the flight segment from PoI 𝑝 𝑖 to 
+
+𝑝 𝑖 ′ , let 𝑑 𝑖,𝑖 ′ denote the segment distance and t(arr ,𝑣 ) 
+
+> 𝑚
+
+denote the arrival time of UAV 𝑢 𝑚 when flying with speed 𝑣 . Moreover, 
+
+t(start ) 
+
+> 𝑖
+
+and t(end ) 
+
+> 𝑖
+
+denote the start time and deadline of task related PoI 𝑝 𝑖 , respectively. The decoder allows the UAV to arrive slightly later than the task start time, since the reduced collected data can be compensated by other cooperative UAVs. However, arriving after the deadline is meaningless. Thus, the 10 
+
+time-violation cost is designed as 
+
+𝐶 (time ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+=
+
+
+
+0, t(arr ,𝑣 ) 
+
+> 𝑚
+
+≤ t(start ) 
+
+> 𝑖 ′
+
+,𝜔 
+
+
+
+t(arr ,𝑣 ) 
+
+> 𝑚
+
+− t(start )
+
+> 𝑖 ′
+
+
+
+, t(start ) 
+
+> 𝑖 ′
+
+< 𝑡 (arr ,𝑣 ) 
+
+> 𝑚
+
+< t(end ) 
+
+> 𝑖 ′
+
+,
+
++∞ , t(arr ,𝑣 ) 
+
+> 𝑚
+
+≥ t(end ) 
+
+> 𝑖 ′
+
+,
+
+(31) where 𝜔 is the timeout penalty coefficient. The energy cost considers both the flying energy and the hovering energy caused by early arrival, given by 
+
+𝐶 (energy ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+= 𝑒 (mov ,𝑣 )
+
+> 𝑚
+
+𝑑 𝑖,𝑖 ′
+
+𝑣 + 𝑒 (hov ) 
+
+> 𝑚
+
+max 
+
+
+
+t(start ) 
+
+> 𝑖 ′
+
+− t(arr ,𝑣 ) 
+
+> 𝑚
+
+, 0
+
+
+
+.
+
+(32) Accordingly, the speed cost function is defined as 
+
+𝐽 𝑚,𝑖,𝑖 ′ (𝑣 ) = 𝐶 (energy ) 
+
+> 𝑚,𝑖,𝑖 ′
+
++ 𝐶 (time ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+. (33) The decoder traverses all candidate speeds in V and selects the one with the minimum cost: 
+
+𝑣 ∗ = arg min  
+
+> 𝑣 ∈ V
+
+𝐽 (𝑣 ). (34) With sufficient remaining time, the decoder selects the most energy-efficient cruising speed since no time penalty is incurred. As the deadline tightens, it favors higher speeds to reduce time-violation penalties. After the above three strategies are completed, the decoder evaluates the execution cost of each feasible UAV for the current task. Specifically, for each task in the priority sequence, the decoder reads the current fleet state 
+
+W ( 𝑡 ) = {( l𝑚 , t𝑚 , 𝐸 𝑚 ) | 𝑢 𝑚 ∈ U} , (35) where l𝑚 , t𝑚 , and 𝐸 𝑚 denote current location, available service time, and remaining energy of UAV 𝑢 𝑚 , respectively. For each UAV satisfying the altitude, time-window, energy, and collision constraints, the decoder determines its flight altitude, collection altitude, and speed, and then generates a feasible flight path from its current location to the task location (see procedure of Strategy 3 in Alg. 2, Appendix). The task execution cost combines energy consumption and ecological penalties along the generated path. UAVs with finite costs are ranked to form a candidate list. The decoder sequentially selects UAVs to satisfy the task’s data requirement, assigning it to a single UAV if sufficient, or cooperatively to multiple UAVs otherwise. UAV states, remaining energy, and paths are updated after each assignment. The decoded paths are then evaluated by net reward given in (19), which defines the individual’s fitness. 
+
+• SubM B.3: Adaptive evolution integrated with Lévy-flight. 
+
+Strategy 1: Basic evolutionary update of the Lévy-flight-based adaptive evolutionary. After the hierarchical heuristic decoding and fitness evaluation (base on (19)), ES 2A enters evolutionary update. At the beginning of each generation, all individuals 7
+
+are ranked in descending order according to their fitness values 
+
+𝐹 (x(𝑔 ) 
+
+> 𝑜
+
+) obtained through the decoding and evaluation process in SubM B.2, and the historical global best priority vector is updated as x(best ,𝑔 ) . Then, according to the predefined discoverer ratio 𝜌 f ∈ ( 0, 1), the top ⌊𝜌 f 𝑁 (p) ⌋ individuals are selected as discoverers, while the remaining ones are regarded as joiners. 
+
+(i) Discoverer update. Discoverers represent the individuals with relatively high fitness in the current population. Their role is to conduct focused search around promising regions and guide the evolutionary direction of the population. For each discoverer, a random number 𝑟 ∼ U(0, 1) is generated. According to the 
+
+> 7Since each individual corresponds to only one task-priority vector, and all subsequent operations are performed on the task-priority vector of the individual, the individual and its priority vector are treated equivalently hereafter for simplicity, without further distinction.
+
+relationship between 𝑟 and the warning threshold 𝑆 (st ) , the priority vector is updated by 
+
+x(𝑔 +1) 
+
+> 𝑜
+
+=
+
+
+
+x(𝑔 ) 
+
+> 𝑜
+
+· exp 
+
+
+
+− 𝑔 + 1
+
+𝐺 (max )
+
+
+
+, 𝑟 < 𝑆 (st ) ,
+
+x(𝑔 ) 
+
+> 𝑜
+
++ 𝜀 z, 𝑟 ≥ 𝑆 (st ) ,
+
+(36) where 𝐺 (max ) denotes the maximum number of generations, 
+
+z ∼ N ( 0, I) is a standard Gaussian random vector, and 𝜀 is the perturbation amplitude coefficient. When 𝑟 < 𝑆 (st ) , the discoverer performs local search with a progressively shrinking search range. Otherwise, random perturbations are applied to the priority vector to preserve population diversity and prevent premature convergence. 
+
+(ii) Joiner update. Joiners perform auxiliary search and structural adjustments, refining task priorities through multi-scale pertur-bations around the current global best. This jointly exploits local structure and explores globally in the high-dimensional priority space. At generation 𝑔 , joiners are split into two subgroups by fitness ranking. The update rule is defined as 
+
+x(𝑔 +1) 
+
+> 𝑜
+
+=
+
+
+
+x(best ,𝑔 ) +
+
+
+
+𝜼 − 12
+
+
+
+⊙ x(𝑔 ) 
+
+> 𝑜
+
+− x(best ,𝑔 ) , 𝑜 ≤ 𝜏 (f) ,
+
+x(best ,𝑔 ) + 𝜁 L(D), 𝑜 > 𝜏 (f) .
+
+(37) where 𝜏 (f) = (1+𝜌 (f) ) 𝑁 (p) 
+
+> 2
+
+denotes the adaptive threshold, 
+
+𝜼 ∼ U(0, 1)D is a random vector, ⊙ denotes the element-wise product, 𝜁 is the Levy step-size scaling coefficient, and D = 𝑁 (task ) is the dimension of the priority vector. Moreover, 
+
+L(D) denotes a D-dimensional Levy-flight random vector generated by the Mantegna algorithm, whose components follow a heavy-tailed Lévy distribution [31]. Joiners are stratified by fitness: high-fitness individuals perform small-scale perturbations around the global best to refine local solutions, while low-fitness individuals undergo large-scale Lévy-flight perturbations that reshape task priorities and expand the search space. This differential strategy balances local exploitation and global exploration, preventing population over-concentration at a single scale. Thus, ES 2A maintains cross-region exploratory capacity throughout iterations, structurally alleviating premature convergence (see Alg. 3, Appendix). 
+
+Strategy 2: Danger-aware mechanism and elite perturbation. 
+
+Although the discoverer–joiner update can balance exploitation and exploration to some extent, it may still suffer from two issues: (i) premature convergence caused by population homogenization and (ii) search stagnation caused by the long-term non-improvement of the global best individual. This is mainly due to the highly nonlinear mapping between the priority vector x𝑜 and the fitness value 𝐹 (x𝑜 ) induced by the heuristic decoder, together with the fragmented and multi-modal nature of the feasible region. Consequently, individuals may rapidly converge to similar priority structures, leading to reduced diversity and weakened capability to escape local optima. To alleviate this, we introduce a danger-aware mechanism inspired by the emergency response behavior of sparrow popu-lations under predation risk. When convergence degradation is detected, such as insufficient population diversity or prolonged stagnation of the best fitness, the mechanism performs a low-frequency adjustment on selected individuals to maintain diversity while preserving exploitation around promising regions. Specifically, during the 𝑔 -th generation, a subset of individuals is randomly selected to form the danger-aware set K𝑔 . For any 11 
+
+selected individual 𝑜 ∈ K 𝑔 , the update rule is 
+
+x(𝑔 +1) 
+
+> 𝑜
+
+=
+
+
+
+x(best ,𝑔 ) + 𝝐 ⊙ x(𝑔 ) 
+
+> 𝑜
+
+− x(best ,𝑔 ) ,
+
+if 𝐹 (x(𝑔 ) 
+
+> 𝑜
+
+) < 𝐹 (x(best ,𝑔 ) ),
+
+x(𝑔 ) 
+
+> 𝑜
+
++ 𝛿 𝝃 ,
+
+if 𝐹 (x(𝑔 ) 
+
+> 𝑜
+
+) = 𝐹 (x(best ,𝑔 ) ),
+
+(38) where 𝝐 is a random vector uniformly distributed in [0, 1],
+
+⊙ denotes the Hadamard product, 𝝃 is a zero-mean random perturbation vector, and 𝛿 is the perturbation amplitude control coefficient. These two cases correspond to different danger-aware behaviors. Individuals with fitness lower than the current best are guided toward the best priority structure to intensify ex-ploitation of promising regions. In contrast, individuals already reaching the best fitness level are subjected to controlled random perturbations, preventing the population from collapsing into a single priority structure and preserving exploration capability. By combining elite-guided exploitation and perturbation-based diversity preservation, the danger-aware mechanism effectively mitigates search stagnation and improves the robustness of the offline pre-planning process in high-dimensional task-priority spaces (see Alg. 4, Appendix). 
+
+3) Module C: Greedy-empowered timely adjustment when Type-III PoIs have needs (Stage 2): Since Type-III PoIs emerge without prior knowledge, Module C performs online adaptation based on the offline plan generated by Module B. Rather than replanning globally, it preserves the overall path structure and locally adjusts the remaining task sequence and trajectories when new Type-III tasks arrive, ensuring real-time responsive-ness with low computational overhead. Upon task detection, feasible UAVs are identified according to the current fleet state, and candidate cooperative sets are evaluated via a cooperative net-benefit metric that jointly captures task reward, reward dilution, additional energy consumption, and plan disruption. The cooperative set and insertion time maximizing the feasible net benefit are then selected for execution. 
+
+• SubM C.1: Construction of task-feasible set (Alg. 5, Appendix). When a new Type-III PoI 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+∈ P(III ,𝑡 ) appears at timeslot 𝑡 , it is necessary to first determine whether the currently remaining schedulable UAVs can complete data collection requirement within the valid time window. Recall (35) and the emergent task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+at time 𝑡 , with its active time window 
+
+[𝑡, t(− ,𝑡 ) 
+
+> 𝑖
+
+], and the required amount of collected data 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+.First, for any UAV 𝑢 𝑚 ∈ U, whether it has the basic feasibility to participate in the emergent task is determined. To this end, the earliest arrival time of UAV 𝑢 𝑚 at the task location under the current state is defined as t(arr ) 
+
+> 𝑚,𝑖
+
+= t(𝑡 ) 
+
+> 𝑚
+
++ 𝜏 (fly ) 
+
+> 𝑚,𝑖
+
+, where 𝜏 (fly )
+
+> 𝑚,𝑖
+
+denotes the flight time required for UAV 𝑢 𝑚 to fly from its current position to the task location. This flight time is jointly determined by the altitude decision, velocity selection, and obstacle-avoidance mechanism in Module B. Moreover, t(𝑡 )
+
+> 𝑚
+
+denotes the time when UAV 𝑢 𝑚 completes its current task. Considering that a Type-III task becomes active from its occur-rence time 𝑡 , the actual data collection start time of UAV 𝑢 𝑚 can be expressed as t(start ) 
+
+> 𝑚,𝑖
+
+= max 
+
+
+
+t(arr ) 
+
+> 𝑚,𝑖
+
+, 𝑡 
+
+
+
+. When t(start ) 
+
+> 𝑚,𝑖
+
+< t(− ,𝑡 ) 
+
+> 𝑖
+
+,UAV 𝑢 𝑚 is temporally feasible to participate in data collection before the task deadline. Furthermore, its effective collection duration for this task is defined as Δt(eff ) 
+
+> 𝑚,𝑖
+
+= t(− ,𝑡 ) 
+
+> 𝑖
+
+− t(start ) 
+
+> 𝑚,𝑖
+
+.Accordingly, the maximum amount of data that UAV 𝑢 𝑚 can contribute to task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+can be estimated as 
+
+𝑑 (avail ) 
+
+> 𝑚,𝑖
+
+= 𝑑 (uav ) 
+
+> 𝑚
+
+Δt(eff ) 
+
+> 𝑚,𝑖
+
+, (39) where 𝑑 (uav ) 
+
+> 𝑚
+
+denotes the data collection capability of UAV 
+
+𝑢 𝑚 per unit time. The definitions of the concepts involved in Module C are given as follows:  
+
+> •
+
+Candidate feasible UAV set: For 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+, if UAV 𝑢 𝑚 can reach before its deadline while satisfying the remain-ing energy constraint, minimum flight-altitude constraint, obstacle-avoidance constraint, and the feasibility of subse-quent flight after task insertion, then 𝑢 𝑚 is regarded as a candidate feasible UAV for 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+. The candidate feasible UAV set is denoted by 
+
+𝑈 (cand ) 
+
+> 𝑖
+
+=
+
+n
+
+𝑢 𝑚 ∈ U t(start ) 
+
+> 𝑚,𝑖
+
+< t(− ,𝑡 ) 
+
+> 𝑖
+
+, 𝑒 (𝑡 ) 
+
+> 𝑚
+
+≥ 𝑒 (req )
+
+> 𝑚,𝑖
+
+o
+
+,
+
+(40) where 𝑒 (𝑡 ) 
+
+> 𝑚
+
+is the remaining energy of UAV 𝑢 𝑚 at timeslot 
+
+𝑡 , and 𝑒 (req ) 
+
+> 𝑚,𝑖
+
+represents the additional energy consumption required for UAV 𝑢 𝑚 to insert and execute this emergent task.  
+
+> •
+
+Feasible solution set: A feasible solution 𝐺 𝑖 represents a UAV group generated by selecting a certain number of UAVs from 𝑈 (cand ) 
+
+> 𝑖
+
+to respond to the emergent task. It specifies which UAVs are assigned to execute 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+.Meanwhile, the selected UAV group should satisfy the tolerable collision-risk constraint, i.e., 
+
+𝐺 𝑖 ⊆ 𝑈 (cand ) 
+
+> 𝑖
+
+, 𝜃 𝑖 (𝐺 𝑖 ) < 𝜃 (max ) , (41) where 𝜃 𝑖 (𝐺 𝑖 ) denotes UAV collision risk caused by the cooperative execution of task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+by UAVs in 𝐺 𝑖 . 
+
+> •
+
+Candidate cooperative set: For each 𝐺 𝑖 , we evaluate the joint task contribution of its UAVs. If the total available data contribution satisfies the data requirement of the emergent task, i.e., Í𝑢 𝑚 ∈𝐺 𝑖 𝑑 (avail ) 
+
+> 𝑚,𝑖
+
+≥ 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+, 𝐺 𝑖 can be regarded as a feasible task-completion solution (FTCS) .All FTCSs constitute a candidate cooperative set as 
+
+G𝑖 =
+
+n
+
+𝐺 (1) 
+
+> 𝑖
+
+, 𝐺 (2) 
+
+> 𝑖
+
+, . . . , 𝐺 (𝑔 ) 
+
+> 𝑖
+
+, . . . , 𝐺 ( | G 𝑖 | ) 
+
+> 𝑖
+
+o
+
+, (42) 
+
+• SubM C.2: Net-benefit evaluation and greedy assignment for candidate cooperative sets. After obtaining G𝑖 , a proper selection scheme that jointly consider task reward, additional energy consumption, and variation of ecological penalty caused by path adjustment should be designed. Therefore, we in-vestigate a net-benefit evaluation mechanism for candidate cooperative sets. Let 𝑟 (III ,𝑡 ) 
+
+> 𝑖
+
+denote the original reward obtained after completing task related to 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+. For a feasible UAV group 𝐺 (𝑔 ) 
+
+> 𝑖
+
+⊆ G 𝑖 , when multiple UAVs cooperate to execute the task, the effective task reward is assumed to be equally shared among the participating UAVs, i.e., ˜𝑟 (III ,𝑡 ,𝑔 ) 
+
+> 𝑖
+
+= 𝑟 (III ,𝑡 )   
+
+> 𝑖
+> |𝐺 (𝑔 )
+> 𝑖 |
+
+.
+
+For any candidate UAV 𝑢 𝑚 ∈ 𝐺 (𝑔 ) 
+
+> 𝑖
+
+, after executing task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+,its individual net benefit can be: 
+
+Δ𝐽 (III ,𝑡 ,𝑔 ) 
+
+> 𝑚,𝑖
+
+= ˜𝑟 (III ,𝑡 ,𝑔 ) 
+
+> 𝑖
+
+−
+
+
+
+𝐶 (fly ) 
+
+> 𝑚,𝑖
+
++ 𝐶 (hov ) 
+
+> 𝑚,𝑖
+
++ 𝐶 (dist )
+
+> 𝑚,𝑖
+
+| {z }
+
+> energy-related
+
+− 𝐶 (eco )
+
+> 𝑚,𝑖
+
+| {z }
+
+> ecological penalty
+
+(43) where 𝐶 (fly ) 
+
+> 𝑚,𝑖
+
+denotes the additional flight cost of UAV 𝑢 𝑚 for reaching the PoI, 𝐶 (hov ) 
+
+> 𝑚,𝑖
+
+is the hovering cost caused by waiting for the task to start or by inconsistent cooperative timing, and 
+
+𝐶 (dist ) 
+
+> 𝑚,𝑖
+
+represents the disturbance cost caused by deviating from the original offline pre-planned path. These three terms together constitute the energy-related cost of the UAV. Moreover, path adjustment may change the ecological penalty of UAV flight, and 𝐶 (eco ) 
+
+> 𝑚,𝑖
+
+denotes the corresponding ecological penalty cost. Accordingly, the total cooperative net benefit of 𝐺 𝑖 for task 12      
+
+> (a) (b) (c) (d) (e) (f)
+
+Fig. 2: Prediction on type-II PoIs: three examples. related to 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+can be expressed as 
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖 ) =∑︁  
+
+> 𝑢 𝑚 ∈𝐺 𝑖
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑚,𝑖
+
+. (44) This indicates that, for the same task, although the total reward is fixed, different cooperative sets may lead to different cooperative net benefits due to diverse scales, flight states, and disturbance levels to the original paths. Therefore, the cooperative set with the maximum net benefit is selected: 
+
+𝐺 (∗)  
+
+> 𝑖
+
+= arg max  
+
+> 𝐺 𝑖 ∈ G 𝑖
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖 ). (45) After obtaining the optimal cooperative set 𝐺 (∗)  
+
+> 𝑖
+
+, we determine whether the corresponding re-planning action is worthwhile. If Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 (∗)  
+
+> 𝑖
+
+) > 0, task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+is incorporated into the remaining task sequences of the associated UAVs. Otherwise, if Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 (∗)  
+
+> 𝑖
+
+) ≤ 0, the task is rejected, although it remains feasible with respect to both timing and data requirements, because its gain is insufficient to offset the additional flight and path-disruption costs introduced by re-planning. For 𝐺 (∗)  
+
+> 𝑖
+
+, each participating UAV moves to execute the Type-III task at the earliest feasible time after completing its currently assigned task, while satisfying the flight, energy, and time-window constraints. As such, the online re-planning module enables a fast response to Type-III PoIs without re-triggering global optimization, while maintaining the rationality and economic efficiency of local path insertion (see pseudocode of SubM C.2 in Alg. 6, Appendix). IV. E VALUATIONS 
+
+We conduct extensive experiments on both real-world and simulated datasets to validate the effectiveness of FORTUNE, as well as its scalability across varying problem sizes. 
+
+A. Evaluation Metrics and Benchmark Methods 
+
+Since FORTUNE offers a unique aspect on the integration of offline pre-planning and online adjustment for heterogeneous PoIs. To better evaluative the performance, we involve the following metrics from two perspectives: 
+
+• Metrics related to offline planning stage. (i) We first calculate offline fitness function (OffF2) associated with Types-
+
+I and -II PoIs, as expressed by R(I,II ,net ) = Í|P(I) | 
+
+> 𝑖 =1
+
+𝑟 (I) 
+
+> 𝑖
+
++
+
+Í|P(II ) |
+
+> 𝑖 =1
+
+Í𝐴 𝑖  
+
+> 𝑎 =1
+
+𝑟 (II ,𝑎 ) 
+
+> 𝑖
+
+− f, where f denotes the negative impact only related to these two PoI types. (ii) Then, we consider 
+
+offline task completion rate (OffTCR) , which depends on the ratio of the number of tasks successfully completed by UAVs during pre-planning to the total number of tasks (Types-I and -II ). These two metrics aim to validate the effectiveness of our Transformer-based forecasting and ES 2A, making sure that the offline planning stage can get a good beginning. 
+
+• Metrics related to online adjustment stage. (i) We first discuss 
+
+first-timeslot Type-III task completion ratio (F3TSR) , reflecting the ratio between Type-III tasks successfully completed and the total generated Type-III tasks in the first timeslot (see the rationale on choosing F3TSR in Appendix). (ii) Then, we calculate practical net reward (PrcNR) cross the whole process (offline+online), given by (19). These two metrics provide complementary perspectives for evaluating the effectiveness of online adjustment. While F3TSR characterizes the capability of responding to newly emerging online tasks, PrcNR reflects the overall outcome achieved through the joint offline planning and online adjustment process. Therefore, the combination of them enables a comprehensive evaluation of both instantaneous online responsiveness and end-to-end operational performance. We next introduce different views on benchmark designs. 
+
+• Pre-planning-related methods. (i) Pre-CS 2A: Leveraging Transformer-based predictions, conventional SSA is subse-quently adopted to perform solution-space exploration. (ii) 
+
+Pre-GA : Following Transformer-based prediction, a genetic algorithm (GA) is employed to search for high-quality schedul-ing solutions. (iii) Pre-PSO : Following Transformer-based prediction, a particle swarm optimization (PSO) algorithm is employed to search for high-quality UAV paths. (iv) Pre-
+
+DisG : After obtaining the Transformer-based predictions, Pre-
+
+DisG assigns each activated task to the nearest available UAV according to spatial proximity, enabling immediate task service upon task arrival. 
+
+• Purely online method. To outline the advantages of PoI prediction, We involve a purely online method PureOn-DistG, rendering both Type-I and Type-II PoIs unknown to UAVs. In this case, task assignment follows a distance-greedy policy that prioritizes the nearest available PoI. 
+
+• Online adjustment methods. We further design representative online benchmarks for handling emergent Type-III PoIs. It is worth emphasizing that, unlike conventional settings, our UAVs have already pre-generated proper paths to service the former two types of PoIs. Consequently, when a Type-III PoI unexpectedly appears, UAVs should respond without compromising the feasibility of their pre-planned tasks. This significantly restricts the set of admissible online actions and leaves limited room for large-scale trajectory re-optimization. Under such real-time operational constraints, lightweight as-signment policies constitute practical and widely adopted online response mechanisms. Accordingly, we consider the following representative baselines. (i) On-DistG: Upon the arrival, each UAV independently evaluates whether the additional activate task can be completed while still retaining sufficient energy to finish its offline pre-planned mission. If feasible, the UAV selects the nearest Type-III PoI for data collection under constraint (C2). 
+
+(ii) On-RewdG: When Type-III PoIs emerge, each UAV first verifies whether executing an additional sensing task preserves the feasibility of its offline pre-planned mission. Among all feasible Type-III PoIs, a UAV preferentially selects the one with the highest reward under (C2). If excessive UAV aggregation violates this constraint, the remaining UAVs are sequentially reassigned to the next highest-reward feasible PoIs. UAVs unable to satisfy the energy requirement remain idle during the current timeslot. (iii) On-RandA: Once a Type-III appears, a UAV is randomly selected from the feasible candidate set 13 
+
+(𝑈 cand  
+
+> 𝑖
+
+), consisting of UAVs that can complete the task while maintaining sufficient energy for their pre-planned missions. The selected UAV performs the sensing task, whereas other UAVs continue executing original plans. 
+
+B. Experiments on Real-World Dataset 
+
+This section uses the real-world UTD19 dataset 8, which contains traffic-flow measurements collected from multiple cities worldwide between 2017 and 2019. Traffic data from Basel, Switzerland, on April 17, May 17, and June 17, 2019, are adopted for evaluation. As shown in Fig. 6 as an example (see Appendix), selected sensing locations are categorized into Type-
+
+I (blue) and Type-II (orange) POIs. The predicted time windows of Type-II POIs are incorporated into the offline planning stage. To capture unforeseen sensing requests, additional locations are designated as Type-III POIs (red), with randomly generated occurrence times and service windows for online replanning. 
+
+• Performance on PoI prediction. First, we conduct a com-parative study of time-series forecasting models. Specifically, we compare the self-attention-based Transformer model (as our predictor) with the conventional long short-term memory (LSTM) network. The data is split into training, validation, and test sets at a ratio of 7:2:1, and the models are configured as detailed in Table II of Appendix. We adopt the mean squared error (MSE) as the loss function. Across all Type-II PoIs, the Transformer achieves an average MSE of 0.026, substantially lower than the 0.042 obtained by LSTM. Figure 2 presents the predictions for three randomly selected PoIs. Both models capture the overall temporal dynam-ics of traffic flow well; however, we adopt the Transformer for subsequent forecasting due to its superior accuracy and stronger capability of modeling long-range temporal dependencies. This advantage is particularly important in our setting, where the activation of a Type-II PoI is determined by whether its predicted traffic flow exceeds the threshold 𝑜 (∗) . More accurate forecasts thus enable more reliable identification of PoI activation windows and reduce error propagation in subsequent UAV scheduling and sensing decisions. Accordingly, a Type-II PoI is considered active when its predicted traffic flow exceeds 𝑜 (∗) .Since most PoIs exhibit sustained high traffic demand during the daytime, we set the common take-off time of the UAV swarm to the 60-th time slot. This choice aligns UAV deployment with the predominant activation period of Type-II PoIs, thereby improving task coverage under the energy-efficiency constraint. 
+
+• Comparison with benchmark methods. The predicted PoI activation windows obtained from the Transformer are subse-quently used to configure the offline pre-planning experiments. Parameters of scenario and our ES 2A are summarized in Tables III and IV (see Appendix), respectively. Figs. 3(a)-(b) presents the offline pre-planning results on UTD-19 dataset across different experimental days. Our ES 2A
+
+consistently achieves the OffF2 and OffTCR, with the latter approaching 95% across all dates. These gains stem from three    
+
+> 8https://utd19.ethz.ch/
+> (a) (b) (c) (d)
+
+Fig. 3: Performance on real-world dataset.    
+
+> (a) (b) (c) (d)
+
+Fig. 4: Performance on numerical data settings. complementary enhancements. First, Tent-chaotic initialization promotes a more uniform distribution of priority sequences, substantially improving population diversity at the early search stage. Second, a hierarchical heuristic integrating joint 3D obstacle avoidance, adaptive altitude control, optimal sensing-altitude selection, and discrete velocity optimization effectively guides UAVs to complete data collection within the active windows of Type-II PoIs while satisfying tightly coupled 3D physical constraints, thereby reducing unnecessary hovering and energy expenditure. Finally, the combination of Lévy-flight-based long-range exploration and event-driven risk-aware pertur-bation significantly strengthens the optimizer’s ability to escape local optima, yielding superior global search performance. Figs. 3(c)-(d) further compares the online response strategies for Type-III PoIs based on the pre-planned offline paths. Our FORTUNE consistently outperforms all benchmark methods in both PrcNR (see (19)) and F3TSR. This advantage arises from its collaborative response mechanism, which overcomes the limitation of single-UAV dispatch by dynamically forming a cooperative UAV group 𝐺 𝑖 to satisfy high-volume sensing demands. Moreover, the collaborative net-reward evaluation jointly accounts for mission rewards and response costs, includ-ing trajectory deviation and ecological penalties, enabling the selection of globally optimal response strategies. Compared with On-RewdG, On-DistG achieves a higher F3TSR by assigning the nearest available UAV, thereby shortening transit time and extending the effective sensing duration for task execution. Conversely, On-RewdG prioritizes high-reward PoIs, sacrificing partial task coverage in exchange for larger per-task returns, which compensates for unfinished tasks and consequently yields a higher PrcNR than On-DistG. 
+
+C. Experiments on Numerical Dataset 
+
+To further assess the scalability of FORTUNE, we construct diverse scenario settings of increasing complexity. The duration of each time window is uniformly sampled from 5 to 10 timeslots. Unless otherwise specified, remaining parameters follow tables in Appendix. 
+
+Scenario#1: 20 UAVs operate over a (3km × 3km ) area containing 10 Type-I PoIs and 10 Type-II PoIs. 
+
+Scenario#2: 30 UAVs operate over a (4km × 4km ) area containing 15 Type-I PoIs and 15 Type-II PoIs. 
+
+Scenario#3: 40 UAVs operate over a (5km × 5km ) area containing 20 Type-I PoIs and 20 Type-II PoIs. Figs. 4(a)-(b) compare OffF2 and OffTCR under varying problem scales. Consistent with the real-world experiments, our FORTUNE consistently achieves the best performance across all settings. This superiority stems from the synergistic integration of multiple algorithmic enhancements, which simultaneously improve population initialization quality and global search capability. More importantly, the results validate the robustness and scalability of FORTUNE, confirming its effectiveness for large-scale offline cooperative trajectory pre-planning in dynamic PoI-driven UAV collaboration.Moreover, Figs. 4(c)-(d) exhibit performance trends consistent with those in Fig. 3 14 
+
+(a) (b) (c) (d) (e) (f) 
+
+Fig. 5: Examples of 3D UAV paths: randomly selected four UAVs as examples. across all three scenarios, further validating the robustness of FORTUNE in accommodating stochastic Type-III PoIs through efficient online collaborative response. Furthermore, we visually illustrate our FORTUNE with examples across different timeslots, shown in Fig. 5. V. C ONCLUSION AND FUTURE WORK 
+
+This paper presented FORTUNE, a hierarchical offline-online framework for 3D low-altitude collaborative sensing under heterogeneous spatio-temporal uncertainty. To the best of our knowledge, this is the first work to unify persistent, pre-dictable, and emergent PoIs within a single planning framework while explicitly incorporating altitude-dependent societal and environmental impacts into UAV decision-making. Extensive experimental results demonstrated the effectiveness, adaptability, and scalability. Future research may advance embodied aerial intelligence through self-organizing collaborative autonomy, enabling UAV swarms to dynamically coordinate sensing responsibilities in response to evolving spatio-temporal demands, while achieving LA4G. REFERENCES [1] Y. Zhao, C. Liu, X. Hu, J. He, M. Peng, D. Wing Kwan Ng, and T. Q. S. Quek, “Joint content caching, service placement, and task offloading in uav-enabled mobile edge computing networks,” IEEE J. Sel. Areas Commun. , vol. 43, no. 1, pp. 51–63, 2025. [2] X. Yang, M. Liwang, L. Fu, Y. Su, S. Hosseinalipour, and X. Wang, “Adaptive uav-assisted hierarchical federated learning: Optimizing energy, latency, and resilience for dynamic smart iot,” IEEE Trans. Serv. Comput. ,vol. 18, no. 6, pp. 3420–3434, 2025. [3] R. Ren, J. Zhao, and Q. Zhang, “Uav-assisted collaborative sensing task offloading and resource allocation in iov,” IEEE Trans. Veh. Technol. ,vol. 75, no. 4, pp. 6806–6815, 2026. [4] C. Xiang, Z. Li, Q. Zhang, X. Wu, X. Zheng, and Y. Guo, “Eagleeye: Balancing latency, accuracy, and power on edge-assisted uavs for urban crowd surveillance,” IEEE Trans. Mobile Comput. , vol. 24, no. 12, pp. 13 062–13 077, 2025. [5] R. Xu, Z. Huang, C. Wang, and H. Yan, “Evolving collaborative differential evolution for dynamic multi-objective uav path planning,” 
+
+IEEE Trans. Veh. Technol. , vol. 75, no. 5, pp. 7456–7468, 2026. [6] Z. Yang, Z. Xiao, Z. Han, and X.-G. Xia, “Joint path planning and transmission scheduling for multi-uav data collection,” IEEE Trans. Veh. Technol. , vol. 75, no. 4, pp. 6600–6615, 2026. [7] S. Javed, R. Ahmad, A. Hassan, W. Ahmed, L. Zhao, and M. Guizani, “Critical node-aware uav swarm path planning in disaster zones,” IEEE Internet of Things J. , vol. 13, no. 2, pp. 2020–2034, 2026. [8] MarketsAndMarkets, “Unmanned aerial vehicles mar-ket,” https://www.marketsandmarkets.com/MarketReports/ unmanned-aerial-vehicles-uav-market-662.html, 2025, accessed: Jun. 4, 2026. [9] L. Liu, Z. Shan, and R. Lv, “Joint optimization of computation offloading and service caching for dag topology tasks in uav-assisted blockchain-enabled vec system,” IEEE Trans. Veh. Technol. , pp. 1–16, 2026. [10] C. Fang, C. H. Liu, H. Wang, G. Qi, Z. Liu, and D. Wu, “Multi-task-oriented emergency-aware uav crowdsensing: A hierarchical multi-agent deep reinforcement learning approach,” IEEE J. Sel. Areas Commun. ,vol. 44, pp. 866–882, 2026. [11] H. He, W. Yuan, S. Chen, Y. Hou, S. Chen, and X. Tan, “Two-timescale trajectory planning for uav formation serving hotspot in unknown environments with complex obstacles,” IEEE Trans. Cogn. Commun. Netw. , vol. 12, pp. 4261–4276, 2026. [12] Y. Guo, Y. Chen, H. Li, Y. Wu, and J. Huang, “Aoi-aware incentive mechanism for uav-assisted mobile crowdsensing: A contract-theoretic approach,” IEEE Trans. Mobile Comput. , vol. 25, no. 2, pp. 1660–1677, 2026. [13] W. Yuan, G. Gao, Y. Hou, J. Wang, S. Chen, and H. He, “Deep transfer reinforcement learning-based exploration enhanced multi-uav trajectory planning,” IEEE Trans. Commun. , vol. 74, pp. 1577–1593, 2026. [14] Y. Ye, Y. Tian, C. H. Liu, L. Dong, G. Qi, and D. Wu, “Aoi-aware air-ground mobile crowdsensing by multi-agent curriculum learning with collaborative observation augmentation,” IEEE Trans. Mobile Comput. ,vol. 24, no. 11, pp. 11 675–11 687, 2025. [15] H. Wang, C. H. Liu, H. Yang, G. Wang, and K. K. Leung, “Ensuring threshold aoi for uav-assisted mobile crowdsensing by multi-agent deep reinforcement learning with transformer,” IEEE/ACM Trans. Netw. , vol. 32, no. 1, pp. 566–581, 2024. [16] P. Hou, S. Liu, H. Zhu, J. Wang, Z. Lu, and S.-C. Huang, “Hierarchical optimization-based multi-uav cooperative trajectory planning and inte-gration of sensing and communication,” IEEE Trans. Veh. Technol. , pp. 1–16, 2026. [17] Z. Li, Y. Guo, G. Wang, J. Sun, and K. You, “Informative trajectory planning for air-ground cooperative monitoring of spatio-temporal fields,” 
+
+IEEE Trans. Autom. Sci. Eng. , vol. 22, pp. 2627–2638, 2025. [18] L. Deng, W. Gong, M. Liwang, L. Li, B. Zhang, and C. Li, “Towards intelligent mobile crowdsensing with task state information sharing over edge-assisted uav networks,” IEEE Trans. Veh. Technol. , vol. 73, no. 8, pp. 11 773–11 788, 2024. [19] H. Gao, J. Feng, Y. Xiao, B. Zhang, and W. Wang, “A uav-assisted multi-task allocation method for mobile crowd sensing,” IEEE Trans. Mobile Comput. , vol. 22, no. 7, pp. 3790–3804, 2023. [20] T. Yu, F. Cao, X. Wang, and J. Hu, “Madrl-based multi-uav 3d trajectory planning for 6g-oriented communication assistance,” IEEE Trans. Intell. Transport. Syst. , vol. 26, no. 12, pp. 23 041–23 054, 2025. [21] Y. Wang, F. Hu, H. Xu, and J. Zeng, “A multi-groups cooperative particle swarm algorithm for optimization of multi-vehicle path planning in internet of vehicles,” IEEE Internet Things J. , vol. 11, no. 22, pp. 35 839– 35 851, 2024. [22] C. He, H. Ouyang, W. Huang, S. Li, C. Zhang, W. Ding, and Z. Zhan, “An adaptive heuristic algorithm with a collaborative search framework for multi-uav inspection planning,” Applied Soft Comput. , vol. 174, pp. 1–21, 2025. [23] H. Liu, Y. P. Tsang, C. K. M. Lee, and C. H. Wu, “Uav trajectory planning via viewpoint resampling for autonomous remote inspection of industrial facilities,” IEEE Trans. Ind. Informat. , vol. 20, no. 5, pp. 7492–7501, 2024. [24] W. Yuan, S. Chen, H. He, Y. Hou, S. Chen, and X. Tan, “Hierarchical reinforcement learning-based joint trajectory planning and resource allocation in uav-assisted iot-sensor networks,” IEEE Trans. Commun. ,vol. 73, no. 12, pp. 14 517–14 533, 2025. [25] J. Pan, Y. Li, R. Chai, S. Xia, and L. Zuo, “Distributed multi-uav 3d trajectory planning based on multi-agent deep reinforcement learning,” 
+
+IEEE Trans. Cogn. Commun. Netw. , vol. 12, pp. 4577–4592, 2026. [26] Z. Guo, R. Chai, R. Sun, C. Liang, and Q. Chen, “System utility function optimization-based flight trajectory and resource allocation for uav-assisted integrated sensing and communication systems,” IEEE Trans. Cogn. Commun. Netw. , vol. 12, pp. 6331–6343, 2026. [27] J. Zheng and K. Liu, “3d uav trajectory planning with obstacle avoidance for uav-enabled time-constrained data collection systems,” IEEE Trans. Veh. Technol. , vol. 74, no. 1, pp. 1460–1474, 2025. [28] V. Schmuck and O. Celiktutan, “Sang: Socially aware navigation between groups,” Int. J. Social Robot. , vol. 17, no. 6, pp. 989–1002, 2025. [29] S. Nahavandi, R. Alizadehsani, D. Nahavandi, S. Mohamed, N. Moha-jer, M. Rokonuzzaman, and I. Hossain, “A comprehensive review on autonomous navigation,” ACM Comput. Surv. , no. 9, pp. 1–67, 2025. [30] C. Sun, W. Ni, and X. Wang, “Joint computation offloading and trajectory planning for uav-assisted edge computing,” IEEE Trans. Wireless Commun. , vol. 20, no. 8, pp. 5343–5358, 2021. [31] L. Chen, X. Wu, A. M. Lopes, D. Wang, P. Gu, M. Zhu, and Y. Chen, “Complex-order quantum-behaved particle swarm optimization with double jump-out strategy,” IEEE Trans. Emerg. Top. Comput. Intell. , vol. 9, no. 5, pp. 3469–3487, 2025. 15 
+
+(a) (b) 
+
+Fig. 6: Schematic maps of PoIs related to offline pre-planning (a) and online replanning (b). APPENDIX 
+
+• Rationale on F3TSR. We specifically evaluate F3TSR because the performance on later online tasks is inherently coupled with historical task execution and accumulated resource consumption, making it difficult to isolate the effectiveness of the online planning strategy itself. In particular, UAVs operate under limited onboard energy budgets, and every online task completed in earlier timeslots consumes flight and sensing resources that cannot be replenished during the mission. Such cumulative energy expenditure progressively reduces the maneuverability and reachable sensing region of each UAV, thereby directly affecting its ability to respond to newly emerging Type-III PoIs in subsequent timeslots. Consequently, the completion rate of later Type-III tasks is influenced not only by the real-time decision-making capability of an algorithm, but also by the historical planning outcomes and resource allocation decisions accumulated over previous timeslots. Comparing algorithms using the overall Type-III completion ratio would therefore inevitably mix the effectiveness of online adaptation with the long-term impact of prior decisions, leading to a biased evaluation. To eliminate this temporal coupling effect and ensure a fair comparison, we evaluate only the Type-III tasks generated in the first timeslot, where all algorithms start from identical initial energy budgets, identical UAV states, and the same offline pre-planned trajectories. Under these controlled conditions, the observed performance differences can be attributed solely to the quality of the online adjustment strategy. Therefore, F3TSR serves as a representative and unbiased indicator for assessing the real-time responsiveness and online task-handling capability of different algorithms. 
+
+• Pseudocodes related to 𝐸 𝑆 2 𝐴 . We show detailed algorithmic tables corresponding to our 𝐸 𝑆 2 𝐴 design. 
+
+• Parameter setting tables. We also show tables related to different parameter settings. 
+
+Algorithm 1: Altitude optimization for path pre-planning 
+
+Input: Start point 𝑝 𝑖 , target point 𝑝 𝑖 ′ , obstacle set b(path ) 
+
+> 𝑖,𝑖 ′
+
+, maximum obstacle height ℎ(obs ) 
+
+> 𝑖,𝑖 ′
+
+, weighting factors 𝛾 1 , 𝛾 2, search step 
+
+𝑙 (search )
+
+Output: Optimal flight altitude ℎ(uav ,𝑡 )∗  
+
+> 𝑚
+
+, optimal collection altitude 
+
+ℎ(collect )∗ 
+
+// Joint decision of flight altitude and 3D obstacle avoidance  
+
+> 1
+
+ℎ(ct ) ← max (ℎ𝑖 , ℎ 𝑖 ′ ); 
+
+> 2
+
+ℎ(limit ) ← ℎ(obs ) + 𝛿 (safe ) ; 
+
+> 3
+
+Solve 𝑓 (eco ) (ℎ(eco ) ) = 𝜘 eco to obtain ℎ(eco ) ; 
+
+> 4
+
+Solve 𝑓 (eco ) (ℎ(mid ) ) = 𝜘 mid to obtain ℎ(mid ) ; 
+
+> 5
+
+H ← { ℎ(ct ) , ℎ (limit ) , ℎ (eco ) , ℎ (mid ) }; 
+
+> 6
+
+foreach ℎ ∈ H do  
+
+> 7
+
+if the path at altitude ℎ is blocked by obstacles then  
+
+> 8
+
+Estimate the Manhattan detour distance 𝐷 (mht ) ; 
+
+> 9
+
+Calculate the additional horizontal detour energy consumption 𝑐 (obs ,lvl ) ; 
+
+> 10
+
+else  
+
+> 11
+
+𝑐 (obs ,lvl ) ← 0; 
+
+> 12
+
+Calculate the additional vertical altitude-changing energy consumption 𝑐 (obs ,lvl ) ; 
+
+> 13
+
+𝑐 (obs ) 
+
+> 𝑛
+
+← 𝑐 (obs ,lvl ) + 𝑐 (obs ,vtl ) ; 
+
+> 14
+
+𝐽 (ℎ) ← 𝛾 1 𝑓 (eco ) (ℎ) + 𝛾 2 𝑐 (obs ) 
+
+> 𝑛
+
+; 
+
+> 15
+
+ℎ(uav ,𝑡 )∗  
+
+> 𝑚
+
+← arg min ℎ∈H 𝐽 (ℎ);
+
+// Grid search for collection altitude  
+
+> 16
+
+H(search ) ← { ℎ(uav ,min ) , ℎ (uav ,min ) + 𝑙 search , . . . , ℎ (eco ) }; 
+
+> 17
+
+foreach ℎ ∈ H (search ) do  
+
+> 18
+
+Calculate the data collection quality 𝑞 (uav ,𝑡 ) 
+
+> 𝑚
+
+(ℎ); 
+
+> 19
+
+Calculate the energy consumption 𝑐 (obs ) 
+
+> 𝑛
+
+(ℎ) and ecological penalty 𝑓 (eco ) (ℎ); 
+
+> 20
+
+𝑅 (ℎ) ← 𝑞 (uav ,𝑡 ) 
+
+> 𝑚
+
+(ℎ) −   𝑓 (eco ) (ℎ) + 𝑐 (obs ) 
+
+> 𝑛
+
+(ℎ); 
+
+> 21
+
+ℎ(collect )∗ ← arg max ℎ∈H (search ) 𝑅 (ℎ);
+
+Algorithm 2: Adaptive discrete speed selection 
+
+Input: Flight segment distance 𝑑 𝑖,𝑖 ′ , current time t(now ) , task start time t(start ) 
+
+> 𝑖
+
+of task 𝑝 𝑖 , task deadline t(end ) 
+
+> 𝑖
+
+of task 𝑝 𝑖 , speed set V
+
+Output: Optimal speed 𝑣 ∗ 
+
+> 1
+
+Initialize the minimum cost 𝐽 (min ) ← ∞ and 𝑣 ∗ ← 0; 
+
+> 2
+
+foreach candidate speed 𝑣 ∈ V do  
+
+> 3
+
+Calculate the flight time: t(fly ) 
+
+> 𝑚
+
+← 𝑑 𝑖,𝑖 ′ /𝑣 ; 
+
+> 4
+
+Predict the arrival time: t(arr ,𝑣 ) ← t(now ) + t(fly ) 
+
+> 𝑚
+
+; 
+
+> 5
+
+Calculate the energy cost: 𝐶 (energy ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+← 𝑃 (𝑣 ) · t(fly ) 
+
+> 𝑚
+
+; 
+
+> 6
+
+Calculate the time cost 𝐶 (time ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+; 
+
+> 7
+
+𝐽 (total ) ← 𝐶 (energy ) 
+
+> 𝑚,𝑖,𝑖 ′
+
++ 𝐶 (time ) 
+
+> 𝑚,𝑖,𝑖 ′
+
+; 
+
+> 8
+
+if 𝐽 (total ) < 𝐽 (min ) then  
+
+> 9
+
+𝐽 (min ) ← 𝐽 (total ) ; 
+
+> 10
+
+𝑣 ∗ ← 𝑣 ; 
+
+> 11
+
+return 𝑣 ∗;16 
+
+Algorithm 3: Basic evolutionary update integrated with Levy flight 
+
+Input: Initial task-priority sequences {x(0) 
+
+> 𝑜
+
+}𝑁 𝑝 
+
+> 𝑜 =1
+
+, maximum number of generations 𝐺 (max ) , discoverer ratio 𝜌 f,warning threshold 𝑆 (st ) , perturbation amplitude coefficient 𝜀 , Levy step-size scaling coefficient 𝛼 
+
+Output: Updated population {x(𝑔 +1) 
+
+> 𝑜
+
+}𝑁 𝑝 
+
+> 𝑜 =1
+
+, current global best priority vector x(best ,𝑔 )
+
+// Initialization  
+
+> 1
+
+for 𝑜 = 1 to 𝑁 𝑝 do  
+
+> 2
+
+Decode x(0) 
+
+> 𝑜
+
+and calculate its fitness 𝐹 
+
+
+
+x(0)
+
+> 𝑜
+
+
+
+; 
+
+> 3
+
+Sort the population in descending order of fitness and update 
+
+x(best ,0) ; 
+
+> 4
+
+for 𝑔 = 0 to 𝐺 (max ) − 1 do 
+
+// Sorting and role division  
+
+> 5
+
+Sort the population in descending order according to 
+
+𝐹 
+
+
+
+x(𝑔 )
+
+> 𝑜
+
+
+
+and update x(best ,𝑔 ) ; 
+
+> 6
+
+Divide the top ⌊𝜌 f 𝑁 𝑝 ⌋ individuals as discoverers, and regard the remaining individuals as joiners; 
+
+// Discoverer update  
+
+> 7
+
+foreach discoverer individual 𝑜 do  
+
+> 8
+
+Generate a random number 𝑟 ∼ U ( 0, 1); 
+
+> 9
+
+if 𝑟 < 𝑆 (st ) then  
+
+> 10
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(𝑔 ) 
+
+> 𝑜
+
+exp 
+
+
+
+− 𝑔 + 1
+
+𝐺 (max )
+
+
+
+; 
+
+> 11
+
+else  
+
+> 12
+
+Generate a Gaussian vector z ∼ N ( 0, I); 
+
+> 13
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(𝑔 ) 
+
+> 𝑜
+
++ 𝜀 z;
+
+// Joiner update  
+
+> 14
+
+foreach joiner individual 𝑜 do  
+
+> 15
+
+if 𝑜 ≤ (1 + 𝜌 f)𝑁 𝑝 
+
+2 then  
+
+> 16
+
+Generate a random vector 𝜼 ∼ U ( 0, 1)𝑁 (task )
+
+; 
+
+> 17
+
+d(𝑔 ) 
+
+> 𝑜
+
+← x(𝑔 ) 
+
+> 𝑜
+
+− x(best ,𝑔 ) ; 
+
+> 18
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(best ,𝑔 ) +
+
+
+
+𝜼 − 12
+
+
+
+⊙ d(𝑔 ) 
+
+> 𝑜
+
+; 
+
+> 19
+
+else  
+
+> 20
+
+Generate a Levy vector L(𝑁 (task ) ); 
+
+> 21
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(best ,𝑔 ) + 𝛼 L(𝑁 (task ) ); 
+
+> 22
+
+Output {x(𝑔 +1) 
+
+> 𝑜
+
+}𝑁 𝑝  
+
+> 𝑜 =1
+
+and x(best ,𝑔 ) ;
+
+Algorithm 4: Danger-aware mechanism and fitness update strategy 
+
+Input: Population {x(𝑔 ) 
+
+> 𝑜
+
+} 𝑁 𝑝 
+
+> 𝑜 =1
+
+, current global best priority vector 
+
+x(best ,𝑔 ) , number of danger-aware individuals 𝑁 𝑑 , elite perturbation coefficient 𝛿 
+
+Output: Historical global best priority vector x(best ,𝑔 +1)
+
+// Danger-aware mechanism  
+
+> 1
+
+Randomly select 𝑁 𝑑 individuals from the population to form the danger-aware set K𝑔 ; 
+
+> 2
+
+foreach 𝑜 ∈ K 𝑔 do  
+
+> 3
+
+if 𝐹 
+
+
+
+x(𝑔 )
+
+> 𝑜
+
+
+
+< 𝐹 
+
+
+
+x(best ,𝑔 ) 
+
+then  
+
+> 4
+
+Generate a random vector 𝝐 ∼ U ( 0, 1) 𝑁 (task ) ; 
+
+> 5
+
+d(𝑔 ) 
+
+> 𝑜
+
+← x(𝑔 ) 
+
+> 𝑜
+
+− x(best ,𝑔 ) ; 
+
+> 6
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(best ,𝑔 ) + 𝝐 ⊙ d(𝑔 ) 
+
+> 𝑜
+
+; 
+
+> 7
+
+else  
+
+> 8
+
+Generate a zero-mean perturbation vector 𝝃 ; 
+
+> 9
+
+x(𝑔 +1) 
+
+> 𝑜
+
+← x(𝑔 ) 
+
+> 𝑜
+
++ 𝛿 𝝃 ;
+
+// Re-decoding and fitness update  
+
+> 10
+
+for 𝑜 = 1 to 𝑁 𝑝 do  
+
+> 11
+
+Decode x(𝑔 +1) 
+
+> 𝑜
+
+and calculate its fitness 𝐹 
+
+
+
+x(𝑔 +1)
+
+> 𝑜
+
+
+
+; 
+
+> 12
+
+Sort the population in descending order of fitness and update 
+
+x(best ,𝑔 +1) ; 
+
+> 13
+
+return x(best ,𝑔 +1) ;
+
+Algorithm 5: Construction of the task-feasible set: feasible UAV set construction and candidate cooperative set generation 
+
+Input: Emergent task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+appearing at the current timeslot 𝑡 ;current UAV fleet state 𝑊 (𝑡 ) = { ( l𝑚 , t𝑚 , 𝐸 𝑚 ) | 𝑢 𝑚 ∈ U};UAV set U; task data requirement 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+; task reward 𝑟 (III ,𝑡 ) 
+
+> 𝑖
+
+;valid task time window [𝑡 , t(− ,𝑡 ) 
+
+> 𝑖
+
+]; collision-risk threshold 
+
+𝜃 max 
+
+Output: Candidate cooperative set G𝑖  
+
+> 1
+
+𝑈 (cand ) 
+
+> 𝑖
+
+← ∅ ; 
+
+> 2
+
+foreach 𝑢 𝑚 ∈ U do  
+
+> 3
+
+Estimate the earliest service start time 𝑡 (start ) 
+
+> 𝑚,𝑖
+
+for UAV 𝑢 𝑚 to insert and execute task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+based on its current state 
+
+(l𝑚 , t𝑚 , 𝐸 𝑚 ); 
+
+> 4
+
+Estimate the additional energy consumption 𝑒 (req ) 
+
+> 𝑚,𝑖
+
+; 
+
+> 5
+
+Estimate the available data contribution 𝑑 (avail ) 
+
+> 𝑚,𝑖
+
+within the task time window;  
+
+> 6
+
+if t(start ) 
+
+> 𝑚,𝑖
+
+< t(− ,𝑡 ) 
+
+> 𝑖
+
+and 𝐸 𝑚 ≥ 𝑒 (req ) 
+
+> 𝑚,𝑖
+
+then  
+
+> 7
+
+𝑈 (cand ) 
+
+> 𝑖
+
+← 𝑈 (cand ) 
+
+> 𝑖
+
+∪ { 𝑢 𝑚 }; 
+
+> 8
+
+if 𝑈 (cand ) 
+
+> 𝑖
+
+= ∅ then  
+
+> 9
+
+return No feasible local re-planning solution ; 
+
+> 10
+
+G𝑖 ← ∅ ; 
+
+> 11
+
+foreach candidate UAV group 𝐺 𝑖,𝑔 constructed from 𝑈 (cand ) 
+
+> 𝑖
+
+do  
+
+> 12
+
+Calculate the cooperative collision risk 𝜃 𝑖,𝑔 of 𝐺 𝑖,𝑔 ; 
+
+> 13
+
+Calculate the joint available data contribution 
+
+𝐷 𝑖,𝑔 = Í𝑢 𝑚 ∈𝐺 𝑖,𝑔 𝑑 (avail ) 
+
+> 𝑚,𝑖
+> 14
+
+if 𝜃 𝑖,𝑔 < 𝜃 max and 𝐷 𝑖,𝑔 ≥ 𝑑 (III ,𝑡 ) 
+
+> 𝑖
+
+then  
+
+> 15
+
+G𝑖 ← G 𝑖 ∪ { 𝐺 𝑖,𝑔 }; 
+
+> 16
+
+if G𝑖 = ∅ then  
+
+> 17
+
+return The current task cannot be completed; no local re-planning is executed ; 
+
+> 18
+
+return G𝑖 ;17 
+
+Algorithm 6: Net-benefit evaluation and greedy selec-tion for candidate cooperative sets 
+
+Input: Emergent task 𝑝 (III ,𝑡 ) 
+
+> 𝑖
+
+; candidate cooperative set G𝑖 ; original task reward 𝑟 (III ,𝑡 )
+
+> 𝑖
+
+Output: Optimal cooperative set 𝐺 ∗ 
+
+> 𝑖
+
+; maximum cooperative net benefit Δ𝐽 (max ) 
+
+> 𝑖
+> 1
+
+𝐺 ∗ 
+
+> 𝑖
+
+← ∅ ; 
+
+> 2
+
+Δ𝐽 (max ) 
+
+> 𝑖
+
+← −∞ ; 
+
+> 3
+
+if G𝑖 = ∅ then  
+
+> 4
+
+return 𝐺 ∗ 
+
+> 𝑖
+
+, Δ𝐽 (max ) 
+
+> 𝑖
+
+; 
+
+> 5
+
+foreach 𝐺 𝑖,𝑔 ∈ G 𝑖 do  
+
+> 6
+
+Calculate the effective task reward ˜𝑟 (III ,𝑡 ) 
+
+> 𝑖,𝑔
+
+= 𝑟 (III ,𝑡 ) 
+
+> 𝑖
+> |𝐺 𝑖,𝑔 |
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖,𝑔 ) ← 0; 
+
+> 7
+
+foreach 𝑢 𝑚 ∈ 𝐺 𝑖,𝑔 do  
+
+> 8
+
+Estimate the flight cost 𝐶 (fly ) 
+
+> 𝑚,𝑖
+
+; 
+
+> 9
+
+Estimate the hovering cost 𝐶 (hov ) 
+
+> 𝑚,𝑖
+
+; 
+
+> 10
+
+Estimate the path disturbance cost 𝐶 (dist ) 
+
+> 𝑚,𝑖
+
+; 
+
+> 11
+
+Estimate the ecological penalty cost 𝐶 (eco ) 
+
+> 𝑚,𝑖
+
+; 
+
+> 12
+
+Calculate the individual net benefit 
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑚,𝑖,𝑔
+
+= ˜𝑟 (III ,𝑡 ) 
+
+> 𝑖,𝑔
+
+−
+
+
+
+𝐶 (fly ) 
+
+> 𝑚,𝑖
+
++ 𝐶 (hov ) 
+
+> 𝑚,𝑖
+
++ 𝐶 (dist )
+
+> 𝑚,𝑖
+
+
+
+− 𝐶 (eco )
+
+> 𝑚,𝑖
+
+; 
+
+> 13
+
+Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖,𝑔 ) ← Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖,𝑔 ) + Δ𝐽 (III ,𝑡 ) 
+
+> 𝑚,𝑖,𝑔
+
+; 
+
+> 14
+
+if Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖,𝑔 ) > Δ𝐽 (max ) 
+
+> 𝑖
+
+then  
+
+> 15
+
+Δ𝐽 (max ) 
+
+> 𝑖
+
+← Δ𝐽 (III ,𝑡 ) 
+
+> 𝑖
+
+(𝐺 𝑖,𝑔 ); 
+
+> 16
+
+𝐺 ∗ 
+
+> 𝑖
+
+← 𝐺 𝑖,𝑔 ; 
+
+> 17
+
+return 𝐺 ∗ 
+
+> 𝑖
+
+, Δ𝐽 (max ) 
+
+> 𝑖
+
+;
+
+TABLE II: Hyperparameters for Transformer and LSTM 
+
+Parameter Transformer LSTM 
+
+Hidden Size 64 64 Layers 2 2Heads 4 N/A Learning Rate 0.01 0.01 Batch Size 32 32 Epochs 300 300 Optimizer Adam Adam 
+
+TABLE III: Scenario parameter settings for offline pre-planning stage based on UTD19 
+
+Parameter Value 
+
+Number of UAVs 20 Map size/km 4 × 4
+
+Total time slots 200 Total PoIs (Type I/II ) 10 / 10 Base reward per task [2, 5]
+
+Minimum flying altitude / m 50 Maximum flying altitude / m 150 Critical altitude/m 100 Marginal reward coefficient for data quality 0.5 Ecological penalty weight 0.05 
+
+TABLE IV: Core parameter settings of our ES 2A
+
+Parameter Value 
+
+Population size 50 Maximum iterations 300 Proportion of discoverers 0.2 Alarm threshold 0.7 Lévy flight step scaling factor 0.01 Number of danger-aware individuals 12 Perturbation coefficient for best individual 0.05 Task priority encoding range [0, 1]
