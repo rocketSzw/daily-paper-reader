@@ -1,0 +1,290 @@
+Title: RADAR Perception for Dynamic Obstacle Avoidance onboard small-scale Quadrotor UAVs
+
+URL Source: https://arxiv.org/pdf/2608.01855v1
+
+Published Time: Tue, 04 Aug 2026 02:29:17 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> 1
+
+# RADAR Perception for Dynamic Obstacle Avoidance onboard small-scale Quadrotor UAVs 
+
+Dnyandeep Mandaokar 1 and Bernhard Rinner 1
+
+Abstract — Fast dynamic obstacle avoidance (DOA) on un-crewed aerial vehicles (UAVs) demands not only low-latency control and actuation but also reliable perception with suffi-cient sensing range for accurate obstacle detection and speed estimation. This letter presents, to the best of our knowledge, the first mmWave RADAR-based perception-and-control system for fast onboard DOA. We derive and analyze latency and spatial bounds that relate sensing range, relative speed, and control delay, yielding sufficient conditions for successful avoidance. Our system adopts a lightweight tracker based on interacting multiple models and a controller based on control-barrier functions that directly outputs evasive accelerations. It achieves position errors of less than 0.15 m, 0.93 m, and 0.87 m in x, y, and z directions for 300 experiments with three different object sizes and varying visibility (light and dark), and asimilar spread for 90 experiments in smoke. An onboard implementation on a Raspberry Pi 4B demonstrates real-time feasibility with an end-to-end sensing-to-command latency of approximately 14 ms. Code and the full dataset of 390 throws are available (https://tinyurl.com/radardoagit). 
+
+I. I NTRODUCTION 
+
+Uncrewed aerial vehicles (UAVs) are becoming ubiquitous in applications such as delivery, first aid, and recreational use [1]. These applications require UAVs to operate in a dynamic environment with limited manual control, thus re-quiring them to perform safe, autonomous dynamic obstacle avoidance (DOA). Current DOA in UAVs relies heavily on visual perception and control [2], [3]. Camera-based percep-tion benefits from a small sensor size and readily available datasets, which have been used effectively for avoidance in small to large UAVs [4]. However, optical sensing is affected by poor lighting, smoke, and reflective surfaces, often failing in the very environments where robust autonomy is most needed [5], [6]. More importantly, optical sensing faces three crucial limitations: detection range, detection latency, and velocity estimation of the detected object. While event cameras provide low latency [7], [8], their poor detection in low-contrast conditions remains a limiting factor for stan-dalone DOA sensing. Similarly, light detection and ranging (LIDAR) provides a large detection range but requires higher computational resources. Moreover, cameras and LIDARs fail to directly measure object speed, requiring additional processing, thereby increasing latency. Recently, millimeter-wave (mmWave) frequency-modulated continuous-wave (FMCW) radio detection 
+
+> 1
+
+Dnyandeep Mandaokar and Bernhard Rinner are with the Insti-tute of Networked and Embedded Systems, University of Klagenfurt, 9020 Klagenfurt, Austria ( dnyandeep.mandaokar@aau.at and 
+
+bernhard.rinner@aau.at ).  
+
+> R & FoV +zy
+> +x
+> −x
+> −z
+> Rsum
+> Pe, V e
+> dcrit
+> detection
+> Pi, V i
+> trigger distance( dt)tracking trajectory avoidance trajectory
+> tend
+> tdet
+> tavoid tevade
+> obstacle outside range
+
+Fig. 1. Sketch of dynamic obstacle avoidance of a UAV flying along a trajectory with nominal control input. The green circle around the UAV represents the aggregated spatial uncertainty of the UAV and the obstacle (Rsum ), which is inflated to the critical distance dcrit (orange circle) to account for perception and actuation time limitations for safe avoidance. Hence, safe collision avoidance requires triggering the evasive action beyond the trigger distance dt > d crit such that sufficient actuation time tevade 
+
+for evading the obstacle is available. The sensor’s field of view (FoV) and range R is shown in blue. The latencies for the entire avoidance action from perception to actuation ( tend = tdet + tavoid ) are shown in black. 
+
+and ranging (RADAR) is gaining popularity in UAV perception [9]. RADAR is computationally inexpensive and cost-effective compared to a LIDAR and stereo camera setup. It provides direct measures of range, velocity, and position [10]. However, it provides a sparse pointcloud, which makes accurate object size estimation difficult and results in larger position errors [11]. RADAR has been studied for navigation, tracking, and detection, demonstrating its feasibility on medium-sized UAV platforms [12], [11], [13]. However, the use of RADAR for fast onboard DOA at more than 50 Hz has not been studied and validated. This letter analyzes both latency and spatial bounds for successful DOA (see Figure 1) and reports on our system-level implementation of a mmWave FMCW 77-81 GHz RADAR-based DOA onboard a resource-limited UAV. The DOA timing can be partitioned into detection latency tdet ,avoidance latency tavoid , and evasion latency tevade , where 
+
+tdet is the aggregate execution time of the obstacle detection and tracking modules. tavoid is the aggregate execution time of the avoidance modules. The resulting end-to-end processing latency is tend = tdet + tavoid . Finally, tevade 
+
+represents the time required for the UAV to overcome its inertia and achieve the lateral displacement necessary for collision avoidance; it is therefore not included in tend . The 
+
+This work has been submitted for publication. Copyright may be transferred without notice. arXiv:2608.01855v1 [cs.RO] 3 Aug 2026 2
+
+critical distance dcrit defines the boundary for successful DOA. If avoidance is triggered before the obstacle enters 
+
+dcrit , the UAV can still evade. dcrit is calculated based on 
+
+tend and the relative speed vrel of the obstacle wrt. the UAV. Successful DOA not only requires sufficiently low latencies but also a robust perception of the spatial setting. This research builds upon distributionally robust accel-eration control barrier filter (DR-ACBF) [14], combining efficient RADAR-based detection [9] and tracking [15]. The contributions of this work include: (i) an analysis of key temporal and spatial constraints for RADAR perception for fast DOA; (ii) a system implementation and validation of DOA on a workstation without GPU and a Raspberry Pi 4B (Pi4B) onboard companion computer; (iii) a data set with different object sizes under different visibility conditions. In summary, our onboard DOA runs on the Pi4B in real time with an overall computation latency of less than 14 ms. II. R ELATED WORK 
+
+State-of-the-art approaches address fast DOA by providing low-latency perception, while accounting for UAV accelera-tion limits. These approaches rely on event cameras, RGB-D cameras, or small LIDARs and perform well under suitable conditions, but require high computational power or are expensive. Following the setting in Figure 1, DOA challenges can be summarized into detection latency, detection range, avoid latency, and evade latency. The detection range R
+
+specifies the maximum distance at which obstacles can be robustly detected and influences the time available to decide whether to trigger an avoid command. Small R limits the remaining time for triggering avoidance commands and sensors with long sampling and detection increases tdet .Similarly, complex control algorithms increase tavoid and UAVs with large inertia and limited actuation prolong tevade –all of which result in a delayed reaction. To overcome detection latency tdet that slows agile flights, Falanga et al. [6] introduced event-based perception [5] and fast trajectory planning [16]. However, visual degradation in darkness drastically reduces the reliability of vision sensors. LIDAR systems elude lighting issues and provide localiza-tion, which can improve DOA [17] but add significant per-ception latency, while still struggling with dense smoke [10]. Similarly, RADAR was adapted for obstacle avoidance on UAVs in [18], highlighting its superiority over optical sensors in dusty surroundings. BatMobility [12] showcased mmWave RADAR-only navigation, focusing on static environments rather than high-speed dynamic objects. However, detecting small objects with low RADAR cross sections (RCS) and low reflectivity requires a tuned configuration and an efficient detection system [9]. 
+
+tdet also depends on the computational complexity of the detection model. Most camera-based detection models rely on neural networks (NNs), which require powerful GPUs for training and inference [2], [3], [19]. Similar to a camera, LIDAR requires even more computing power to provide state and velocity measurements for the detection model, which is typically based on NNs [17], [10]. While LIDAR and camera outputs provide more accurate estimates of size (bounding box), class, and state, RADAR imposes a much lower computational burden on the detection model due to its inherent ability to measure velocity. However, many RADAR-based perception still relies on NN-based obstacle size estimation [12], [13]. Recent RADAR imple-mentation [9] has shown a lightweight detection model with position accuracy under 0.5 m, which is sufficient for the DOA use case, with good avoidance strategies that account for measurement uncertainties due to large position errors (e.g., DR-ACBF [14]). The detection range R of the studied camera percep-tion [19], [2], [5] is limited, leaving even less time to react to a fast-moving obstacle. An event camera offers very low detection latency as demonstrated by the DOA event camera in [5]. However, similar to many camera-based perception systems, the event camera requires multi-frame acquisition to estimate object speed, which offsets the benefit of fast latency [19], [2]. While LIDAR offers long range and high resolution, its NN-based detection and multi-frame velocity estimation requirements limit its use for DOA in small- to medium-sized UAVs [17], [10]. RADAR offers the longest detection range, a lightweight body, and direct velocity measurements, but suffers from poor detection resolution and high noise in cluttered environments [9]. Fast DOA requires a lower avoidance latency tavoid to further reduce tend . tavoid depends on the control method, as control variable optimization and command generation add computation time. Existing approaches use model predictive controllers (MPCs), which are slower but more accurate than faster reactive methods [5]. Reactive methods, such as artificial potential fields, work well for static or slowly mov-ing scenes. Recently, control barrier functions (CBF) have gained popularity for providing safety in highly dynamic environments. The CBFs enforce rigid forward-invariance of safe sets [20]. The DR-ACBF provides low-latency reaction and accounts for measurement uncertainties to perform a fast DOA, while accounting for perception and actuation delays [14]. Finally, evade latency tevade measures the UAV platform’s limit on how quickly it can react to the provided avoid-ance commands. It depends on the UAV’s size, weight, and maximum allowable acceleration. The study [6] inves-tigated UAV actuation limits for the DOA with respect to perception latency from event, mono, and stereo frames, considering the detection range and the maximum allowable acceleration required for safe avoidance. Researchers have studied different onboard cameras and LIDAR to perform efficient DOA, but no prior work presents RADAR-based onboard perception to perform DOA in UAVs. Onboard RADAR perception is currently limited to detection [21], slow obstacle avoidance [22], [18], [12], drone pursuing [11] or fusion [13], which is hindered by the slow sampling rate, heavy detection models, and poor control strategies. III. S YSTEM MODEL 
+
+This section presents our system model and assumptions for DOA as well as the computation of the key latencies 3
+
+tdet , tavoid , and tevade . In order to assess the perception limits for DOA, we estimate tend for the preferred RADAR sampling rate. dcrit is then estimated based on tend and the assumed relative obstacle velocity vrel . These estimates also provide reference bounds for evaluating the experimental results. While latency is traditionally modeled solely as sensor acquisition time [6], formulating a realistic latency for resource-constrained UAVs requires measuring tend (see Figure 1). While optical sensors, such as event cameras, boast sub-millisecond latency values, extracting velocity, detecting, and tracking obstacles from dense visual data can severely inflate tdet on CPUs without GPU acceleration. The implemented detection model consists of clustering, candidate update, bounding box creation, and tracker latency. For the detection range R and lateral acceleration budget a,we compute the allowable UAV speed as 
+
+vmax (R, a, t end ) = max 
+
+
+
+0, √2aR − a · tend 
+
+
+
+. (1) The formulation of the critical distance dcrit is based on the relative velocity vrel over the period of tevade and tend .The successful avoidance implies that the UAV must laterally displace itself by at least the radius of the UAV and the obstacle, i.e., Rsum . For the allowable maximum acceleration 
+
+a and given Rsum , the evade time is calculated as tevade =p2Rsum /a . Consequently, given the relative velocity vrel =
+
+∥Vi − Ve∥, where Vi is the velocity of the obstacle and Ve is the velocity of the UAV, the critical distance is formulated as 
+
+dcrit = vrel (tend + tevade ) . (2) These parameters enable an analysis of the limits for safe DOA. We assume the following conditions for this analysis: a sensor sampling rate of 100 Hz, resulting in tdet = 10 ms; a control loop at 200 Hz, resulting in tavoid = 5 ms and 
+
+tend =15 ms; and relative velocity vrel = vmax . We are particularly interested in short-range perception and adopt the values for the range R and the lateral acceleration budget 
+
+a from [6]. Table I shows the computed limits for vmax and the dcrit for a minimum safety radius Rsum = 0 .8 m. 
+
+TABLE I LIMITS ON vmax AND dcrit FOR DOA CONSIDERING DIFFERENT PERCEPTION RANGES AND ACCELERATION BUDGETS .                                                  
+
+> Range tend a=10 a=25 a=50 a=200
+> (m) (s) vmax dcrit vmax dcrit vmax dcrit vmax dcrit
+> 20.015 6.17 2.56 9.63 2.58 13.39 2.60 25.28 2.64 40.015 8.79 3.65 13.77 3.69 19.25 3.73 37.00 3.86 50.015 9.85 4.09 15.44 4.14 21.61 4.19 41.72 4.36 80.015 12.50 5.19 19.63 5.26 27.53 5.34 53.57 5.59
+
+Compared to event-camera systems reported in [6], our system model exhibits a larger tend latency due to signal acquisition and processing. Table I shows comparable or larger vmax than event-based sensing in several cases, par-ticularly at larger obstacle distances, where the geometric term dominates over latency [6]. vmax increases dcrit for a given acceleration budget. For R = 2, dcrit exceeds the perception range, which violates safe DOA. Solving 
+
+Fig. 2. Experimental setup of our quadrotor with mmWave RADAR sensor. 
+
+> RADAR detection &tracking mocap uav
+> PX4
+> flight controller
+> trigger avoidance controller avoidance command way points current position 100Hz 100Hz 180Hz 200Hz
+> control loop
+
+Fig. 3. UAV control loop of proposed DOA system. The mmWave RADAR provides a pointcloud and the detection and tracking sub-system provides position and velocity of the obstacle at 100 Hz. The UAV uses MOCAP at 180 Hz to continuously update its position. The UAV runs the control loop at 200 Hz on the Raspberry Pi4B with a PX4 flight controller. In the case of avoidance (red arcs), the avoidance controller generates an avoidance command; otherwise (green arcs), the UAV approaches the next waypoints. 
+
+dcrit ≤ R under vrel = vmax yields a minimum sensing range between 3.3 m ( a = 10 ) and 3.7 m ( a = 200 ); we therefore adopt R ≥ 4 m, at which dcrit remains below 3.9 m for every budget considered. Apart from the R, the avoidance controller requires triggering the avoidance beyond dcrit . For the DOA system, this implies that the state is evaluated using the inequality dt > dcrit , where dt is the actual distance at which the DR-ACBF avoidance trigger occurs. If dt > d crit , successful avoidance is theoretically feasible under the assumed model. Conversely, if dt ≤ dcrit , the available distance may be insufficient to avoid a collision, even under optimal control. IV. I MPLEMENTATION 
+
+This section presents the hardware and software stack for the validation of the proposed mmWave RADAR-based DOA system. Figure 2 shows the quadrotor platform with a Texas Instruments (TI) mmWave FMCW 77-81 GHz automotive-grade RADAR 1, and Figure 3 depicts the proposed sys-
+
+> 1
+
+https://www.ti.com/tool/AWR2944PEVM 4
+
+tem control loop. The preferred RADAR configuration is expressed in terms of acquired range resolution, velocity resolution, and R limits. The pointcloud at 100 Hz is fed into the detection model [9], which uses a sliding window and density-based spatial clustering of applications with noise (DBSCAN) to provide dynamic boxes of detected obstacles with (x, y, z, vx, vy, vz ) states. We configured the RADAR to detect small RCS objects, which affects the overall detection accuracy (range, position, and velocity). These states serve as input measurements for the SAFE-interacting multiple model (IMM) tracker [15], which is preferred for its lightweight, robust tracking. Our implementation runs the RADAR data stream and algorithmic processing in parallel, theoretically allowing tdet to be close to 10 ms. The UAV receives obstacle tracks to enable avoidance using the DR-ACBF model [14], which incorporates the DR-conditional value-at-risk (DR-CVaR) trigger to initiate ACBF-based avoidance acceleration. The DR-ACBF is preferred due to its suitability for noisy RADAR detection, which is accounted for by the ACBF’s effective radius and safety margins. We validate the system on two computer platforms: a hardware-in-the-loop (HiL) stationary experiment on a laptop and a flying experiment with a Raspberry Pi4B companion computer. The laptop has 16 GB RAM, an Intel i7 processor, and a 512 GB SSD, while the Pi4B has 4 GB RAM, an ARM Cortex-A72 processor, and a 128 GB SD card for storage. Both systems operated on Ubuntu 20.04 and used ROS2 Galactic. Our UAV system was powered by a 4S 6600 mAh battery and utilized a Holybro Pixhawk 4 (PX4) autopilot. The UAV has a total weight, including the RADAR module, of 2.0 kg, a size of 52 × 52 × 25 cm 3 with propellers attached, and a thrust-to-weight ratio of ≈3. The PX4 is configured for a maximum allowable acceleration a =15 m/s 2.
+
+A. Sensor Configuration 
+
+The proposed RADAR profile is configured for frame settings of 3 TX ( Ntx ) and 4 RX ( Nrx ) for improved velocity resolution, carrier frequency fc =77 GHz, and 110 loops, giving 330 chirps per frame with 110 Doppler bins (ND ) per TX channel. Constant false alarm rate (CFAR) is configured at 15 dB threshold (range and Doppler branches), which limits clutter in the pointcloud output and provides fewer static points. The configured velocity resolution ∆v
+
+and maximum radial velocity vrad is 
+
+∆v = c
+
+2fcTcND Ntx 
+
+≈ 0.295 m/s (3) 
+
+vrad = ∆vN D
+
+2 ≈ ± 16 .2 m/s , (4) where Tc is chirp period (20 μs) and Tf is frame period (10 ms). This configuration enables the horizontal FoV to cover a wide azimuthal angle of roughly ±80 ◦ and an elevation of ±20 ◦, but we only consider detection in direct LoS of the UAV at a range of 15 m. For each chirp S =57 MHz/ μs with ADC sampling rate fs = 11 ,130 ksps and 
+
+N = 128 ADC samples, the range resolution ∆R and R is 
+
+∆R = c f s
+
+2SN ≈ 0.23 m, R = c f s
+
+2S ≈ 29 .3 m. (5) Although the configured R is higher, detectability heavily relies on the object’s RCS. Typical commercial small- to medium-sized UAVs have RCS profiles in the range of 0.01-0.1 m 2. For this study, we use three different ball sizes with diameters ≤0.3 m, ≤0.2 m, and ≤0.1 m, with the smallest RCS of 0.001 m 2. The RADAR detection degrades for non-metallic objects, reducing the detection range as experienced for all three balls. 
+
+B. Detection 
+
+We employ a sliding-window algorithm combined with DBSCAN [9]. The detection model distinguishes static from dynamic points using radial-velocity thresholds and aggre-gates consecutive frames to output 3D bounding boxes repre-senting candidate obstacles [9]. This velocity-based filtering significantly scales down the computational complexity of the subsequent DBSCAN clustering stage. Consequently, the system demonstrates exceptional sensitivity in isolating small, low-reflectivity aerial targets with RCS as low as 0.001 m 2 (see Section IV-A). tdet includes the proposed detection model latency, which is reduced by a window size of 1 for candidate creation and dynamic filtering with a threshold of 0.5 m/s. The DBSCAN clustering is set with the 
+
+ϵ of 0.5, and a minimum of 2 points, suited for the sparse RADAR pointcloud. 
+
+C. Tracking 
+
+We utilize a SAFE-IMM tracking architecture [15]. The choice to utilize this architecture for RADAR perception is primarily driven by its ability to bound trajectory drift during model switches without incurring high computa-tional costs. The SAFE-IMM architecture includes a post-fusion, covariance-aware gate that systematically evaluates the track’s underlying Mahalanobis distance and uncertainty geometry, producing filtered state estimates Pi and Vi, and the corresponding covariance Σi for each obstacle. The SAFE-IMM tracking uses an efficient Global Nearest Neigh-bor (GNN) to virtually instantaneously associate tracks to multiple objects. Along with the detection model latency, 
+
+tdet includes the tracker latency. Thus, to keep the tracker latency low, the GNN uses a track confirmation threshold of 1, a deletion threshold of 5, and SAFE-IMM with constant-velocity, constant-acceleration Kalman filters. 
+
+D. Avoidance 
+
+This work implements a DR-ACBF avoidance model, a lightweight controller producing an acceleration avoidance command. Instead of solving a heavy quadratic program, the DR-ACBF leverages a Gauss-Southwell deterministic projection [14] to find the closest safe acceleration inside a linear half-space. The closed-form analytical boundary is dynamically adjusted using the DR-CVaR early-warning margins, which act as triggers (see Figure 3). To handle the 5
+
+inherent noise in detection and possible estimation errors in obstacle tracking, the framework leverages Cantelli’s inequality with per-obstacle risk bounds. When the UAV operates near safety boundaries, the DR-CVaR formulation adaptively expands the safety margins against worst-case probability distributions, ensuring robust collision avoidance under noisy RADAR detection. Based on the estimated relative state of the obstacle, DR-CVaR triggers avoidance, and the DR-ACBF computes the evasive acceleration. tavoid 
+
+aggregates the time taken by DR-CVaR trigger, ACBF, and Gauss-Southwell projection to provide the evasive accelera-tion. V. R ESULTS 
+
+This section presents the experimental validation of the proposed mmWave RADAR DOA framework, including detection accuracy, detection rate, avoidance rate, and DR-ACBF performance at different ranges. The experimental validation is performed in two settings: a stationary HiL experiment to assess detection capabilities, with 390 throws across three ball sizes, and an onboard experiment validation using a Pi4B as the companion computer with 20 flights. For the onboard experiment, the avoidance is primarily focused on a single object to assess the avoidance latency of RADAR perception. For all the experiments, we set the time horizon H =1.0 s, the radius of the UAV and obstacle as 0.5 m and 0.3 m respectively (i.e., Rsum = 0.8 m), a maximum UAV acceleration a = 15 .0 m/s 2 and a maximum ego velocity vmax = 7.0 m/s. The DR-ACBF relies on a total risk budget of αtotal = 0.15 , with a CVaR risk sensitivity of α = 0.01 . Obstacle acceleration envelopes are estimated using an SMD differentiator with parameters 
+
+(γ, L 0, L 1, L 2) = (1 .5, 4.0, 3.0, 2.0) and a regularization coefficient of αsmd = 1 × 10 −2.For obstacle clearance, we set a lateral offset of dcl =1.0 m and a Wasserstein radius of ϵwass = 0 .05 to ensure numerical robustness. The safety-critical constraints are sat-isfied via a fixed-time Gauss-Southwell projector, utilizing 
+
+15 iterations, a relaxation factor of 1.0, and a projection tolerance ϵproj = 1 × 10 −9. Finally, avoidance decisions are performed laterally due to space constraints, with the maneuver hold time bounded between tmin = 0.3 s and  
+
+> Fig. 4. Three scene conditions for the hardware-in-the-loop experiment as recorded for handball.
+
+tmax = 2 .0 s to ensure safe bypass completion. The reaction latency used to predict object state for the DR-CVaR trigger is set to τ = 1 .5 s with ∆ = 0 .1 s to account for the unknown delay in the UAV actuation. The detection model and tracker design parameters are defined in Section IV-B and IV-C. 
+
+A. Stationary Experiment 
+
+We assess the accuracy and avoidance performance of the proposed system using ground truth from the MOCAP system. During the experiment, the UAV is kept stationary, with perception from RADAR and control from PX4 in a loop on a laptop without a GPU. The throws are performed for 3 different sizes of ball ( ≤0.1 m tennis ball, ≤0.2 m handball, and ≤0.3 m basketball) in three conditions: light, dark, and smoke, as shown in Fig 4. The ball was swung with the help of a stand. Each ball was thrown 50 times for dark and light scenes, and we recorded a ROS bag containing RADAR perception data, the camera stream, and MOCAP ground truth. For the smoke scene, we recorded 30 throws without the MOCAP ground truth, as it failed in the smoke. The detection model output of state is matched to the tem-porally nearest MOCAP ball pose using a nearest-neighbor join: for every detection state timestamp td, the aim is to find the ball frame tb minimizing |td − tb|. Only pairs satisfying |td −tb| ≤ 20 ms are retained. RADAR coordinates are sign-inverted during preprocessing to align with the MOCAP reference frame. An independently measured rigid-body offset between the RADAR antenna phase center and the MOCAP origin is compensated on every axis, i.e., δx =17 .67 mm , δ y = 239 .25 mm , δ z = 4 .83 mm. For the balls, the RADAR returns from the bottom (nearest) surface of the ball, while the MOCAP system reports the position of the reflective marker cap mounted on the top of the ball. Therefore, the z axis is adjusted for a full ball diameter plus the marker cap radius, using the corresponding radius of each ball. For each ball type, corrected 3-D error norms from all throws were pooled, and samples with an absolute modified Z-score greater than 3.5 were removed before computing the mean, standard deviation (std), median, and median absolute deviation (MAD). 
+
+1) Obstacle Detection: Table II presents the mean, MAD, and std of position error in m for three conditions for all ball sizes together, partitioned into four distance bins from 0 to 5 m (MOCAP distance for light and dark; RADAR-detected distance for smoke). n represents the total number of samples in the respective distance bin across the N throws for each condition. For the light and dark conditions, the 
+
+x mean error is at most 0.15 m with std and MAD below 0.25 m and 0.05 m. The maximum y-axis mean, MAD, and std are 0.93 m, 0.38 m, and 0.58 m, respectively, while the corresponding maximum z-axis values are 0.87 m, 0.43 m, and 0.57 m. The larger y- and z-axis error is caused by the combined effects of the ≈0.23 m range resolution, sparse returns from the low-RCS non-metallic balls, and artifacts of temporal clustering, which is also reflected in the work of [11] and [12]. The overall (x, y, z ) error is appropri-ate for obstacle avoidance, where the aim is to avoid the 6
+
+approaching obstacle with additional error margins. In the smoke condition, MOCAP ground truth was unavailable, so absolute position error cannot be reported; the listed std and MAD instead quantify the dispersion of detected positions within each distance bin. Since this dispersion additionally includes the ball’s displacement within the bin, it constitutes an upper bound on the detection noise. Notably, this bound (std: x ≤ 0.08 , y ≤ 0.32 , z ≤ 0.35 ) already lies within the range of the error spread observed in the light and dark conditions, indicating that detection consistency does not degrade under smoke. Table III shows the performance of mmWave RADAR detection and the avoidance trigger. The detection rate is defined as the number of instances of balls detected in each bin divided by the total number of throws. So if a ball is detected in the bin each throw, then the detection rate is 100%. Similarly, the avoidance rate is defined as the number of throws that trigger avoidance divided by the total number of throws. If the avoidance is triggered at 
+
+dt in all 50 throws, then the avoidance rate is 100%. For the smoke condition, we recorded only 30 throws per ball, compared with 50 throws per ball under the light and dark conditions; therefore, its estimated detection and avoidance rates have greater sampling uncertainty than the light and dark estimates. The 0-1 m bin consistently shows a lower rate, as expected for RADAR due to its throw dynamics and low resolution; this is also evident in Table II. It is important to note that the detection accuracy and rate in the experiment are measured with no metal surface on the balls, which reduces the RADAR’s ability to detect. For the smaller object, the RADAR detection and avoidance rate drops due to a small RCS. However, beyond 3 m distance, tennis ball detection has increased, which is also beneficial for fast DOA. The results also reflect the limitation of the DR-ACBF specifically for the ≤0.1 m tennis ball, as its avoidance rate is 70%. The overall detection and avoidance rate is more than 80% with a distance of more than 1 m for three balls. 
+
+2) Avoidance Performance: This section validates the performance of the DR-ACBF avoidance framework for the mmWave RADAR perception. We evaluate the performance                                          
+
+> TABLE II ERROR METRICS (L IGHT /D ARK )COMPUTED AGAINST MOCAP
+> GROUND TRUTH AND VARIABILITY METRICS (S MOKE )COMPUTED WITHOUT GROUND TRUTH .
+> Cond. Dist. nMean(m) MAD(m) Std(m)
+> (x, y, z )(x, y, z )(x, y, z )
+> Light (N=150) 0-1 116 (0.15,0.72,0.40) (0.04,0.26,0.17) (0.24,0.48,0.32) 1-2 260 (0.15,0.83,0.69) (0.05,0.30,0.36) (0.20,0.23,0.46) 2-3 336 (0.13,0.85,0.87) (0.05,0.36,0.40) (0.19,0.23,0.53) 3-5 684 (0.10,0.46,0.75) (0.05,0.21,0.43) (0.08,0.38,0.55) Dark (N=150) 0-1 339 (0.14,0.81,0.42) (0.03,0.38,0.22) (0.25,0.58,0.30) 1-2 817 (0.14,0.93,0.57) (0.04,0.25,0.27) (0.20,0.58,0.38) 2-3 1072 (0.12,0.77,0.69) (0.04,0.34,0.37) (0.10,0.49,0.49) 3-5 1811 (0.11,0.49,0.71) (0.04,0.22,0.37) (0.07,0.37,0.57) Smoke (N=90) 0-1 42 -(0.01,0.02,0.05) (0.03,0.03,0.09) 1-2 179 -(0.03,0.08,0.06) (0.08,0.15,0.18) 2-3 242 -(0.00,0.09,0.07) (0.02,0.15,0.17) 3-5 396 -(0.01,0.14,0.14) (0.03,0.32,0.35)
+
+based on the avoidance trigger distance dt and the closest distance between the UAV and the obstacle during avoidance 
+
+ds. In addition to the module-level execution latencies (i.e., 
+
+tend ), Table IV reports system-level timing metrics. The command latency tcm measures the observed time required to generate and issue the avoidance command during execution, 
+
+tr measures the physical reaction delay from command issuance to the first observable avoidance motion, and tca 
+
+denotes the available time from first obstacle detection to a potential collision. Reporting the mean and std of the obstacle velocity is omitted, as the triggers occur at varying points along the LoS from low-velocity release phases to peak-velocity mid-flight, the resulting distribution does not reflect a real speed. Instead, we discuss the average and maximum velocity to define the operational baseline and the system’s verified upper performance bounds. The DR-ACBF avoidance shows reliable avoidance, with an overall average of 89% at an average ball velocity of over 3.1 m/s and a maximum of 8.40 m/s. The avoidance triggered at an overall minimum mean dt of 2.12 m with a maximum std of 1.02 m, indicating that the perception succeeded in providing early detection to ensure avoidance. Similarly, the overall minimum safe distance ds during the avoidance is 1.07 m, which is higher than the Rsum . Finally, the maximum mean of tcm and tr is 0.01 s and 0.08 s respectively for an object thrown from 5 m with maximum mean tca of 1.74 s. In the light condition, the mmWave RADAR-based DR-ACBF system achieved the most stable avoidance perfor-mance across all ball sizes. The ≤0.1 ball size with the av-erage speed (3.40 m/s) results in a shorter dt and a longer tr .Increasing the ball size to ≤0.2 improved the ds (2.33 m) and maintained balanced reaction and avoidance performance, representing the best trade-off between responsiveness and safety. For the ≤0.3 ball, the system triggered earlier ( dt =
+
+3.71 m) and reacted faster, although the ds decreased slightly. In the dark condition, the ≤0.1 ball size yielded the lowest dt and ds, due to delayed detection. For the ≤0.2 ball size, dt and tr improved moderately. The ≤0.3 ball size produced the best overall performance in dark scenes, achieving the farthest dt (4.03 m), similar tr , and the highest                                                         
+
+> TABLE III DETECTION RATE OF PROPOSED MM WAVE RADAR SENSING IN DIFFERENT DISTANCE BINS AND OVERALL AVOIDANCE RATE OF
+> DR-ACBF FOR EACH BALL .
+> Cond. Dist. Detection Avoidance
+> ≤0.1 ≤0.2 ≤0.3 ≤0.1 ≤0.2 ≤0.3
+> Light (N=50) 0-1 50.0 42.0 44.0 94.0 92.0 92.0 1-2 78.0 84.0 64.0 2-3 84.0 96.0 86.0 3-5 96.0 98.0 96.0 Dark (N=50) 0-1 48.0 34.0 46.0 88.0 92.0 88.0 1-2 86.0 80.0 88.0 2-3 80.0 98.0 98.0 3-5 94.0 98.0 100 Smoke (N=30) 0-1 6.7 10.0 53.3 70.0 86.7 96.7 1-2 60.0 86.7 80.0 2-3 66.7 76.7 93.3 3-5 76.7 80.0 100 7
+
+ds (2.12 m), indicating that larger detectable targets improve overall robustness. For the smoke condition, the ≤0.1 and 
+
+≤0.2 ball shows similar performance to that in dark and light scenes. The ≤0.3 ball gives 2.98 m dt with shorter tr , and 
+
+ds of 2.05 m. Across the three conditions, the ( ≤0.1) ball exhibits a higher overall ( tca ) and a lower ( dt), indicating slower throws than the ( ≤0.2) and ( ≤0.3) balls. 
+
+B. Flight Experiment 
+
+The small-scale UAV is limited in agility by its total size and is flown indoors with the MOCAP position system at a height of ≈1.5 m. For the flight experiment, the UAV was tethered with a rope, which was handled by a human to ensure safety. Only the basketball was used due to the highest avoidance rate, which was tied to the rope and then thrown towards the UAVs. The smoke scene was excluded due to MOCAP failure. The results demonstrate clear differences in UAV avoid-ance performance between hovering and forward flight in light and dark environments (Table V). For all 20 flights, the average speed of the ball was 6.43 m/s, with a maximum of 6.8 m/s. For hovering, both conditions show similar reaction times ( tr = 0 .10 ± 0.04 s in light and 0.10 ± 0.07 s in dark). The dt in light and dark shows a small difference from 
+
+3.48 ± 0.28 m in light to 3.02 ± 1.47 m in dark. However, 
+
+ds reduces from 1.56 ± 0.65 m in light to 1.05 ± 0.26 m in dark, which is an effect from the differences in throw height or speed. Notably, command time tcm is significantly lower in dark conditions ( 0.02 ± 0.01 s) than in light conditions (0.10 ± 0.13 s). This deviation is difficult to understand and may reflect CPU processing spikes. In the forward-moving, 
+
+tr improves compared to hovering, decreasing to 0.06 ±0.02 sin light and 0.06 ± 0.03 s in dark, indicating faster responses to motion due to early triggering enabled by ego-motion compensation and flight dynamics. However, tcm increases, particularly in dark conditions ( 0.23 ± 0.23 s), reflecting higher computational burden. dt in light is 3.95 ±1.55 m and in dark is 2.94 ± 0.82 m, which varied due to UAV dynamics                                                                                                                      
+
+> TABLE IV DR-ACBF AVOIDANCE PERFORMANCE AND SAFETY METRIC FOR EACH BALL AVOIDANCE AS SHOWN IN TABLE III
+> Cond. Metric ≤0.1 ≤0.2 ≤0.3 Mean Std. Mean Std. Mean Std.
+> Light
+> dt(m) 2.91 0.72 3.46 0.62 3.71 0.56
+> tr(s) 0.06 0.08 0.06 0.07 0.02 0.03
+> tcm (s) 0.01 0.00 0.00 0.00 0.01 0.01
+> tca (s) 1.12 0.79 1.23 0.74 0.98 0.64
+> ds(m) 1.54 0.63 2.33 0.34 1.07 0.73 Dark
+> dt(m) 2.75 0.58 3.20 0.80 4.03 0.40
+> tr(s) 0.08 0.11 0.06 0.07 0.06 0.08
+> tcm (s) 0.01 0.01 0.01 0.00 0.01 0.01
+> tca (s) 1.66 0.83 1.31 0.76 1.02 0.60
+> ds(m) 1.46 0.66 1.49 0.73 2.12 0.43 Smoke
+> dt(m) 2.12 0.54 2.23 0.76 2.98 1.02
+> tr(s) 0.04 0.09 0.06 0.08 0.02 0.03
+> tcm (s) 0.01 0.01 0.01 0.01 0.01 0.01
+> tca (s) 1.74 0.60 1.65 0.62 0.89 0.74
+> ds(m) 1.68 0.60 1.47 0.71 2.05 0.62
+
+and ball speed for each throw. Due to a similar effect and because the UAV is moving towards the object, ds is larger for light and dark with 2.78 ± 1.12 m and 1.68 ± 0.86 m, respectively. 
+
+C. Computation load 
+
+We assessed the computational load of the proposed sys-tem for the laptop and the Pi4B, without any accelerators or GPU. Table VI summarizes the runtimes of seven compo-nents on both platforms. Clustering is the execution time of DBSCAN applied to the raw mmWave RADAR pointcloud, including RADAR pointcloud acquisition. The others are the components of the detection and DR-ACBF avoidance. Table VI presents the latency and computational load for the laptop with N = 390 and the Raspberry Pi 4B with 
+
+N = 20 . Overall, the total inference time increases from 7.63 ms on the laptop to 13.65 ms on the Pi4B, which is twice the time but still real-time-capable when deploying on edge hardware. On the laptop, clustering dominates the computation with a mean latency of 5.97 ms, accounting for 78.2% of the total load. This is expected as it also includes the data stream delay, which is then used to perform clustering. The computational load becomes more evenly distributed on the Pi4B due to increased processing time across multiple modules. Clustering remains the dominant component but drops to 44.0%, while tracker (22.9%) and candidate processing (18.3%) become significantly more expensive. ACBF latency also increases to 0.76 ms, due to the slow processor and flight control on the same platform. Our UAV control loop requires only tend = 13 .65 ms on the Pi4B aggregating the detection latency tdet of 12.34 ms and the avoidance latency tavoid of 1.31 ms, satisfying real-time requirements even for low-power CPUs. 
+
+D. Safety and Failure Analysis 1) Safety Margin Analysis: In the stationary experiments, the UAV speed is zero ( ve = 0 ), meaning vrel is entirely governed by the thrown obstacle ( vt ≥ 3.0 m/s on average). Using our measured tend = 13 .65 ms, a conservative safety radius Rsum = 0.8 m, and a lateral acceleration budget 
+
+a = 15 m/s 2, Eq. 2 yields a critical distance dcrit ≈ 1.02 m. The group-mean trigger distances dt ranged from 2.12 m to 4.03 m and exceeded the calculated dcrit (Table IV). For the forward-flight in light (Table V), vrel averaged ≈ 7.43 m/s. Recalculating Eq. 2 with this speed pushes the critical boundary to dcrit ≈ 2.53 m. The DR-CVaR trigger accounts                                                        
+
+> TABLE V UAV AVOIDING A DYNAMIC OBSTACLE FOR HOVERING AND MOVING
+> FORWARD CONDITIONS (5 FLIGHTS EACH ).
+> Cond. Hovering Moving Forward @ 1 m/s
+> trtcm dtdstrtcm dtds
+> (s) (s) (m) (m) (s) (s) (m) (m) Light mean 0.10 0.10 3.48 1.56 0.06 0.15 3.95 2.78 std 0.04 0.13 0.28 0.65 0.02 0.08 1.55 1.12 Dark mean 0.10 0.02 3.02 1.05 0.06 0.23 2.94 1.68 std 0.07 0.01 1.47 0.26 0.03 0.23 0.82 0.86 8
+
+TABLE VI LATENCY AND COMPUTATIONAL LOAD OF OUR MM WAVE 
+
+RADAR-BASED DOA FRAMEWORK .
+
+Comp. Laptop ( N =390) Pi4B ( N =20) M S L M S L
+
+tdet 
+
+Clustering 5.97 15.2 78.2 6.00 2.9 44.0 Candidates 0.38 0.7 4.9 2.50 1.5 18.3 Boxes 0.08 0.4 1.0 0.71 1.4 5.2 Tracker 0.58 3.6 7.6 3.13 7.8 22.9 
+
+tavoid 
+
+Trigger 0.26 1.4 3.4 0.51 5.6 3.7 ACBF 0.30 1.6 3.9 0.76 3.6 5.6 Projection 0.06 0.5 0.8 0.04 0.3 0.3 
+
+tend 7.63 - 100 13.65 - 100 
+
+> M: Mean (ms), S: Std (ms), L: Load (%)
+
+for this by initiating avoidance at an average dt = 3 .95 m, maintaining a robust safety margin. 
+
+2) Failure Conditions: Despite robust design, the formu-lation in Eq. 2 explicitly identifies the two primary conditions under which our mmWave RADAR framework can fail (dt ≤ dcrit ). First, there is late detection of ultra-small objects (e.g., ≤0.1 m non-metallic targets in smoke). The low RCS drastically limits effective detection range, thereby lowering the success rate for tennis balls. If the target is only recognized at a distance of 1.5 m while approaching at 6 m/s ( dcrit = 2 .04 m), a collision occurs. Second, CPU spikes , which depend on the computing board and algorith-mic efficiency, give tend with averages 13.65 ms (Table VI). However, if a severe multi-threading bottleneck on the Pi4B delays the perception-to-projection loop (e.g., tend spikes to 25 ms), the dcrit expands instantly, causing a collision. VI. C ONCLUSION 
+
+This letter presents a lightweight mmWave RADAR-based perception and control system for real-time DOA on resource-constrained UAVs. Our system achieves robust detection, tracking, and avoidance at high update rates with-out relying on GPU or deep learning, making it suitable for onboard deployment. Across varying illumination condi-tions, stationary experiments yielded average avoidance and detection rates above 80% for distance bins greater than 1 m. Similarly, onboard experiments demonstrated reliable avoidance performance under both dark and light conditions at obstacle speeds greater than 6 m/s. The DR-ACBF con-troller enables fast, safe reactions within 60–100 ms while maintaining minimum separation margins above the critical safety distance. Our results confirm that mmWave RADAR is a viable primary sensing modality for fast DOA UAVs, offering a strong trade-off among robustness, latency, and onboard computational efficiency. Future work will extend to faster-moving ego UAVs in outdoor settings and multiple-object avoidance with a global planner. REFERENCES [1] J. N. Yasin, S. A. Mohamed, M.-H. Haghbayan, J. Heikkonen, H. Ten-hunen, and J. Plosila, “Unmanned aerial vehicles (uavs): Collision avoidance systems and approaches,” IEEE access , vol. 8, pp. 105 139– 105 155, 2020. [2] M. Lu, H. Chen, and P. Lu, “Perception and avoidance of multiple small fast moving objects for quadrotors with only low-cost rgbd camera,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 11 657–11 664, 2022. [3] F. Kong, W. Xu, Y. Cai, and F. Zhang, “Avoiding dynamic small obstacles with onboard sensing and computation on aerial robots,” 
+
+IEEE Robotics and Automation Letters , vol. 6, no. 4, pp. 7869–7876, 2021. [4] H. M¨ uller, V. Niculescu, T. Polonelli, M. Magno, and L. Benini, “Robust and efficient depth-based obstacle avoidance for autonomous miniaturized uavs,” IEEE Transactions on Robotics , vol. 39, no. 6, pp. 4935–4951, 2023. [5] D. Falanga, K. Kleber, and D. Scaramuzza, “Dynamic obstacle avoidance for quadrotors with event cameras,” Science Robotics ,vol. 5, no. 40, p. eaaz9712, 2020. [Online]. Available: https: //www.science.org/doi/abs/10.1126/scirobotics.aaz9712 [6] D. Falanga, S. Kim, and D. Scaramuzza, “How fast is too fast? the role of perception latency in high-speed sense and avoid,” IEEE Robotics and Automation Letters , vol. 4, no. 2, pp. 1884–1891, 2019. [7] S. Wang, S. Yu, T. Liang, Y. Shi, Y. Ma, and P. Ren, “Rapid dynamic obstacle avoidance for uavs enhanced by dvs and neuromorphic computing,” in Proc. IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 16 155–16 161. [8] L. Liu, J. Xu, and H. Zhang, “Dynamic perception-enhanced motion planning and control for uavs flights in challenging dynamic envi-ronments,” in Proc. IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 2794–2800. [9] D. Mandaokar and B. Rinner, “Evaluating millimeter-wave radar for resource-efficient drone perception,” in Proc. International Conference on Distributed Computing in Smart Systems and the Internet of Things (DCOSS-IoT) , 2025, pp. 352–359. [10] N. Shen, J. Cao, M. Zipp, and W. Stork, “Autonomous obstacle avoidance for uav based on point cloud,” in Proc. International Conference on Unmanned Aircraft Systems (ICUAS) , 2022, pp. 1580– 1585. [11] S. Dogru and L. Marques, “Pursuing drones with drones using millimeter wave radar,” IEEE Robotics and Automation Letters , vol. 5, no. 3, pp. 4156–4163, 2020. [12] E. Sie, Z. Liu, and D. Vasisht, “Batmobility: Towards flying without seeing for autonomous drones,” in Proc. Annual International Conference on Mobile Computing and Networking . ACM, 2023. [Online]. Available: https://doi.org/10.1145/3570361.3592532 [13] X. Wang, X. Wang, Z. Zhou, and Y. Song, “A deep-learning method based on the multistage fusion of radar and camera in uav obstacle avoidance,” IEEE Transactions on Aerospace and Electronic Systems ,vol. 60, no. 5, pp. 6734–6751, 2024. [14] D. Mandaokar and B. Rinner, “Distributionally robust acceleration control barrier filter for efficient uav obstacle avoidance,” IEEE Robotics and Automation Letters , vol. 11, no. 5, pp. 5914–5921, 2026. [15] ——, “Safe-imm: Robust and lightweight radar-based object tracking on mobile platforms,” in Proc. IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) , 2026, pp. 20 282– 20 286. [16] H. Chen, P. Lu, and C. Xiao, “Dynamic obstacle avoidance for uavs using a fast trajectory planning approach,” in Proc. IEEE International Conference on Robotics and Biomimetics (ROBIO) , 2019, pp. 1459– 1464. [17] M. Lu, X. Fan, H. Chen, and P. Lu, “Fapp: Fast and adaptive perception and planning for uavs in dynamic cluttered environments,” IEEE Transactions on Robotics , vol. 41, pp. 871–886, 2025. [18] N. Wessendorp, R. Dinaux, J. Dupeyroux, and G. C. H. E. de Croon, “Obstacle avoidance onboard mavs using a fmcw radar,” in 
+
+Proc. IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2021, pp. 117–122. [19] Z. Xu, X. Zhan, Y. Xiu, C. Suzuki, and K. Shimada, “Onboard dynamic-object detection and tracking for autonomous robot naviga-tion with rgb-d camera,” IEEE Robotics and Automation Letters , vol. 9, no. 1, pp. 651–658, 2024. [20] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2017. [21] Y. Fang, F. Shi, X. Wei, Q. Chen, K. Chetty, and S. Julier, “Cubedn: Real-time drone detection in 3d space from dual mmwave radar cubes,” in Proc. IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 3977–3983. [22] B. B. Tierney and C. T. Rodenbeck, “3d-sensing mimo radar for uav formation flight and obstacle avoidance,” in Proc. IEEE Radio and Wireless Symposium (RWS) , 2019, pp. 1–3.

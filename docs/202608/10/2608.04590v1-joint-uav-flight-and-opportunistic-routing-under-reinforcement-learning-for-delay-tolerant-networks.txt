@@ -1,0 +1,2299 @@
+Title: Joint UAV Flight and Opportunistic Routing under Reinforcement Learning for Delay-Tolerant Networks
+
+URL Source: https://arxiv.org/pdf/2608.04590v1
+
+Published Time: Thu, 06 Aug 2026 00:40:38 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 1
+
+# Joint UAV Flight and Opportunistic Routing under Reinforcement Learning for Delay-Tolerant Networks 
+
+Xiao Wang and Shun-Ren Yang, IEEE Member 
+
+Abstract —The growing deployment of delay-tolerant networks (DTNs) has made store-carry-forward (SCF) communication indispensable under sparse connectivity. However, intermittent contacts, finite buffers, and limited message time-to-live (TTL) often give rise to sparse delivery and congestion, leading to substantial end-to-end performance degradation. To address this challenge, this study explores the joint optimization of decen-tralized opportunistic routing and controllable unmanned aerial vehicle (UAV) flight, aiming to enlarge future contacts through discrete UAV headings while enabling per-node replication under contact-limited observations. Building upon this architecture, we study cooperative factored routing–UAV control under central-ized training and decentralized execution (CTDE) and propose JUROR (Joint UAV flight and Opportunistic Routing), based on the proximal policy optimization (PPO) framework. In our design, we first cast the problem as a factored partially observable Markov decision process with sequential motion–routing coupling and a per-step team reward; subsequently, decentralized actors act on local observations while a training-time critic uses global statistics, and an optional multi-horizon hotspot predictor pro-vides auxiliary supervision. Simulation results over four traffic modes demonstrate effective gains over PRoPHET and MaxProp, while retaining contact-limited decentralized execution. 
+
+Index Terms —Delay-Tolerant Networks, Joint UAV-Routing Optimization, Centralized Training and Decentralized Execution, Opportunistic Routing, Unmanned Aerial Vehicles, Multi-Agent Reinforcement Learning 
+
+I. I NTRODUCTION 
+
+# IN recent years, delay-tolerant networks (DTNs) have at-tracted extensive attention as a communication paradigm for environments in which persistent end-to-end connectivity cannot be guaranteed. Applications span sparse vehicular networks, disaster response [1], and remote sensing, wherein SCF relays opportunistically exchange messages under inter-mittent contacts, finite buffer occupancy, and limited message time-to-live (TTL). Classical utility-based protocols such as PRoPHET [2] estimate delivery likelihood from encounter histories and forward toward nodes with higher predicted utility. Although such hand-crafted metrics remain effective in selected scenarios, they often require re-tuning once mobility patterns, traffic intensity, or network topology evolve, which limits robustness across heterogeneous deployment conditions. Unmanned aerial vehicles (UAVs) enlarge contact oppor-tunities through extended radio range and controllable tra-jectories [3], [4]. Unlike fixed ground mobility, however, 
+
+X. Wang and S.-R. Yang are with the Department of Computer Science and the Institute of Communications Engineering, National Tsing Hua University, Hsinchu 30013, Taiwan (e-mail: sryang@cs.nthu.edu.tw). 
+
+each UAV heading decision reshapes the contact graph at subsequent steps, so relay placement and forwarding become tightly coupled control problems. Contacts remain range-limited and transient even with UAV assistance, and heteroge-neous ground/UAV communication ranges further complicate pairwise node encounters along road-constrained routes. Con-sequently, UAV-assisted DTN control must reason about future 
+
+topology rather than only about the current encounter set. Joint UAV-assisted DTN control faces three coupled diffi-culties. First, time-varying topology : UAV motion and ground mobility jointly change the contact graph, so routing at one step alters future node contacts [3], [4]. Second, decentral-ized execution versus team learning : cooperative credit assignment for joint routing and UAV control is difficult when execution-time agents act only on local and contact-exchangeable inputs rather than a global network state [5], [6]. Third, weak and delayed learning signals : delivery events are sparse relative to forwarding attempts, while congestion hotspots evolve with buffer pressure and traffic injection, leav-ing open whether optional hotspot auxiliary learning should complement delivery-centric team rewards [3], [7], [8]. These challenges remain unaddressed by three mainstream research branches. First, classical utility-based routing proto-cols such as PRoPHET [2] solely optimize terrestrial forward-ing strategies and assume UAV flight paths are given in ad-vance rather than controllable routing decisions. Second, hand-crafted UAV-assisted routing and disaster-targeted UAV–DTN route discovery schemes [3], [4], [9] refine encounter scoring metrics and path construction logic, yet they fully decouple UAV flight adjustments from decentralized per-node SCF forwarding decisions. Third, routing-only RL and tabular Q-learning variants [10]–[12] learn forwarding policies under in-termittent connectivity; they neither co-optimize discrete UAV headings alongside per-node routing actions nor offer modular auxiliary hotspot prediction modules. Furthermore, existing multi-UAV MADRL methods for trajectory and transmission control such as [13] focus solely on generic wireless relaying and neglect DTN-native SCF message replication mecha-nisms. Collectively, the above limitations inspire the proposed learning framework that integrates joint routing–UAV control, deployment-adaptive observation inputs, and a systematically evaluated design space for optional hotspot modules. This framework is named JUROR (Joint UAV flight and 
+
+Opportunistic Routing): a discrete-time SCF system trained with Centralized Training and Decentralized Execution 
+
+(CTDE) and Proximal Policy Optimization (PPO) [14]– arXiv:2608.04590v1 [cs.AI] 5 Aug 2026 WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 2
+
+[16]. It employs factored cooperative policies: every agent chooses constrained local forwarding candidates and discrete UAV headings, all optimized under a unified episodic objective decomposed into per-step team rewards. The below are our contributions.  
+
+> •
+
+Episodic optimization and joint MDP formulation: 
+
+We formalize joint UAV–routing control as a cooperative episodic optimization problem (P1) over delivery, conges-tion, and fleet-placement metrics under SCF constraints, cast it as a factored partially observable MDP with sequential routing–motion coupling, and derive a per-step reward proxy that bridges (P1) to CTDE–PPO learning.  
+
+> •
+
+CTDE factorization architecture: Fig. 2 presents JUROR as an MDP interface, a four-stage CTDE–PPO loop, and explicit actor–critic layers with an optional LSTM branch. At inference, routing and UAV actors use local on-board and contact-exchangeable inputs only.  
+
+> •
+
+Optional hotspot auxiliaries: JUROR optionally at-taches a UAV LSTM predictor trained by multi-horizon replay supervision ( Lp), and optionally activates hotspot-guided alignment (HGA) reward shaping that scores agreement between executed UAV headings and sector-stress directions. The default experimental stack disables both ( λ=0 , HGA off); they are evaluated as ablations be-cause their delivery benefit is traffic-dependent (Sec. VI). 
+
+Paper organization. Sec. II reviews related work on DTN routing, UAV-assisted forwarding, and multi-agent reinforce-ment learning. Secs. III–V present the system model, episodic optimization and MDP formulation, and the JUROR CTDE– PPO framework (Fig. 2). Sec. VI presents simulation results and discussions along a staged pipeline: simulation settings, ablation study of core innovations, baseline routing compari-son, and mechanism analysis. Sec. VII concludes the paper. II. R ELATED WORK 
+
+A. DTN Routing: Classical and Learning-Based 
+
+DTN routing protocols span flooding and epidemic families, quota-based spray methods, and utility-based forwarders [17]. Utility-based schemes such as PRoPHET [2] and Max-Prop [18] rank next hops from encounter histories, meet-ing recency, and buffer pressure; recent variants add cache-state awareness [19], social/geographic context [6], [20], or comparative benchmarks under contact-plan uncertainty [21]. These methods provide interpretable baselines used in our comparison, but they optimize hand-crafted forwarding scores while treating relay trajectories as exogenous. Learning-based routing extends this line with tabular and deep RL [5], [22]. FQLRP [10], Q-learning spray-and-wait variants [11], and disaster-recovery multi-agent DRL [8] adapt forwarding from buffer, mobility, or social-context proxies. Predictive routers such as PF-DTN [7] couple LSTM trajectory forecasting with hybrid relay ranking. Across both classical and learned routers, the dominant pattern is routing-only 
+
+control: per-node forwarding may adapt, but UAV headings are not co-optimized jointly with replication in a shared SCF simulator. 
+
+B. UAV-Assisted DTN and Vehicular Routing 
+
+UAV relays enlarge contact opportunities through extended range and controllable trajectories, yet routing must still account for heterogeneous mobility, link persistence, and fleet coordination [1], [23]. Du et al. [3] weight meeting probability and persistent connection time in UAV-assisted vehicular DTNs; Fan et al. [4] rank relays with multi-attribute utilities and dynamic buffer prioritization for post-disaster VANETs. Disaster-targeted UAV–DTN route discovery [9] and Q-learning anycast routing over multi-base-station UAV graphs [12] further improve forwarding under mobility. These protocols refine encounter scoring, trajectory utilities, or path construction, but they decouple flight planning from decentral-ized SCF decisions at every graph node and do not jointly learn headings with per-node replication under road-constrained mobility and heterogeneous communication ranges. 
+
+C. Cooperative MARL, CTDE, and Training 
+
+Cooperative multi-agent reinforcement learning (MARL) addresses distributed control with coupled dynamics; indepen-dent learners can be unstable when each agent treats partners as non-stationary environment noise. Centralized training and decentralized execution (CTDE) trains centralized critics on global or summarized state while keeping actors decentralized at execution time [14], [15]. Recent GNN-based multiagent DRL for interplanetary networks [24], [25] applies PPO with graph attention for distributed routing and scheduling on planned contact graphs. Multi-UAV MADRL for wireless relay networks [13] co-optimizes trajectory and transmission but models forwarding as generic relay service rather than decen-tralized message replication with buffer pressure and delivery-centric team rewards. These MARL lines scale cooperative control on graphs or aerial relays, yet they rarely joint-learn discrete UAV headings with per-node SCF actions in DTN systems. JUROR adopts CTDE–PPO [16] for factored discrete rout-ing logits and UAV headings: routing actors use local obser-vations, and a centralized critic trains on fixed-length network aggregates rather than per-message states. When delivery rewards are sparse, auxiliary losses can stabilize representation learning [26]; JUROR optionally supervises per-UAV hotspot predictors with multi-horizon replay-aligned targets and ab-lates ground-truth versus predicted hotspot-guided alignment (HGA) reward coupling. 
+
+D. Paper Positioning Against Existing Works 
+
+Table I quantitatively contrasts JUROR against four main-stream research categories. 1) Classical DTN routing delivers interpretable forwarding rules without learnable UAV motion control; 2) Handcrafted UAV-DTN protocols add relay scor-ing logic but separate flight and forwarding optimization; 3) Learning-based DTN solutions improve adaptive forwarding but remain routing-centric without joint UAV control; 4) Generic MARL schedulers scale for contact graphs yet lack complete SCF modeling, deployment-aware local observation design. JUROR bridges UAV-assisted DTN and cooperative WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 3                                   
+
+> Table I. Positioning of JUROR relative to four representative research lines. Column headers: Joint UAV & routing , joint UAV motion and opportunistic routing; SCF sim. , SCF simulator; CTDE/MARL , centralized training with decentralized execution; Hotspot aux. , optional hotspot predictor and HGA shaping;
+> Local deploy , contact-limited decentralized actors. ✓: core native capability; ( ✓): partial, optional or conditionally effective function; –: not supported.
+> Research line Joint UAV & routing SCF sim. CTDE/MARL Hotspot aux. Local deploy Classical DTN routing [2], [18] –(✓)––✓
+> Hand-crafted UAV DTN/VANET [3], [4] (✓)(✓)––✓
+> Learning-based DTN routing [7], [8], [10], [11] –(✓)(✓)(✓)(✓)Generic MARL routing [24] (✓)–✓–(✓)
+> JUROR (this work) ✓✓✓(✓)✓
+
+MARL research. Built on a unified discrete-time SCF system under CTDE-PPO, it jointly optimizes per-node forwarding and UAV headings and supports contact-limited decentralized inference for real-world deployment. III. S YSTEM MODEL 
+
+This section first introduces the network model and the UAV system model. Second, the integrated routing and UAV motion control decision model in the DTN is presented. Third, we define stress and geometry fields that characterize congestion distribution and fleet placement around UAV relays. 
+
+A. System Model 
+
+In Fig. 1, we demonstrate the SCF DTN architecture that integrates road-constrained ground mobility with controllable UAV relay flight over the plane, wherein heterogeneous nodes execute opportunistic message replication under range-limited contacts and finite per-node buffers. In this architecture, each node maintains a local message queue subject to a maximum buffer capacity Bb, and the UAV relay fleet furnishes aerial contact opportunities whose spatial distribution is shaped by discrete heading decisions specified in the DTN routing and UAV motion decision model subsection. We consider the network to consist of N =Ngr +Nuav nodes indexed by 
+
+i ∈ { 0, 1, . . . , N −1}, where ground vehicles occupy indices 
+
+{0, . . . , N gr −1} and the u-th UAV relay is mapped to index 
+
+iu=Ngr +u. Communication feasibility at step t is encoded by the contact matrix C (t), and message replication is permitted only when C (t) 
+
+> ij
+
+=1 . Table II summarizes the unified notation for all subsequent sections. We model a discrete-time slot structure in which each episode horizon comprises Tmax equal intervals indexed by 
+
+t ∈ { 0, 1, . . . , T max }. Fig. 1(a) depicts the spatial domain at step t, wherein road-constrained ground vehicles move at speed vgr within communication range rgr , freely moving UAV relays move at speed vuav within communication range 
+
+ruav , and per-relay congestion stress fields ( z (t) 
+
+> u
+
+, y (t) 
+
+> u
+
+) which are derived from ground-node message backlog, influence the moving directions of UAV relays. In our scenario, ground mobility is modeled as an exogenous process independent of the control policy, whereas UAV headings and opportunistic forwarding constitute the joint controllable decision space optimized by our system. 
+
+1) Integrated Network and UAV Relay Model: The network comprises N heterogeneous nodes partitioned into 
+
+Ngr ground vehicles and Nuav UAV relays such that Ngr +
+
+Nuav =N . We assume all nodes equipped with onboard Global Navigation Satellite System (GNSS) localization and all ground vehicles are restricted to moving along the predefined road network. Each ground vehicle travels within bounded speed limits vgr ∈ [vmin , v max ], and it may either select new cross-district driving paths from the set of all valid road segments or repeat previously traversed road routes, and its position is updated along the shortest road segments within each geographic region. For aerial relay nodes, the mobility model differs substantially. UAV relays move freely on the two-dimensional plane at constant speed vuav , and their positions are updated by discrete heading actions defined in the DTN routing and UAV motion decision model subsection. Consequently, ground vehicles provide routing decisions only, whereas each UAV simultaneously participates in SCF repli-cation and controllable aerial motion. 
+
+2) Communication Contact Model: Let p (t) 
+
+> i
+
+∈ R2 denote the planar coordinate of node i at time step t. The Euclidean distance between nodes i and j is defined as 
+
+d (t) 
+
+> ij
+
+= p (t) 
+
+> i
+
+− p (t)  
+
+> j2
+
+(1) We employ a type-heterogeneous communication disk model, wherein the effective communication range rij depends on the types of the two communication endpoints: 
+
+rij =
+
+(rgr , both i and j are ground vehicles 
+
+ruav , at least one endpoint is a UAV (2) At time step t, a communication link between nodes i and 
+
+j is established if and only if d (t) 
+
+> ij
+
+≤ rij . Instantaneous pairwise connectivity is characterized by binary contact indica-tors C (t) 
+
+> ij
+
+∈ { 0, 1}, which constitute the time-varying contact matrix C (t) = C (t)
+
+> ij
+
+N −1
+
+> i,j =0
+
+:
+
+C (t) 
+
+> ij
+
+=
+
+(1, i̸ = j and d (t) 
+
+> ij
+
+≤ rij 
+
+0, otherwise (3) A diagonal constraint C (t) 
+
+> ii
+
+=0 is imposed for all i to eliminate self-loop contacts. The raw contact degree of node i counts the number of reachable neighbors at step t,
+
+ν (t) 
+
+> i
+
+= 
+
+> N−1
+
+X
+
+> j=0
+
+C (t) 
+
+> ij
+
+(4) and the normalized contact degree 
+
+¯ν (t) 
+
+> i
+
+= ν (t)
+
+> i
+
+N − 1 ∈ [0 , 1] (5) measures neighbor density within the unit interval. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 4
+
+Table II. Unified notation and actor/critic observation inventory. Parts I–II, IV: system/MDP symbols. Part III: observation features with deployment scope (Local : deployable on-board / contact-limited signals, including UAV navigation features; Global /Local-ctx : mutually exclusive UAV-actor contexts gG ( t)
+
+> u
+
+(network-wide; default base) and gL ( t) 
+
+> u
+
+(contact-limited); Train-only : critic s (t), omitted at deployment). Observation layouts follow Eqs. (27), (26), and (16); experimental α values in Sec. VI-A. 
+
+Scope Symbol Description 
+
+I. Network, mobility, contacts, buffers, and messages 
+
+— t, Tmax ; i, j ; u, v ; iu=Ngr +u; N , Ngr ,
+
+Nuav 
+
+Discrete step and episode horizon; node / UAV indices; graph index of UAV u; total / ground / UAV counts (N =Ngr +Nuav )— vgr , vuav ; vmin , vmax ; p (t) 
+
+> i
+
+, v (t) 
+
+> i
+
+; W , H,
+
+Lw ; d (t) 
+
+> ij
+
+, rij ; rgr , ruav 
+
+Nominal ground/UAV speeds; ground speed bounds; 2-D position/velocity; map width/height and world span 
+
+Lw (distance normalizer); pairwise distance; type-dependent communication range ( rgr or ruav )— k, B=8 ; dk , d (t) 
+
+> u
+
+; K, Kσ , ℓ Heading-bin index and count; unit vector of bin k; executed UAV heading; max routing candidates; Top-Kσ
+
+stress neighbors in eu; candidate slot index — C (t) 
+
+> ij
+
+, C (t); ν (t) 
+
+> i
+
+, ¯ν (t) 
+
+> i
+
+; b (t) 
+
+> i
+
+, Bb; βg ( t) 
+
+> i
+
+,
+
+βd ( t)
+
+> i
+
+Contact indicator and matrix; raw / normalized degree ¯νi=νi/(N −1) ; buffer fill ratio and capacity; fractions of messages generated / delivered at node i
+
+— ˜bij , ˜νij , τij ; ωex ; B (t) 
+
+> i
+
+, Mj ; q, τq , ι (t) 
+
+> q
+
+,
+
+h (t) 
+
+> q
+
+; T0, ς (t)
+
+> q
+
+i’s cached estimate of j’s buffer/degree, steps since last exchange, and decay weight; local buffer set / undelivered set at j; message id, remaining TTL, age, hop count; TTL reference and normalized size — q (t)p , ˜t (t) Pending-message ratio (undelivered / created) and normalized episode time t/T max ; used in gG 
+
+> u
+
+and s (t)
+
+II. Delivery stress, stress fields, geometry, and optional HGA 
+
+— σ (t) 
+
+> j
+
+, ¯υ (t) 
+
+> j
+
+; ζ (t) 
+
+> uv
+
+, ξ (t), κ (t) Ground delivery stress bj (1+¯ υj ) and mean TTL urgency (Eqs. (11)–(12)); pairwise / fleet-mean UAV separation (Eq. (10)); heading-switch fraction — ρ (t) 
+
+> iu
+
+, ρ (t), ρ (t) 
+
+> f
+
+In-range stress density at relay u, fleet mean (Eq. (13)), and optional EMA forecast stress density (Eq. (15)) — w, v(w); α (t); k∗ 
+
+> ij
+> (t)
+
+Nonnegative sector weights and induced unit reference heading (Eq. (29)); fleet HGA alignment score; best heading bin of node j relative to i (Eq. (14)) 
+
+III-A. Routing actor — o (t) 
+
+> i
+
+= ( x (t) 
+
+> i
+
+, {c (t) 
+
+> i,ℓ
+
+})
+
+Local x (t) 
+
+> i
+
+∈ R9 (bi, β g 
+
+> i
+
+, β d 
+
+> i
+
+, ¯vi, ¯ci, ¯pi, ¯νi, ¯bnb  
+
+> i
+
+): buffer; gen./del. ratios; ∥vi∥/v max ; contact count/ (N −1) ;position /(W, H ); degree/ (N −1) ; exchange-weighted neighbor buffer (Sec. IV-C) Local c (t) 
+
+> i,ℓ
+
+∈ R7 For candidate ℓ toward destination d: live bd or cached ˜bid ; cached ˜νid ; τq /T 0; ιq /T 0; hq /(N −1) ; ςq ;
+
+did /L w ; infeasible slots masked 
+
+III-B. UAV motion actor — navigation z (t) 
+
+> u
+
+/ supervision y (t) 
+
+> u
+
+(hotspot aux.) 
+
+Local z (t) 
+
+> u
+
+= [ S (t) 
+
+> u
+
+; e (t) 
+
+> u
+
+; ˆ n (t) 
+
+> u
+
+] ∈ RDy Navigation vector (policy input), assembled from sector stress Su (Eq. (14)), Top-Kσ offsets eu, and centroid direction ˆnu; Dy =8+2 Kσ +2 
+
+Local y (t) 
+
+> u
+
+; ˆy (t) 
+
+> u
+
+(opt.); λ Supervision vector (same layout as zu; GT target for hotspot auxiliary); LSTM prediction concatenated into the direction head iff λ> 0
+
+III-C. CTDE context — UAV-actor gG ( t) 
+
+> u
+
+/ gL ( t) 
+
+> u
+
+(xor) and critic s (t) (Train-only) 
+
+Global gG ( t) 
+
+> u
+
+Network-wide UAV context (default base ): shared MLP over mean/std of [fi; pi], contact-density & degree moments, q (t)p , ˜t (t); fi = ( bi, β g 
+
+> i
+
+, β d 
+
+> i
+
+, ¯vi, ¯ci). Mutually exclusive with gL 
+
+> u
+
+.Local-ctx gL ( t) 
+
+> u
+
+Contact-limited UAV context ( base local-ctx / deploy-near-real): mean/std of ground [fj ; pj ] over {j :
+
+C (t) 
+
+> iuj
+
+=1 } only (no qp/˜t). Train-only s (t) Critic input (distinct from gG 
+
+> u
+
+/g L 
+
+> u
+
+): network-wide statistics akin to gG 
+
+> u
+
+, plus mean u(zu) if Nuav >0;omitted at deployment 
+
+IV. Actions, team reward, episode flags, and reward weights α·
+
+— AR, AM , F (t) 
+
+> i
+
+; a (t) 
+
+> i
+
+, m (t) 
+
+> u
+
+Routing / UAV heading action sets; feasible (unmasked) routing subset at i; chosen next-hop-or-idle and heading-bin actions — o (t) 
+
+> i
+
+, o (t)
+
+> m,u
+
+; g (t) 
+
+> u
+
+∈ { gG 
+
+> u
+
+, g L 
+
+> u
+
+}; s (t) See Part III: routing obs.; UAV-motion obs. (zu, g u); active UAV context; critic statistics — I (t) 
+
+> h
+
+, r (t); D (t), E (t), R (t), ¯B (t);
+
+gs, g m, g e; δ (t)
+
+Routing-activity indicator (Eq. (17)); team reward; delivered / expired / dropped counts and mean buffer; stage gates on separation, heading smoothness, and forecast density (Sec. V-A); episode-end flag — αd, α e, α dr , α b, α s, α h;
+
+αρ, α c, α x, α k , α f ; αa, α ad , α ar 
+
+Delivery/queue weights; stress/UAV-geometry weights; optional HGA weights on α (t), α (t)D (t),
+
+α (t)I (t) 
+
+> h
+
+(default 0)E 
+
+> S
+> W
+> NNE
+> SE SW
+> N
+> W
+
+Vehicle 
+
+Com Range 
+
+Msg Direct Forward  UAV Move Dir  𝑁 gr = 5 𝑁 uav = 2 
+
+UAV Congestion Point Msg UAV Forward Per-node buffer 𝑩 𝒃 
+
+• Local storage queue 
+
+• Drop-oldest on overflow • Carry over untransmitted 
+
+Episode timeline:  t+1  𝑇 𝑚𝑎𝑥 
+
+Message Injection 
+
+(i)  UAV Heading Update 
+
+Resolve mobility vectors & update node positions 
+
+(iii) Next-hop Selection & Forward 
+
+Forward to neighbor or deliver to destination 
+
+Delivered 
+
+t-1  t
+
+(ii) TTL Decay & Graph Rebuild 
+
+TTL--, discard if TTL=0 & Rebuild 𝐶 𝑡+1 
+
+Carry 
+
+…. 
+
+Figure 1. System model: (a) spatial layout of ground and UAV nodes; (b) per-step execution pipeline. 
+
+3) Traffic Injection and Message State Model: Messages are injected by an exogenous traffic process that is independent of per-step routing and UAV actions. The concrete injection schedules used in evaluation are specified in Sec. VI. Each message records its source, destination, normalized payload size, hop count, and remaining TTL. 
+
+4) Buffer Queueing and Forwarding Constraint Model: 
+
+Due to the limited buffer space at each node, unrestrained WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 5
+
+replication may induce buffer saturation and delivery fail-ure. Therefore, optimal forwarding must incorporate real-time buffer occupancy during packet replication operations. The buffer utilization of node i at time step t is defined as 
+
+b (t) 
+
+> i
+
+= B (t)
+
+> i
+
+Bb
+
+∈ [0 , 1] (6) where B (t) 
+
+> i
+
+denotes the set of messages buffered at node i.All forwarding and buffer update operations described in the DTN routing and UAV motion decision model comply with the following constraints: 1) Contact Feasibility : A message transfer from node i to node j at time step t is permitted only if C (t) 
+
+> ij
+
+=1 .2) Single Reception Constraint : Each node can receive at most one replicated message copy per time step, reflecting a per-step receiver capacity in the discrete-time formulation. 3) Buffer Admission Rule : A replicated message is ac-cepted only if the receiver possesses available buffer space. Otherwise, the oldest message will be dropped. 4) Replication and Delivery Logic : A valid routing action replicates the selected message to an eligible neighbor-ing node. Delivery is recorded once the destination is reached, and the hop counter is incremented on each forwarding operation. 5) TTL Decay Mechanism : After all forwarding op-erations complete at time step t, the TTL of every buffered message is decremented and expired messages are purged. 
+
+B. DTN Routing and UAV Motion Decision Model 
+
+In the DTN routing and UAV motion decision model, we adopt the previously constructed mobility and contact model and formulate joint per-node forwarding together with discrete UAV heading control as the integrated decision space, enabling the policy to adjust future contact opportunities. Under intermittent connectivity, each node must select at most one replication action from a capped candidate set constructed from its local buffer and instantaneous contacts, denoted by 
+
+{j : C (t) 
+
+> ij
+
+=1 }, while each UAV relay additionally selects a heading bin that updates its planar position and thereby modifies C (t+1) .Let K denote the maximum number of eligible forwarding candidates maintained per node. Each candidate is a (message, next-hop neighbor) pair ranked according to three priority criteria: (a) one-hop direct delivery when the neighbor is identical to the message destination; (b) shorter Euclidean distance from the neighbor to the target destination for non-direct transfers; (c) smaller remaining TTL as tiebreaker. Only the top-K ranked candidates are retained after truncation. Each node i ∈ { 0, . . . , N −1} selects a routing action from the discrete action space 
+
+a (t) 
+
+> i
+
+∈ A R = {0, 1, . . . , K } (7) where index 0 denotes the idle operation and indices 1 to 
+
+K correspond to prioritized forwarding candidates. Ground vehicle positions evolve exogenously along predefined road trajectories without controllable motion inputs. UAV relays u ∈ { 0, . . . , N uav −1} are appended after the 
+
+Ngr ground nodes. In addition to routing decision a (t) 
+
+> iu
+
+∈ A R,each relay selects a discrete heading action 
+
+m (t) 
+
+> u
+
+∈ A M = {0, 1, . . . , B − 1}, (8) with fixed bin number B=8 , where each bin k corresponds to a unit direction vector dk aligned with one of eight compass orientations. The joint control tuple (a (t) 
+
+> iu
+
+, m (t) 
+
+> u
+
+) ∈ A R × A M
+
+is generated independently at each step, and the UAV position update follows 
+
+p (t+1)  
+
+> iu
+
+= p (t) 
+
+> iu
+
++ vuav dm (t)
+
+> u
+
+(9) By combining per-node message replication with UAV heading assignment, we derive the step-wise execution pipeline visualized in Fig. 1(b), which follows three sequential stages: (a) Execute all UAV heading actions m(t) 
+
+> u
+
+; (b) Carry out per-node routing actions a(t) 
+
+> i
+
+under the contact matrix C(t)
+
+and aforementioned buffer constraints; (c) Refresh ground and UAV positions according to Eq. (9), decrement message TTL values, generate exogenous packet arrivals where applicable, and recalculate the contact matrix C(t+1) alongside the set of eligible forwarding candidates. 
+
+C. Stress Fields and Navigation Vectors 
+
+we construct a hierarchical set of congestion descriptors for decentralized UAV heading control, including scalar delivery stress on ground nodes, derived stress fields around each relay (isotropic stress density and directional sector stress), fleet ge-ometry signals, and finally navigation and supervision vectors of unified dimension Dy for policy input. Within each step, delivery stress is defined strictly on ground nodes j < N gr , and only connected pairs satisfying C (t) 
+
+> iuj
+
+=1 contribute to relay-local stress fields. 
+
+1) UAV Fleet Geometry and Heading Stability: Un-der decentralized heading control, independent UAV motion decisions may induce relay clustering or frequent heading switches. We define the pairwise normalized separation be-tween distinct relays u and v as 
+
+ζ (t) 
+
+> uv
+
+= min 
+
+1,
+
+p (t) 
+
+> iu
+
+− p (t) 
+
+> iv2
+
+ruav 
+
+ , u̸ = v, 
+
+where ruav denotes the homogeneous UAV communication range in Eq. (2). The fleet-averaged separation is 
+
+ξ (t) = mean u̸=v ζ (t) 
+
+> uv
+
+(10) where the mean is taken over all distinct relay pairs with 
+
+u, v ∈ { 0, . . . , N uav −1} and u̸ = v. We further define the heading-switch ratio κ (t) ∈ [0 , 1] as the fraction of UAVs satisfying m (t)
+
+> u
+
+̸ = m (t−1)  
+
+> u
+
+, with κ (0) =0 , which quantifies temporal consistency of fleet heading selections. 
+
+2) Ground-Node Delivery Stress: Each ground vehicle j is assigned a scalar delivery stress to measure message backlog urgency: 
+
+σ (t) 
+
+> j
+
+= b (t)
+
+> j
+
+
+
+1 + ¯ υ (t)
+
+> j
+
+
+
+(11) WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 6
+
+where b (t) 
+
+> j
+
+denotes buffer utilization in Eq. (6) and ¯υ (t)
+
+> j
+
+denotes the average TTL urgency factor 
+
+¯υ (t) 
+
+> j
+
+= 1
+
+|M j |
+
+X
+
+> q∈M j
+
+max 
+
+
+
+0, 1 − τq
+
+T0
+
+
+
+(12) Here, Mj denotes undelivered messages at ground node j,
+
+τq is the remaining TTL of packet q, and T0 is the global maximum TTL reference. We set σ (t) 
+
+> iu
+
+=0 for all UAV nodes, which mean Uavs do not participate in the calculation of delivery stress. 
+
+3) Isotropic and Directional stress Fields: For relay u
+
+mapped to iu, only contact-valid ground nodes contribute to the stress fields. The per-relay and fleet-mean isotropic stress densities are 
+
+ρ (t) 
+
+> iu
+
+= min 
+
+1, 12Ngr 
+
+> Ngr −1
+
+X
+
+> j=0
+
+C (t) 
+
+> iuj
+
+σ (t)
+
+> j
+
+ ,ρ (t) = 1
+
+Nuav  
+
+> Nuav −1
+
+X
+
+> u=0
+
+ρ (t) 
+
+> iu
+
+. (13) The fleet-average term ρ (t) enters the global team reward via coefficient αρ (Sec. V-A). To obtain directional sector stress, delivery-stress values are aggregated into eight compass heading bins. Let ˆr (t) 
+
+> iuj
+
+denote the unit vector from relay iu to ground node j,
+
+ˆr (t) 
+
+> iuj
+
+= p (t) 
+
+> j
+
+− p (t)
+
+> iu
+
+p (t) 
+
+> j
+
+− p (t) 
+
+> iu2
+
+,
+
+and let k∗ 
+
+> iuj
+> (t)
+
+= arg max k′
+
+ ˆr (t⊤) 
+
+> iuj
+
+dk′
+
+ denote the heading bin best aligned with node j. The sector-stress component for bin 
+
+k of relay u is 
+
+S (t) 
+
+> u,k
+
+= min 
+
+1, 12Ngr 
+
+> Ngr −1
+
+X
+
+> j=0
+
+C (t) 
+
+> iuj
+
+σ (t) 
+
+> j
+
+· I
+
+h
+
+k = k∗
+
+> iuj
+> (t)
+
+i ,
+
+(14) where I(·) is the indicator function. Scalars S (t) 
+
+> u,k
+
+are stacked into the sector-stress vector S (t) 
+
+> u
+
+= S (t)
+
+> u, 0
+
+, . . . , S (t)
+
+> u, 7
+
+ around relay u.
+
+4) Optional Exponential Moving Average (EMA) Stress Forecast: The environment optionally applies EMA and trend extrapolation over {σ (t) 
+
+> j
+
+} to produce ˜σ (t) 
+
+> j
+
+. Substituting ˜σ (t)
+
+> j
+
+for σ (t) 
+
+> j
+
+in Eq. (13) yields optional forecast stress densities 
+
+ρ (t) 
+
+> f,i u
+
+= min 
+
+1, 12Ngr 
+
+> Ngr −1
+
+X
+
+> j=0
+
+C (t) 
+
+> iuj
+
+˜σ (t)
+
+> j
+
+ ,ρ (t) 
+
+> f
+
+= 1
+
+Nuav  
+
+> Nuav −1
+
+X
+
+> u=0
+
+ρ (t) 
+
+> f,i u
+
+. (15) 
+
+5) UAV Navigation and Supervision Vectors: Based on the sector stress S(t) 
+
+> u
+
+defined in Eq. (14), we construct two vectors of identical length for each relay, both mapped to the unified dimension Dy . The navigation vector z(t) 
+
+> u
+
+acts as the input to the UAV heading policy, while the supervision vector y(t) 
+
+> u
+
+supplies the ground-truth hotspot layout for op-tional auxiliary learning. The navigation vector aggregates the following components: (i) the eight-dimensional sector stress 
+
+S(t) 
+
+> u
+
+; (ii) the stacked offset block e(t) 
+
+> u
+
+∈ R2Kσ containing normalized (∆ x, ∆y) displacements from the relay to the 
+
+Kσ ground nodes with the highest delivery stress; (iii) the unit centroid direction ˆn(t) 
+
+> u
+
+∈ R2 pointing toward the urgent centroid of in-range ground nodes. Accordingly, 
+
+z(t) 
+
+> u
+
+= S(t) 
+
+> u
+
+; e(t) 
+
+> u
+
+; ˆ n(t)
+
+> u
+
+, Dy = 8 + 2 Kσ + 2 , (16) and y(t) 
+
+> u
+
+adopts the same dimensional structure with ground-truth sector, offset, and centroid components. IV. P ROBLEM FORMULATION 
+
+In this section, we outline the optimization goals of the joint UAV–routing network. Then we cast SCF control as a finite-horizon cooperative sequential decision process with factored policies, and we derive a per-step team reward that converts the episodic objective into a form amenable to centralized training and decentralized execution learning under partial observability. 
+
+A. Objective Equation 
+
+Section III formalizes how the DTN evolves under range-limited contacts, finite buffers, and joint routing–UAV control. This subsection states multiple objectives the cooperative control should optimize. We aim to maximize the successful message delivery of SCF messages while limiting TTL expiry, buffer-induced loss, and uncontrolled UAV congestion, and furthermore to shape UAV headings and fleet positioning so that the relay fleet remains dispersed and headings remain stable. At each step t, we define 
+
+D (t), E (t) and R (t) as the respective counts of delivered, expired and dropped messages, ¯B (t) as the average node buffer utilization, and I (t) 
+
+> h
+
+∈ { 0, 1} as the routing-activity indicator: 
+
+I (t) 
+
+> h
+
+=
+
+(
+
+1, if at least one replication succeeds in step t
+
+0, otherwise ;
+
+(17) The variables ρ (t), ξ (t), κ (t) and ρ (t) 
+
+> f
+
+denote fleet stress-density and geometry signals. Average buffer utilization ¯B (t)
+
+and ground-node delivery stress σ (t) 
+
+> j
+
+(Eqs. (6), (11)) quantify congestion hotspots to be mitigated via routing and UAV positioning. The stress fields ρ (t) and sector stress S (t) 
+
+> u
+
+,together with the supervision vector y (t) 
+
+> u
+
+, render such pres-sure observable to UAV agents and to the per-step surro-gate objective derived below. State-dependent gating functions 
+
+gs(D (t)), g m(D (t)), g e(E (t)) ∈ [0 , 1] modulate UAV geome-try and forecast-density shaping without altering the primary delivery terms: gs and gm reduce separation and heading-smoothness incentives when step deliveries occur, whereas ge
+
+strengthens forecast-density shaping when expirations rise. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 7
+
+Based on this priority ordering, we formulate the principal delivery objective as 
+
+Jdel (π) = Eπ
+
+"Tmax X
+
+> t=0
+
+ αdD (t) + αeE (t) + αdr R (t)
+
++ αb ¯B (t) + αs + αhI (t)
+
+> h
+
+#
+
+,
+
+(18) where α· are scalar weights with αe, α dr , α b, α s, α h ≤ 0 for penalty terms, thereby rewarding successful delivery while penalizing TTL expiry, buffer drops, mean congestion, idle step, and unnecessary replication. We further formulate the UAV placement objective as 
+
+Juav (π) = Eπ
+
+"Tmax X
+
+> t=0
+
+
+
+αρ ρ (t) + αc ρ (t)D (t) + αx gs
+
+ D (t) ξ (t)
+
+− αk gm
+
+ D (t) κ (t) + αf ge
+
+ E (t) ρ (t)
+
+> f
+
++ αa α (t) + αad α (t)D (t) + αar α (t)I (t)
+
+> h
+
+#
+
+,
+
+(19) Here αρ rewards in-range stress density, αc couples that density to step deliveries, αx encourages pairwise separa-tion, αk penalizes heading switches, and αf shapes place-ment by forecast density under expiry. The remaining coef-ficients αa, α ad , α ar optionally activate hotspot-guided align-ment (HGA): α (t) ∈ [0 , 1] measures how well executed UAV headings match the directional congestion layout induced by sector stress (Sec. III-C), and the products α (t)D (t) and 
+
+α (t)I (t) 
+
+> h
+
+couple that geometric agreement to instantaneous de-livery and routing activity. By default αa=αad =αar =0 (HGA off); when enabled, these terms provide an auxiliary geomet-ric prior that steers relays toward congested sectors without replacing the primary delivery objective. The full construction of α (t) is deferred to Sec. V-A. Although merely optimizing the delivery objective Jdel (π) suffers from sparse, delayed step rewards caused by the SCF transmission paradigm, optimizing only the UAV placement objective Juav (π) will drive relays to gather around congestion hotspots without tangible delivery gains. To avoid the drawbacks of single-objective optimization, we integrate the two metrics into a unified cooperative control objective as (P1) max  
+
+> π
+
+J(π) = Jdel (π) + Juav (π) (20) subject to the SCF and action rules of Secs. III where Ground mobility is exogenous, UAV motion and all routing decisions are policy-controlled through πθ .
+
+B. Joint Decision Process and Factored Policy 
+
+We recast the system model of Sec. III as a cooperative sequential decision process under the fixed per-step pipeline. According to the control pipeline, each step applies UAV heading assignment, opportunistic replication, and network-state refresh, returns decentralized observations o (t), and terminates episodes at t=Tmax . Let x (t) denote the full environment state: GNSS-localized positions {p (t) 
+
+> i
+
+}, buffers 
+
+{B (t) 
+
+> i
+
+}, contact matrix C (t), and the stress fields of Sec. III-C. The joint action is 
+
+a (t) =  a (t)0 , . . . , a (t) 
+
+> N−1
+
+, m (t)0 , . . . , m (t) 
+
+> Nuav −1
+
+, (21) where a (t) 
+
+> i
+
+∈ A R selects a routing candidate or idle action and m (t) 
+
+> u
+
+∈ A M selects a UAV heading bin (Eq. (9)). The per-step transition follows 
+
+x (t+1) = Φ 
+
+
+
+Ψ x (t), {m (t) 
+
+> u
+
+}Nuav −1
+
+> u=0
+
+, {a (t) 
+
+> i
+
+}N −1
+
+> i=0
+
+
+
+, (22) where Ψ applies UAV motion before routing transfers, and Φ
+
+completes replication, TTL decay, ground mobility, and con-tact recomputation. Two bidirectional structural couplings exist between UAV mobility and routing subsystems, as detailed below. 
+
+(C1) Topology-to-routing coupling For any node i, the set of reachable forwarding neighbors is defined by contact indicators {j : C(t) 
+
+> ij
+
+= 1}. Contact availability relies on pairwise Euclidean distances d(t) 
+
+> ij
+
+, which are directly controlled by UAV positions. When a relay u adjusts its heading m(t) 
+
+> u
+
+to move toward congested ground zones, it can establish new communication links that were unavailable in the previous time step. This creates extra forwarding opportunities that routing strategies cannot access under a static, fixed network topology. 
+
+(C2) Routing-to-stress-field feedback coupling Message replication and successful deliveries modify node buffer occu-pancy and the spatial distribution of pending packets. These buffer updates feed into ground-node delivery stress σ(t) 
+
+> j
+
+,as well as fleet-wide stress-density and geometry signals 
+
+(ρ(t), ξ (t), κ (t)) embedded in the joint optimization objective (P1). Routing operations reshape congestion hotspots encoded by the stress fields, which subsequently guide UAV position adjustments. Meanwhile, the UAV movement decisions taken in prior time steps determine which node pairs can exchange messages in the current step. The state transition operators Ψ (UAV mobility update) and 
+
+Φ (routing & network refresh) follow a rigid execution order: UAV positions are updated before any message replication within one time step. The two operators cannot be swapped, which introduces sequential cross-coupling between subsys-tems. As a result, we cannot optimize UAV mobility and routing via separate, decoupled iterative loops. 
+
+Factored Policy and Action Spaces. Instead of learning a single joint policy for global network flow routing, we factor the control task into N + Nuav cooperative decision units: N
+
+routing units (one per node i) and Nuav motion units (one per UAV u). Each UAV participates twice in Eq. (21): as routing unit at node iu through a (t) 
+
+> iu
+
+, and as motion unit u through 
+
+m (t) 
+
+> u
+
+, with distinct observations o (t) 
+
+> iu
+
+versus o (t) 
+
+> m,u
+
+but shared parameters θ. A relay must both reach contacts through motion and use them for SCF replication. Each node selects at most one local transfer from a capped candidate set ( |A R|=K+1 ), and each UAV selects one of B=8 headings. Let F (t) 
+
+> i
+
+⊆ A RWANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 8
+
+denote the masked feasible set at node i, the per-step factored action space is 
+
+|A (t)joint | = 
+
+> N−1
+
+Y
+
+> i=0
+
+|F (t) 
+
+> i
+
+| × BNuav , (23) where |F (t) 
+
+> i
+
+| depends on C (t) and therefore depends on prior motion, while each factor conditions only on local observations. Given decentralized observations o (t), node i
+
+chooses a (t) 
+
+> i
+
+∈ A R from πθ,i (· | o (t) 
+
+> i
+
+), and relay u chooses 
+
+m (t) 
+
+> u
+
+∈ A M from πθ,m,u (· | o (t)
+
+> m,u
+
+). The joint policy factorizes as 
+
+πθ (a (t) | o (t)) =  
+
+> N−1
+
+Y
+
+> i=0
+
+πθ,i 
+
+
+
+a (t) 
+
+> i
+
+| o (t)
+
+> i
+
+
+
+× 
+
+> Nuav −1
+
+Y
+
+> u=0
+
+πθ,m,u 
+
+
+
+m (t) 
+
+> u
+
+| o (t)
+
+> m,u
+
+
+
+. (24) All routing and mobility policy heads share the same pa-rameter weights θ. Although the factorized policy achieves conditional independence under decentralized local observa-tions, strong bidirectional coupling still exists within the environment state transition law formulated in Eq. (22). 
+
+C. Observation Model and Per-Step Decomposition 
+
+Direct policy search over objective (P1) is computationally intractable. We adopt a decentralized observation paradigm under the CTDE framework and perform an exact stepwise decomposition of the (P1). The decomposed decision agents form a fully cooperative, partially observable multi-agent team under the CTDE paradigm introduced in Section II. Both the distributed actors and the training-only critic module take input from the standardized set of observation features defined in Part III of Table II. The partial observability limitation arises from three practical communication constraints: (a) The buffer occupancy and neighbor count of remote nodes can only be retrieved from outdated neighbor state tables exchanged when nodes come into communication range, without access to real-time ground-truth values; (b) When the destination node of a message cannot be connected at the current time step, the routing logic has to use locally cached historical information instead of up-to-date status of the target; (c) The heading-control agent deployed on each UAV cannot directly obtain network-wide stress fields and must rely on the local navigation vector and CTDE context. 
+
+a) Neighbor exchange summaries.: Each routing node i
+
+observes its own b (t) 
+
+> i
+
+and ¯ν (t) 
+
+> i
+
+(Eqs. (6) and (5)) from on-board statistics, but cannot read other nodes’ current buffer utilization or contact degree unless they meet. To support contact-limited routing features, each node i maintains a neighbor exchange table. Entry (˜bij , ˜νij ) stores i’s most recent received estimate of neighbor j’s buffer utilization and normalized contact degree, refreshed to (b (t) 
+
+> j
+
+, ¯ν (t) 
+
+> j
+
+) whenever C (t) 
+
+> ij
+
+=1 . Let τij ≥ 0
+
+denote the steps elapsed since that refresh. Between meetings, 
+
+˜bij and ˜νij remain stale summaries of j’s state at the last exchange rather than the live quantities b (t) 
+
+> j
+
+and ¯ν (t) 
+
+> j
+
+. The neighbor-buffer component ¯bnb ( t) 
+
+> i
+
+of x (t) 
+
+> i
+
+is 
+
+¯bnb ( t) 
+
+> i
+
+=
+
+P   
+
+> j:C(t)
+> ij =1
+
+exp( −ωex τij ) ˜bij 
+
+P   
+
+> j:C(t)
+> ij =1
+
+exp( −ωex τij ) (25) Here, ωex > 0 is the exchange decay factor, and ¯bnb( t) 
+
+> i
+
+= 0 
+
+when node i has no connected neighbors. For a candidate at node i toward destination d, the destination-buffer feature in 
+
+c (t) 
+
+> i,ℓ
+
+(Part III-A) uses b (t) 
+
+> d
+
+when C (t) 
+
+> id
+
+=1 and otherwise ˜bid ;the destination-degree feature reads ˜νid from i’s table. 
+
+b) UAV motion observations and CTDE context.: The UAV agent can only perceive congestion hotspots indirectly via two types of inputs: the navigation vector z(t) 
+
+> u
+
+(assembled from sector stress and related blocks) and a CTDE context 
+
+g (t) 
+
+> u
+
+that is instantiated as gG ( t) 
+
+> u
+
+or gL ( t) 
+
+> u
+
+. Each motion unit u
+
+attached to graph node iu receives 
+
+o (t) 
+
+> m,u
+
+=  z (t) 
+
+> u
+
+, g (t)
+
+> u
+
+, g (t) 
+
+> u
+
+∈ gG ( t) 
+
+> u
+
+, g L ( t) 
+
+> u
+
+, (26) where the navigation vector is the concatenation 
+
+z (t) 
+
+> u
+
+= S (t) 
+
+> u
+
+; e (t) 
+
+> u
+
+; ˆ n (t)
+
+> u
+
+ ∈ RDy (27) The dimension of z(t) 
+
+> u
+
+follows Eq. (16). For the same physical UAV relay, next-hop forwarding control adopts the routing observation o(t) 
+
+> iu
+
+, which shares an identical structure with that of ground vehicles. The environment additionally generates a ground-truth supervision vector y(t) 
+
+> u
+
+∈ RDy with the same three-block layout as z(t) 
+
+> u
+
+for optional auxiliary training. When λ > 0, the LSTM prediction ˆy(t) 
+
+> u
+
+can be concatenated into the UAV heading policy head. 
+
+c) Per-step decomposition.: Every term in Eqs. (18)–(19) depends only on quantities available at step t, so we instantiate (P1) by a common per-step team reward r (t) shared by all 
+
+N +Nuav decision units, with each reward component corre-sponds to the corresponding terms in Eqs. (18)–(19). Learning parameterizes the factored policy as πθ and maximizes the discounted return 
+
+J(θ) = Eπθ
+
+"Tmax X
+
+> t=0
+
+γt r (t)
+
+#
+
+, (28) When γ = 1 , Eq. (28) is equivalent to the undiscounted finite-horizon objective (P1). This discounted objective acts as a standard reinforcement-learning surrogate for (P1). Our JUROR that parameterizes the factorized policy πθ and optimizes the above team return is elaborated in Sec. V. V. P ROPOSED JUROR A LGORITHM 
+
+This section introduces JUROR, our joint opportunistic routing and UAV motion control mechanism under the CTDE paradigm. Building on the finite-horizon cooperative decision process formulated in Sec. IV, this subsection details the algorithm implementation. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 9
+
+A. Per-Step Team Reward Instantiation 
+
+The observation, action and reward specifications for all co-operative agents adhere to the definitions provided in Sec. IV. Following the formulation of the joint optimization problem (P1), we construct a multi-objective single-step team reward signal. This reward is designed to maximize the number of suc-cessfully delivered messages, while penalizing TTL expiration events, buffer overflow and unregulated network congestion. Additionally, it incorporates shaping terms to regularize UAV fleet spatial distribution and supports an optional hotspot-guided alignment (HGA) regularization configuration. 
+
+1) Optional Hotspot-Guided Alignment (HGA): Sparse SCF deliveries provide weak motion cues for where relays should fly next. HGA complements the primary delivery reward by scoring whether each UAV’s executed heading agrees with the instantaneous directional congestion layout around that relay, thereby translating the sector-stress field of Sec. III-C into an explicit geometric prior for heading control. The optional hotspot-guided alignment module calcu-lates a fleet-level matching score α(t) ∈ [0 , 1] . This metric is constructed from the eight-dimensional sector-stress subvector of either the ground-truth supervision vector y(t) 
+
+> u
+
+or the gradient-detached LSTM prediction ˆy(t) 
+
+> u
+
+; under the default ablation base +HGA , ground-truth sector masses are used and the LSTM branch remains off ( λ=0 ). Let d(t) 
+
+> u
+
+= dm(t)
+
+> u
+
+denote the unit vector of the UAV’s actual heading, and let 
+
+w = ( w0, . . . , w 7) ∈ R8 
+
+> ≥0
+
+be a non-negative sector weight vector. We define the normalized reference heading vector as 
+
+v(w) = 
+
+P7 
+
+> k=0
+
+wk dk
+
+P7 
+
+> k=0
+
+wk dk 2
+
+(29) If P 
+
+> k
+
+wkdk = 0, we set v(w) = 0. Here, dk stands for the unit direction vector of heading bin k, as specified in Sec. III. The weight vector w is populated with the sector-wise subvector y(t) 
+
+> u,s
+
+or ˆy(t)
+
+> u,s
+
+. Accordingly, we derive two fleet-averaged alignment scores for ground-truth (GT) and predicted (Pred) hotspot targets separately: 
+
+α (t) 
+
+> g
+
+= 1
+
+Nuav  
+
+> Nuav −1
+
+X
+
+> u=0
+
+max  0, d (t)
+
+> u
+> ⊤
+
+v(y (t)
+
+> u,s
+
+), (30) 
+
+α (t) 
+
+> p
+
+= 1
+
+Nuav  
+
+> Nuav −1
+
+X
+
+> u=0
+
+max  0, d (t)
+
+> u
+> ⊤
+
+v(ˆ y (t)
+
+> u,s
+
+). (31) When HGA is activated, we assign α (t) = α (t) 
+
+> g
+
+or α (t) = α (t)
+
+> p
+
+according to whether ground-truth or predicted hotspot super-vision is adopted. The resulting α (t) enters the team reward through αaα (t) + αad α (t)D (t) + αar α (t)I (t) 
+
+> h
+
+in Eq. (32), so alignment is rewarded more strongly when deliveries or successful replications occur in the same step. 
+
+2) Per-Step Team Reward For the multi-agent cooperative team, the single-step scalar reward r(t) in Eq. (28) is defined as a linear combination of the component terms in Eqs. (18)– (19), as follows. 
+
+r(t) = αdD(t) + αeE(t) + αdr R(t) + αb ¯B(t) + αs + I(t) 
+
+> h
+
+αh
+
++ αρρ(t) + αcρ(t)D(t)
+
++ αxgs
+
+ D(t)ξ(t) − αkgm
+
+ D(t)κ(t) + αf ge
+
+ E(t)ρ(t)
+
+> f
+
++ αaα(t) + αad α(t)D(t) + αar α(t)I(t) 
+
+> h
+
+, (32) where the stage-dependent gating functions adopt the defi-nitions provided in the preceding subsection. The step-wise state metrics D(t), E (t), R (t), ¯B(t), I (t) 
+
+> h
+
+, ρ (t), ξ (t), κ (t) as well as the optional predicted congestion term ρ(t) 
+
+> f
+
+are defined in Sec. IV-A, Sec. III-C, and Sec. III-C, respectively. 
+
+B. CTDE–PPO Learning Algorithm 
+
+Fig. 2 summarizes the JUROR structure: a factorized MDP framework, decentralized actors for routing and UAV control, and a centralized critic optimized with PPO. Under CTDE, each agent acts from decentralized observations, while the critic conditions on global statistics only during training. This design preserves deployability under intermittent DTN contacts and uses privileged global information to reduce training variance. The structure includes four modules: (S1) 
+
+constructs structured multi-agent observations from simulation states, (S2) outputs UAV mobility and routing actions with a training-only centralized critic, (S3) steps the simulator forward and stores on-policy transition samples, and (S4) 
+
+computes composite PPO-auxiliary loss to update actor-critic network parameters. At deployment, only the actors related with (S1)–(S2) are retained. JUROR parameterizes a shared policy πθ for all routing and motion factors. The joint log-probability factorizes as 
+
+log πθ (a (t) | o (t)) =  
+
+> N−1
+
+X
+
+> i=0
+
+log πθ,i (a (t) 
+
+> i
+
+| o (t) 
+
+> i
+
+)+ 
+
+> Nuav −1
+
+X
+
+> u=0
+
+log πθ,m,u (m (t) 
+
+> u
+
+| o (t)
+
+> m,u
+
+),
+
+(33) Using the standard policy-gradient estimator with centralized-critic advantage, the shared-parameter update is 
+
+∇θ J(θ) ≈ E
+
+h ˆA (t) ∇θ log πθ (a (t) | o (t))
+
+i
+
+. (34) where ˆA (t) is computed by the centralized critic from global state. Substituting Eq. (33) into Eq. (34) yields a sum of routing and UAV-motion log-gradient terms, all scaled by the same team-level ˆA (t). Hence, both routing actor and UAV actor are optimized jointly toward one cooperative objective while preserving decentralized action selection. 
+
+1) Decentralized Routing Actor: For each routing node 
+
+i (ground vehicle or UAV graph node iu), the decentralized observation is o (t) 
+
+> i
+
+= ( x (t) 
+
+> i
+
+, {c (t) 
+
+> i,ℓ
+
+}Kℓ=1 ), i.e., one local state vector and up to K candidate rows. The routing head encodes each local observation o (t) 
+
+> i
+
+and its feasible candidates with MLP encoders. Node and candidate embeddings are fused to produce K+1 masked logits per node. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 10 Centralized critic 
+
+(training only) 
+
+𝒙 it β𝑖 
+
+g(t) 
+
+ഥ𝑐 𝑖 𝑡  ഥ𝑝 𝑖 𝑡 
+
+βi
+
+d(t)  ഥ𝑣 𝑖 (𝑡) 
+
+ഥ𝜈 𝑖 𝑡  ഥ𝑏 𝑖 
+
+> 𝑛𝑏 𝑡
+
+𝛽 i
+
+𝒄 𝒊,𝐥  
+
+> (t)
+
+𝒃 𝒅 𝑡 or 
+
+෨bid 
+
+𝜄 𝑞 𝒕 
+
+/𝑇 0
+
+ℎ𝑞 𝒕 
+
+/ 𝑁 − 1 
+
+෤νid  τq/T 0
+
+𝜍 𝑞 𝒕  𝑑 𝑖𝑑 𝒕 
+
+𝑧 𝑢  
+
+> 𝑡
+
+𝑺 𝐮 
+
+> (t)
+
+ො𝑛 u 𝒆 u
+
+𝒔 𝒕  𝐟 𝑖  
+
+> 𝑡
+
+ഥ𝜈 𝑖 𝑡  𝒑 𝒊  
+
+> 𝒕
+
+C t 𝑞 p 
+
+> 𝑡
+
+ǁ 𝑡 𝑡 
+
+CTDE Observation Builder (S1) 
+
+Optional per-
+
+UAV 
+
+Predicted ෢yut
+
+Decentralized Policy 
+
+Inference (S2) 
+
+Simulator Step 
+
+a t → state t+1 
+
+𝑂𝑛 𝑝𝑜𝑙𝑖𝑐𝑦 𝑟𝑜𝑙𝑙𝑜𝑢𝑡 𝑏𝑢𝑓𝑓𝑒𝑟 𝑠𝑡𝑜𝑟𝑒 𝑠 𝑡 , 𝑜 𝑡 ,𝑎 𝑡 , 𝑟 𝑡 , 𝑦 𝑢 𝑡 
+
+Env Rollout & 
+
+Trajectory Buffer 
+
+(S3) 
+
+PPO 𝑢𝑝𝑑𝑎𝑡𝑒 −𝐿 clip + 𝑐 𝑣 𝐿 𝑉 
+
+− 𝑐 𝑒 𝐿 𝐻 
+
+Loss & Network 
+
+Update (S4) 
+
+UAV Agent 
+
+πθ,𝑚,𝑢 𝑚 𝑢 𝑡 𝑜 𝑚,𝑢 𝑡 
+
+## 𝒎 𝒖 
+
+𝒕 
+
+## 𝒂 𝒊 𝒕 
+
+Decentralized Actor 
+
+θ/ϕ Updates for Actor/Critic 
+
++
+
++ 𝑂𝑝𝑡𝑖𝑛𝑎𝑙 𝑀𝑢𝑙𝑡𝑖 
+
+ℎ𝑜𝑟𝑖𝑧𝑜𝑛 𝑎𝑢𝑥𝑖𝑙𝑖𝑎𝑟𝑦 𝑙𝑜𝑠𝑠       
+
+> 𝐿 𝑝 = ෍
+> Δ
+> 𝑤 Δ| ෢𝑦 𝑡 − 𝑦 𝑡+Δ |22
+
++
+
+𝑇𝑜𝑡𝑎𝑙 𝐿𝑜𝑠𝑠 𝐿 
+
+𝑔 𝑢 𝑡  +
+
+Routing Agent 
+
+πθ 𝑎 𝑖 𝑡 𝑜 𝑖 𝑡 
+
+Caculate GAE መ𝐴 𝑡 
+
+𝑽 𝒔 𝒕 
+
+Embedding and MLP 
+
+Embedding and MLP               
+
+> Figure 2. JUROR end-to-end architecture under CTDE–PPO. Factored MDP interface with decentralized routing and UAV actions, training-only critic on
+> s(t), and team reward r(t)from the SCF simulator (Sec. IV). One training epoch comprises stages S1–S4 (environment interface, CTDE policy, on-policy buffer, PPO update with optional multi-horizon auxiliary loss λL p); dashed paths denote delayed LSTM supervision. Actor–critic layers use shared MLP width 256 and an optional per-UAV LSTM (hidden 128) producing ˆyufor concatenation into the UAV direction head and for Lp;Dy=8+2 Kσ+2
+> (Eq. (16)). At deployment, only S1–S2 actors run with contact-limited observations; the critic and S3–S4 are omitted. Default base uses λ=0 (LSTM branch off).
+
+2) UAV Direction Head: The motion head encodes o (t) 
+
+> m,u
+
+=(z (t) 
+
+> u
+
+, g (t) 
+
+> u
+
+) with g (t) 
+
+> u
+
+∈ { gG ( t) 
+
+> u
+
+, g L ( t) 
+
+> u
+
+}, when λ> 0, it addition-ally uses the optional LSTM prediction ˆy (t) 
+
+> u
+
+(dashed path in Fig. 2). Let ℓ (t) 
+
+> u
+
+∈ RB denote direction logits and fm denote the motion MLP. When λ> 0,
+
+ℓ (t) 
+
+> u
+
+= fm
+
+ [g (t) 
+
+> u
+
+; z (t) 
+
+> u
+
+; ˆ y (t) 
+
+> u
+
+], (35) and πθ,m,u samples m (t) 
+
+> u
+
+from softmax( ℓ (t) 
+
+> u
+
+). If λ=0 , the ˆy (t)
+
+> u
+
+is omitted. Routing and motion branches each use a product of categoricals with masked feasible sets. 
+
+3) Centralized Critic: The centralized critic module in Fig. 2 approximates the state value V s (t) from global statistics s (t) (Sec. IV-C) through summary MLPs and a value head. Leveraging the full global state s(t) effectively cuts the variance of the generalized advantage estimate ˆA(t), since complete network-wide statistics eliminate the information deficit caused by partial local observations and produce more accurate state-value predictions, whereas all decentralized ac-tors make decisions solely based on local, contact-limited observations. The global state s (t) is assembled from Table II, Part III-C, and is available only in the training phase. 
+
+4) Joint Learning Objective: JUROR uses standard PPO [16] as the policy optimizer and an optional auxiliary multi-horizon congestion hotspot forecasting task is integrated into the overall loss function via a scaled auxiliary loss term λL p. From on-policy tuples {o (t), a (t), r (t), s (t)}, we compute GAE advantages ˆA (t) and form the ratio 
+
+ϱ (t)(θ) = πθ (a (t) | o (t))
+
+πθ′ (a (t) | o (t)) , (36) with the clipped surrogate 
+
+Lclip (θ) = E
+
+h
+
+min  ϱ (t)(θ) ˆA (t), clip  ϱ (t)(θ), 1−ϵ, 1+ ϵ ˆA (t)i
+
+,
+
+(37) For JUROR, the clipped PPO surrogate loss in Eq. (37) is computed with the factorized joint policy formulated in Eq. (33). The training objective is 
+
+L = LP + λL p,LP = −Lclip + cv LV − ceLH , (38) with 
+
+LV = E
+
+h Vψ (s (t)) − ˆV (t)ret 
+
+2i
+
+, (39) 
+
+LH = E
+
+h
+
+H
+
+
+
+πθ (· | o (t))
+
+i 
+
+, (40) where ˆV (t)ret is the return target and H(·) denotes entropy. The complete CTDE–PPO training workflow of JUROR is summarized in Algorithm 2. Algorithm 1 implements the multi-horizon target alignment procedure, which retrieves congestion hotspot ground truth states delayed by ∆ time steps to construct supervision labels for the auxiliary loss Lp.Detailed implementations of vectorized environment rollouts and experience replay buffers are provided in Section VI-A. VI. S IMULATION RESULTS AND DISCUSSIONS 
+
+This section presents experimental results that substantiate the performance of the proposed JUROR method. Subsequent subsections first specify the shared simulation settings, then conduct an ablation study that verifies the core contribution WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 11 
+
+Algorithm 1 Gather multi-horizon hotspot targets from rollout buffer 
+
+Require: On-policy rollout buffer R; minibatch index set S;horizon set H; episode-end flags {δb} stored in R
+
+Ensure: Target tensor Ytgt ∈ R|S|×|H|× Nuav ×Dy ; validity mask Mval ∈ { 0, 1}|S|×|H| 
+
+1: for each horizon ∆ ∈ H do 
+
+2: for each sample index ν ∈ S do 
+
+3: b ← ν; M val  
+
+> ν, ∆
+
+← 1
+
+4: for ℓ = 1 to ∆ do 
+
+5: if δb = 1 then 
+
+6: M val  
+
+> ν, ∆
+
+← 0; break 
+
+7: end if 
+
+8: b ← SUCC INEPISODE (R, b ) // next slot in same episode 
+
+9: end for 
+
+10: if M val  
+
+> ν, ∆
+
+= 1 then 
+
+11: Ytgt  
+
+> ν, ∆
+
+← hotspot y stored at buffer index b
+
+12: end if 
+
+13: end for 
+
+14: end for Algorithm 2 JUROR CTDE–PPO training (one epoch) 
+
+Require: Initial policy parameters θ; PPO coefficients ϵ, cv ,
+
+ce; auxiliary weight λ; horizons H with weights {w∆};minibatch size Bmb ; Npass update passes (Sec. VI-A) 
+
+1: Phase 1 (S3): collect rollouts 
+
+2: Roll out parallel environments into on-policy buffer R
+
+3: Store (o (t), a (t), r (t), s (t), δ (t), h (t) 
+
+> u
+
+, c (t) 
+
+> u
+
+) per step; 
+
+δ (t)=1 marks episode end 
+
+4: Phase 2 (S4): estimate advantages 
+
+5: Compute V (s (t)) and GAE advantages ˆA (t) from rewards 
+
+{r (t)}
+
+6: Phase 3 (S4): joint update 
+
+7: for p = 1 to Npass do 
+
+8: for each minibatch index set S of size Bmb from R
+
+do 
+
+9: LP ← − Lclip (θ) + cv LV − ceLH
+
+10: (Ytgt , Mval ) ← GATHER TARGETS (R, S, H)
+
+// Alg. 1 
+
+11: Lp ← P 
+
+> ∆∈H
+
+w∆
+
+P 
+
+> ν∈S
+
+M val  
+
+> ν, ∆
+
+ˆy (tν ) − Ytgt 
+
+> ν, ∆
+> 22
+
+12: θ ← θ − η∇θ (LP + λL p) with gradient clipping 
+
+13: end for 
+
+14: end for 
+
+in our work, next we compare classical and recent routing baselines with JUROR, and finally we analyze performance trends from a mechanism perspective. 
+
+A. Simulation Settings 
+
+In the experiment, JUROR is implemented in Python whose environment interface conforms to Gymnasium [27] and is trained with Tianshou [28] under vectorized parallel environ-ments that execute the models of Secs. III–V. We evaluate on a Helsinki-medium WKT testbed with default N =70 nodes (Ngr =65 , Nuav =5 ), communication ranges rgr =300 m and 
+
+Table III. Traffic modes employed in the experimental evaluation (Sec. VI). The modes are organized along two orthogonal axes: source multiplicity (single-source versus multi-source) and temporal injection pattern (one-shot burst versus sustained injection).           
+
+> Mode Axes Injection schedule and evaluation focus M1 Single-source; one-shot burst At t=0 , one source injects 69 messages toward the remaining nodes, stressing sparse connectivity and UAV relay planning; primary ablation setting. M2 Network-wide; sustained injection Injection every 20 steps yields ∼4300 messages/episode, stressing congestion-aware forwarding, buffer pressure, and delivery–auxiliary interactions under persistent load. M3 Multi-source; sustained injection Stochastic multi-source arrivals every 20 steps yield ∼306 messages/episode, stressing multi-source scheduling and competition for shared contacts. M4 Multi-source; one-shot burst At t=0 , five sources concurrently inject ∼345 messages, stressing replication control and UAV fleet coverage under simultaneous demand.
+
+ruav =900 m, and episode horizon Tmax =5000 steps. Four traffic modes M1–M4 (Table III) are organized along two orthogonal axes of source multiplicity and temporal injec-tion pattern, thereby characterizing robustness under relay planning, sustained congestion, multi-source scheduling, and concurrent burst load. M1 is adopted as the primary ablation setting, whereas M2–M4 are designed to stress congestion-aware forwarding, multi-source competition, and concurrent burst coverage, respectively. Unless otherwise noted, each run trains PPO for 80 epochs with seed 42, minibatch size 128, clip ϵ=0 .2, value-loss weight 
+
+cv =0 .5, and entropy weight ce=0 .01 , using eight parallel training and ten evaluation environments, and a shared actor MLP of hidden width 256 for routing and UAV direction heads. The default base disables the LSTM auxiliary branch (λ=0 ); optional base +LSTM uses λ=0 .05 with horizons 
+
+H={1, 10 , 25 } and weights w∆ ∈ { 0.34 , 0.33 , 0.33 }, retaining forecast in the on-policy buffer for multi-horizon supervision. Held-out metrics are epoch means D (e) 
+
+> test
+
+, E (e) 
+
+> test
+
+, and R (e) 
+
+> test
+
+.Unless otherwise noted, the team-reward weights are αd=4 .0,
+
+αe=−1.5, αdr =−0.5, αb=−0.1, αs=−0.03 , αh=−0.005 ,
+
+αρ=0 .05 , αc=0 .015 , αx=0 .006 , αk=0 .003 , αf =0 .01 , and 
+
+αa=αad =αar =0 (HGA off, ablations will retune αa, α ad , α ar 
+
+or αf ). Delivery weights satisfy |αd| ≫ | αρ|, |αx|, |αk| so that (P1) remains delivery-centric. Instantiating the gates of Sec. IV-A, we set gs(D (t))=1 if D (t)=0 and 0.3 otherwise, 
+
+gm(D (t))=1 if D (t)=0 and 0.5 otherwise, and ge(E (t)) = min(1 , E (t)/2) . Since the four traffic modes generate dis-tinct volumes of injected packets, cross-mode comparison of absolute delivered messages mixes the impact of traffic load and algorithm performance, only intra-mode comparisons are valid for performance analysis. The ablation experiments record peak and terminal absolute delivery volumes of the joint learning policy on held-out test environments, while baseline evaluations compute and focus on delivery ratios. 
+
+B. Ablation Study 
+
+The ablation study evaluates learned JUROR policies through held-out testing at the end of each training epoch over parallel environments, Let Dtest (e) denote the mean delivered count on the evaluation environments after epoch e, we report the peak value max e D (e) 
+
+> test
+
+and the terminal value D (80)  
+
+> test
+
+. Fig. 4 shows the held-out delivery learning curves under M1, which WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 12 
+
+injects one message from source node 0 to each of the other 69 nodes at t=0 and serves as the primary setting for interpreting ablation trends. Table IV consolidates six core runs across M1–M4 along a CTDE observation axis and a structure– shaping axis. We verify the contributions stated in Sec. I: joint UAV–routing necessity, CTDE observation factorization from deploy-realistic to privileged training, and optional hotspot auxiliary learning and HGA coupling. The Base configuration disables the LSTM auxiliary branch ( λ = 0 ) and hotspot-guided alignment (HGA), and adopts global UAV context 
+
+gG ( t) 
+
+> u
+
+together with the complete navigation vector z(t) 
+
+> u
+
+.The centralized critic always ingests global network statistics 
+
+s(t) for all training runs.Two extended variants are defined: 
+
+Base + LSTM : activates multi-horizon auxiliary loss with 
+
+λ = 0 .05 ; Base + HGA : enables HGA with hyperparameters 
+
+(αa, α ad , α ar ) = (0 .003 , 0.012 , 0.004) .
+
+1) Joint UAV Relaying and Fleet Scale: Fig. 4 shows that removing controllable aerial relays (base −UAV) yields substantially lower delivery than the CTDE observation-axis configurations (M1 peak about 13 versus about 51–58). The main reason is that ground-only contacts within rgr =300 mcannot span the road-constrained Helsinki geometry, whereas UAV links operate at ruav =900 m and reshape the contact matrix as formalized in Eq. (22). Fig. 3 and Table V further report a fleet-size sweep Nuav ∈ {0, 1, 2, 3, 5, 8} on M1 under a fixed training recipe (LSTM on, λ=0 .05 , HGA on; not the default base). It can be found that the first UAV provides the largest incremental gain and that marginal returns diminish beyond Nuav ∈[3 , 5] , which motivates the default fleet of five relays. This is because additional relays expand contact opportunities only until coverage overlap and multi-agent credit assignment begin to offset the geometric benefit under the tested horizon. Consequently, joint motion–routing control is a structural prerequisite rather than an incremental booster under the evaluated scenario. 
+
+2) CTDE Information Factorization: Fig. 4 also compares CTDE observation-axis configurations that vary UAV-actor privileged information from deploy-near-real (contact-limited 
+
+gL ( t) 
+
+> u
+
+, eight-sector z (t) 
+
+> u
+
+, LSTM and HGA disabled) through           
+
+> Figure 3. M1 UAV fleet-size sweep on Helsinki-medium ( N=70 ,
+> Nuav ∈ { 0,1,2,3,5,8}): mean held-out Dtest vs. training epoch with LSTM on ( λ=0 .05 ) and HGA on (fixed recipe; not the default base). 80 epochs, seed 42.
+
+base local-ctx to base , with optional base +LSTM (λ=0 .05 ). In the different traffic-mode environments of Table IV, it can be found that deploy-near-real trails base and base local-ctx in every mode, with the largest gap under bursty M4, whereas contact-limited context alone preserves most of the base-stack benefit. In addition, enabling the LSTM auxiliary (base +LSTM) does not improve over base: on M1 the peak falls from 57.6 to 51.1, and under heavy M2 load from 2948.8 to 2592.5. This is because noisy hotspot targets can conflict with sparse delivery rewards under λ=0 .05 , so that exclusive reliance on the team reward r (t) is more stable than joint optimization with multi-horizon supervision. It is also observed that CTDE training can exploit global statistics 
+
+s (t) and optional gG ( t) 
+
+> u
+
+, yet decentralized execution remains competitive when actor inputs stay near contact-limited obser-vations ( gL ( t) 
+
+> u
+
+), which is consistent with the Local / Local-ctx scopes in Table II, Part III. 
+
+3) Optional Hotspot Auxiliary Learning and HGA: 
+
+The structure–shaping axis isolates optional modules that are disabled in the default base stack. Comparing base with base 
+
++HGA in Table IV shows that enabling HGA alone can raise peak delivery on M3–M4 (217.0 and 315.9), whereas on M1–M2 base remains strongest and terminal delivery still favors base on most modes. Together with the CTDE-axis finding that base +LSTM underperforms base , these results indicate that optional hotspot modules are traffic-dependent extras rather than default ingredients. Therefore, when delivery transfer from auxiliary supervision is uncertain, keeping λ=0 
+
+and HGA off (default base) is more reliable than enabling optional shaping by default. 
+
+4) Cross-Traffic Learning Dynamics: Fig. 5 shows learn-ing curves for the optional base +LSTM stack across traffic modes M1–M4, and the detailed peak and terminal values for the core ablation rows are reported in Table IV. In the different traffic environments, it can be found that the same patterns persist under heavier injection: base −UAV collapses in every mode; base +LSTM underperforms base on sustained M2 load; and on M3–M4, base +HGA achieves the highest peak delivery while terminal delivery favors base. This is mainly due to the interaction between traffic-dependent reward sparsity and optional shaping terms, which can elevate mid-training peaks without guaranteeing terminal optimality under a fixed hyperparameter schedule.           
+
+> Figure 4. Helsinki-medium M1 ( N=70 ,Nuav =5 ; 69 messages at t=0 ): mean held-out Dtest vs. training epoch for base −UAV and CTDE observation-axis rows base local-ctx, base , and base +LSTM. 80 epochs, seed 42. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 13
+
+Table IV. Cross-traffic ablation on Helsinki-medium ( N =70 , Nuav =5 ): peak and terminal held-out Dtest after 80 training epochs (seed 42). The table retains six core configurations along a CTDE observation axis (deploy-realistic →privileged) and a structure–shaping axis (fleet composition; optional HGA). Base (ref.): λ=0 (LSTM off), global UAV context gG ( t) 
+
+> u
+
+, full z (t) 
+
+> u
+
+, HGA off. Optional base +LSTM uses λ=0 .05 ; base +HGA uses 
+
+(αa, α ad , α ar )=(0 .003 , 0.012 , 0.004) (defaults in Sec. VI-A). Peak and terminal optima need not coincide. Deploy-near-real: Sec. VI-B. M1 M2 M3 M4 Configuration Peak Term. Peak Term. Peak Term. Peak Term. 
+
+A. CTDE observation axis (deploy-realistic → privileged) 
+
+deploy-near-real 49.3 31.0 2051.3 1989.0 203.1 195.0 228.0 184.8 base local-ctx 54.8 52.0 2562.7 2366.8 211.8 198.6 290.8 282.2 
+
+base (ref.) 57.6 52.8 2948.8 2648.5 214.8 214.8 302.8 298.0 
+
+base +LSTM ( λ=0 .05 ) 51.1 47.8 2592.5 2592.5 210.4 197.3 294.5 281.8 
+
+B. Structure–shaping axis (fleet / optional HGA) 
+
+base −UAV ( Nuav =0 ) 13.2 11.8 815.5 788.2 70.9 68.5 98.2 90.8 base +HGA 55.4 51.5 2782.5 2438.8 217.0 200.4 315.9 289.4 
+
+Figure 5. Optional base +LSTM configuration ( λ=0 .05 , HGA off) on Helsinki-medium ( N =70 , Nuav =5 ): mean held-out Dtest vs. training epoch on M1–M4. 80 epochs, seed 42. Default base uses λ=0 (Table IV). 
+
+Table V. UAV fleet-size sensitivity on M1 (80 epochs, seed 42). Fixed recipe with LSTM auxiliary ( λ=0 .05 ) and HGA on (not the default base); only 
+
+Nuav varies. 
+
+Nuav Peak Dtest Terminal Dtest Etest at Peak Dtest 
+
+Nuav =0 12.8 11.7 56.2 
+
+Nuav =1 45.7 45.7 23.3 
+
+Nuav =2 47.7 39.8 21.3 
+
+Nuav =3 49.8 44.7 19.2 
+
+Nuav =5 (default) 57.1 53.3 11.9 
+
+Nuav =8 60.9 58.2 8.1 
+
+C. Baseline Routing Comparison 
+
+To underscore the effectiveness of opportunistic forwarding under the same discrete-time simulator, we compare five routing-only baseline methods that select one transfer per source node from the candidate sets of Sec. IV, namely: 1) PRoPHET: The PRoPHET-based routing algorithm pre-dicts a node’s future contacts from encounter history and transitivity and formulates forwarding decisions accord-ingly [2]. The fundamental principle of the algorithm is that if two nodes have often encountered each other in the past, then the probability of their encounter in the future is also high. Our implementation realizes aging, encounter record updates, transitive delivery pre-dictability, and threshold-based forwarding, but omits full implementation of the wireless transceiver protocol stack native to The ONE simulator [29]. 2) MaxProp: The MaxProp-based routing algorithm pri-oritizes transfers that improve delivery prospects by WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 14 
+
+combining destination meeting recency, hop-count, TTL urgency, and destination delivery likelihood under buffer pressure [18]. Our implementation scores candidates from recency, TTL, and destination meeting recency weights, while omitting full The ONE queue manage-ment [29]. 3) Fan DPUVR: The Fan DPUVR algorithm ranks relay candidates by a multiplicative utility function over tra-jectory similarity, surplus energy, link survival, remain-ing distance, and queuing delay, with adaptive attribute weights [4]. We implement the core utility for the five attributes and omit Dijkstra reference trajectories and three-level priority queues. 4) ICC Q-learning: The ICC Q-learning algorithm formulates forwarding as tabular Q-learning over 
+
+(src , relay , dest ) with delivery-coupled rewards and ϵ-greedy exploration [10]. Our adapted implementation employs per-step online updates, uses buffer occupancy as proxy metrics for residual node energy, and enforces episodic Q-table reset. 5) ICC FQLRP: The ICC FQLRP algorithm extends the Q-learning core with a fuzzy classification layer before action selection [10]. All five baseline protocols are partially reimplemented on our discrete-time SCF simulator. We preserve their core scoring and learning mechanisms documented in original papers, while omitting The ONE’s native transceiver stack [29] and substitut-ing simplified proxy metrics as described earlier. We evaluate all standalone routing baselines under a fixed random seed of 42. Each table entry corresponds to one complete simulation trial, which records three metrics: the count of successfully delivered packets D, the count of expired packets E, and delivery ratio ηdel = D/M created . Here Mcreated stands for the total number of packets injected within one full episode. For traffic modes M1 to M4, the total injected packets per simulation trial are 69, 4321, 306 and 345, respectively. Table VI summarizes the resulting delivery metrics. Rows marked † list selected JUROR peak held-out deliveries after 80-epoch training (seed 42)— base +LSTM (λ=0 .05 ), base 
+
+−UAV , Nuav ∈{ 1, 2}, and deploy-near-real —for qualitative reference only and are not directly comparable to the routing-only protocol; default base and base +HGA peaks remain in Table IV. 1) Delivery Ratio Analysis No single baseline outperforms others on all traffic modes. PRoPHET performs best under regular ground mobility, yet all baselines see severe delivery degradation under the sustained congestion of M2, as encounter-based scoring cannot resolve buffer saturation. By jointly optimizing UAV trajectories and for-warding rules, JUROR effectively relieves such congestion limitations and achieves more stable delivery performance. 
+
+2) Congestion-Aware & Learning-Based Schemes MaxProp and Fan DPUVR gain marginal benefits under multi-source congestion via multi-dimensional scoring. The two tabular Q-learning methods struggle with continuous traffic due to peri-odic Q-table resets. Unlike all routing-only baselines, JUROR coordinates UAV movement to expand contact opportunities, delivering consistently higher delivery ratios across all four traffic scenarios. 
+
+D. Mechanism Analysis and Discussions 
+
+As analyzed above, the ablation and baseline results admit a mechanism-level reading along two dimensions. 
+
+1) Baseline Performance Under Traffic Loads: PRoPHET outperforms peers with regular node encounters, yet all routing-only baselines degrade severely under persistent con-gestion as full buffers block new packet copies. MaxProp and Fan DPUVR yield minor gains via queue-aware scor-ing under multi-copy competition, while episodic tabular RL becomes unstable with heavy traffic injection. Unlike these schemes that only reorder existing contacts, JUROR co-optimizes forwarding and UAV mobility to proactively create new relay opportunities. Treating UAV movement as a controllable decision variable, our method improves delivery via joint relay scheduling and long-term topology reshaping. The sharp performance decline in the UAV-free ablation case, and consistent recovery with aerial relays enabled, verifies joint routing-UAV optimization as the core source of JUROR’s performance gains. 
+
+2) CTDE and Auxiliary Effects Analysis CTDE improves training stability while preserving decentralized execution, and the deploy-near-real results show that JUROR retains most of its benefit even with contact-limited actor inputs. Optional LSTM and HGA are traffic-dependent refinements rather than mandatory components, so the default configuration remains the most reliable general setting unless mode-specific retuning is available. VII. C ONCLUSION 
+
+In this paper, we investigate core bottlenecks restricting joint routing and UAV motion control in delay-tolerant aerial networks, in attaining reliable message delivery while sup-porting adaptive congestion mitigation and dynamic topology optimization. To tackle these limitations, a CTDE multi-agent learning architecture and a joint flight-forwarding control framework built upon PPO cooperative optimization are de-veloped. First, the multi-agent decentralized execution paradigm is integrated into the DTN SCF system and deployed over the UAV relay fleet to expand intermittent contact opportunities. Second, multiple network observation features are fused to capture the time-varying contact evolution of heterogeneous ground and aerial nodes. CTDE training rules are then lever-aged to model the partially observable sequential decision process of all network agents, constructing the shared team reward function and converting the joint topology shaping task into a cooperative reinforcement learning optimization problem. Finally, to accommodate the intermittent connectivity property inherent to DTN environments, a joint UAV-routing decision algorithm is formulated. Each relay agent builds individual policy output conditioned on local congestion and neighbor observations to produce adaptive movement and forwarding actions, realizing stable end-to-end data delivery and supporting global collaborative resource allocation across the entire UAV fleet. WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 15 
+
+Table VI. Routing-only baselines and selected JUROR peak references ( †) on Helsinki-medium under M1–M4 (Table III). Mode Method Del. Exp. ηdel 
+
+M1 PRoPHET 34.9 34.1 0.505 MaxProp 13.4 55.6 0.194 Fan DPUVR 12.0 57.0 0.174 ICC Q-learning 17.0 52.0 0.246 ICC FQLRP 29.0 40.0 0.420 base +LSTM † 51.10 17.9 0.741 
+
+base −UAV † 13.20 55.8 0.191 
+
+Nuav =1 † 45.70 23.3 0.662 
+
+Nuav =2 † 47.70 21.3 0.691 deploy-near-real † 49.33 19.7 0.715 M2 PRoPHET 1611.0 371.0 0.373 MaxProp 911.0 553.0 0.211 Fan DPUVR 944.0 516.0 0.218 ICC Q-learning 706.0 593.0 0.163 ICC FQLRP 724.0 639.0 0.168 base +LSTM † 2592.50 171.3 0.600 
+
+base −UAV † 815.50 642.7 0.189 
+
+Nuav =1 † 1601.67 383.2 0.371 
+
+Nuav =2 † 2014.67 280.3 0.466 deploy-near-real † 2051.33 315.3 0.475 Mode Method Del. Exp. ηdel 
+
+M3 PRoPHET 157.0 17.0 0.513 MaxProp 92.0 30.0 0.301 Fan DPUVR 73.0 33.0 0.239 ICC Q-learning 65.0 43.0 0.212 ICC FQLRP 58.0 47.0 0.190 base +LSTM † 210.40 11.8 0.688 
+
+base −UAV † 70.90 43.4 0.232 
+
+Nuav =1 † 133.00 27.5 0.435 
+
+Nuav =2 † 183.50 12.8 0.600 deploy-near-real † 203.10 13.3 0.664 M4 PRoPHET 207.0 138.0 0.600 MaxProp 104.0 241.0 0.301 Fan DPUVR 107.0 238.0 0.310 ICC Q-learning 85.0 260.0 0.246 ICC FQLRP 140.0 205.0 0.406 base +LSTM † 294.50 50.5 0.854 
+
+base −UAV † 98.25 246.8 0.285 
+
+Nuav =1 † 106.62 238.4 0.309 
+
+Nuav =2 † 299.62 45.4 0.868 deploy-near-real † 228.00 117.0 0.661 
+
+Simulation results validate that the proposed JUROR frame-work delivers superior overall performance, and its advantage over baseline routing algorithms expands significantly under heavier traffic loads. REFERENCES [1] Badawi, Salma, Ahmad, Norulhusna, Dziyauddin, Rudzidatul Akmam, Mohamed, Norliza, and Sam, Suriani Mohd, “Routing Protocols in FANET for Disaster Area Networks: A Review,” ASEAN Engineering Journal , vol. 15, no. 3, pp. 81–100, 2025, doi: 10.11113/aej.V15.22954. [2] Lindgren, Anders, Doria, Avri, and Schel´ en, Olov, “Probabilistic Rout-ing in Intermittently Connected Networks,” ACM SIGMOBILE Mobile Computing and Communications Review , vol. 7, no. 3, pp. 19–26, 2003, doi: 10.1145/961268.961272. [3] Du, Zhaoyang, Wu, Celimuge, Yoshinaga, Tsutomu, Chen, Xianfu, Wang, Xiaoyan, Yau, Kok-Lim Alvin, and Ji, Yusheng, “A Routing Protocol for UAV-Assisted Vehicular Delay Tolerant Networks,” IEEE Open Journal of the Computer Society , vol. 2, pp. 85–98, 2021, doi: 10.1109/OJCS.2021.3054759. [4] Fan, Zhijie, Zhang, Mansi, Cao, Yue, Liu, Zilong, Kaiwartya, Om-prakash, Javed, Yasir, and Hussain, Faisal Bashir, “A Novel UAV-assisted VANET Routing Protocol for Post-Disaster Emergency Communica-tions,” IEEE Transactions on Network Science and Engineering , vol. 13, pp. 4863–4882, 2026, doi: 10.1109/TNSE.2025.3644432. [5] Mammeri, Zoubir, “Reinforcement Learning Based Routing in Net-works: Review and Classification of Approaches,” IEEE Access , vol. 7, pp. 55916–55950, 2019, doi: 10.1109/ACCESS.2019.2913776. [6] Fernandes, Inˆ es and Pereira, Paulo Rog´ erio, “Social and Geographical Routing for Vehicular Delay-Tolerant Networks,” Proc. Int. Young Engi-neers Forum Electr. Comput. Eng. (YEF-ECE) , 2025, doi: 10.1109/YEF-ECE66503.2025.11117524. [7] Sammou, El Mastapha, “PF-DTN: Predictive Routing for Intelligent Delay Tolerant Networks Using RNN-LSTM Deep Learning With Monte Carlo Dropout Uncertainty Estimation and Hybrid Deterministic, Probabilistic, and Uncertain Routing Strategies,” IEEE Access , vol. 14, pp. 10841–10859, 2026, doi: 10.1109/ACCESS.2026.3655507. [8] Wen, Xin and Tan, Long, “Enhancing DTN Routing Strategies with Deep Reinforcement Learning in Disaster Recovery Networks,” Proc. Int. Conf. Frontier Technol. Inf. Comput. (ICFTIC) , pp. 450–456, 2024, doi: 10.1109/ICFTIC64248.2024.10913424. [9] Chakrabarti, Chandrima, “A Noble Route Discovery Technique in UAV Based Delay Tolerant Network for Disaster Management,” Proc. Int. Conf. Res. Methodol. Knowl. Manag., Artif. Intell. Telecommun. Eng. (RMKMATE) , 2025, doi: 10.1109/RMKMATE64874.2025.11042440. [10] Dhurandher, Sanjay K., Singh, Jagdeep, Woungang, Isaac, Srivastava, Sanjeev, and Rodrigues, Joel J. P. C., “Reinforcement Learning-Based Routing Protocol for Opportunistic Networks,” Proc. IEEE Int. Conf. Commun. (ICC) , 2020, doi: 10.1109/ICC40277.2020.9149039. [11] Yao, Lei, Bai, Xiangyu, and Zhou, Kexin, “An Improved Spray and Wait Algorithm Based on Q-learning in Delay Tolerant Network,” 
+
+Proc. Int. Joint Conf. Neural Netw. (IJCNN) , pp. 1–8, 2024, doi: 10.1109/IJCNN60899.2024.10650780. [12] Xiang, Yuhong, Gao, Shuai, Wang, Hongchao, Yang, Dong, Zhang, Yuming, and Zhang, Hongke, “Performance Evaluation for Q-Learning Based Anycast Routing Protocol in Unmanned Aerial Vehicle Networks with Multiple Base Stations,” Ad Hoc Networks , vol. 168, pp. 103719, 2025, doi: 10.1016/j.adhoc.2024.103719. [13] Fan, Zesong, Gong, Shimin, Long, Yusi, Li, Lanhua, Gu, Bo, and Luong, Nguyen Cong, “Delay-Tolerant Multi-Agent DRL for Trajectory Plan-ning and Transmission Control in UAV-Assisted Wireless Networks,” 
+
+Proc. IEEE Veh. Technol. Conf. (VTC Spring) , pp. 1–5, 2024, doi: 10.1109/VTC2024-Spring59600.2024.10555325. [14] Lowe, Ryan, Wu, Yi, Tamar, Aviv, Harb, Jean, Abbeel, Pieter, and Mordatch, Igor, “Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments,” Advances in Neural Information Processing Systems , vol. 30, 2017. [15] Foerster, Jakob N., Farquhar, Gregory, Afouras, Triantafyllos, Nardelli, Nantas, and Whiteson, Shimon, “Counterfactual Multi-Agent Policy Gradients,” Proceedings of the AAAI Conference on Artificial Intelli-gence , vol. 32, no. 1, 2018. [16] Schulman, John, Wolski, Filip, Dhariwal, Prafulla, Radford, Alec, and Klimov, Oleg, “Proximal Policy Optimization Algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [17] Spyropoulos, Thrasyvoulos, Psounis, Konstantinos, and Raghavendra, C. S., “Routing for Disruption Tolerant Networks: Taxonomy and Design,” Wireless Communications , vol. 16, no. 6, pp. 39–46, 2009, doi: 10.1109/MWC.2009.5302297. [18] Burgess, John, Gallagher, Brian, Jensen, David, and Levine, Brian Neil, “MaxProp: Routing for Vehicle-Based Disruption-Tolerant Networks,” 
+
+Proc. IEEE INFOCOM , 2006, doi: 10.1109/INFOCOM.2006.228. [19] Zhang, Yu, “Epidemic Routing Optimization Algorithm Based on Node Cache Status,” EBNCS flooding-family variant with cache-state classifi-cation and ACK cleanup; author manuscript , 2025. [20] Ullah, Saif, Muhammad, Asif, Ali, Zulfiqar, Waqar, Muhammad, and Kim, Ajung, “SR-SAAD: A Social Rank-Based Routing Protocol for Enhanced Efficiency in Delay Tolerant Networks,” IET Communications ,vol. 19, no. 1, pp. e70099, 2025, doi: 10.1049/cmu2.70099. [21] D’Argenio, Pedro R., Fraire, Juan, Hartmanns, Arnd, and Raverta, Fernando, “Comparing Statistical, Analytical, and Learning-Based Rout-ing Approaches for Delay-Tolerant Networks,” ACM Transactions on Modeling and Computer Simulation , vol. 35, no. 2, pp. 1–26, 2025, doi: 10.1145/3665927. [22] Salam, Mohammad Abdus, Saif, A. F. M. Saifuddin, Katroju, Priya Hamsa, and Kassouf-Short, Robert, “A Constructive Analysis on Machine Learning Integration in High Delay Tolerant Networking (HDTN),” Proc. Int. Conf. Adv. Commun. Technol. Netw. (CommNet) ,pp. 1–6, 2024, doi: 10.1109/CommNet63022.2024.10793376. [23] Zhou, Xuan, Lin, Haitao, and Chen, Jin, “A Review of Research on WANG AND YANG: JUROR FOR DELAY-TOLERANT NETWORKS 16 
+
+Routing Protocols for Unmanned Aerial Vehicle Cluster Self-Organizing Networks,” Proc. Int. Conf. Intell. Syst., Commun. Comput. Netw. (ISCCN) , pp. 246–255, 2025, doi: 10.1145/3732945.3732981. [24] Zhou, Xixuan, Xu, Ruoyu, Tian, Xiaojian, Zhang, Yueyue, Liang, Yu, Chen, Xiaoliang, and Zhu, Zuqing, “Distributed Routing and Data Scheduling in IPNs With GNN-Based Multiagent DRL,” IEEE Internet of Things Journal , vol. 12, no. 12, pp. 21565–21576, 2025, doi: 10.1109/JIOT.2025.3547341. [25] Tian, Xiaojian, Chen, Xiaoliang, Zhou, Xixuan, and Zhu, Zuqing, “On the Scaling of Reliable Interplanetary Networks with Deep Reinforce-ment Learning,” Proc. Int. Conf. Design Rel. Commun. Netw. (DRCN) ,2025, doi: 10.1109/DRCN65040.2025.11046163. [26] Jaderberg, Max, Mnih, Volodymyr, Czarnecki, Wojciech Marian, Schaul, Tom, Leibo, Joel Z., Silver, David, and Kavukcuoglu, Koray, “Rein-forcement Learning with Unsupervised Auxiliary Tasks,” International Conference on Learning Representations , 2017. [27] Brockman, Greg, Cheung, Vicki, Petrov, Ludwig, Schneider, Jonas, Schulman, John, Tang, Jie, and Zaremba, Wojciech, “OpenAI Gym,” 
+
+arXiv preprint arXiv:1606.01540 , 2016. [28] Weng, Jiayi, Chen, Huan, Yan, Dong, You, Kaichao, Duburcq, Antoine, Zhang, Minghao, Su, Hang, and Zhu, Jun, “Tianshou: A Highly Mod-ularized Deep Reinforcement Learning Library,” Journal of Machine Learning Research , vol. 22, no. 267, pp. 1–6, 2021. [29] Ker¨ anen, Ari, Ott, J¨ org, and K¨ arkk¨ ainen, Teemu, “The ONE Simulator for DTN Protocol Evaluation,” Proceedings of the 2nd International Conference on Simulation Tools and Techniques , pp. 1–10, 2009.

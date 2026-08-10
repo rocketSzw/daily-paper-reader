@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-09</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-10</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 21 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-09 21:07:11 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-10 21:24:10 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日本站共更新21篇论文，精读9篇、速读12篇，其中两篇高分精读聚焦无人机导航与视觉语言导航。</p>
-<p>最值得关注10分满分作《FlowPilot》实现无人机敏捷导航的实时世界动作建模，以及9分《FreqNav》提出面向空中视觉语言导航的分阶段频率路由。</p>
-<p>建议优先阅读这两篇精读论文，并结合速读中的《SelfWAM》等世界模型工作，可把握无人机控制与视觉导航的前沿趋势。</p>
+<p>今日共筛19篇论文，精读7篇、速读12篇，重点聚焦“世界动作模型”在机器人导航与自动驾驶中的应用。最值得关注的是9.0分的《EndoWAM》内窥镜导航模型，以及同分《Shooting for Contact》的接触隐式运动重定位方法。若想快速入门，建议先看8.0分的《SG-WAM》与《SimWAM》，能帮你理解该领域的核心设计思路。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="FlowPilot: Real-Time World-Action Modeling for Agile UAV Navigation">FlowPilot: Real-Time World-Action Modeling for Agile UAV Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="FreqNav: Stage-Wise Frequency Routing for Object-Oriented Aerial Vision-Language Navigation">FreqNav: Stage-Wise Frequency Routing for Object-Oriented Aerial Vision-Language Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="CoNav-UAV: Cooperative Dual-Altitude Aerial Navigation via Stackelberg Learning">CoNav-UAV: Cooperative Dual-Altitude Aerial Navigation via Stackelberg Learning</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="EndoWAM: A Grounded World-Action Model for Generalizable Endoscopic Navigation">EndoWAM: A Grounded World-Action Model for Generalizable Endoscopic Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Shooting for Contact: Contact-Implicit Multiple Shooting for Dynamic Motion Retargeting">Shooting for Contact: Contact-Implicit Multiple Shooting for Dynamic Motion Retargeting</span></li><li><span class="dpr-home-dashboard-paper-title" title="CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting">CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="SelfWAM: A Self-Grounded Unified World Action Model for Fast Robot Control">SelfWAM: A Self-Grounded Unified World Action Model for Fast Robot Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="MiniWorld: Democratizing the Training of Video World Models from Scratch">MiniWorld: Democratizing the Training of Video World Models from Scratch</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Tilt-Rotor UAV with a Gripper for Stable Contact-Based Tasks via Environmental Anchoring">A Tilt-Rotor UAV with a Gripper for Stable Contact-Based Tasks via Environmental Anchoring</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space">SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space</span></li><li><span class="dpr-home-dashboard-paper-title" title="SimWAM: A Simple World Action Model for End-to-End Autonomous Driving">SimWAM: A Simple World Action Model for End-to-End Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="Faster-WAM: Do World Action Models Need Deep Action Modules?">Faster-WAM: Do World Action Models Need Deep Action Modules?</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>7</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
 </section>
 </div>
 
