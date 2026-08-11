@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-10</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-11</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 19 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-10 21:24:10 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-11 21:02:51 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共筛19篇论文，精读7篇、速读12篇，重点聚焦“世界动作模型”在机器人导航与自动驾驶中的应用。最值得关注的是9.0分的《EndoWAM》内窥镜导航模型，以及同分《Shooting for Contact》的接触隐式运动重定位方法。若想快速入门，建议先看8.0分的《SG-WAM》与《SimWAM》，能帮你理解该领域的核心设计思路。</p>
+<p>今日19篇导航决策论文中，7篇精读、12篇速读，聚焦无人机-地面机器人协作与潜在地图导航。最值得关注：雪地环境下无人机-UGV自主协同（9.0分），以及基于潜在世界模型的目标图像导航（9.0分）。若时间有限，优先精读这两篇高分工作，再顺带浏览UUV鲁棒导航与课程化训练框架。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="EndoWAM: A Grounded World-Action Model for Generalizable Endoscopic Navigation">EndoWAM: A Grounded World-Action Model for Generalizable Endoscopic Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Shooting for Contact: Contact-Implicit Multiple Shooting for Dynamic Motion Retargeting">Shooting for Contact: Contact-Implicit Multiple Shooting for Dynamic Motion Retargeting</span></li><li><span class="dpr-home-dashboard-paper-title" title="CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting">CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Drone-Assisted UAV-UGV Collaboration for Autonomous Navigation in Snow-Covered Terrain">Drone-Assisted UAV-UGV Collaboration for Autonomous Navigation in Snow-Covered Terrain</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent World Models with Monotone Planning Costs for Image-Goal Navigation">Latent World Models with Monotone Planning Costs for Image-Goal Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="RecoverFly: A Failure-Aware Reinforcement Learning Post-Training Framework for Aerial Vision-Language Navigation">RecoverFly: A Failure-Aware Reinforcement Learning Post-Training Framework for Aerial Vision-Language Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>5</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space">SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space</span></li><li><span class="dpr-home-dashboard-paper-title" title="SimWAM: A Simple World Action Model for End-to-End Autonomous Driving">SimWAM: A Simple World Action Model for End-to-End Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="Faster-WAM: Do World Action Models Need Deep Action Modules?">Faster-WAM: Do World Action Models Need Deep Action Modules?</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Unified Planning-Learning Framework for Robust UUV Navigation Under Partial Observability">Unified Planning-Learning Framework for Robust UUV Navigation Under Partial Observability</span></li><li><span class="dpr-home-dashboard-paper-title" title="Curriculum Generation under Structured Parametric Environments for Robust Navigation Policies">Curriculum Generation under Structured Parametric Environments for Robust Navigation Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation">Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
 </section>
 </div>
 

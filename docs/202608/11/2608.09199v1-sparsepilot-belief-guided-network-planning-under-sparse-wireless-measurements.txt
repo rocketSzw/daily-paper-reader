@@ -1,0 +1,744 @@
+Title: SparsePilot: Belief-Guided Network Planning under Sparse Wireless Measurements
+
+URL Source: https://arxiv.org/pdf/2608.09199v1
+
+Published Time: Tue, 11 Aug 2026 01:55:37 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# SparsePilot: Belief-Guided Network Planning under Sparse Wireless Measurements 
+
+Xuanhao Luo ∗, Jiayuan Huang ∗, Longyu Zhou †, Mingzhe Chen ‡, Yuchen Liu ∗∗North Carolina State University, †Singapore University of Technology and Design, ‡University of Miami 
+
+Abstract —Unmanned aerial vehicles (UAVs) have emerged as a promising solution for on-demand wireless coverage planning in urban environments. Existing learning-based UAV control methods, however, typically rely on continuous access to dense user-level received signal strength (RSS) measurements. Such full-observation assumptions are difficult to satisfy in real-world deployments due to the high cost and limited availability of dense wireless feedback. Sparse-feedback decision making under severe observation constraints therefore represents a fundamental chal-lenge. To fill this gap, we propose SparsePilot, a measurement-efficient sensing-control framework that couples active wireless probing with belief-guided network control. SparsePilot formu-lates spatial probing as a multi-armed bandit problem over grid cells, uses upper confidence bound probing to select informative regions, and aggregates sparse RSS measurements into a coverage belief map. A deep reinforcement learning controller then uses this belief state to generate continuous UAV mobility actions, while the full wireless state remains hidden from the policy. We further provide a theoretical analysis connecting sparse probing, belief estimation error, and the sparse-feedback performance gap. Experiments across seven urban digital twins show that SparsePilot achieves superior coverage restoration performance while using only about 3.1% of the full-observation measurement budget and demonstrates strong cross-scene generalization to unseen urban-scale wireless environments. 
+
+Index Terms —UAV-assisted networks, sparse wireless feed-back, active wireless probing, belief-guided planning. 
+
+I. I NTRODUCTION 
+
+Unmanned aerial vehicles (UAVs) have emerged as flexible wireless infrastructure for coverage extension, hotspot support, emergency communication, and rapid network recovery [1], [2]. Compared with fixed terrestrial base stations, UAVs can be dynamically repositioned to compensate for weak-coverage regions caused by urban blockage, uneven user distribution, temporary traffic demand, or sudden infrastructure degradation [3]. This flexibility is particularly valuable in complex urban environments, where propagation conditions vary significantly across space and UAV placement often requires iterative ad-justment based on updated wireless feedback, such as channel state measurements and link quality indicators [4]. Wireless digital twins (DTs) provide an effective platform for designing and evaluating UAV-assisted networks before real-world deployment [5], [6]. By combining city-scale three-dimensional (3D) scene models, base-station configurations, user distributions, and ray-tracing-based propagation mod-eling, a DT can estimate received signal strength (RSS), coverage quality, and service reliability under different net-work configurations [7]. Such a platform enables closed-loop optimization of UAV positions without disrupting the physical network. As a result, recent studies have increasingly explored deep reinforcement learning (DRL) for UAV placement, tra-jectory optimization, and coverage control in simulated or DT environments [8], [9]. Despite this progress, many learning-based UAV control formulations rely on a full-observation assumption [8]. Specif-ically, the controller is often assumed to observe complete ground-user locations, RSS values, or channel states at every 
+
+decision step. Although such information is available in a simulator, a deployed wireless DT cannot be assumed to remain perfectly synchronized with the physical network. Maintaining an up-to-date DT requires continuous data ex-change, and communication delay, packet loss, and limited wireless resources can create synchronization latency and state mismatch [10], [11]. In practice, these wireless measurements must be collected through probing signals, user reports, or base-station feedback. Such measurements introduce signaling overhead, measurement latency, and device-side energy cost [12], [13]. Moreover, idle or disconnected users may be unable to continuously report their channel conditions. As a result, the full-observation policies often overestimate the information available to a deployable network controller. This practical issue motivates a fundamental question: how can network control systems make effective decisions when the global wireless state is not directly observable? In this paper, we study sparse-feedback UAV-assisted network planning, where the controller observes only a small subset of user- or region-level RSS measurements at each decision epoch. Unlike conventional UAV placement or trajectory optimization, which assume complete network visibility, this setting inherently 
+
+couples sparse wireless sensing with network control in the same loop: the controller must actively acquire informative measurements from an incomplete belief of the wireless environment while simultaneously making UAV deployment decisions under partial observability. To this end, we propose SparsePilot, a measurement-efficient sensing-control framework for sparse-feedback net-work planning. SparsePilot divides the service region into grid cells and formulates sparse wireless probing as a multi-armed bandit (MAB) problem over spatial regions. Each grid cell is treated as a probing arm, whose feedback is used to estimate regional coverage deficiency and uncertainty. Then, an upper confidence bound (UCB) strategy actively selects informative cells that are either likely to be under-covered or have high sensing uncertainty. The collected RSS measurements are then aggregated into a three-channel coverage belief map, where arXiv:2608.09199v1 [cs.NI] 10 Aug 2026 Fig. 1: RSS maps under different UAV deployment strategies. The DT can compute dense RSS maps, but a deployable controller cannot directly observe the full RSS/coverage state. 
+
+each cell encodes its estimated outage ratio, RSS deficiency, and sensing uncertainty. At the second stage, the constructed belief map serves as the observation for continuous UAV mobility control. We train a DRL-based policy with soft actor-critic (SAC) [14] to map the belief-guided state to UAV displacement actions. In this design, UCB and SAC work synergistically: UCB decides where to collect sparse measurements, while SAC decides how to reposition UAVs based on the updated belief of the wireless environment. The full wireless state remains hidden from the policy and is used only for training reward computation and evaluation. This separation allows SparsePilot to retain closed-loop adaptation while operating under limited wireless feedback. The main contributions of this paper are summarized as follows.  
+
+> •
+
+We formulate a sparse-feedback 3D network planning problem using wireless belief maps, where the network controller cannot access the full RSS and coverage state and must operate under a limited probing budget.  
+
+> •
+
+We design SparsePilot, a measurement-efficient sensing-control framework that couples UCB-guided active prob-ing, coverage belief construction, and SAC-based contin-uous UAV mobility control.  
+
+> •
+
+We theoretically analyze the impact of sparse probing on belief map estimation and belief-guided network control. The analysis characterizes how probing frequency affects cell-level belief error, how UCB allocates measurements to informative regions, and how belief error bounds the sparse-feedback mobility control gap.  
+
+> •
+
+We implement SparsePilot in ray-tracing-based wire-less digital twins and evaluate it across multiple city-scale environments, showing strong coverage restoration performance while using only about 3.1% of the full-observation measurement budget. II. M OTIVATION AND OBSERVATIONS 
+
+Observation 1: Closed-loop wireless feedback substantially improves UAV-assisted network planning. 
+
+Wireless DTs and ray-tracing simulators, such as Sionna RT [15] and Wireless InSite [16], provide a physically grounded platform for evaluating UAV-assisted networks under different deployments. As shown in Fig. 1, different UAV Raleigh Atlanta Boston 020 40 60 80 100 Coverage ratio (%)  Static Open-Loop Closed-Loop Raleigh Atlanta Boston −120 −100 −80 Mean RSS (dBm) 
+
+Fig. 2: Performance comparison of different control policies. 
+
+placement strategies produce clearly different RSS distribu-tions and coverage patterns within the same Raleigh scene. These spatial variations show that UAV-assisted coverage restoration is highly sensitive to deployment decisions, since each UAV movement changes transmitter locations, propaga-tion paths, and user associations, thereby affecting the resulting RSS and coverage state. To quantify whether online feedback improves such de-ployment decisions, we compare three representative settings in Fig. 2. Static keeps the UAVs at their initial locations. 
+
+Open-loop control makes a one-shot UAV movement decision without using online RSS or coverage feedback, similar to fixed-snapshot placement paradigms [17], [18]. Closed-loop control receives full user-level RSS and coverage feedback at each control step, following adaptive and sequential UAV con-trol paradigms [4], [8]. Across Raleigh, Atlanta, and Boston, open-loop control improves over the static policy, but remains consistently below dense-feedback closed-loop control in both coverage ratio and mean RSS. These results suggest that UAV-assisted coverage restoration is fundamentally a feedback-driven control problem, where online wireless feedback is essential for identifying coverage gaps and adapting UAV decisions to the evolving network state. 
+
+Observation 2: Complete user-level wireless feedback is not a deployable control interface. 
+
+Although the closed-loop control enhances network plan-ning, obtaining such feedback continuously in operational networks is challenging. Dense feedback requires collecting RSS or coverage reports from all users after each UAV movement, which introduces signaling overhead, reporting latency, device-side energy cost, and scheduling burden. For example, with Nu = 150 users and a planning horizon of 
+
+T = 5 , dense feedback requires up to 150 × 5 = 750 user-step RSS measurements per episode. This burden scales linearly with the number of users and planning steps, making dense feedback costly in larger or frequently updated networks. Therefore, neither open-loop nor full-observation control fully matches the operational constraints of urban-scale wire-less networks. Open-loop approaches lack updated wireless feedback, whereas full-observation control assumes excessive measurement availability. A deployable controller must retain the benefits of closed-loop adaptation while probing only a small subset of users or spatial regions. Under this sparse-feedback setting, measurements must be allocated to infor-mative regions, while UAV actions must be selected from incomplete observations. The central challenge is therefore to preserve the effectiveness of feedback-driven network planning under severe observation constraints. UCB-Guided Active Probing  
+
+> Select informative / uncertain cells & users
+> Runtime Environment
+> Interface
+> Belief Map
+> Sparse Wireless Probing
+> Selected cell to probe
+> RSS Samples
+> from selected
+> users
+> Belief
+> State
+> Joint UAV Action
+> Iterate over planning steps (t = 1, 2,..., T)
+> RSS Heatmap
+> 3D Urban Digital Twin
+
+SparsePilot Framework     
+
+> Map
+> Sparse
+> Feedback
+> Reward (training / evaluation only)
+> Actor
+> Critic
+> Centralized Planner
+> 12
+> 3
+> 4
+> 1
+> 5
+> Hidden full RSS / coverage state
+> (not observed by controller)
+> SAC Update
+> (training only)
+> Wireless Environment Interface
+> Training / Evaluation: Ray-Tracing DT
+> Runtime: Sparse-Feedback Interface
+> Selected cells & users
+> Probe
+> response
+> Probe
+> query
+> Online deployment
+> Offline training / evaluation only
+
+Fig. 3: SparsePilot Framework Overview. The numbered labels indicate the closed-loop execution order: (1) the runtime environment interface provides sparse-feedback access, (2) sparse probing module collects selected wireless samples, (3) the belief map is updated, (4) the centralized planner outputs joint UAV actions, and (5) UCB-guided active probing continuously selects informative cells/user information for the next planning step. 
+
+Implication: Sparse-feedback UAV network planning requires the joint design of active sensing, belief construction, and network control. 
+
+Rather than reconstructing a complete wireless state from limited measurements [19]–[21], the network planner should maintain a task-oriented belief of the environment that pre-serves information most relevant to targeted coverage. Such a belief state enables the controller to reason about both estimated coverage deficiencies and measurement uncertainty, allowing UAVs to make informed decisions despite observing only a small fraction of the network. This shifts network planning from full-state optimization to belief-guided control under partial observability. III. S PARSE PILOT SYSTEM DESIGN 
+
+To this end, we present SparsePilot, a joint sensing-control framework for sparse-feedback network planning under lim-ited wireless measurements. As shown in Fig. 3, SparsePilot couples sparse wireless sensing and UAV mobility control through a compact coverage-based belief state. At each plan-ning step, it selects informative spatial regions for probing, aggregates sparse RSS feedback into a grid-based belief map, and guides a belief-driven SAC controller to generate contin-uous actions. 
+
+A. Sparse-Feedback UAV Planning Formulation 
+
+We consider a UAV-assisted coverage restoration problem in an urban wireless environment, while the underlying sensing-estimation-control framework can be extended to other net-work planning problems that require decision making from sparse measurements and incomplete network visibility. The environment consists of a set of UAV-mounted transmitters U,a set of fixed terrestrial base stations B, a set of ground users 
+
+G, and a 3D urban scene with buildings and blockage. At each planning step, the UAVs can be repositioned to improve the downlink coverage of poorly served users. Let 
+
+rij (t) denote the RSS from transmitter j ∈ U ∪ B to user 
+
+i ∈ G at step t. The best RSS of user i is 
+
+ri(t) = max  
+
+> j∈U∪B
+
+rij (t). (1) Given a coverage threshold τ , the binary coverage indicator of user i is zi(t) = I{ri(t) ≥ τ }. The network coverage ratio is the fraction of covered users: 
+
+Ct = 1
+
+|G| 
+
+X
+
+> i∈G
+
+zi(t). (2) Unlike a full-observation controller, SparsePilot probes only a small subset of spatial regions and users at each planning step. The remaining user-level RSS and coverage state is hid-den from the controller. We assume that coarse user-location or cell-occupancy information is available for probe scheduling, for example through network-side localization, serving-cell records, or active user registration. This information is used only to identify populated cells and candidate users; the instantaneous RSS and coverage state of a user is observed only when that user is probed. The objective is to learn a UAV mobility control policy that enhances network coverage under a limited wireless measurement budget. SparsePilot addresses this sparse-feedback control problem by integrating 1) UCB-guided probing, 2) grid-based coverage belief construction, and 3) belief-guided UAV control, as detailed below. 
+
+B. UCB-Guided Sparse Wireless Probing 
+
+From an optimization perspective, sparse wireless probing cannot be directly solved as a conventional full-state optimiza-tion problem, since the channel conditions of different spatial regions are unknown before measurements are collected, and the effective coverage state evolves with UAV relocation. We therefore formulate the probing process as an online bandit optimization problem and adopt UCB to efficiently allocate measurement budget between coverage-critical and uncertain regions through exploration and exploitation. First, SparsePilot partitions the service region into an 
+
+Ng × Ng grid, where each grid cell represents a spatial probing region. Each occupied grid cell is treated as an arm in an MAB problem. Pulling an arm corresponds to probing a small number of users inside that cell. At each planning step, the probing module selects at most Kc grid cells and probes up to Ku users in each selected cell. If the total number of users is Nu, the maximum per-step probing ratio is 
+
+ρmax = KcKu 
+
+> Nu
+
+. This sparse probing budget is significantly smaller than full-observation, which requires measuring all users at every planning step. For each grid cell m, SparsePilot maintains two statistics: the number of times the cell has been probed, denoted by 
+
+nm(t), and an empirical coverage-deficiency score, denoted by 
+
+qm(t). The coverage-deficiency score estimates how severely users in that cell suffer from outage or weak RSS. To balance exploitation of known weak regions and exploration of uncer-tain regions, SparsePilot assigns each occupied cell a UCB probing score: 
+
+UCB m(t) = qm(t) + β
+
+s
+
+log( t + 2) 
+
+nm(t) + 1 , (3) where β controls the exploration strength. The first term prioritizes cells that are likely to be under-covered, while the second term encourages probing cells with high uncertainty. At each step, SparsePilot selects the top-Kc populated cells according to this score. Cells without active users are not considered probing candidates because they cannot return user-level RSS feedback in practice. After selecting a cell m, the system probes a subset Pm(t)
+
+of users in that cell. Within each selected cell, if the number of candidate users exceeds Ku, SparsePilot uniformly samples 
+
+Ku users without replacement; otherwise, all users in the cell are probed. The selection does not use hidden RSS or coverage information. The measured uncovered-user ratio is 
+
+¯om(t) = 1
+
+|P m(t)|
+
+X
+
+> i∈P m(t)
+
+(1 − zi(t)) . (4) The measured normalized RSS deficiency is 
+
+¯dm(t) = 1
+
+|P m(t)|
+
+X
+
+> i∈P m(t)
+
+clip 
+
+ max(0 , τ − ri(t)) 
+
+Dmax 
+
+, 0, 1
+
+
+
+,
+
+(5) where Dmax is a normalization constant. SparsePilot combines these two measurements into an instantaneous cell badness score: 
+
+˜qm(t) = α¯om(t) + (1 − α) ¯dm(t), (6) where α balances binary outage and RSS deficiency. The empirical cell score is updated by an incremental average: 
+
+qm(t + 1) = nm(t)qm(t) + ˜ qm(t)
+
+nm(t) + 1 , (7) and the probing count is updated as nm(t + 1) = nm(t) + 1 .Here, the UCB module is only responsible for active measure-ment selection. It does not directly control UAV movement. UAV control is performed by a separate policy using the belief state constructed from these sparse measurements in Sec. III-D. 
+
+C. Coverage Belief Map Construction 
+
+The sparse RSS measurements collected by the active probing module in Sec. III-B are aggregated into a grid-based coverage belief map. For each grid cell m, SparsePilot maintains a three-channel belief vector: 
+
+bm(t) = 
+
+h
+
+ˆom(t), ˆdm(t), ˆum(t)
+
+i
+
+, (8) where ˆom(t) is the estimated uncovered-user ratio, ˆdm(t) is the estimated RSS deficiency, and ˆum(t) is the uncertainty of the cell. As shown in Fig. 3, the complete belief map becomes 
+
+Bt = {bm(t)}N 2 
+
+> g
+> m=1
+
+∈ RNg ×Ng ×3. (9) Before any probing, the belief map is initialized with high uncertainty. When a cell is probed, SparsePilot updates the outage and RSS-deficiency channels using the newly measured values: 
+
+ˆom(t + 1) = (1 − η)ˆ om(t) + η¯om(t), (10) 
+
+ˆdm(t + 1) = (1 − η) ˆdm(t) + η ¯dm(t), (11) where η ∈ (0 , 1] is the belief update rate. Unprobed cells retain their previous belief values. In our experiments, we set 
+
+η = 1 , which reduces the update to direct replacement. The uncertainty channel is updated according to the probing count: 
+
+ˆum(t) = 1
+
+pnm(t) + 1 . (12) Cells that are not probed retain their previous outage and RSS-deficiency estimates and remain uncertain unless they have been probed in previous steps. In essence, this belief map serves as a compact partial obser-vation of the wireless environment. Unlike the full radio map, it can be constructed from a small number of measurements and explicitly encodes uncertainty, allowing the following control policy to distinguish between regions that are known to be “weak” and regions that are simply under-observed. 
+
+D. Belief-Guided UAV Mobility Control 
+
+The sparse-feedback control problem is partially observable because the controller cannot access the full user-level RSS and network-wide state. SparsePilot uses the coverage-based belief map Bt as a compact representation of this hidden state. We model the resulting belief-guided control problem as a Markov Decision Process (MDP), i.e. M = ( S, A, P, R, γ ),where S is the belief-guided observation space, A is the continuous UAV movement action space, P is the wireless environment transition dynamics induced by UAV mobility, R
+
+is the hidden-state reward, and γ is the discount factor. Algorithm 1 SparsePilot Workflow  
+
+> 1:
+
+Input: probing budget (Kc, K u), planning horizon T ,policy πθ 
+
+> 2:
+
+Initialize: cell scores {qm(0) }, counts {nm(0) }, belief map B0 
+
+> 3:
+
+for t = 0 , . . . , T − 1 do  
+
+> 4:
+
+Compute UCB m(t) for each occupied cell m 
+
+> 5:
+
+Select St as the top-Kc occupied cells by UCB m(t) 
+
+> 6:
+
+for each cell m ∈ S t do  
+
+> 7:
+
+Probe users Pm(t) with |P m(t)| ≤ Ku 
+
+> 8:
+
+Compute ¯om(t), ¯dm(t), and ˜qm(t) 
+
+> 9:
+
+Update qm(t), nm(t), and bm(t) 
+
+> 10:
+
+end for  
+
+> 11:
+
+st ← [xUAV  
+
+> t
+
+, x BS , ϕ scene , t/T, vec( Bt)]  
+
+> 12:
+
+Sample action at ∼ πθ (·| st) 
+
+> 13:
+
+Execute at in the environment  
+
+> 14:
+
+Compute reward Rt using the hidden full wireless state (training/evaluation only)  
+
+> 15:
+
+end for 
+
+At step t, the policy observation is 
+
+st = xUAV  
+
+> t
+
+, x BS , ϕ scene , t/T, vec( Bt) , (13) where xUAV  
+
+> t
+
+denotes the UAV positions, xBS denotes the base station (BS) positions, ϕscene denotes scene-level morphology features, T is the planning horizon, and vec( Bt) is the flattened belief map vector. The scene-level features summarize urban morphology, such as building density, built-up ratio, footprint statistics, and building height statistics. The action is a continuous UAV displacement command. For M UAVs, the action space can be formulated as 
+
+at = [∆ x1, ∆y1, ∆z1, . . . , ∆xM , ∆yM , ∆zM ]. (14) Each displacement is clipped to the feasible movement range, and the resulting UAV positions are constrained to remain inside the allowed deployment region. After executing the UAV movement, the training environ-ment computes the hidden RSS and coverage state, which is used only for offline reward computation and evaluation. Once trained, the policy executes using only sparse wireless measurements and does not require online reward computation or access to the dense wireless state. Let ∆Ct = Ct − Ct−1, ∆pkt = pkt − pkt−1, and ∆¯ rt =¯rt − ¯rt−1 denote the stepwise improvements in coverage, k-th percentile RSS, and mean RSS across users, respectively. The reward is defined as 
+
+Rt = wc∆Ct + wp∆pkt + wμ∆¯ rt + wC Ct
+
++ wP (pkt − rtar ) − wLLt − wM Mt − wI It. (15) Here, pkt is the k-th percentile of the users’ best RSS values, 
+
+¯rt is the mean best RSS across users, Lt is the load variance across serving transmitters, Mt is the normalized UAV move-ment cost, and It is the number of invalid UAV placements. Typically, k is set to 10 in the evaluation study to emphasize tail-user performance. We use SAC as the continuous-control backend because 3D UAV planning is naturally represented in a continuous action space. This SAC learns a stochastic policy πθ (at|st)
+
+that maximizes the entropy-regularized return: 
+
+J(π) =  
+
+> T−1
+
+X
+
+> t=0
+
+E(st,a t) [Rt + λH(πθ (·| st))] , (16) where λ is the entropy temperature. During the training stage, each transition contains the belief-guided observation, UAV movement action, hidden-state reward, the next belief-guided observation, and termination indicator. During exe-cution, SparsePilot repeats the same probing-belief-control loop: UCB selects informative probing cells, the probed RSS feedback updates the belief map, and the SAC policy moves the UAVs based on this belief state. Algorithm 1 summarizes the SparsePilot workflow. IV. T HEORETICAL ANALYSIS 
+
+This section analyzes the sensing-estimation-control loop of SparsePilot. We first characterize the cell-level estimation error of the belief map under sparse wireless measurements. We then show how UCB-guided probing allocates measurements to refine the belief map in coverage-critical or uncertain regions. Finally, we relate belief-map estimation error to the performance of a downstream belief-guided controller. 
+
+A. Belief Estimation under Sparse Probing 
+
+For each of the N 2 
+
+> g
+
+grid cells, SparsePilot maintains a probing count nm(t) and an empirical deficiency estimate 
+
+qm(t) based on the bounded instantaneous score ˜qm(t) ∈
+
+[0 , 1] defined in Eq. (6). This estimate essentially summarizes the coverage-deficiency information encoded in the RSS-deficiency channels of the belief map. Let μm = E[˜ qm(t)] 
+
+denote the expected local deficiency of cell m. Because UAV movements alter the wireless state, we assume local stationarity over a short probing-control interval, within which 
+
+μm is treated as approximately fixed. 
+
+Lemma 1. For any confidence parameter δ ∈ (0 , 1) , with probability at least 1 − δ, every grid cell with nm(t) ≥ 1
+
+satisfies 
+
+|qm(t) − μm| ≤ 
+
+s
+
+log(2 N 2 
+
+> g
+
+/δ )2nm(t) . (17) 
+
+Proof. For a fixed cell m with nm(t) ≥ 1, qm(t) is the average of nm(t) bounded observations in [0 , 1] . By Hoeffding’s inequality [22], 
+
+Pr ( |qm(t) − μm| ≥ ϵ) ≤ 2 exp( −2nm(t)ϵ2). (18) Setting the right-hand side to δ/N 2 
+
+> g
+
+and applying a union bound over all probed cells gives the result. □
+
+Lemma 1 shows that the cell-level belief error decreases as more wireless measurements are allocated to that cell. There-fore, the quality of the complete belief map depends not only on the total probing budget, but also on how measurements are distributed across the spatial regions. B. UCB-Guided Belief Map Refinement 
+
+SparsePilot uses the UCB rule in Eq. (3) to allocate the sparse probing budget across grid cells. Let S⋆ denote the set of Kc cells with the largest expected local deficiency: 
+
+S⋆ = arg max 
+
+> S:|S| =Kc
+
+X
+
+> m∈S
+
+μm. (19) Let St be the set of cells selected at step t. We define a local measurement allocation regret as 
+
+Rprobe  
+
+> T
+
+=
+
+> T
+
+X
+
+> t=1
+
+X
+
+> m∈S ⋆
+
+μm − X
+
+> m∈S t
+
+μm
+
+!
+
+. (20) This regret measures the sensing inefficiency of the selected probing cells relative to the oracle top-Kc cells with the largest expected local deficiency scores. It is not a control regret for the learned UAV mobility policy. 
+
+Lemma 2. Under the local stationarity view above, the UCB probing rule satisfies 
+
+E
+
+h
+
+Rprobe 
+
+> T
+
+i
+
+= O X
+
+> m / ∈S ⋆
+
+log T
+
+∆m
+
+!
+
+, (21) 
+
+where ∆m = μ(Kc) − μm > 0 is the gap between cell m and the Kc-th largest local deficiency score. Proof sketch. The probing problem is a multiple-play bandit over occupied grid cells, where each selected cell returns a bounded deficiency observation. Standard UCB analysis im-plies that each suboptimal cell is selected only logarithmically many times in expectation [23]. Extending this argument to top-Kc selection gives the stated bound. □
+
+Lemma 2 shows that UCB balances exploitation of high-deficiency cells with exploration of insufficiently observed cells. In contrast, random probing allocates measurements indiscriminately, while greedy probing may repeatedly sample already well-characterized weak regions and neglect uncertain cells. Thus, our UCB policy improves the belief map selec-tively, as it allocates the limited measurement budget to regions that are either likely to contain coverage deficiencies or remain poorly characterized. 
+
+C. Impact of Belief Map Error on Downstream Control 
+
+We next relate cell-level deficiency estimation error to the value of a belief-guided SAC-based policy. Let B denote the ideal cell-level deficiency representation constructed from the expected local deficiencies {μm}, and let ˆB denote its estimate obtained from sparse probing. The policy acts on ˆB,while the hidden full wireless state is used only during offline training and evaluation. We adopt the following smoothness assumption: 
+
+Assumption 1. For a fixed learned policy π, there exists a local region of belief representations encountered during execution such that, for any B and ˆB in this region, 
+
+V π (B) − V π ( ˆB) ≤ LB ∥B − ˆB∥1,w , (22) 
+
+where LB is a belief-to-value smoothness constant and 
+
+∥B − ˆB∥1,w = 
+
+> N2
+> g
+
+X
+
+> m=1
+
+wm|Bm − ˆBm|, (23) 
+
+with wm ≥ 0 and PN 2 
+
+> g
+> m=1
+
+wm = 1 .
+
+This assumption does not require the learned policy to be globally optimal; it only imposes a smoothness bound on how its value changes with the belief representation. 
+
+Theorem 1. Under Assumption 1, with probability at least 
+
+1−δ, the performance gap between executing the same control policy π using the ideal belief B and using the estimated belief 
+
+ˆB satisfies 
+
+V π (B) − V π ( ˆB) ≤ LBN 2
+
+> g
+
+X
+
+> m=1
+
+wm
+
+s
+
+log(2 N 2 
+
+> g
+
+/δ )2nm(t) , (24) 
+
+where wm ≥ 0 is the importance weight of cell m,
+
+PN 2 
+
+> g
+> m=1
+
+wm = 1 , and nm(t) ≥ 1. The weight wm can reflect user density, outage severity, or the contribution of cell m to the policy observation. Proof. Applying Lemma 1 to each cell and using Assump-tion 1 in Eq. (22), we obtain 
+
+∥B − ˆB∥1,w ≤ 
+
+> N2
+> g
+
+X
+
+> m=1
+
+wm
+
+s
+
+log(2 N 2 
+
+> g
+
+/δ )2nm(t) . (25) Substituting this bound into the local smoothness inequality completes the proof. □
+
+Theorem 1 connects sparse sensing to the quality of the belief map and, consequently, to downstream belief-guided control. The bound decreases as high-importance cells receive more probing samples, meaning that active probing improves the belief representation in regions that matter most to the network planning objective. This result is not tied to a partic-ular DRL framework: any downstream controller whose value is locally smooth with respect to the belief map can benefit from a more accurate and task-relevant belief representation. V. E VALUATION 
+
+A. Experimental Setup 
+
+Scenario configuration. We evaluate SparsePilot in seven real-map-based urban wireless DTs, including Raleigh, At-lanta, Chicago, Seattle, Boston, San Francisco, and Los An-geles. The urban geometries are derived from OpenStreetMap data [24], converted into ray-tracing-compatible scene meshes, and loaded into Sionna RT [15] for evaluation. For each episode, the DT places ground users, terrestrial base sta-tions, and UAV-mounted transmitters in the target scene and computes user-level RSS values from Sionna-generated radio maps. We use the same RF and ray-tracing configuration across all scenes unless otherwise stated. Table I summarizes the main wireless and ray-tracing parameters. The policy is trained only in Raleigh and evaluated on Raleigh and the six unseen urban scenarios. TABLE I: RF and Sionna ray-tracing configuration.                     
+
+> Parameter Value
+> Maximum ray depth 2Ray-tracing samples 100,000 per transmitter Radio-map cell size 5 m ×5 m
+> Ground-user height 1.5 m
+> Carrier frequency 3.5 GHz Antenna model TR 38.901, vertical polarization BS & UAV transmit power 44 dBm
+> Coverage threshold τ−90 dBm
+> Target RSS rtar −80 dBm Propagation effects LoS, reflection, refraction RSS clipping range [−140 ,−20] dBm Coverage metric Strongest RSS over UAVs and BSs
+
+Mobility configuration. Each episode contains Nu = 150 
+
+ground users (GUs), scene-specific BSs, and M = 5 UAV-mounted radios, and lasts for T = 5 planning steps. Most cities use two BSs, while Boston uses one BS. At each step, the 3D displacement of each UAV is clipped to ∆x, ∆y ∈
+
+[−250 , 250] m and ∆z ∈ [−40 , 40] m. The resulting UAV positions are constrained to the deployment region x, y ∈
+
+[−1000 , 1000] m and z ∈ [50 , 220] m. A placement is invalid if it lies within a building footprint and below the corresponding building height plus a 1m safety margin. 
+
+Training configuration. For sparse feedback, we use an 
+
+Ng × Ng grid with Ng = 10 and probe at most Kc = 3 cells with up to Ku = 2 users per selected cell at each planning step. We set the UCB exploration coefficient to β = 1 .0.The normalized RSS-deficiency term uses Dmax = 60 dB, the cell badness score uses α = 0.7, and the belief map update rate is set to η = 1 . Before probing, the outage, RSS-deficiency, and uncertainty channels are initialized to 0.5, 0,and 1, respectively. We train the feedback-driven SAC policies in Raleigh for 20 ,000 environment steps. Both the actor and critic use two fully connected hidden layers with 256 units per layer and ReLU activations. We use Adam with a learning rate of 3 × 10 −4, a batch size of 256 , a replay buffer of 10 6
+
+transitions, discount factor γ = 0 .95 , soft-update coefficient 
+
+τSAC = 0 .005 , and automatic entropy tuning. For the reward function in Eq. (15), we set wc = 20 , wp = 0 .20 , wμ = 0 .05 ,
+
+wC = 2 .0, wP = 0 .03 , wL = 0 .02 , wM = 0 .01 , and wI = 30 .The same hidden-state reward is used for all learning-based methods to ensure a fair comparison. 
+
+Baselines. We compare SparsePilot with the following baselines:  
+
+> •
+
+Static : All UAVs remain at their initial deployment locations.  
+
+> •
+
+Random : The UAV randomly samples feasible move-ment actions at each planning step.  
+
+> •
+
+Greedy : A full-information heuristic that identifies cur-rently uncovered GUs at each step and moves all UAVs toward their horizontal centroid under the same move-ment constraints, with altitudes unchanged.  
+
+> •
+
+Raw SAC : A standard SAC baseline that uses complete user RSS and coverage observations, without the pro-posed belief-map representation. 0 10000 20000     
+
+> Training steps
+> −80 −60 −40 −20
+> Episode reward
+> SparsePilot SparsePilot w/o UCB 05000 10000 15000 20000
+> Training steps
+> 0510 15
+> Actor loss 05000 10000 15000 20000
+> Training steps
+> 10 20 30 40 50
+> Critic loss
+
+Fig. 4: Training dynamics of SparsePilot with UCB-guided probing and random probing.  
+
+> •
+
+SparsePilot w/o UCB : A sparse-feedback SAC controller that uses random probing.  
+
+> •
+
+SparsePilot w/ ϵ-Greedy : A SparsePilot variant that replaces UCB probing with ϵ-greedy probing while re-taining the same belief state and SAC controller. 
+
+Evaluation metrics. Each method is evaluated over 20 
+
+random episodes per city. We report the mean and standard deviation across episodes. The primary metric is the network coverage ratio, defined as the fraction of covered GUs after the planning. We also report coverage gain, mean RSS across users, episode reward, load fairness, and the measurement cost. 
+
+Training behavior. Fig. 4 shows the training curves of SparsePilot with UCB probing and random probing in the Raleigh scenario. Both policies become stable within 20 ,000 
+
+environment steps, indicating that the belief-guided obser-vation provides a learnable state representation for continu-ous planning. Compared with random probing, UCB probing achieves a higher final episode reward, suggesting that actively selected measurements provide more informative belief states for policy learning. The actor and critic losses remain bounded after the early training stage, showing a stable learning process under sparse feedback. 
+
+B. Cross-City Deployment Performance 
+
+We first evaluate whether the Raleigh-trained planning policy can generalize to unseen cities with different urban morphologies under sparse wireless feedback. Fig. 5 reports the coverage ratio and mean RSS across all seven cities. SparsePilot achieves the highest average coverage ratio of 
+
+63 .08% , compared with 58 .30% for SparsePilot without UCB, 
+
+53 .59% for Raw SAC, and 32 .23% for the greedy heuristic. It also provides the largest average coverage gain and mean RSS across users, improving coverage by 37 .93 percentage points from the initial deployment. The consistent improvements across both the source and unseen target cities indicate that the learned SAC-based controller transfers effectively across different urban morphologies and propagation conditions. More importantly, SparsePilot uses only 23 .21 user mea-surements per episode on average. Since full observation would require 150 × 5 = 750 user-step RSS measurements, SparsePilot uses only about 3.1% of the full-observation measurement budget. The comparison with Raw SAC further highlights the role of state representation. Raw SAC is a full-observation baseline with the same SAC backbone, but it is not intended to represent the strongest possible full-state architecture. It directly consumes dense GU-level observations that are high-dimensional and dependent on the sampled user layout, whereas SparsePilot abstracts sparse measurements Raleigh Atlanta Chicago Seattle Boston SF LA 020 40 60 80       
+
+> Coverage ratio (%)  Static Random Greedy Raw SAC SparsePilot w/o UCB SparsePilot Raleigh Atlanta Chicago Seattle Boston SF LA −130 −120 −110 −100 −90 −80 −70 −60 −50
+> Mean RSS (dBm)
+
+Fig. 5: Cross-city coverage restoration performance. 
+
+into a fixed-size, spatially aligned belief map encoding outage, RSS deficiency, and uncertainty. 
+
+Remark. SparsePilot’s cross-city generalization benefits from its active sensing and task-oriented belief representation. During deployment, UCB acquires informative measurements from the current environment, and the belief map summarizes coverage deficiency and uncertainty in a fixed-size spatial representation. This allows the SAC policy to make decisions based on updated belief states rather than scene-specific dense user observations, helping SparsePilot transfer to unseen urban environments without online retraining. This may help explain the superior transfer performance of SparsePilot relative to Raw SAC across unseen cities. 
+
+C. Impact of Sparse-Feedback Budget 
+
+We study the tradeoff between wireless measurement cost and coverage improvement by varying the per-step probing budget under T = 5 and varying the planning horizon under a fixed budget of three cells and two users per cell. Fig. 7 shows that even a small number of targeted measurements substan-tially improves coverage and mean RSS in Raleigh. Perfor-mance increases rapidly with the first few probes and then ex-hibits diminishing returns after approximately 16 probed users. With around 23.5 probes per episode, SparsePilot reaches an 
+
+89 .60% coverage ratio, indicating that most of the feedback benefit can be obtained with only a few tens of measurements. Fig. 6 further shows that additional planning steps improve coverage through iterative sensing-control refinement. As the planning horizon increases from T = 1 to T = 5, the cross-city average coverage ratio increases from 32 .81% to 
+
+63 .08% , while the average measurement count increases from 
+
+4.65 to 23 .21 per episode. Each additional round provides more opportunities to update the belief map and progressively mitigate weak-coverage regions. This behavior follows the implication of Lemma 1 in our theoretical analysis: additional sparse measurements reduce the estimation error of probed 1 2 3 4 5
+
+> Planning steps
+> 020 40 60 80 100
+> Coverage ratio (%)
+> Coverage Measurements
+> 0510 15 20 25 30
+> Measurements
+
+(a) Average. 1 2 3 4 5 
+
+> Planning steps
+> 020 40 60 80 100
+> Coverage ratio (%)
+> 0510 15 20 25 30
+> Measurements
+
+(b) Raleigh. 1 2 3 4 5 
+
+> Planning steps
+> 020 40 60 80 100
+> Coverage ratio (%)
+> 0510 15 20 25 30
+> Measurements
+
+(c) Boston. 
+
+Fig. 6: Impact of the planning horizon on final coverage and measurement count. 0 5 10 15 20 25      
+
+> Total probes
+> 80 85 90 95
+> Coverage ratio (%) 0510 15 20 25
+> Total probes
+> −70 −65 −60 −55
+> Mean RSS (dBm)
+
+Fig. 7: Impact of the probing budget in Raleigh. 
+
+belief-map cells, providing a more reliable state representation for downstream control decisions. 
+
+D. Robustness under Imperfect Feedback 
+
+We further evaluate SparsePilot in Raleigh under three practical feedback imperfections: noisy RSS measurements, reporting delay, and coarse user-localization errors. Each set-ting uses 20 random episodes and varies one imperfection at a time while keeping the other two at the clean setting. As shown in Fig. 8, SparsePilot is robust to RSS measurement noise. Increasing the RSS noise standard deviation from 0
+
+to 6 dB changes the final coverage only from 89 .60% to 
+
+89 .50% , with the largest drop being 0.23 percentage points at 4 dB noise. SparsePilot is also insensitive to neighboring-cell localization errors: with up to 30% localization errors, the coverage ratio remains between 89 .50% and 89 .93% ,and the small non-monotonic variations are within episode-level randomness. Reporting delay has the largest impact because delayed channel measurements make the belief map less synchronized with the current UAV deployment. A two-step delay reduces the coverage ratio from 89 .60% to 86 .23% 
+
+and decreases mean RSS by 3.90 dB. Nevertheless, SparsePilot still maintains high coverage under delayed feedback, indicat-ing that our sensing-estimation-control loop remains effective under moderate feedback imperfections. 
+
+E. Effectiveness of UCB Active Probing 
+
+To investigate the impact of active probing, we compare SparsePilot with two sparse-feedback variants under the same probing budget. The first variant, SparsePilot w/o UCB, uses random probing during both training and evaluation. The second variant replaces UCB with a ϵ-greedy probing rule at test time, while keeping the learned movement controller unchanged. Table II shows the average performance over seven cities. Random probing achieves an average coverage ratio of 58 .30% , while ϵ-greedy probing improves it to 61 .49% .UCB probing further increases the performance to 63 .08% ,achieving a 4.77 percentage-point gain over random probing and a 1.59 percentage-point gain over ϵ-greedy probing. The same trend is observed in coverage gain. 0 2 4 6     
+
+> RSS noise std. (dB)
+> 86 88 90 92
+> Coverage ratio (%) 012
+> Reporting delay (steps)
+> 82.5 85.0 87.5 90.0 92.5 010 20 30
+> Localization error (%)
+> 86 88 90 92
+
+Fig. 8: Robustness to practical feedback imperfections. 
+
+TABLE II: Effect of probing strategies averaged across seven cities. Values report the mean and standard deviation across city-level averages.                     
+
+> Probing Strategy Coverage Ratio (%) Mean RSS (dBm) Random 58 .30 ±12 .61 −88 .33 ±11 .79
+> ϵ-Greedy 61 .49 ±13 .51 −85 .29 ±12 .89
+> UCB 63 .08 ±12 .49 −83 .84 ±12 .03
+
+The improvement is attributed to the exploration– exploitation balance of UCB. Random probing may allocate measurements to well-served or uninformative regions, while 
+
+ϵ-greedy probing may repeatedly exploit known weak regions and overlook uncertain areas. These results are consistent with Lemma 2 in Sec. IV-B: by combining estimated coverage deficiency with an uncertainty bonus, UCB refines the belief map in regions that are likely to be under-covered or insuf-ficiently explored. The improved coverage and RSS further support the implication of Theorem 1 that a more accurate and task-relevant belief map can benefit the downstream controller under the same measurement budget. 
+
+F. Load Fairness and Service Balance 
+
+Besides improving coverage, a practical planning policy should also maintain balanced service across radio transmit-ters. We evaluate load balancing using Jain’s fairness index [25] and load variance. Let ℓj denote the number of GUs associated with serving transmitter j, and let Ms be the number of serving transmitters. Jain’s fairness index is defined as Jfair = ( PMs 
+
+> j=1
+
+ℓj )2/(Ms
+
+PMs 
+
+> j=1
+
+ℓ2 
+
+> j
+
+).Fig. 9 shows the cross-city average performance. SparsePi-lot achieves the highest Jain fairness and the lowest load vari-ance among all baselines, indicating that our planning method can improve both coverage and service balance. SparsePilot and SparsePilot without UCB obtain similar fairness, suggest-ing that load distribution is mainly determined by the learned control policy, while UCB-guided probing improves coverage 
+
+without degrading service balance. VI. R ELATED WORK 
+
+Radio Map Construction and Sparse Wireless Sensing. 
+
+Radio maps and channel knowledge maps have been widely studied as environment-aware representations for wireless network planning, localization, spectrum management, and resource optimization [26]. Existing radio map estimation methods can be broadly categorized into model-driven, data-driven, and hybrid approaches [27], with recent learning-based methods using CNNs [28], Transformers [29], and graph neural networks [30] to infer dense RSS or channel maps from Static Random Greedy Raw SAC w/o UCB SparsePilot 0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Jain load fairness Static Random Greedy Raw SAC w/o UCB SparsePilot 0500 1000 1500 2000
+> Load variance
+
+Fig. 9: Load fairness comparison across cities. 
+
+environmental layouts and sparse measurements. More recent methods further improve sparse radio map reconstruction by using generative models [31], [32], multi-scale feature fusion, or physics-aware priors [33]. Active sensing has also been explored for radio map construction, where uncertainty-aware UAV trajectories are planned to collect informative measure-ments and accelerate dense-map reconstruction [34]. Unlike prior work that aims to reconstruct full radio maps, SparsePilot builds a compact belief map from sparse measurements for cost-effective network control. 
+
+UAV Planning under Partial Observability. Planning un-der partial observability is commonly formulated as a partially observable Markov decision process, in which the controller cannot directly access the full system state and must act from incomplete observations [35], [36]. A common approach is to maintain a belief representation that aggregates prior knowl-edge and sequential observations into a compact decision state [37], [38]. Alternatively, recurrent policies can implicitly encode observation histories when an explicit belief state is difficult to construct [39], [40]. Recent studies have applied these ideas to UAV network planning. For example, [41] combines graph attention and recurrent memory to aggregate neighboring and historical observations, while [42] selectively communicates with influential UAVs and incorporates a safety layer for collision avoidance. However, these methods assume a fixed local observation process and primarily mitigate in-complete information through recurrent memory or inter-UAV communication, rather than selectively performing wireless measurements under a limited feedback budget. In contrast, SparsePilot couples active wireless probing with UAV mobility control by acquiring sparse RSS measurements to maintain a wireless coverage belief that directly guides continuous network planning. VII. C ONCLUSION 
+
+This paper studied UAV-assisted network planning under sparse wireless feedback. SparsePilot integrates UCB-guided active probing, coverage belief construction, and belief-guided continuous control, enabling closed-loop adaptation without exposing the full wireless state to the policy. Our theoretical analysis connects probing frequency, belief estimation error, and the sparse-feedback control gap. Experiments across seven urban digital twins showed that SparsePilot achieves the high-est average coverage restoration while using only about 3.1% of the full-observation measurement budget. These results also demonstrate strong cross-scene generalization to unseen urban-scale wireless network environments. REFERENCES [1] M. Mozaffari, W. Saad, M. Bennis, Y.-H. Nam, and M. Debbah, “A tutorial on UAVs for wireless networks: Applications, challenges, and open problems,” IEEE communications surveys & tutorials , vol. 21, no. 3, pp. 2334–2360, 2019. [2] B. Li, Z. Fei, and Y. Zhang, “UAV communications for 5G and beyond: Recent advances and future trends,” IEEE Internet of Things Journal ,vol. 6, no. 2, pp. 2241–2263, 2018. [3] M. Alzenad, A. El-Keyi, F. Lagum, and H. Yanikomeroglu, “3-D placement of an unmanned aerial vehicle base station (UAV-BS) for energy-efficient maximal coverage,” IEEE Wireless Communications Letters , vol. 6, no. 4, pp. 434–437, 2017. [4] K. K. Nguyen, T. Q. Duong, T. Do-Duy, H. Claussen, and L. Hanzo, “3D UAV trajectory and data collection optimisation via deep reinforcement learning,” IEEE Transactions on Communications , vol. 70, no. 4, pp. 2358–2371, 2022. [5] P. Testolina, M. Polese, P. Johari, and T. Melodia, “Boston twin: the boston digital twin for ray-tracing in 6g networks,” in Proceedings of the 15th ACM Multimedia Systems Conference , 2024, pp. 441–447. [6] X. Lin, L. Kundu, C. Dick, E. Obiodu, T. Mostak, and M. Flaxman, “6G digital twin networks: From theory to practice,” IEEE Communications Magazine , vol. 61, no. 11, pp. 72–78, 2023. [7] D. He, K. Guan, D. Yan, H. Yi, Z. Zhang, X. Wang, Z. Zhong, and N. Zorba, “Physics and AI-based digital twin of multi-spectrum propagation characteristics for communication and sensing in 6G and beyond,” IEEE Journal on Selected Areas in Communications , vol. 41, no. 11, pp. 3461–3473, 2023. [8] L. T. Hoang, C. T. Nguyen, H. D. Le, and A. T. Pham, “Adaptive 3D placement of multiple UAV-mounted base stations in 6G airborne small cells with deep reinforcement learning,” IEEE Transactions on Networking , 2025. [9] C. Zhan, W. Liu, K. Song, R. Fan, J. Liu, and H. Hu, “Joint UAV placement and dependent task offloading in multi-UAV MEC networks: A graph attention enhanced DRL approach,” IEEE Transactions on Mobile Computing , 2025. [10] L. V. Cakir, S. Al-Shareeda, S. F. Oktug, M. ¨Ozdem, M. Broadbent, and B. Canberk, “How to synchronize digital twins? a communication performance analysis,” in 2023 IEEE 28th International Workshop on Computer Aided Modeling and Design of Communication Links and Networks (CAMAD) . IEEE, 2023, pp. 123–127. [11] B. Li, H. Cai, L. Liu, and Z. Fei, “Delay-aware digital twin synchro-nization in mobile edge networks with semantic communications,” IEEE Transactions on Vehicular Technology , 2025. [12] Z. Li, X. Luo, M. Chen, C. Xu, S. Mao, and Y. Liu, “Contextual combinatorial beam management via online probing for multiple ac-cess mmwave wireless networks,” IEEE Journal on Selected Areas in Communications , vol. 43, no. 3, pp. 959–972, 2025. [13] M. Giordani, M. Polese, A. Roy, D. Castor, and M. Zorzi, “A tutorial on beam management for 3GPP NR at mmWave frequencies,” IEEE Communications Surveys & Tutorials , vol. 21, no. 1, pp. 173–196, 2018. [14] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning . Pmlr, 2018, pp. 1861–1870. [15] J. Hoydis, S. Cammerer, F. Ait Aoudia, M. Nimier-David, L. Maggi, G. Marcus, A. Vem, and A. Keller, “Sionna,” 2022, https://nvlabs.github.io/sionna/. [16] Remcom, Inc., “Wireless InSite: 3d wireless propagation software,” https://www.remcom.com/wireless-insite-propagation-software, accessed: 2026-06-12. [17] J. Lyu, Y. Zeng, R. Zhang, and T. J. Lim, “Placement optimization of UAV-mounted mobile base stations,” IEEE Communications Letters ,vol. 21, no. 3, pp. 604–607, 2016. [18] J. Qiu, J. Lyu, and L. Fu, “Placement optimization of aerial base stations with deep reinforcement learning,” in ICC 2020-2020 IEEE International Conference on Communications (ICC) . IEEE, 2020, pp. 1–6. [19] Z. Ren, J. Zhou, J. Xu, L. Qiu, Y. Zeng, H. Hu, J. Zhang, and R. Zhang, “Channel knowledge map construction: Recent advances and open challenges,” IEEE Wireless Communications , 2026. [20] X. Luo, Z. Li, Z. Peng, D. Xu, and Y. Liu, “Rm-gen: Conditional diffusion model-based radio map generation for wireless networks,” in 
+
+2024 IFIP Networking Conference (IFIP Networking) . IEEE, 2024, pp. 543–548. [21] D. Romero and S.-J. Kim, “Radio map estimation: A data-driven approach to spectrum cartography,” IEEE Signal Processing Magazine ,vol. 39, no. 6, pp. 53–72, 2022. [22] W. Hoeffding, “Probability inequalities for sums of bounded random variables,” Journal of the American statistical association , vol. 58, no. 301, pp. 13–30, 1963. [23] P. Auer, N. Cesa-Bianchi, and P. Fischer, “Finite-time analysis of the multiarmed bandit problem,” Machine learning , vol. 47, no. 2, pp. 235– 256, 2002. [24] OpenStreetMap contributors, “Planet dump retrieved from https://planet.osm.org ,” https://www.openstreetmap.org , 2017. [25] R. K. Jain, D.-M. W. Chiu, and W. R. Hawe, “A quantitative measure of fairness and discrimination for resource allocation in shared systems,” 
+
+DEC, Sep. 1984 , 1984. [26] B. Feng, M. Zheng, W. Liang, and L. Zhang, “A recent survey on radio map estimation methods for wireless networks,” Electronics , vol. 14, no. 8, p. 1564, 2025. [27] S. Bi, J. Lyu, Z. Ding, and R. Zhang, “Engineering radio maps for wireless resource management,” IEEE Wireless Communications ,vol. 26, no. 2, pp. 133–141, 2019. [28] R. Levie, C ¸ . Yapar, G. Kutyniok, and G. Caire, “RadioUNet: Fast radio map estimation with convolutional neural networks,” IEEE Transactions on Wireless Communications , vol. 20, no. 6, pp. 4001–4015, 2021. [29] P. Q. Viet and D. Romero, “Spatial transformers for radio map estima-tion,” in ICC 2025-IEEE International Conference on Communications .IEEE, 2025, pp. 6155–6160. [30] G. Chen, Y. Liu, T. Zhang, J. Zhang, X. Guo, and J. Yang, “A graph neural network based radio map construction method for urban environment,” IEEE Communications Letters , vol. 27, no. 5, pp. 1327– 1331, 2023. [31] X. Luo, Z. Li, Z. Peng, M. Chen, and Y. Liu, “Denoising diffusion probabilistic model for radio map estimation in generative wireless networks,” IEEE Transactions on Cognitive Communications and Net-working , vol. 11, no. 2, pp. 751–763, 2025. [32] C.-H. Liu, H. Chang, and T. Park, “DA-cGAN: A framework for indoor radio design using a dimension-aware conditional generative adversarial network,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops , 2020, pp. 498–499. [33] M. Shahid, K. Das, H. Ushaq, H. Zhang, J. Song, D. Qiao, S. Babu, Y. Guan, Z. Zhu, and A. Ahmad, “ReVeal: A physics-informed neural network for high-fidelity radio environment mapping,” in 2025 IEEE International Symposium on Dynamic Spectrum Access Networks (DyS-PAN) . IEEE, 2025, pp. 1–10. [34] R. Shrestha, D. Romero, and S. P. Chepuri, “Spectrum surveying: Active radio map estimation with autonomous UAVs,” IEEE transactions on wireless communications , vol. 22, no. 1, pp. 627–641, 2022. [35] L. P. Kaelbling, M. L. Littman, and A. R. Cassandra, “Planning and acting in partially observable stochastic domains,” Artificial intelligence ,vol. 101, no. 1-2, pp. 99–134, 1998. [36] M. T. Spaan, “Partially observable Markov decision processes,” in 
+
+Reinforcement learning: State-of-the-art . Springer, 2012, pp. 387–414. [37] P. Karkus, D. Hsu, and W. S. Lee, “Qmdp-net: Deep learning for planning under partial observability,” Advances in neural information processing systems , vol. 30, 2017. [38] Z. Zhou, Y. Hu, L. Zhang, Z. Li, and S. Chen, “Beliefmapnav: 3d voxel-based belief map for zero-shot object navigation,” Advances in Neural Information Processing Systems , vol. 38, pp. 83 008–83 036, 2026. [39] M. J. Hausknecht and P. Stone, “Deep Recurrent Q-Learning for Partially Observable MDPs.” in AAAI fall symposia , vol. 45, 2015, p. 141. [40] F.-M. Luo, Z. Tu, Z. Huang, and Y. Yu, “Efficient recurrent off-policy RL requires a context-encoder-specific learning rate,” Advances in Neural Information Processing Systems , vol. 37, pp. 48 484–48 518, 2024. [41] Z. Ye, K. Wang, Y. Chen, X. Jiang, and G. Song, “Multi-UAV navigation for partially observable communication coverage by graph reinforcement learning,” IEEE transactions on mobile computing , vol. 22, no. 7, pp. 4056–4069, 2022. [42] Z. Gao, G. Wang, L. Yang, and C. Ying, “CSMAAC: Multi-Agent Reinforcement Learning Based Flight Control in Partially Observable Multi-UAV Assisted Crowd Sensing Systems,” IEEE Transactions on Mobile Computing , 2025.
