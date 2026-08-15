@@ -1,0 +1,496 @@
+WIND-INFORMED RAPID FLIGHT-PLANNING IN COMPLEX URBAN TOPOLOGIES
+VIA MACHINE LEARNING AND EXPERIMENTAL VALIDATION
+Peter I. Renn †1
+Alejandro A. Stefan-Zavala*†1
+Julian Humml1
+Sabera Talukder1
+Aysha AlMazrouei2
+Kresna Aji2
+Debashisha Mishra 2
+Emanuele Panizio 2
+Jennifer Simonjan 2
+Yisong Yue 1
+Morteza Gharib 1
+*: corresponding author: aastefan@caltech.edu, †: contributed equally
+1: California Institute of Technology, Pasadena, CA, USA
+2: Technology Innovation Institute, Abu Dhabi, UAE
+ABSTRACT
+Advanced air mobility operations hold the potential to enhance and expand regional transportation
+of both people and goods in populated areas. However, hazardous flight conditions arising from
+interactions between wind and the built environment remain a significant challenge for aerial vehicles
+in urban settings. This work proposes a novel framework towards safe flight planning of aerial
+vehicles in windy urban environments. A learning-based surrogate model is trained to rapidly predict
+flow fields from readily available information such as building geometry and incident wind. This
+surrogate prediction is used to calculate a volumetric flight challenge scalar field based on critical
+flow parameters and proximity to structures. A safe, flow-informed flight trajectory is then identified
+through a cost-minimizing pathfinder. The complete system is demonstrated experimentally through
+flight tests of a micro aerial vehicle through a model urban geometry placed in a large fan-array
+wind tunnel. Comparing this approach to trajectories generated without knowledge of the wind field,
+we find the flow-informed approach reduces undesired vehicle displacement and improves flight
+stability. This work is among the first practical demonstrations of safe, wind-aware methodologies
+for advanced air mobility in urban environments.
+1
+Introduction
+With applications ranging from emergency medical extractions to aerial public transportation, advanced air mobility
+(AAM) systems are transforming local and regional logistics and transportation [Vinogradov et al., 2026, Goyal and
+Cohen, 2022, Raza et al., 2025]. However, existing technical challenges block the widespread adoption of AAM
+technologies [Watkins et al., 2020]. The implication of atmospheric wind and weather conditions on flight safety
+remains a significant challenge for autonomous flying systems [Jones et al., 2022, Mohamed et al., 2023]. Further
+complicating this issue, many of the most impactful applications for AAM feature a combination of complex urban or
+natural topologies and high-density populations; the former can lead to accelerated wind speeds, increased turbulence
+levels, and unexpected gusts, while the latter demands strict safety and risk guarantees for real-world deployment.
+These nonlinear flow features can result in deviations from the desired flight path, posing a safety risk to potential
+passengers and individuals in the surrounding area.
+With better knowledge of the wind field, autonomous flying systems may be able to more safely navigate complicated
+fluid flows arising from complex terrain or urban topologies. Conventional numerical approaches simulating urban
+wind fields through computational fluid dynamics (CFD) can provide accurate, high-fidelity, high-resolution data. Geng
+and Gou [2026] used numerical wind simulations in urban environments to quantify flight risk factors based on built
+geometries. Pensado et al. [2024] used a reinforcement learning approach to simulate turbulence-aware path planning
+in urban environments, restricting flight in regions with numerically simulated turbulent kinetic energy above a certain
+threshold. Cao et al. [2026] proposed a wind-informed risk-mitigating flight planning approach using simulated data,
+avoiding regions with high wind speeds and turbulence levels. Habib et al. [2026] demonstrated a flight planning
+approach penalizing paths through regions with high wind speed and direction misaligned with the target trajectory
+using CFD estimates, implementing the method using micro-UAVs and household box-fans. While invaluable in fluid
+mechanics research, conventional CFD simulations remain too time-intensive to be practically deployed in real-time
+engineering applications.
+In recent years there has been significant interest in data-driven methods, such as neural networks and neural operators,
+as surrogate models for fluid flows in time-sensitive engineering applications [Brunton et al., 2020]. This includes
+approaches explicitly focused on urban environments [Karadag et al., 2026]. Surrogate models in this context typically
+take building geometry and a minimal representation of time-averaged wind velocity (e.g., single velocity measurement
+1
+arXiv:2608.10309v1  [physics.flu-dyn]  10 Aug 2026
+
+
+Figure 1: Proposed pipeline for AAM flow-informed flight planning. A library of time-resolved flow fields are used to
+train a surrogate model, capable of rapidly producing accurate predictions from the known geometry and incident wind.
+This prediction is used to calculate a flight challenge field, with which a cost-minimizing pathfinder identifies safe flight
+trajectories.
+from free-stream, data from sparse sensors distributed around environment, etc.) as input, and are trained to predict
+the time-averaged wind field in the given environment. Previous works have featured models such as convolutional
+neural networks (CNNs) [Wang et al., 2025], U-Nets [Low et al., 2022, Vargiemezis and Gorlé, 2025], Fourier neural
+operators [Peng et al., 2024], and generative models [Giral et al., 2025]. Folk et al. [2024] developed a framework
+enabling fast wind field predictions in 2D without prior knowledge of global urban geometries, using on-board sensors
+to estimate surrounding buildings and local wind conditions in addition to free-stream wind conditions. However, this
+framework was only demonstrated using low fidelity two-dimensional flow data generated through simplified numerical
+methods intended exclusively for graphical applications [Stam, 2023]. In a following work, the authors apply a similar
+framework to identify safe and energy-efficient paths through simulated two-dimensional urban wind fields using a
+model predictive path integral optimal controller, but allow the planner to directly access the numerical data rather than
+surrogate model predictions [Folk et al., 2025].
+While not explicitly trained to model flows through built environments, Lin et al. [2026] trained a transformer-based
+surrogate on a large dataset of high-quality CFD simulations across large mountain ranges. Achermann et al. [2024] also
+demonstrated a method for predicting volumetric wind fields over complex natural terrain with the model informed by
+measurements taken by a small unmanned aerial vehicle (UAV), notably demonstrating this framework experimentally
+through field testing.
+In this work, we present a flow-informed flight planning methodology using data-driven surrogate models to identify
+and execute safe paths through complex urban environments in extreme wind conditions, as illustrated in Figure 1. This
+real-time-capable trajectory generation is validated through experimental flight tests performed in a large-scale wind
+tunnel facility, establishing the first real-world demonstration of wind-aware flight planning through urban topologies.
+It is additionally among the first works to employ a fluid flow surrogate model in a practical, real-world setting.
+As shown in figure 1, the proposed framework uses a U-Net fluid flow surrogate model to predict volumetric time-
+averaged flow field quantities from the known geometry of buildings and incident wind velocity. This prediction is used
+to calculate a volumetric flight challenge metric, representing the potential aerodynamic hazard in various regions of the
+allowed flight corridor. A cost-minimizing pathfinding algorithm is then applied to the flight challenge field to identify
+the safest, flow-informed trajectory between any two points in the region of interest.
+2
+
+
+First, we discuss the performance of our data-driven U-Net-based surrogate model, trained on a large library of
+Lattice-Boltzmann simulations over real-world urban geometries. We then evaluate the system experimentally by flying
+predicted paths through representative geometries in front of a large fan-array wind tunnel (FAWT). We examine the
+stability of trajectories generated with wind fields from both CFD and the proposed surrogate model, and compare this
+performance with a wind-naive alternative. Lastly, we analyze our results with respect to the simulated flow fields to
+examine the critical parameters relevant for flight stability.
+2
+Methods
+2.1
+Flight Path Generation
+The sensitivity of aircraft to fluid disturbances across scales remains an area of active research [Mohamed et al., 2023,
+Jones et al., 2022]. In this work, a novel "flight challenge metric" is proposed to act as a basic scalar cost map describing
+the potential for hazardous flow conditions for aircraft throughout a given volume. This flight challenge cost map is
+intended to work in a time-averaged sense; rather than predicting an individual transient gust or disturbance, it aims to
+identify regions where gusty or otherwise adverse wind conditions may be present. To this end, the flight challenge
+metric was formulated through a combination of the magnitude of the velocity field gradients, the turbulent kinetic
+energy (TKE) field, and a Gaussian obstacle proximity mapping, as given by
+F(x, y, z) = w1(w2 ˜G + ˜k)2 + w3D + w4D(w2 ˜G + ˜k) + w0.
+(1)
+Here, ˜G and ˜k are the min-max normalized magnitude of the velocity gradient and TKE fields, respectively. D is the
+proximity penalty, generated by convolving a Gaussian kernel with a three-dimensional binary representation of the
+building geometry, and the w terms are weights to balance the respective contributions (with w0 acting as a non-zero
+bias to discourage circuitous routes).
+The first term of Equation 1 (w1(w2 ˜G + ˜k)2), consisting of a squared weighted sum of the normalized magnitude of
+the velocity gradient and normalized TKE, aims to characterize the flight challenge given the flow physics in a specific
+region. Sharp velocity gradients and shear layers pose significant risk to aircraft, as vehicles must rapidly adjust to
+compensate for changing incident wind conditions. The turbulent kinetic energy field approximately represents the
+variance of velocity fluctuations in a given flow. TKE is a limited representation, as it does not characterize all quantities
+that determine the effect of turbulence on a specific vehicle (e.g., length scale, power spectrum). However, the TKE
+field still provides useful and important information in characterizing potential flight hazard due to turbulence.
+The weighted sum of the normalized TKE and magnitude of velocity gradient is squared to emphasize the more
+dominant and challenging flow features, and further penalize regions containing both sharp velocity gradients and high
+TKE (e.g., shear layers). This same squared weighted sum also appears in the third term of Equation 1 (w4D(w2 ˜G+˜k)),
+where it is multiplied by the proximity penalty to add additional penalties to challenging flow physics in close proximity
+to obstacles. The cells representing obstacles in the flight challenge scalar fields were set to an arbitrarily chosen very
+large number to prevent paths from colliding with solid objects.
+With given volumetric flight challenge scalar fields, paths were identified using existing implementations of Dijkstra’s
+algorithms [Veiga-Piñeiro et al., 2025]. This approach, performed offline, identifies minimum-cost paths between two
+points. Using flight challenge as cost in Dijkstra’s algorithm produces flow-informed flight trajectories.
+2.2
+Experimental Setup
+The proposed system was demonstrated experimentally in a large fan-array wind tunnel facility at the Center for
+Autonomous Systems and Technologies (CAST). This facility can produce wind speeds up to 15 m/s, with a test section
+of 3 m × 3 m. A false floor was constructed in front of the fan-array wind tunnel, on which large obstacles were placed
+to represent urban geometries, as seen in Figure 2.
+Crazyflie 2.1 Brushless quadrotors were used to fly and characterize trajectories throughout the building geometries and
+associated wind fields, as seen in-flight in Figure 2. Localization for these micro aerial vehicles was resolved using an
+array of OptiTrack motion capture cameras, with the interface running through the Crazyswarm 2 API [Preiss* et al.,
+2017].
+In this work, we present results in the context of two distinct obstacle geometries. For each geometry, three cases
+are shown: surrogate-informed, CFD-informed, and flow-naive. The surrogate-informed case follows the full system
+pipeline as shown in Figure 1; it uses the building geometry and known wind speed to predict the flow field, derives the
+3
+
+
+Figure 2: Experimental facility used for testing.
+0.125 
+0.750 
+1.38  
+u component (m/s)
+0
+2
+m/s
+0
+0.4
+(m/s)2
+Velocity
+Magnitude
+TKE
+Target
+Predicted
+Z
+Figure 3: Target and predicted fields of velocity magnitude and TKE for one sample of the holdout set. The fields are
+cropped from 256 × 256 × 80 cells to 171 × 171 × 50 cells (0.684 × 0.684 × 0.2 km) for visualization.
+volumetric flight challenge metric from this prediction, and then calculates the cost-minimizing trajectory to navigate
+this scalar field. The CFD-informed case uses a direct CFD simulation of the building geometry to calculate the flight
+challenge field and associated trajectory. Given that the surrogate model is trained on CFD data, the CFD-informed
+trajectory represents the best case performance of this approach, where the surrogate model prediction exactly matches
+its training distribution. The flow-naive case has no knowledge of the flow field, and is calculated by setting the w1 and
+w4 terms in Equation 1 to zero. To mitigate the impact of randomness and transient flow features, three identical trials
+were performed for each case.
+2.3
+Surrogate Model
+2.3.1
+Architecture and Training
+A U-Net architecture was selected to predict time-averaged flow fields, including TKE. U-Net architectures have been
+previously shown to effectively model fluid flows; the spatial detail-preserving characteristic skip connections aid in
+reconstructing fine scale flow features [Renn et al., 2026]. The model input consists of a signed distance field encoding
+4
+
+
+building geometries within a volume of dimensions 256 × 256 × 80. The ground plane was excluded from the distance
+field calculation. Feature-wise Linear Modulation (FiLM) is used to condition the model on the incident free-stream
+velocity, which is assumed to always flow from the x = 0 (first volume axis) plane, with direction exactly along the
+positive x-axis.
+The model contains 9.9 ×107 trainable parameters, and was trained on 3072 time-averaged flow fields consisting of
+volumetric three-component velocity and TKE. A set of 256 samples was used for validation, with an additional 64
+samples held out for testing. The U-Net was set to train with a learning rate of 10−4 for 128 epochs on an NVIDIA
+H100 GPU, with the final model meeting the early-stopping condition after 110 epochs (approximately 15 hours of
+wall-clock time).
+The model’s performance was quantified using the normalized ℓ2-norm, where the error of a single sample is given
+by Esample = ||utarget −upredicted||2 / ||utarget||2 . The final model scored a test error of 8.71%. Figure 3 shows
+velocity magnitude and TKE for one of the 64 samples in the holdout set. Velocity magnitude is used in this figure for
+conciseness, while actual samples consist of all three velocity components and TKE. Each channel and its error for the
+same sample are shown in Appendix A
+2.3.2
+Data Generation
+A dataset of 3392 time-averaged flow fields was constructed to train, test, and validate the surrogate model. This data
+was generated using XLB, an open source GPU-accelerated Lattice-Boltzmann solver Ataei and Salehipour [2024].
+This solver was applied to 73 real-world urban geometries from around the globe, each sample spanning a square
+footprint of 500 m × 500 m. The geometries were extracted from the OpenStreetMap database through the Overpass
+API (accessed October 2025), and chosen to ensure structures would fit within the confines of the surrogate model input
+volume size.
+Simulations were run across geometries at random incident wind speeds (ranging between 0 and 6.5 m/s) and directions.
+Each simulation performed 3 ×105 time-steps, with time-averaged quantities calculated every 2000 steps starting at
+step 1.5 ×105. The velocity profile at the domain inlet was set to approximate the atmospheric boundary layer, as
+according to Richards and Hoxey [1993]. Due to the scale of the urban geometries and limitations with GPU memory,
+the simulations were formed with a uniform grid spacing of 4 m. This spacing resulted in an undesirable relaxation time
+approaching the traditional limit of 0.5, potentially reducing the stability and fidelity of the generated data. However,
+none of the simulations included in the final dataset contained the numerical errors associated with instabilities in
+Lattice-Boltzmann solvers, suggesting that the resulting time-averaged fields may serve as fair approximations of the
+flow field.
+3
+Results
+3.1
+Flight Experiments
+3.1.1
+Scenario 1
+Scenario 1 consists of two obstacles made of stacked boxes. Both obstacles are half a meter wide, and are 2.2 meters and
+1.5 meters tall. The 2.2 meter tall obstacle has boxes of decreasing size stacked to produce a tiered shape, commonly
+seen in buildings with multiple setbacks. The obstacles are placed on an elevated platform that aligns the test-section
+floor with the bottom of the fan array’s outlet. Incident wind was generated through the fan array at approximately
+5 m/s; this inlet wind speed was also used to generate CFD and surrogate model estimates for the flow field and the
+resulting flight challenge metric.
+Figure 4 shows the geometry, wind field, and planned paths for Scenario 1. The path naive of the flow field is the
+shortest, flying immediately downstream of the obstacles. The paths informed by the proposed flight challenge metric
+through CFD and U-Net based wind field estimations are longer, however entirely avoid the wakes downstream of the
+structures. The two flow-informed paths appear very similar, as would be expected given the accuracy of the deep
+learning surrogate model. Given the expected presence of transient flow features, each of the desired paths shown in
+Figure 4 was performed three times to better characterize performance.
+Figure 5 shows a top-down view of the full extent of positions taken across all three trials, with the respective desired
+paths overlaid on a slice of the flight challenge metric taken at the bottom of the allowed flight corridor. It is worth
+emphasizing that the two-dimensional slice shown in figure 5 does not convey the three-dimensional nature of the
+trajectories, especially for the two flow-informed paths (i.e., CFD and U-Net informed) which prescribe large changes
+in altitude to navigate around adverse flight conditions. The slice of the flight challenge volumetric field shown, being
+5
+
+
+Figure 4: Overview of geometry for Scenario 1 with model buildings, fan array wind tunnel, and planned paths shown.
+A sliced plane of the velocity magnitude is overlaid. The magenta rectangular prism represents the allowed flight
+corridor.
+Figure 5: Extent of positions in the streamwise plane across the three trials for the three paths. The desired paths are
+overlaid on the flight challenge metric of the bottom-most plane of the allowed flight region. The building geometries
+are shaded based on the respective height, to provide further context for the paths shown. Note that the CFD and U-Net
+informed paths pass above the building on the right-hand side.
+6
+
+
+Figure 6: Accumulated disturbance and flight challenge metrics as a function of flight time averaged across three trials
+for each of the approaches given. The magnitude of the displacements and magnitude of the angular velocity provide
+related but distinct characterizations of vehicle stability throughout flight.
+taken from the bottom plane of the flight corridor, is most relevant for the flow-naive path which experiences relatively
+little change in altitude.
+There exists a clear qualitative difference between the flow-informed and naive paths. The flow-informed paths (i.e.,
+CFD and U-Net informed) appear consistent across the three trials with relatively thin traces representing the full extent
+of positions held. As also seen in Figure 4, both flow-informed cases fly upstream of the tiered building closest to the
+starting point while increasing in altitude, then fly directly over the building closer to the goal and reduce altitude. The
+trials for these paths only deviated slightly from their respective targets. Alternatively, Figure 5 shows the flow-naive
+paths vary significantly between trials, as represented by the thick and irregularly shaped region showing the extent,
+with none of the three able to closely follow the target trajectory. Notably, the regions where the naive paths show the
+most variance appear to correlate with the regions of higher magnitude flight challenge metric shown.
+Quantifying the average magnitude of the displacement from the target in the three approaches, it is found that the CFD
+and surrogate model based approaches had a mean displacement of 7.7 cm and 7.4 cm respectively. The flow-naive
+approach achieved a mean displacement of 18.8 cm, more than twice that of flow-informed paths. Further, it should
+be noted that the extent shown in Figure 5 is only the range of positions occupied by the centroid of the vehicle rigid
+body; when running the flow-naive approach, the propeller guards of the vehicle were observed colliding with the tiered
+building in multiple trials.
+Figure 6 shows the cumulative sum of the magnitude of the displacement, magnitude of angular velocity, and flight
+challenge metric averaged across the three trials for each approach. The flight challenge metric accumulation was
+calculated based on the CFD-generated flight challenge scalar field using the actual recorded trajectories (rather than
+target trajectories). While displacement is an important metric for safety and stability, as seen in Figure 5, smaller
+disturbances can be compensated for through changes in the angular velocity. While they may not result in major
+deviations from the target path, these instabilities still impact overall safety and quality of the flight, and can be
+characterized by examining the magnitude of the angular velocity.
+Although the flow-naive path is the shortest of the three shown in Figure 6 by several seconds, this approach experiences
+significantly more displacement and angular velocity than the two flow-informed trajectories. Notably, while the CFD
+and U-Net paths show a relatively linear increase in deviations and flight challenge, the naive trajectory appears highly
+non-linear in the accumulation of all three quantities. There also appears to be a distinct correlation between the
+three quantities. This is most apparent examining the two inflection points which appear for all three quantities of the
+flow-naive case at approximately 3 seconds and 5 seconds into the flight. This relation implies that the flight challenge
+metric performs as desired: flying through regions with larger flight challenge values results in more deviations and
+higher displacement from the target path.
+7
+
+
+Figure 7: Overview of geometry for Scenario 2. The magenta rectangular prism represents the allowed flight corridor.
+Figure 8: (a.) Extent of positions in the streamwise plane across the three trials for the three paths. The desired paths
+are overlaid on the flight challenge metric of the bottom-most plane of the allowed flight region generated through
+numerical simulation. (b.) Flight challenge metric of bottom-most plane of allowed flight region generated through deep
+learning surrogate model (i.e., U-Net). (c.) Difference between the surrogate model and CFD-based flight challenge
+metric predictions.
+3.1.2
+Scenario 2
+An offset grid of uniform circular cylinder obstacles was built in front of the wind tunnel to provide a more complicated
+and structured testing environment, as seen in Figure 7. Scenario 2 was designed to evaluate the performance of the
+surrogate-model based flight planning approach when complicated flow phenomena cannot be avoided entirely, as was
+possible in Scenario 1. To this end, the allowed flight region was constrained to the outermost edges of the cylinders
+as indicated by the magenta rectangular region highlighted in Figure 7. As in the previous scenario, these tests were
+performed with a constant incident wind speed of 5 m/s.
+8
+
+
+Figure 9: Flight challenge metric, target paths, and range of positions with flight challenge metric recalculated with
+higher weight on velocity gradient.
+Figure 8a shows the target paths along with the range of positions taken by each respective trajectory across the
+three trials. Notably, the surrogate model-informed path deviates significantly from the CFD-informed path, with the
+surrogate model-informed trajectory passing directly through the near-wake region of the right upper-most cylinder. As
+would be expected, the actual flown trajectories for the surrogate-informed path deviate from the target in this near-wake
+region, moving very close to the upstream structure in all three trials. This is the most notable deviation across the three
+paths across this streamwise plane, resulting in a mean displacement of 6.7 cm for the surrogate-informed trajectory.
+The CFD-informed and naive paths experienced mean displacements of 5.4 cm and 5.5 cm, respectively.
+The large deviation unique to the surrogate-informed trajectory suggests a systematic issue with the surrogate model
+prediction, as the flight challenge metric and planning approach function as intended for the CFD-informed paths.
+Figure 8b shows a direct comparison (relative to Figure 8a) of the same two-dimensional slice of the flight challenge
+scalar field produced by the surrogate model, with Figure 8c showing the difference between the two fields.
+While the fields follow similar geometries, the surrogate model prediction of flight challenge metric generally has
+higher magnitude and appears smoother than the CFD-derived field. The magnitude of the flight challenge metric
+in the shear layers is larger in the surrogate prediction than it is in the CFD estimate. This is unexpected, given that
+the surrogate-informed path routed the drone directly through the shear layer. Looking at the difference between the
+fields (Figure 8c) along the CFD-informed path, the largest difference appears to be in the region far downstream of
+the uppermost right cylinder, near the second row. The flight challenge field produced through the surrogate model
+prediction shows a smooth gradient of non-zero values throughout this region, whereas the field derived from CFD
+has a more distinctly defined wake region with near-zero challenge outside. The surrogate-informed trajectory then
+passes directly through the near-wake recirculation bubble, and the surrounding shear layers, to avoid the downstream
+region containing artificially inflated flight challenge values. Overly smooth predictions are a common shortfall in deep
+learning models, having been previously noted in the context of surrogate models for fluid mechanics [Oommen et al.,
+2026, Renn et al., 2026].
+This issue can be mitigated with further tuning of the flight challenge metric parameters. The parameters used to
+this point were set manually using the CFD based flight challenge metric fields. By slightly adjusting the weight of
+the magnitude of the velocity gradient relative to TKE in the flight challenge metric formulation (increasing w2 in
+Equation 1), the surrogate-informed path follows a trajectory similar to that of the CFD-informed approach, as seen in
+Figure 9. With this adjustment, the surrogate-informed and CFD-informed trajectories have average displacements
+of 4.9 cm and 5.3 cm, respectively (the flow-naive path is unchanged, with average displacement of 5.5 cm). While
+tuning flight challenge metric parameters may solve this problem, it does not fix the underlying cause. The differences
+between the surrogate model and CFD flow field estimates could lead to unforeseen issues, some of which may not be
+solved by simply tuning existing flight challenge metric weights.
+9
+
+
+4
+Discussion
+This work presents a flow-informed approach to flight planning that mitigates risks associated with advanced air mobility
+operations in urban environments. This approach uses a U-Net-based surrogate model trained on CFD data to estimate
+time-resolved flow quantities (i.e., velocity, TKE), which are then used to calculate a derived flight challenge metric
+that considers velocity gradients, turbulence, and proximity to structures, as well as interactions between these terms. A
+basic cost-minimizing path planner is then applied to identify paths with minimal flight challenge. This system was
+demonstrated experimentally in a large-scale fan-array wind tunnel facility, with model buildings and a micro aerial
+vehicle.
+Two scenarios with distinct geometries were considered. In each scenario, three identical trials for each of three different
+trajectories were executed: a surrogate-based trajectory using the full system; a reference trajectory using flow estimates
+from CFD instead of the surrogate model, and a baseline flow-naive approach that ignores wind and only considers
+proximity to obstacles. The surrogate-based full-system approach was shown to be effective in both scenarios, albeit
+requiring some parameter tuning to compensate for overly smooth model predictions.
+While the approach presented in this work was observed to be effective, there are still limitations to address with further
+research. The surrogate model used in this approach produced overly smooth predictions around obstacle wakes. As
+seen in Scenario 2, this issue can lead to flight plans that cross high-shear regions which should have been avoided.
+Recent work by Oommen et al. [2026] demonstrated adversarially trained neural operators as a means to mitigate
+smoothing and improve flow field predictions with little additional inference cost.
+Additionally, the challenge associated with traversing a wind field is highly dependent on the geometry and capabilities
+of a specific vehicle. This extends beyond an aircraft’s relative sensitivity to a generic flight challenge formulation.
+Instead,the magnitude, length scale, and direction of disturbances should be considered against the aerodynamic profile
+of each aircraft in a tailored flight challenge metric. Tailoring flight challenge metrics will require characterizing the
+flight envelope and disturbance sensitivity of a given aircraft. Alternatively, the same basic approach can be modified to
+simply identify "no fly" regions based on the minimum capabilities of allowed aircraft, rather than producing specific
+flight paths. For this, the flight challenge metric would be modified to assume worst-case aerodynamic interactions
+across all scales, with a threshold applied at a conservative value to identify turbulent and dangerous "no-fly" zones
+applicable to a wide range of aircraft.
+While there exist many potential improvements and extensions of this work, it presents an important step towards safe
+and resilient advanced air mobility operations. Through these experiments, we have demonstrated how data-driven
+physics-informed approaches to flight planning improve the safety and stability of low-altitude flight.
+5
+Data Availability
+Surrogate training data or flight logs are available upon request.
+Acknowledgments
+This work was supported by the Technology Innovation Institute (TII), UAE and the Center for Autonomous Systems
+and Technologies (CAST) at Caltech. ASZ thanks Skylar Wei and Matt Anderson for support with Crazyflie MAV
+equipment. Acknowledgement hash: 27d64cb5a58c7f2057a0ebf1979a975ce99a042aaf182a7f52c24f63859048ca.
+References
+Evgenii Vinogradov, Debashisha Mishra, Mariam Ali Askar Alobeidli, Jamal Khaled Al Ali, Ahmed Saleh Alshehhi,
+Jennifer Simonjan, and Enrico Natalizio. Corridor design and separation definition in advanced air mobility:
+Systematic literature review. IEEE Open Journal of Intelligent Transportation Systems, 2026.
+Rohit Goyal and Adam Cohen. Advanced air mobility: Opportunities and challenges deploying evtols for air ambulance
+service. Applied Sciences, 12(3):1183, 2022.
+Waleed Raza, Justus Renkhoff, Olayemi Ogirimah, Gurvir Kaur Bawa, and Richard S Stansbury. Advanced air mobility:
+Innovations, applications, challenges, and future potential. Journal of Air Transportation, 33(2):169–187, 2025.
+Simon Watkins, Jane Burry, Abdulghani Mohamed, Matthew Marino, Samuel Prudden, Alex Fisher, Nicola Kloet,
+Timothy Jakobi, and Reece Clothier. Ten questions concerning the use of drones in urban environments. Building
+and Environment, 167:106458, 2020.
+10
+
+
+Anya R Jones, Oksan Cetiner, and Marilyn J Smith. Physics and modeling of large flow disturbances: discrete gust
+encounters for modern air vehicles. Annual Review of Fluid Mechanics, 54(1):469–493, 2022.
+Abdulghani Mohamed, Matthew Marino, Simon Watkins, Justin Jaworski, and Anya Jones. Gusts encountered by
+flying vehicles in proximity to buildings. Drones, 7(1):22, 2023.
+Xiaotian Geng and Zhonghua Gou. Urban morphology and wind effects on uav flight risks: A cfd-based risk mapping
+framework. Sustainable Cities and Society, page 107396, 2026.
+Enrique Aldao Pensado, Gabriel Fontenla Carrera, Fernando Veiga López, Higinio González Jorge, and Elena Martín
+Ortega. Turbulence-aware uav path planning in urban environments. In 2024 International Conference on Unmanned
+Aircraft Systems (ICUAS), pages 280–285. IEEE, 2024.
+Ziyong Cao, Xuelin Zhang, AU Weerasuriya, Zhijun Wang, and Jianping Guo. Estimating the impacts of the wind field
+size, wind speed, turbulence, and no-fly zones on unmanned aerial vehicle flights in urban areas. Physics of Fluids,
+38(1), 2026.
+Khuzema Habib, Pranav Deshakulkarni Manjunath, Kasra Torshizi, Troi Williams, and Pratap Tokekar. Wespr:
+Wind-adaptive energy-efficient safe perception & planning for robust flight with quadrotors.
+arXiv preprint
+arXiv:2603.09194, 2026.
+Steven L Brunton, Bernd R Noack, and Petros Koumoutsakos. Machine learning for fluid mechanics. Annual review of
+fluid mechanics, 52(1):477–508, 2020.
+Ilker Karadag, Danny Smyl, and Patrick Kastner. Machine learning for urban wind simulation: A comprehensive review.
+Available at SSRN 6484578, 2026.
+Houzhi Wang, Wei Ma, Jianlei Niu, and Ruoyu You. Evaluating a deep learning-based surrogate model for predicting
+wind distribution in urban microclimate design. Building and Environment, 269:112426, 2025.
+Shi Jer Low, Venugopalan SG Raghavan, Harish Gopalan, Jian Cheng Wong, Justin Yeoh, and Chin Chun Ooi. Fastflow:
+Ai for fast urban wind velocity prediction. In 2022 IEEE International Conference on Data Mining Workshops
+(ICDMW), pages 147–154. IEEE, 2022.
+Themistoklis Vargiemezis and Catherine Gorlé. From large-eddy simulations to deep learning: A u-net model for fast
+urban canopy flow predictions. Sustainable Cities and Society, page 107005, 2025.
+Wenhui Peng, Shaoxiang Qin, Senwen Yang, Jianchun Wang, Xue Liu, and Liangzhu Leon Wang. Fourier neural
+operator for real-time simulation of 3d dynamic urban microclimate. Building and Environment, 248:111063, 2024.
+Francisco Giral, Álvaro Manzano, Ignacio Gómez, Petros Koumoutsakos, and Soledad Le Clainche. Generative urban
+flow modeling: From geometry to airflow with graph diffusion. arXiv preprint arXiv:2512.14725, 2025.
+Spencer Folk, John Melton, Benjamin WL Margolis, Mark Yim, and Vijay Kumar. Learning local urban wind flow
+fields from range sensing. IEEE Robotics and Automation Letters, 9(9):7413–7420, 2024.
+Jos Stam. Stable fluids. In Seminal Graphics Papers: Pushing the Boundaries, Volume 2, pages 779–786. ACM, 2023.
+Spencer Folk, John Melton, Benjamin W. L. Margolis, Mark Yim, and Vijay Kumar. Towards safe and energy-efficient
+real-time motion planning in windy urban environments. In 2025 IEEE International Conference on Robotics and
+Automation (ICRA), pages 2787–2793, 2025. doi:10.1109/ICRA55743.2025.11127986.
+Chensen Lin, Ruian Tie, Shihong Yi, Dongqing Liu, Xiaohui Zhong, Zixin Hu, and Hao Li. Reconstructing fine-scale
+3d wind fields with terrain-informed machine learning. Nature Communications, 2026.
+Florian Achermann, Thomas Stastny, Bogdan Danciu, Andrey Kolobov, Jen Jen Chung, Roland Siegwart, and Nicholas
+Lawrance. Windseer: real-time volumetric wind prediction over complex terrain aboard a small uncrewed aerial
+vehicle. Nature Communications, 15(1):3507, 2024.
+Gonzalo Veiga-Piñeiro, Enrique Aldao-Pensado, and Elena Martín-Ortega. Hybrid cfd-deep learning approach for
+urban wind flow predictions and risk-aware uav path planning. Drones, 9(11):791, 2025.
+James A. Preiss*, Wolfgang Hönig*, Gaurav S. Sukhatme, and Nora Ayanian. Crazyswarm: A large nano-quadcopter
+swarm. In IEEE International Conference on Robotics and Automation (ICRA), pages 3299–3304. IEEE, 2017.
+doi:10.1109/ICRA.2017.7989376. URL https://doi.org/10.1109/ICRA.2017.7989376. Software available
+at https://github.com/USC-ACTLab/crazyswarm.
+Peter I Renn, Emily H Palmer, Cong Wang, and Morteza Gharib. Data-driven surrogate models for forecasting
+experimentally measured fluid flows. arXiv preprint arXiv:2606.10848, 2026.
+Mohammadmehdi Ataei and Hesam Salehipour. Xlb: A differentiable massively parallel lattice boltzmann library in
+python. Computer Physics Communications, 300:109187, 2024.
+11
+
+
+PJ Richards and RP Hoxey. Appropriate boundary conditions for computational wind engineering models using the k-ϵ
+turbulence model. Journal of wind engineering and industrial aerodynamics, 46:145–153, 1993.
+Vivek Oommen, Siavash Khodakarami, Aniruddha Bora, Zhicheng Wang, and George Em Karniadakis. Learning
+turbulent flows with generative models for super resolution and sparse flow reconstruction. Nature Communications,
+17(1):3707, 2026.
+12
+
+
+A
+Holdout Set Sample
+Error
+-0.5
+2
+m/s
+-1
+1
+m/s
+0
+0.4
+(m/s)2
+-1
+1
+m/s
+-0.5
+0.7
+m/s
+-1
+1
+m/s
+-0.5
+0.5
+m/s
+-0.15
+0.15
+(m/s)2
+u component
+v component
+w component
+TKE
+Target
+Predicted
+Figure 10: Target, prediction and error fields of each component for one sample of the holdout set, the same sample as shown in Figure 3. The fields are cropped from
+256 × 256 × 80 cells to 171 × 171 × 50 cells for visualization.
+13

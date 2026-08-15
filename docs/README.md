@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-11</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-15</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 19 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-11 21:02:51 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-15 20:45:45 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日19篇导航决策论文中，7篇精读、12篇速读，聚焦无人机-地面机器人协作与潜在地图导航。最值得关注：雪地环境下无人机-UGV自主协同（9.0分），以及基于潜在世界模型的目标图像导航（9.0分）。若时间有限，优先精读这两篇高分工作，再顺带浏览UUV鲁棒导航与课程化训练框架。</p>
+<p>今日精读7篇、速读12篇，聚焦无人机对接与空中视觉语言导航，共19篇论文。</p>
+<p>最值得看：基于序列凸优化的无人机对接控制（9.0）与因果记忆扩散规划导航（9.0），速读中世界动作模型与风感规划也值得关注。</p>
+<p>建议优先精读这两篇高分论文，并速读速读列表中的三篇8分工作以拓宽视野。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +76,9 @@
     <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Drone-Assisted UAV-UGV Collaboration for Autonomous Navigation in Snow-Covered Terrain">Drone-Assisted UAV-UGV Collaboration for Autonomous Navigation in Snow-Covered Terrain</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent World Models with Monotone Planning Costs for Image-Goal Navigation">Latent World Models with Monotone Planning Costs for Image-Goal Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="RecoverFly: A Failure-Aware Reinforcement Learning Post-Training Framework for Aerial Vision-Language Navigation">RecoverFly: A Failure-Aware Reinforcement Learning Post-Training Framework for Aerial Vision-Language Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Nonlinear Model Predictive Control via Sequential Convex Programming for Drone-to-Drone Docking">Nonlinear Model Predictive Control via Sequential Convex Programming for Drone-to-Drone Docking</span></li><li><span class="dpr-home-dashboard-paper-title" title="DreamFly: Causal Memory and Receding-Horizon Diffusion Planning for Aerial Vision-Language Navigation">DreamFly: Causal Memory and Receding-Horizon Diffusion Planning for Aerial Vision-Language Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN">AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>5</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +89,9 @@
     <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Unified Planning-Learning Framework for Robust UUV Navigation Under Partial Observability">Unified Planning-Learning Framework for Robust UUV Navigation Under Partial Observability</span></li><li><span class="dpr-home-dashboard-paper-title" title="Curriculum Generation under Structured Parametric Environments for Robust Navigation Policies">Curriculum Generation under Structured Parametric Environments for Robust Navigation Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation">Differentiate the Solver, Not the Equation: Reverse-Sweep Adjoints for Block Implicit Simulation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HarnessWAM: Bridging Prediction and Deliberation in World Action Models">HarnessWAM: Bridging Prediction and Deliberation in World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Wind-Informed Rapid Flight-Planning in Complex Urban Topologies via Machine Learning and Experimental Validation">Wind-Informed Rapid Flight-Planning in Complex Urban Topologies via Machine Learning and Experimental Validation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Dreamer-SAC: Off-Policy Learning in Latent World Models for Sample-Efficient Autonomous Driving">Dreamer-SAC: Off-Policy Learning in Latent World Models for Sample-Efficient Autonomous Driving</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
 </section>
 </div>
 

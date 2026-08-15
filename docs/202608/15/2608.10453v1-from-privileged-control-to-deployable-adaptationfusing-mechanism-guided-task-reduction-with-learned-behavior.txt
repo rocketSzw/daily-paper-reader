@@ -1,0 +1,1839 @@
+FROM PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION:
+FUSING MECHANISM-GUIDED TASK REDUCTION WITH LEARNED
+BEHAVIOR
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+Abstract. Simultaneous input-gain variation and large additive disturbance create a con-
+trol problem in which a fixed observer or nominal controller may be unable to reproduce the
+performance of a regime-aware design. We study a training–deployment asymmetry: during
+simulation or commissioning, an expert controller is allowed to use the known gain and dis-
+turbance, whereas the deployed controller can use only the reference and measured states.
+Directly imitating expert actions is generally unsafe because the same instantaneous student
+observation may correspond to different privileged regimes and hence different expert ac-
+tions. We propose a mechanism-guided transfer route rather than a new neural architecture.
+An exact sampled-data identity removes the additive disturbance from the expert law and
+reduces learning to a task-relevant inverse input gain inferred from causal state history. The
+latent target is reconstructed from expert actions and deployment-visible trajectories, so the
+true plant parameter is not required as a student label. A common-quadratic certificate is
+derived for the actual augmented sampled recursion, followed by explicit residual, coverage,
+switching, noise, and saturation qualifications.
+A parameter-regime scan shows that the
+nominal observer’s error grows sharply as a decreases and that the next gain above the best
+non-failing tuning diverges for every tested a < 1. Direct action networks also fail in closed
+loop despite moderate offline error, whereas the structured student remains close to the
+privileged expert and reduces tracking RMSE by about 69% relative to the tuned observer
+in unseen 60-s trials. The contribution is an interpretable design perspective for turning
+privileged multi-regime control knowledge into a deployable adaptive controller, together
+with conditions under which the transfer is meaningful.
+1. Introduction
+Unknown disturbances and plant-parameter changes often appear together, but they do not
+enter a plant in the same way. An additive disturbance translates a state derivative, while a
+multiplicative uncertainty changes how strongly a state or control channel acts. A controller
+tuned for one nominal model must therefore trade tracking, gain robustness, disturbance rejec-
+tion, measurement noise, and actuator demand. Disturbance-observer-based control (DOBC)
+is a powerful and mature response to uncertainty [1]; nevertheless, estimating one lumped
+disturbance with a fixed bandwidth is not equivalent to having the changing input gain and
+disturbance separately available.
+This paper changes the information pattern during controller development. In simulation,
+commissioning, or product validation, operating conditions can be deliberately imposed and
+recorded. We allow a high-performance controller to use these known conditions and call it
+a privileged expert. Its purpose is to generate a family of closed-loop demonstrations, not to
+be deployed. The deployed student sees only ordinary measurements and the reference. The
+central question is:
+Can privileged multi-regime control knowledge be converted into a single de-
+ployable controller without giving privileged variables to that controller?
+Date: August 2026.
+1
+arXiv:2608.10453v1  [eess.SY]  11 Aug 2026
+
+
+2
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+Figure 1. Overall information flow.
+The apparently simple answer—regress the expert action on measured states—contains a
+structural trap. If two hidden regimes produce nearly the same student observation but require
+different expert actions, no deterministic instantaneous student can reproduce both. A larger
+network cannot restore missing information.
+Moreover, low one-step regression error need
+not imply a good feedback controller because the learned action changes the future input
+distribution, the classical covariate-shift issue in imitation learning [2]. These two facts explain
+why we begin with mapping realizability and closed-loop structure rather than architecture
+selection.
+For the second-order system studied here, causal history contains a signature of the hidden
+regime. More importantly, the plant and expert equations yield an exact sampled identity:
+the additive disturbance can be eliminated algebraically, leaving only a task-relevant inverse
+input gain to learn. A small feedforward network estimates this latent factor from a sparse
+history; a fixed physics layer reconstructs the action. Thus the neural network behaves as a
+task-oriented online identifier, but it is trained from privileged expert behavior rather than from
+a prescribed observer trajectory. The original large-signal gain–disturbance problem becomes
+a known feedback law plus a bounded latent-estimation error.
+Figure 1 summarizes the resulting information architecture: privileged variables appear only
+in offline expert generation, whereas the deployed path contains measurable history, the learned
+inverse-gain latent, and the fixed physical action reconstruction.
+The paper’s contributions are:
+(1) an explicit privileged-training/deployable-inference formulation for simultaneous mul-
+tiplicative and additive uncertainty;
+(2) a realizability diagnosis showing why direct instantaneous imitation can be ill posed and
+why histories must be justified by information, not merely added as network capacity;
+(3) an exact sampled-data task reduction and an action-derived latent label that does not
+use the true plant parameter as student supervision;
+(4) a step-by-step common-Lyapunov analysis of the actual delayed sampled recursion,
+including bounded implementation residuals and transparent limits;
+(5) ablations and multi-regime comparisons against a privileged expert and a gain-swept
+disturbance observer, including unseen long-horizon trials.
+The specific 64–32 neural network is intentionally ordinary. The claimed innovation lies in the
+information design, task reduction, training route, interpretability, and conditional verification.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+3
+The analysis also states what is not proved, so that the second-order example provides a precise
+starting point for higher-order and experimental extensions.
+The distinctive point is the conjunction of five elements rather than any one ingredient in
+isolation: privileged variables are used to construct a closed-loop expert distribution; those
+variables are prohibited at student deployment; a neural estimator uses causal history to infer
+only a task-relevant latent factor; an exact physical layer reconstructs the action; and the
+resulting sampled loop is analyzed through an explicit relative-gain certificate. Privileged policy
+learning, neural adaptive control, physics-guided learning, and learned-control verification each
+have substantial literatures. Our claim is that their composition through an action-derived,
+physically factorized latent target addresses a control information mismatch that none of those
+ingredients resolves alone. The comparison in Section 2 states this positioning explicitly.
+Organization. Section 2 positions the work.
+Section 3 defines the information pattern and
+realizability problem. Sections 4–5 derive the structured student and its training labels. Section
+6 gives the stability analysis, Section 7 reports simulations, and Sections 8–9 discuss limitations
+and supply detailed derivations and reproducibility information.
+2. Related Work and Positioning
+2.1. Learning with privileged information. Learning using privileged information (LUPI)
+formalizes the idea that training may access variables unavailable at inference [3]. In robotics,
+“learning by cheating” uses privileged simulator representations to train a deployable vision
+policy [4]. Rapid Motor Adaptation separates a base policy from a history-based adaptation
+module for unmeasured environmental properties [5], and related whole-body control work
+uses latent adaptation for complex locomotion and manipulation [6]. A-NC trains a recur-
+rent deployable controller from trajectories generated by a parameter-aware nonlinear model
+predictive controller [7]. These studies establish the broad value of privileged training; our nar-
+rower contribution is an algebraically structured control transfer with a numerical sampled-data
+certificate.
+Recent work also questions whether privileged variables are always the best route. SLR
+learns quadruped locomotion without privileged information [8], emphasizing the cost of hand-
+selected or explicitly estimated privileged states. This does not contradict our setting: the
+operating variables are available during designed simulation/commissioning tests, and we use
+them to construct the expert but remove them from both the recommended student label and
+deployment interface.
+Privileged teachers can be unrealizable for students with weaker observations.
+Teacher
+Guided Reinforcement Learning explicitly separates what a teacher can do from what the
+student can represent [9].
+Recent theory also characterizes conditions under which expert
+distillation can succeed in partially observed systems [10], while realizable-student distillation
+studies recovery from full-state teachers that prescribe actions outside a partially observed
+student’s information class [11].
+Our state–action conflict test is the deterministic control
+analogue of this information asymmetry.
+2.2. Imitation and distribution shift. Policy distillation compresses one or more policies
+into a student [12]. Behavioral cloning, however, is trained on the expert-induced state dis-
+tribution. DAgger shows why sequential prediction must account for the distribution induced
+by the learned policy [2]; a broader algorithmic treatment is given in [13]. We do not run
+interactive DAgger because the present goal is an offline, reproducible transfer from existing
+Simulink trajectories. Instead, we use closed-loop ablations and long-horizon rollouts to expose
+the gap between one-step imitation and control performance.
+2.3. Observers, data-driven control, and learned certificates. DOBC and related meth-
+ods estimate and compensate uncertainty within an explicit feedback design [1]. Model-free
+
+
+4
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+Table 1. Positioning relative to representative neighboring paradigms.
+Paradigm
+Training advantage
+Learned object
+Distinction from this work
+Privileged
+sensor policy [4]
+Simulator
+semantics/state
+Deployable policy
+Primarily end-to-end policy
+transfer
+History
+adaptation
+[5, 6]
+Environment
+parameters
+Latent plus policy
+Empirical adaptation in
+high-dimensional robotics
+Parameter-
+aware expert [7]
+NMPC with true
+parameters
+Recurrent
+controller
+Implicit full-controller
+imitation; no factorized
+certificate
+Realizable-
+student
+learning [9, 11]
+Full-state teacher
+Student
+policy/query rule
+Focus on information
+asymmetry, not physical action
+reconstruction
+Data-driven
+UIO [17]
+Finite input–output
+data
+Unknown-input
+observer
+Observer solvability for LTI
+systems
+This paper
+Privileged (a, d)
+expert
+Action-derived
+inverse gain
+Exact disturbance elimination,
+physical reconstruction, and
+sampled certificate
+adaptive control [14] and behavioral/data-driven formulas [15] represent other ways to extract
+control-relevant information from data. Our method is not model free: it deliberately retains
+the known relative-degree structure and learns only the factor that the mechanism cannot sup-
+ply at deployment. This is closer to mechanism-guided learning than to a black-box replacement
+of control theory.
+Learned controllers can be paired with Lyapunov or barrier certificates, but the certificate
+must match the implemented dynamics and its assumptions [16]. Here the delayed backward
+difference creates a three-state augmented recursion. We derive that recursion exactly and
+verify a common quadratic inequality at the endpoints of the learned relative-gain interval.
+The result is regional and excludes saturation; it is not presented as a universal neural-network
+stability theorem.
+Data-driven unknown-input observers can reproduce model-based observer solvability condi-
+tions from finite data in linear settings [17]. Neural simulation relations provide another recent
+route for transferring controllers together with probabilistic behavioral guarantees [18]. These
+works help delimit our claim: we do not learn an unknown-input observer and do not establish
+stochastic equivalence between two black-box systems; we exploit a known sampled identity to
+remove the additive disturbance and certify the remaining relative-gain recursion.
+Earlier neural identification and control work established that neural networks can approxi-
+mate unknown dynamical mappings [19]; our question is how to choose a control-relevant map-
+ping under asymmetric information. Physics-informed machine learning more broadly embeds
+physical structure in learning [20], while safe-learning surveys emphasize explicit constraints
+and recovery mechanisms [21]. Simulation-to-real work uses domain randomization [22] and
+privileged simulation policies [23] to cover variability. Our deterministic regime grid plays a
+related coverage role, but the present evidence remains entirely simulation-based.
+2.4. Position of this paper. The old “mechanism versus behavior” dichotomy is therefore
+refined into a composition: privileged behavior supplies diverse, high-performance closed-loop
+examples; mechanism chooses a realizable latent target and reconstructs the action; data fit
+the remaining history-to-latent map; and a control certificate states when the composed loop is
+stable. This combination, rather than the choice of multilayer perceptron, is the object studied
+below.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+5
+3. Problem Formulation and Mapping Realizability
+3.1. Plant and exact sampled timing. Consider
+(1)
+˙x1(t) = a(t)x2(t) + d(t),
+˙x2(t) = u(t),
+where x1 is regulated, x2 is measured, a(t) > 0 is an unknown multiplicative parameter, and
+d(t) is an unknown additive disturbance. Let r = x1ref and e = r −x1. With sampling period
+Tc, the verified Simulink timing is
+x1,k = x1,k−1 + Tc(akx2,k−1 + dk),
+(2)
+x2,k = x2,k−1 + Tcuk−1.
+(3)
+Therefore the causal backward difference obeys
+(4)
+δx1,k := x1,k −x1,k−1
+Tc
+= akx2,k−1 + dk.
+This timing convention matters: replacing x2,k−1 by x2,k destroys the exact identity used later.
+3.2. Teacher, student, and objective. The privileged expert sees IT
+k = {x1,k, x2,k, r, ak, dk}
+and applies
+x2r,k = k1ek −dk
+ak
+,
+(5)
+up,k = k2(x2r,k −x2,k),
+k1, k2 > 0.
+(6)
+If x2 = x2r exactly, then ˙e = −k1e; the privileged variables select the internal state that cancels
+d while accounting for a.
+The deployed student is restricted to
+(7)
+IS
+k = HL
+k = {x1,j, x2,j, rj}k
+j=k−L.
+Neither a, d, nor x2r is a student input. Privileged variables may be used to construct the
+expert and audit a dataset, but the recommended student label in Section 5 also avoids the
+true a.
+Given expert rollouts over a declared regime set Ω, find a causal controller uk = πθ(HL
+k )
+that approaches expert tracking on unseen trajectories in Ωand admits an explicit stability
+statement. This is not a claim that classical robust/adaptive control is impossible; it is a test
+of whether offline privileged multi-regime knowledge can improve one fixed deployable design.
+3.3. Why a nominal disturbance observer does not remove the gain problem. The
+simulation baseline uses the nominal-model disturbance observer
+x2r = k1e −ˆd,
+u = k2(x2r −x2),
+(8)
+ˆd = L(x1 −p),
+˙p = x2 + ˆd.
+(9)
+This design is exact for the nominal input coefficient a = 1. For a̸ = 1, rewrite the actual plant
+as
+(10)
+˙x1 = x2 + ¯d,
+¯d = (a −1)x2 + d.
+Thus the observer is not estimating d alone; it must track a lumped quantity that contains the
+controlled state. For constant a, differentiating (9) and defining ˜d = ¯d −ˆd gives
+˙ˆd = L( ¯d −ˆd) = L ˜d,
+(11)
+˙˜d = (a −1)u + ˙d −L ˜d.
+(12)
+When a = 1 and d is constant, the forcing term vanishes and increasing L accelerates estimation.
+When a̸ = 1, the control action itself drives the estimation error through (a−1)u. The observer,
+inner controller, and unknown gain are therefore dynamically coupled. A larger L can reduce
+
+
+6
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+error in a moderate regime but also increases noise/control demand and, after sampling, can
+approach a stability boundary. Equation (12) does not imply that all advanced observers or
+adaptive controllers must fail; it explains why one fixed nominal DOB is not automatically a
+solution to simultaneous gain and disturbance uncertainty. Section 7 evaluates this mechanism
+separately over a < 1, a = 1, and a > 1.
+3.4. Three levels of realizability.
+Definition 1 (Instantaneous action realizability). The expert is instantaneously realizable on
+a dataset if a single-valued map π satisfies up,k = π(x1,k, x2,k, rk) within a declared tolerance.
+Proposition 1 (State–action conflict). If two samples have identical student observations and
+different expert actions, no deterministic instantaneous student reproduces both.
+Proof. For identical observations oi = oj, a function must satisfy π(oi) = π(oj). This contra-
+dicts up,i̸ = up,j.
+□
+With continuous data, exact collisions are rare. We therefore normalize each observable
+coordinate, search cross-regime nearest neighbors, and examine
+(13)
+Cε = {(i, j) : ∥oi −oj∥≤ε, |up,i −up,j| > τu}.
+A large conflict set or large local conditional variance Var(up | o) indicates an ill-conditioned
+static map.
+Definition 2 (History realizability). The expert is history-realizable over length L if a causal
+map of HL
+k reproduces the relevant expert quantity. History helps only when different hidden
+regimes leave distinguishable observable trajectories.
+Definition 3 (Task realizability). A student is task-realizable if it need not reproduce every
+privileged internal variable or action exactly, but the component of its error that enters the
+regulated closed loop can be bounded sufficiently for the desired task.
+These notions suggest a sequence. Diagnose static conflicts; introduce history only if hidden
+variables affect observable dynamics; then use plant and expert structure to identify the smallest
+task-relevant latent variable. The next section performs the last step exactly for (1).
+4. Exact Mechanism-Guided Task Reduction
+4.1. Eliminating the additive disturbance. Set αk = 1/ak. Equation (4) gives
+(14)
+dk = δx1,k −akx2,k−1.
+Substitute (14) into the privileged internal reference:
+x2r,k = αk{k1ek −[δx1,k −akx2,k−1]}
+= αk(k1ek −δx1,k) + x2,k−1.
+(15)
+Subtract x2,k and multiply by k2.
+Proposition 2 (Exact expert-action factorization). Under the sampled timing (2)–(3),
+(16)
+up,k = k2 [αk(k1ek −δx1,k) + x2,k−1 −x2,k] .
+Proof. Equation (15) inserted into (6) gives (16) directly.
+□
+Define the measurable task coordinate and sampled correction
+(17)
+qk = k1ek −δx1,k,
+∆x2,k = x2,k−1 −x2,k.
+Then up,k = k2(αkqk +∆x2,k). The large unknown dk has disappeared; it is already encoded in
+the measured derivative. The only unmeasured factor needed to reconstruct the expert action
+is αk.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+7
+4.2. What is actually learned? The deployed structured controller is
+(18)
+uk = satumax {k2[ˆαkqk + ∆x2,k]} .
+It is correct to interpret the neural module as an inverse-gain identifier. However, this does not
+reduce the method to imitation of a conventional observer:
+(1) d is not separately identified; it is removed by the sampled physical identity;
+(2) the latent target is selected by action sensitivity, not by a demand to reconstruct the
+entire unknown plant;
+(3) training trajectories are generated by a privileged closed-loop expert over deliberately
+varied regimes, rather than by copying an observer;
+(4) the final control action is a transparent composition of learned adaptation and known
+feedback.
+The action error caused only by latent estimation is
+(19)
+˜uα,k = uk −up,k = k2qk(ˆαk −αk)
+before saturation and measurement errors. Hence an inaccurate parameter estimate near qk = 0
+can be harmless, whereas the same error during a large transient can matter strongly. This is
+why parameter RMSE and uniform sample weighting are not aligned automatically with the
+control task.
+4.3. Why history can reveal the gain. At one instant, (4) gives one equation in two un-
+knowns ak, dk; there is no unique algebraic separation.
+Over a window in which a, d are
+approximately constant,
+(20)
+δx1,j = ax2,j−1 + d,
+j = k −L + 1, . . . , k.
+If x2 varies, the slope of this affine relation contains a and the intercept contains d. In the
+noiseless two-sample case,
+(21)
+a =
+δx1,i −δx1,j
+x2,i−1 −x2,j−1
+,
+x2,i−1̸ = x2,j−1.
+Equation (21) is not the implemented estimator, but it explains the information mechanism:
+excitation and temporal variation make the gain identifiable. Near equilibrium, weak variation
+makes raw identification ill-conditioned; fortunately |qk| and therefore the action sensitivity in
+(19) are also often small. The learned estimator captures a regularized, multi-sample version
+of this relation.
+Figure 2 collects the three steps of this argument—sampled-data identity, algebraic elimi-
+nation of d, and gain inference from causal history—and shows where the learned component
+enters the otherwise fixed physical reconstruction.
+5. Learning Design and Privileged Sample Use
+5.1. Separation of three data roles. To avoid ambiguity, we distinguish three interfaces.
+(1) Expert-generation interface:
+(x1, x2, r, a, d) are available to (5)–(6).
+This is where
+privileged information is used.
+(2) Student-training record: expert actions up and measured trajectories are retained. The
+true a, d may be kept only as audit metadata.
+(3) Deployment interface: only the current/past (x1, x2, r) enter the estimator and (18).
+Thus the dataset is generated by privileged control even though the recommended regression
+columns and deployed controller contain no privileged variable. Calling it “non-privileged data
+collection” would be misleading.
+
+
+8
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+Figure 2. The process of the proposed method.
+5.2. Causal features. Let the sparse delays be
+(22)
+L = {0, 1, 5, 10, 50, 100, 200, 500, 1000}.
+The estimator input is
+(23)
+zk = colj∈L(ek−j, x2,k−j, δx1,k−j) ∈R27.
+At Tc = 10−4 s, this covers 100 ms while retaining dense recent taps. Training-set percentiles
+scale each coordinate to approximately [−1, 1]; values are clipped at deployment. Histories
+never cross trajectory boundaries. Complete trajectories, not individual samples, are assigned
+to train, validation, and test sets.
+5.3. Action-derived supervision. The direct privileged label would be αk = 1/ak.
+A
+stronger separation between expert privilege and student supervision follows by rearranging
+(16). Whenever |qk| ≥qmin,
+(24)
+αu
+k = up,k/k2 −∆x2,k
+qk
+.
+This label uses the expert’s action and deployment-visible trajectory only. It does not claim
+that a was unknown when the expert samples were generated; rather, it shows that the student
+need not be trained to reproduce a privileged parameter explicitly.
+Division by small qk is ill-conditioned. Such samples are removed from the latent regression
+and the remaining samples receive task weight
+(25)
+ωk = c0 + min
+ |qk|
+qcap
+, 1
+2
+,
+1
+N
+X
+k
+ωk = 1.
+The nonzero c0 preserves background coverage; the second term emphasizes samples for which
+latent error creates a large action error.
+5.4. Estimator and training objective. A feedforward network fθ : R27 →R has hidden
+widths 64 and 32 with ReLU activations. It predicts a log inverse gain,
+(26)
+ˆαk = exp{clip[fθ(zk), log αL, log αU]},
+(αL, αU) = (0.5, 12).
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+9
+The log parameterization enforces positivity; clipping bounds extrapolation. The loss is
+(27)
+J (θ) = 1
+N
+N
+X
+k=1
+ωk[log ˆαk −log αu
+k]2 + λ∥θ∥2
+2.
+Validation selects the checkpoint. Closed-loop validation remains mandatory because (27) is a
+one-step supervised objective.
+5.5. Algorithmic route. The complete route is summarized without committing to a partic-
+ular drawing:
+(1) declare the operating domain Ωand sampling/timing convention;
+(2) generate multi-regime closed-loop trajectories with the privileged expert;
+(3) test instantaneous state–action conflicts and history informativeness;
+(4) derive a physically composable latent target and action layer;
+(5) construct action-derived labels, reject ill-conditioned divisions, and split by trajectories;
+(6) train the latent estimator and verify both offline error and closed-loop rollouts;
+(7) certify a relative-gain interval and report all trajectories leaving the certificate or reach-
+ing saturation.
+Remark 1. The method is end-to-end in its deployment interface—measured histories map
+to u—but structured internally. “End-to-end” here does not mean that the entire control law
+is an unconstrained neural network.
+6. Detailed Sampled-Data Stability Analysis
+6.1. Step 1: choose coordinates that expose cancellation. Analyze an unsaturated in-
+terval on which a, d are constant. Define
+(28)
+wk = ax2,k + d,
+ρk = aˆαk.
+The coordinate w is the part of ˙x1 produced by the internal state and disturbance. From (4),
+δx1,k = wk−1. Because ek = r −x1,k and r is constant,
+(29)
+ek+1 = ek −Tcwk.
+6.2. Step 2: rewrite the implemented action. Ignoring saturation, multiply (18) by a:
+auk = k2[aˆαk(k1ek −wk−1) + a(x2,k−1 −x2,k)]
+= k2[ρkk1ek −ρkwk−1 + wk−1 −wk]
+= k2[ρkk1ek + (1 −ρk)wk−1 −wk].
+(30)
+The constant d cancels in the difference a(x2,k−1 −x2,k) = wk−1 −wk. Moreover,
+(31)
+wk+1 = wk + Tcauk.
+6.3. Step 3: obtain the exact augmented recursion. The backward difference introduces
+one-sample memory, so the correct state is ξk = [ek, wk, wk−1]T . Equations (29), (30), and (31)
+give
+(32)
+ξk+1 = Ad(ρk)ξk,
+with
+(33)
+Ad(ρ) =
+
+
+1
+−Tc
+0
+Tck1k2ρ
+1 −Tck2
+Tck2(1 −ρ)
+0
+1
+0
+
+.
+All unknown-gain and learned-estimator effects enter the homogeneous dynamics through the
+dimensionless relative inverse gain ρ = aˆα. Exact estimation corresponds to ρ = 1, but stability
+need not require equality.
+
+
+10
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+6.4. Step 4: reduce infinitely many checks to two endpoints.
+Lemma 1 (Matrix convexity). For fixed P ≻0, Ad(ρ)T PAd(ρ) is matrix convex in ρ.
+Proof. Let Ai = Ad(ρi) and Aλ = λA1 + (1 −λ)A2. Direct expansion gives
+λAT
+1 PA1 + (1 −λ)AT
+2 PA2 −AT
+λ PAλ
+= λ(1 −λ)(A1 −A2)T P(A1 −A2) ⪰0.
+(34)
+Since Ad is affine in ρ, the result follows.
+□
+Theorem 1 (Uniform exponential stability). Suppose the actuator is unsaturated, a, d are
+constant on the analyzed interval, and ρk ∈[ρL, ρU]. If P ≻0, Q ≻0 satisfy
+(35)
+Ad(ρi)T PAd(ρi) −P ⪯−Q,
+ρi ∈{ρL, ρU},
+then the origin of (32) is uniformly exponentially stable for every time-varying sequence ρk in
+the interval.
+Proof. Any ρ ∈[ρL, ρU] is a convex combination of the endpoints. Matrix convexity extends
+(35) to the whole interval. With Vk = ξT
+k Pξk,
+(36)
+Vk+1 −Vk ≤−ξT
+k Qξk ≤−λmin(Q)
+λmax(P)Vk.
+Therefore Vk ≤ηk−k0Vk0 for η = 1 −λmin(Q)/λmax(P) ∈(0, 1), and
+(37)
+∥ξk∥2 ≤
+s
+λmax(P)
+λmin(P) η(k−k0)/2∥ξk0∥2.
+□
+6.5. Step 5: bounded residuals imply practical stability. Let differentiation, modeling,
+and action residuals enter as
+(38)
+ξk+1 = Ad(ρk)ξk + Bgk,
+B = [0, 1, 0]T .
+For a derivative error νk and additive action error εu,k,
+(39)
+gk = Tc[−k2ρkνk + aεu,k].
+Assume the stronger contraction Ad(ρ)T PAd(ρ) ⪯γ2P, 0 < γ < 1. Using ∥x∥P =
+√
+xT Px and
+the induced norm,
+∥ξk+1∥P ≤γ∥ξk∥P + ∥B∥P |gk|,
+(40)
+∥ξk∥P ≤γk−k0∥ξk0∥P + ∥B∥P
+k−1
+X
+j=k0
+γk−1−j|gj|.
+(41)
+If |gk| ≤¯g, then
+(42)
+lim sup
+k→∞
+∥ξk∥2 ≤
+√
+BT PB
+p
+λmin(P)(1 −γ)
+¯g.
+This is a sufficient worst-case bound, not a tight RMSE prediction.
+6.6. Regime changes and saturation. If a, d jump, the coordinate w = ax2 + d jumps even
+when the physical state is continuous:
+(43)
+∆wk = x2,k∆ak + ∆dk.
+Thus within-regime stability and post-switch recovery are distinct. A dwell-time argument can
+combine (42) and (43); arbitrary infinitely fast changes are not covered. Actuator saturation
+also breaks the homogeneous recursion and is reported empirically.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+11
+6.7. Numerical certificate. For k1 = 10, k2 = 100, and Tc = 10−4 s, endpoint LMIs are
+feasible for
+(44)
+ρ = aˆα ∈[0.1, 4].
+A reproducible solution is
+(45)
+P = 106
+
+
+197.4643
+−10.0837
+0.3732
+−10.0837
+14.7660
+−13.5732
+0.3732
+−13.5732
+13.5716
+
+.
+Its minimum eigenvalue is 3.5215 × 105. The minimum eigenvalues of P −AT
+d PAd at ρ = 0.1
+and 4 are 200.82 and 670.74; the computed contraction factor is γ = 0.99983295.
+On the
+independent original-timing dataset, 99.9312% of valid histories fall in this interval.
+This
+empirical coverage supports relevance but does not replace the explicit assumption ρk ∈[0.1, 4].
+7. Simulation Study
+7.1. Protocol and hypotheses. Simulations use k1 = 10, k2 = 100, Tc = 10−4 s, r = 1,
+and the 27-feature 64–32 ReLU estimator described above. The action is limited to ±12000.
+Complete trajectories define all splits. Tracking metrics omit the first second unless a transition
+window is explicitly stated.
+Every controller receives the same parameter and disturbance
+sequence in a given comparison.
+We test five hypotheses: (H1) one nominal disturbance observer exhibits an asymmetric
+parameter-dependent limitation under simultaneous uncertainty; (H2) direct action imitation
+is not reliably closed-loop realizable; (H3) action-derived latent supervision is sufficient; (H4)
+the structured student approaches the privileged expert over simultaneous a, d changes; and
+(H5) its advantage is not an artifact of an obviously weak observer tuning.
+The baselines are the privileged expert, a DOBC/observer controller, a static direct-action
+network, and a history direct-action network. The observer gain is swept independently on
+four unseen tuning seeds.
+The best tested non-failing gain, L = 19000, is frozen for final
+comparisons. This is a fair empirical protocol, not a global optimality claim for all observers.
+7.2. Problem evidence: observer behavior across parameter regimes. Before evaluat-
+ing the student, we isolate the difficulty that motivates additional adaptation. The legacy sim-
+ulation cases are reproduced and extended: nominal (a, d) = (1, 0), disturbance only (1, 0 →2),
+parameter mismatch only (0.1, 0), and combined uncertainty (0.1, 0 →2). Two further com-
+bined cases, a = 0.5 and a = 2, expose the difference between weakened and strengthened plant
+channels. The privileged expert is compared with the original observer gain L = 100 and the
+independently tuned gain L = 19000 in Fig. 3. For the four disturbance cases, the step occurs
+at t = 2 s and each run ends at t = 4 s; no disturbance-step marker is drawn for the nominal
+and parameter-only cases.
+To separate the canonical visualization from the broader robustness diagnosis, the systematic
+scan below retains the unit-scale disturbance grid used in the original diagnostic dataset. We
+then sweep
+(46)
+a ∈{0.1, 0.2, 0.4, 0.5, 0.6, 0.8, 1, 1.2, 1.5, 2},
+d : 0 →{0, 1, 5},
+and L ∈{100, 1000, 5000, 15000, 19000, 20000}. The one-second post-step metrics in Table 2
+and Fig. 4 support three observations.
+First, at fixed disturbance magnitude, observer error decreases as a increases. For d : 0 →1
+and L = 19000, RMSE falls from 0.02423 at a = 0.1 to 0.002246 at a = 1 and 0.001119 at
+a = 2. The difficulty is thus strongly asymmetric: a small a weakens the effective plant channel
+while the nominal observer/controller still acts as if a = 1. Second, increasing L has a cost. At
+a = 0.1, d : 0 →1, moving from L = 100 to 19000 reduces RMSE from 0.04185 to 0.02423, but
+
+
+12
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+x1
+(a) Nominal: a=1, d=0
+Reference
+Privileged
+Observer L=100
+Observer L=19000
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+x1
+(b) Disturbance only: a=1, d:0->2
+d step
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+1.5
+x1
+(c) Low gain only: a=0.1, d=0
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+1.5
+x1
+(d) Combined low gain: a=0.1, d:0->2
+d step
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+x1
+(e) Combined moderate gain: a=0.5, d:0->2
+d step
+0
+1
+2
+3
+4
+Time (s)
+0
+0.5
+1
+x1
+(f) Combined high gain: a=2, d:0->2
+d step
+Figure 3. Canonical observer scenarios. The nominal and a > 1 cases are
+benign, whereas a = 0.1 causes large parameter-induced startup transients
+that remain present when the disturbance step is added. A higher observer
+gain reduces but does not remove this effect. Disturbance cases use d : 0 →2
+at t = 2 s over a 4-s run.
+increases control RMS from 19.87 to 23.81 and peak control from 57.92 to 110.17. Third, the
+next tested gain L = 20000 diverges for every a < 1 but remains stable for all tested a ≥1.
+This parameter-dependent stability boundary explains why tuning on the nominal case alone
+is misleading.
+These results do not prove the necessity of neural control in a universal sense; gain sched-
+uling, adaptive control, or a redesigned observer are possible alternatives. They establish the
+narrower motivation needed here: a single nominal DOB does not reproduce regime-aware per-
+formance across the declared gain–disturbance domain, and aggressive tuning cannot fix the
+gap uniformly. The following experiments test whether privileged multi-regime data can supply
+the missing adaptation while preserving a fixed deployable interface.
+7.3. Complete closed-loop signals in the canonical regimes. The preceding observer-
+only diagnosis is complemented by a three-controller comparison in the same Simulink model.
+Each controller drives its own copy of the plant, so the plotted x2 trajectories are recorded
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+13
+Table 2. Observer one-second post-disturbance RMSE over representative
+regimes. An asterisk denotes the common RMSE-based task-failure criterion;
+“div.” denotes numerical divergence.
+a
+d step
+L = 100
+L = 19000
+L = 20000
+0.1
+0 →1
+0.04185
+0.02423
+div.
+0.1
+0 →5
+0.21130∗
+0.11416∗
+div.
+0.5
+0 →1
+0.00876
+0.00450
+div.
+1.0
+0 →1
+0.00439
+0.00225
+0.00225
+2.0
+0 →1
+0.00220
+0.00112
+0.00112
+0
+0.5
+1
+1.5
+2
+Plant parameter a
+10-3
+10-2
+10-1
+One-second post-step RMSE
+(a) Tracking accuracy
+a=1
+L=100
+L=1000
+L=5000
+L=15000
+L=19000
+L=20000
+0
+0.5
+1
+1.5
+2
+Plant parameter a
+10-2
+10-1
+Post-step peak |e|
+(b) Worst transient error
+a=1
+0
+0.5
+1
+1.5
+2
+Plant parameter a
+5
+10
+15
+20
+Post-step control RMS
+(c) Control effort
+a=1
+(d) Failure fraction across d steps 1 and 5
+0
+0.5
+1
+1.5
+2
+Plant parameter a
+100
+1000
+5000
+15000
+19000
+20000
+Observer gain L
+0
+0.5
+1
+Figure 4. Systematic observer scan across a < 1, a = 1, and a > 1 for a unit
+disturbance step. Failed cases are omitted from the continuous metric curves
+and retained in the failure map. The high-gain boundary is confined to the
+weakened-channel region in this experiment.
+separately rather than inferred from another loop. Figures 5– 7 report the actual operating-
+condition signals (a, d) together with x1, x2, and u for the privileged expert, tuned observer,
+and proposed student. The tuned observer uses the frozen L = 19000 selected independently
+above.
+For a consistent comparison, Table 3 evaluates every case over t ∈[2, 4) s. This interval
+is the post-step window for disturbance cases and a settled-operation window otherwise. The
+proposed student reduces x1 RMSE relative to the tuned observer by approximately 69%, 72%,
+and 72% in the combined a = 0.1, 0.5, and 2 cases, respectively. This improvement is not
+free: its control RMS and peak are usually larger than those of the observer and closer to the
+scale of the privileged expert. The x2 RMS values near 20, 4, and 1 in these three regimes are
+consistent with the equilibrium compensation magnitude d/a.
+
+
+14
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+0
+1
+2
+3
+4
+0
+0.5
+1
+1.5
+2
+a
+-1
+-0.5
+0
+0.5
+1
+d
+(a) Nominal: a=1, d=0
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+Reference
+Privileged
+Observer
+Proposed
+0
+1
+2
+3
+4
+0
+5
+10
+x2
+0
+1
+2
+3
+4
+Time (s)
+0
+5000
+10000
+15000
+u
+0
+1
+2
+3
+4
+0
+0.5
+1
+1.5
+2
+a
+0
+0.5
+1
+1.5
+2
+d
+(b) Disturbance only: a=1, d:0->2
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+0
+1
+2
+3
+4
+0
+5
+10
+x2
+0
+1
+2
+3
+4
+Time (s)
+0
+5000
+10000
+15000
+u
+Figure 5. Complete closed-loop signals for the nominal and disturbance-only
+regimes. The disturbance changes from 0 to 2 at t = 2 s in the right column.
+7.4. Offline fit does not predict closed-loop success. Table 4 separates supervised action
+fit from control. Adding history improves the direct network’s NRMSE but both direct policies
+fail every closed-loop trial. Structured students remain stable and close to the expert. The
+action-derived version never uses true a as a label and is selected as the main method. The
+lowest offline action error does not yield the lowest closed-loop RMSE, reinforcing that the
+learned target and rollout distribution matter more than a single regression score.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+15
+0
+1
+2
+3
+4
+-1
+-0.5
+0
+0.5
+1
+a
+-1
+-0.5
+0
+0.5
+1
+d
+(a) Low gain only: a=0.1, d=0
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+Reference
+Privileged
+Observer
+Proposed
+0
+1
+2
+3
+4
+0
+50
+100
+x2
+0
+1
+2
+3
+4
+Time (s)
+0
+5000
+10000
+15000
+u
+0
+1
+2
+3
+4
+-1
+-0.5
+0
+0.5
+1
+a
+0
+0.5
+1
+1.5
+2
+d
+(b) Combined low gain: a=0.1, d:0->2
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+0
+1
+2
+3
+4
+-50
+0
+50
+100
+x2
+0
+1
+2
+3
+4
+Time (s)
+-5000
+0
+5000
+10000
+15000
+u
+Figure 6. Complete closed-loop signals for the low-gain parameter-only and
+combined low-gain regimes.
+All three controllers act on independent plant
+copies subject to the same a and d.
+7.5. Deterministic parameter–disturbance grid. The student comparison is intentionally
+restricted to the training-covered and near-boundary gain domain (the original-timing dataset
+has a ∈[0.1, 0.864], while the grid reaches 0.9); the a > 1 observer scan above diagnoses the
+nominal observer and is not used as a neural extrapolation claim. The operating condition
+changes at t = 1 s from (a, d) = (0.5, 5) to a ∈{0.1, 0.2, 0.4, 0.6, 0.9} and d ∈{0, 2, 4, 6, 8}
+through the original rate limiters. Across 25 cases, the expert, student, and tuned observer
+
+
+16
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+0
+1
+2
+3
+4
+-0.5
+0
+0.5
+1
+1.5
+a
+0
+0.5
+1
+1.5
+2
+d
+(a) Combined moderate gain: a=0.5, d:0->2
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+Reference
+Privileged
+Observer
+Proposed
+0
+1
+2
+3
+4
+0
+5
+10
+15
+20
+x2
+0
+1
+2
+3
+4
+Time (s)
+0
+5000
+10000
+15000
+u
+0
+1
+2
+3
+4
+1
+1.5
+2
+2.5
+3
+a
+0
+0.5
+1
+1.5
+2
+d
+(b) Combined high gain: a=2, d:0->2
+0
+1
+2
+3
+4
+0
+0.5
+1
+x1
+0
+1
+2
+3
+4
+-2
+0
+2
+4
+x2
+0
+1
+2
+3
+4
+Time (s)
+0
+5000
+10000
+15000
+u
+Figure 7. Complete closed-loop signals for the combined moderate- and high-
+gain regimes.
+achieve mean one-second post-transition RMSE values 0.00751, 0.00889, and 0.02888.
+The
+student has no task failure and outperforms the observer in 22 cases; the observer fails at
+(0.1, 6) and (0.1, 8).
+At the hard transition (0.5, 5) →(0.1, 8), expert, student, and observer RMSE values are
+0.01745, 0.01821, and 0.15741, respectively. Figure 9 shows that the student reconstructs the
+expert-like compensation from measurable causal history after the transient reveals the new
+regime.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+17
+Table 3. Canonical-regime metrics on t ∈[2, 4) s. N: nominal; D: disturbance
+only; G: low-gain parameter only; LG/MG/HG: combined low, moderate, and
+high gain. P, O, and S denote privileged, tuned observer, and proposed student.
+Full-precision values are released in the accompanying CSV.
+Case Ctrl. RMSE(e1)
+max |e1| RMS(x2)
+RMS(u)
+max |u|
+N
+P
+2.71e−11 1.82e−10 3.05e−10
+3.44e−9
+2.31e−8
+N
+O
+2.74e−11 1.84e−10 3.09e−10
+3.48e−9
+2.33e−8
+N
+S
+1.62e−10
+1.04e−9
+1.67e−9
+1.71e−8
+1.10e−7
+D
+P
+0.00320
+0.01688
+2.002
+10.21
+183.96
+D
+O
+0.00318
+0.01680
+2.002
+10.21
+187.27
+D
+S
+0.00088
+0.00516
+2.000
+18.01
+579.34
+G
+P
+2.74e−11 1.84e−10
+3.09e−9
+3.48e−8
+2.33e−7
+G
+O
+6.20e−6
+2.64e−5
+9.68e−4
+0.00981
+0.03564
+G
+S
+5.02e−15 1.38e−14 6.44e−12 5.22e−11 8.47e−10
+LG
+P
+0.00320
+0.01688
+20.021
+102.12
+1839.6
+LG
+O
+0.03180
+0.10975
+20.246
+44.61
+203.17
+LG
+S
+0.00992
+0.04462
+20.072
+65.46
+894.12
+MG
+P
+0.00320
+0.01688
+4.004
+20.42
+367.92
+MG
+O
+0.00636
+0.03067
+4.009
+15.29
+195.93
+MG
+S
+0.00178
+0.00982
+4.002
+27.10
+696.68
+HG
+P
+0.00320
+0.01688
+1.001
+5.11
+91.98
+HG
+O
+0.00159
+0.00897
+1.000
+6.86
+171.30
+HG
+S
+0.00045
+0.00272
+1.000
+11.53
+420.74
+Table 4. Structural and supervision ablation.
+“Failure” uses the common
+task-failure rule in the released scripts.
+Method
+Action NRMSE
+Closed-loop result
+Static direct action
+0.3960
+4/4 failures
+History direct action
+0.3451
+4/4 failures
+Structured, uniform α
+0.2053
+RMSE 0.01101
+Structured, action-derived
+0.1746
+RMSE 0.01159
+Structured, task-weighted α
+0.1611
+RMSE 0.01279
+(a) Proposed: log10 RMSE
+-1.9-2.0-1.8-1.8-1.7
+-1.9-5.8-2.0-1.9-1.9
+-1.9-2.1-5.8-2.3-2.1
+-1.9-2.0-2.3-5.8-2.4
+-1.9-2.0-2.1-2.3-2.8
+0
+2
+4
+6
+8
+Post-transition disturbance d
+0.1
+0.2
+0.4
+0.6
+0.9
+Post-transition gain a
+-5
+-4
+-3
+-2
+(b) Observer: log10 RMSE
+-1.6-1.6-1.2-0.9-0.8
+-1.6-6.5-1.6-1.3-1.2
+-1.6-1.9-6.6-1.9-1.6
+-1.6-1.8-2.1-6.6-2.1
+-1.6-1.8-1.9-2.1-2.6
+0
+2
+4
+6
+8
+Post-transition disturbance d
+0.1
+0.2
+0.4
+0.6
+0.9
+Post-transition gain a
+-6
+-5
+-4
+-3
+-2
+-1
+(c) log10 ratio
+0.2 0.4 0.6 0.8 0.9
+0.2 -0.8 0.4 0.5 0.8
+0.2 0.2 -0.8 0.3 0.4
+0.2 0.2 0.2 -0.8 0.3
+0.3 0.2 0.2 0.2 0.2
+0
+2
+4
+6
+8
+Post-transition disturbance d
+0.1
+0.2
+0.4
+0.6
+0.9
+Post-transition gain a
+-0.5
+0
+0.5
+Figure 8. Tracking performance over simultaneous post-transition values of
+a and d with frozen observer gain L = 19000. Crosses denote observer task
+failures.
+7.6. Observer gain tradeoff. The observer gain is scanned from 103 to 105 on four unseen
+seeds.
+Mean RMSE decreases from 0.04548 at L = 1000 to 0.04153 at L = 19000.
+The
+improvement from L = 15000 to 19000 is only 5.9 × 10−5, whereas all four runs diverge at
+the next tested gain L = 20000 and at every higher gain. Hence the selected observer lies
+
+
+18
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+0
+0.5
+1
+1.5
+2
+2.5
+3
+0
+0.2
+0.4
+0.6
+Input gain a
+5
+6
+7
+8
+Disturbance d
+(a) Simultaneous operating-condition transition
+0
+0.5
+1
+1.5
+2
+2.5
+3
+0
+0.5
+1
+1.5
+x1
+(b) Closed-loop tracking
+Reference
+Privileged teacher
+Observer
+Proposed
+0
+0.5
+1
+1.5
+2
+2.5
+3
+Time (s)
+-1
+0
+1
+u
+#104
+(c) Control actions
+Privileged teacher
+Observer
+Proposed
+Figure 9. Representative simultaneous multiplicative and additive uncer-
+tainty transition. The student does not receive a or d.
+at the observed edge of the performance– robustness tradeoff rather than at a deliberately
+conservative setting.
+7.7. Unseen 60-s trials and robustness boundary. Eight unseen seeds are simulated for
+60 s.
+The disturbance changes every 1 s and the gain every 10 s.
+No controller diverges.
+Expert, student, and tuned observer mean RMSE values are 0.00720, 0.00802, and 0.02587.
+Thus the student reduces RMSE by about 69% relative to the tuned observer while staying
+close to the expert. Control RMS values are 80.30, 76.54, and 45.00; the improved tracking
+requires expert-like action scale.
+Sensor noise is applied symmetrically. With σx2 = 10σx1, the student has no task failure
+for σx1 ≤10−4. At σx1 = 10−3 it reaches saturation and fails the difficult case. The causal
+backward difference is the dominant noise-sensitive component. This result defines a present
+robustness boundary and motivates a filtered derivative; it is not hidden as a tuning artifact.
+7.8. What the experiments do and do not establish. The experiments support H1–
+H5 within the declared second-order simulation domain.
+They do not prove extrapolation
+outside the sampled a, d ranges, robustness to arbitrary switching, or stability under sustained
+saturation. Nor do they prove that every conventional observer or adaptive controller is inferior.
+Their role is to show that the proposed problem transformation is effective, interpretable, and
+compatible with a nontrivial stability certificate.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+19
+103
+104
+Observer gain L
+0.01
+0.02
+0.03
+0.04
+0.05
+Mean tracking RMSE
+(a) Tracking accuracy
+Observer
+Privileged teacher
+Proposed
+103
+104
+Observer gain L
+0.15
+0.2
+0.25
+0.3
+0.35
+Mean maximum |e|
+(b) Worst transient error
+103
+104
+Observer gain L
+60
+80
+100
+120
+140
+Mean control RMS
+(c) Control effort
+103
+104
+105
+Observer gain L
+0
+1
+2
+3
+4
+Diverged runs / 4
+(d) High-gain stability boundary
+Figure 10. Observer tracking, control effort, and tested high-gain stability boundary.
+0
+10-5
+10-4
+10-3
+<x1
+  (<x2
+=10<x1
+)
+10-5
+100
+Tracking RMSE
+Nominal: a=0.5, d=5
+Privileged teacher
+Observer
+Proposed
+0
+10-5
+10-4
+10-3
+<x1
+  (<x2
+=10<x1
+)
+10-5
+100
+105
+Control RMS
+Nominal: a=0.5, d=5
+Privileged teacher
+Observer
+Proposed
+0
+10-5
+10-4
+10-3
+<x1
+  (<x2
+=10<x1
+)
+0.05
+0.1
+0.15
+Tracking RMSE
+Hard: a=0.1, d=8
+Privileged teacher
+Observer
+Proposed
+0
+10-5
+10-4
+10-3
+<x1
+  (<x2
+=10<x1
+)
+102
+103
+104
+Control RMS
+Hard: a=0.1, d=8
+Privileged teacher
+Observer
+Proposed
+Figure 11. Measurement-noise boundary of the structured student.
+8. Discussion, Open Questions, and Conclusion
+8.1. Interpretation. The final controller can legitimately be described as a conventional
+mechanism-based action law plus a learned inverse-gain identifier. This interpretation strength-
+ens rather than weakens the paper: it exposes exactly what information the data supply. The
+
+
+20
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+learner is not asked to rediscover proportional feedback, infer two hidden quantities indepen-
+dently, and remain stable all at once. Privileged demonstrations define a desirable multi-regime
+closed-loop distribution; physical algebra removes the matched disturbance; history supports
+the remaining gain inference; and a certificate converts a relative estimation range into a closed-
+loop statement.
+The viewpoint also clarifies why privileged variables may be used to generate samples but
+not fed to the deployed network. Giving a, d to the expert during development is analogous
+to deliberately setting test conditions and tuning a regime-aware controller. Giving them to
+the student at deployment would change the problem and merely reproduce that regime-aware
+controller. In the recommended training variant, even the latent label is recovered from expert
+action and ordinary trajectories, although those trajectories still owe their quality and diversity
+to privileged expert generation.
+The expanded observer study sharpens the motivation without overstating it. For the imple-
+mented nominal DOB, the unknown gain appears inside the lumped disturbance as (a −1)x2,
+so its estimation error is driven by the control action. Small a and large d expose a perfor-
+mance gap, while increasing L = 19000 to 20000 changes every tested a < 1 case from stable to
+divergent. This does not establish that data-driven control is the only solution. It establishes
+that the missing regime adaptation is real and that one fixed high-gain tuning is not a uniform
+remedy; privileged-data learning is the remedy investigated here.
+8.2. Open research questions. The second-order result exposes several questions that de-
+serve separate work.
+(1) Higher-order task reduction: which relative-degree, matching, or normal-form condi-
+tions permit hidden disturbances to be eliminated while a small identifiable latent
+remains?
+(2) Data design: how should regimes and excitation be chosen to reduce the history-space
+covering radius while controlling expert-generation cost?
+(3) On-policy correction: can safe expert queries or aggregated rollouts reduce student-
+induced distribution shift without requiring privileged variables during ordinary oper-
+ation?
+(4) Certificate-aware training: can ρ constraints, saturation, noise filtering, and common-
+Lyapunov margins be included directly in the loss or architecture?
+(5) Industrial validation: can commissioning tests provide enough privileged regime meta-
+data to train a controller that improves an existing product without compromising its
+baseline safety layer?
+8.3. Limitations. The common quadratic certificate is sufficient and conservative.
+Its re-
+gional relative-gain assumption is empirically frequent but not enforced for all possible inputs.
+Saturation and arbitrary parameter jumps are outside the theorem. Backward differentiation
+limits measurement-noise tolerance. The expert can also be suboptimal, and a student cannot
+be expected to exceed the information and trajectory quality supplied during training without
+an additional objective or exploration mechanism.
+8.4. Conclusion. This paper presented a route from privileged multi-regime control to a de-
+ployable controller for simultaneous unknown gain and additive disturbance. The route com-
+bines realizability diagnosis, causal history, exact sampled-data task reduction, action-derived
+supervision, and conditional closed-loop analysis. Direct black-box action imitation fails despite
+reasonable offline fit, whereas a conventional small network succeeds after the learning target
+is chosen by the control structure. The broader contribution is therefore a testable perspective:
+privileged control knowledge should be transferred only after its deployable information content
+is diagnosed and its task-relevant, physically composable component is isolated.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+21
+Appendix A. Derivation and Reproducibility Details
+A.1. From continuous plant to Simulink timing. On the interval [(k −1)Tc, kTc), zero-
+order-held ak, dk and the previous state value give
+(47)
+x1,k −x1,k−1 =
+Z kTc
+(k−1)Tc
+[akx2(t) + dk]dt.
+The benchmark’s discrete integrator/evaluation order implements the forward Euler value
+x2(t) 7→x2,k−1 over this update, producing (2). The control update acts on x2 through (3).
+Consequently δx1,k corresponds to the interval ending at k, not the interval beginning at k.
+All label generation, training features, and the stability model use this same convention.
+A.2. Action-derived label error. Suppose the recorded action and derivative contain errors
+˜uk and νk. The label computed from data is
+(48)
+˜αu
+k = (up,k + ˜uk)/k2 −∆x2,k
+qk −νk
+.
+Using up,k/k2 −∆x2,k = αkqk,
+(49)
+˜αu
+k −αk = ˜uk/k2 + αkνk
+qk −νk
+.
+If |qk| ≥qmin and |νk| ≤¯ν < qmin, then
+(50)
+|˜αu
+k −αk| ≤|˜uk|/k2 + αU ¯ν
+qmin −¯ν
+.
+This explains both the qmin screen and the importance of derivative filtering in noisy experi-
+ments.
+A.3. Finite coverage versus generalization. Let M be a compact reachable set of nor-
+malized histories, and let the ideal latent map f⋆and estimator fθ be Lipschitz with constants
+L⋆, Lθ. Let the dataset covering radius be
+(51)
+hD = sup
+z∈M
+min
+zi∈D ∥z −zi∥.
+If the maximum sample error is ϵD, then for the nearest sample zi,
+|fθ(z) −f⋆(z)| ≤|fθ(z) −fθ(zi)| + |fθ(zi) −f⋆(zi)|
++ |f⋆(zi) −f⋆(z)|
+(52)
+≤ϵD + (Lθ + L⋆)hD.
+(53)
+This conditional inequality formalizes why denser effective history coverage can improve a
+uniform error bound. It does not convert an average training loss into a global guarantee, nor
+does merely repeating highly correlated equilibrium samples reduce hD.
+Combining a bound |ˆα −α| ≤ϵα with a ∈[aL, aU] gives
+(54)
+|ρ −1| = a|ˆα −α| ≤aUϵα.
+Therefore the certified interval is guaranteed if [1 −aUϵα, 1 + aUϵα] ⊆[ρL, ρU], subject to
+positivity and the same timing assumptions. This is the explicit bridge from a uniform learned-
+latent error to Theorem 1.
+
+
+22
+XITONG NIU, PEIFENG HUI, ZHEYONG JIANG, YUAN GAO, AND CHUANLIN ZHANG
+A.4. Numerical certificate audit. The released source includes the full-precision matrix P,
+endpoint residuals, and summary values. A minimal audit performs:
+(1) verify P = P T and λmin(P) > 0;
+(2) construct (33) at ρ = 0.1 and 4;
+(3) verify the minimum eigenvalue of P −Ad(ρ)T PAd(ρ) is positive at both endpoints;
+(4) invoke the matrix-convexity lemma for all intermediate ρ.
+The certificate tests the implemented unsaturated recursion; it is independent of any claim
+that the neural network globally approximates 1/a.
+A.5. Recommended reporting checklist. For future plants, report: the exact student in-
+formation set; timing and delay conventions; regime ranges and switching/rate limits; conflict
+diagnostics; trajectory-level splits; latent-label conditioning threshold; saturation and noise
+rules; observer tuning protocol; certificate interval; empirical fraction inside that interval; and
+every failure. These items make privileged teacher–student control falsifiable and reproducible.
+References
+[1] Wen-Hua Chen, Jun Yang, Lei Guo, and Shihua Li. Disturbance-observer-based control and related
+methods—an overview. IEEE Transactions on Industrial Electronics, 63(2):1083–1095, 2016.
+[2] Stéphane Ross, Geoffrey Gordon, and Drew Bagnell. A reduction of imitation learning and structured pre-
+diction to no-regret online learning. In Proceedings of the Fourteenth International Conference on Artificial
+Intelligence and Statistics, volume 15 of Proceedings of Machine Learning Research, pages 627–635, 2011.
+[3] Vladimir Vapnik and Akshay Vashist. A new learning paradigm: Learning using privileged information.
+Neural Networks, 22(5–6):544–557, 2009.
+[4] Dian Chen, Brady Zhou, Vladlen Koltun, and Philipp Krähenbühl. Learning by cheating. In Proceedings of
+the Conference on Robot Learning, volume 100 of Proceedings of Machine Learning Research, pages 66–75,
+2020.
+[5] Ashish Kumar, Zipeng Fu, Deepak Pathak, and Jitendra Malik. RMA: Rapid motor adaptation for legged
+robots. In Proceedings of Robotics: Science and Systems, 2021.
+[6] Zipeng Fu, Xuxin Cheng, and Deepak Pathak. Deep whole-body control: Learning a unified policy for
+manipulation and locomotion. In Proceedings of the 6th Conference on Robot Learning, volume 205 of
+Proceedings of Machine Learning Research, pages 138–149, 2023.
+[7] Marcin Paluch, Florian Bolli, Pehuen Moure, Xiang Deng, and Tobi Delbruck. A-NC: Adaptive neural
+control with implicit online inference of privileged parameters. In Proceedings of the 7th Annual Learning
+for Dynamics and Control Conference, volume 283 of Proceedings of Machine Learning Research, pages
+987–998, 2025.
+[8] Shiyi Chen, Zeyu Wan, Shiyang Yan, Chun Zhang, Weiyi Zhang, Qiang Li, Debing Zhang, and Fasih
+Ud Din Farrukh. SLR: Learning quadruped locomotion without privileged information. In Proceedings of
+the 8th Conference on Robot Learning, volume 270 of Proceedings of Machine Learning Research, pages
+3212–3224, 2025.
+[9] Idan Shenfeld, Zhang-Wei Hong, Aviv Tamar, and Pulkit Agrawal. TGRL: An algorithm for teacher guided
+reinforcement learning. In Proceedings of the 40th International Conference on Machine Learning, volume
+202 of Proceedings of Machine Learning Research, pages 31077–31093, 2023.
+[10] Yang Cai, Xiangyu Liu, Argyris Oikonomou, and Kaiqing Zhang. Provable partially observable reinforce-
+ment learning with privileged information. arXiv preprint arXiv:2412.00985, 2024.
+[11] Yujin Kim, Nathaniel Chin, Arnav Vasudev, and Sanjiban Choudhury. Distilling realizable students from
+unrealizable teachers. arXiv preprint arXiv:2505.09546, 2025.
+[12] Andrei A. Rusu, Sergio Gomez Colmenarejo, Caglar Gulcehre, Guillaume Desjardins, James Kirkpatrick,
+Razvan Pascanu, Volodymyr Mnih, Koray Kavukcuoglu, and Raia Hadsell. Policy distillation. arXiv
+preprint arXiv:1511.06295, 2015.
+[13] Takayuki Osa, Joni Pajarinen, Gerhard Neumann, J. Andrew Bagnell, Pieter Abbeel, and Jan Peters. An
+algorithmic perspective on imitation learning. Foundations and Trends in Robotics, 7(1–2):1–179, 2018.
+[14] Zhongsheng Hou and Shangtai Jin. Data-driven model-free adaptive control for a class of MIMO nonlinear
+discrete-time systems. IEEE Transactions on Neural Networks and Learning Systems, 24(6):887–901, 2013.
+[15] Claudio De Persis and Pietro Tesi. Formulas for data-driven control: Stabilization, optimality, and robust-
+ness. IEEE Transactions on Automatic Control, 65(3):909–924, 2020.
+[16] Charles Dawson, Sicun Gao, and Chuchu Fan. Safe control with learned certificates: A survey of neural
+lyapunov, barrier, and contraction methods. IEEE Transactions on Robotics, 39(3):1749–1767, 2023.
+
+
+PRIVILEGED CONTROL TO DEPLOYABLE ADAPTATION
+23
+[17] Giorgia Disarò and Maria Elena Valcher. On the equivalence of model-based and data-driven approaches to
+the design of unknown-input observers. IEEE Transactions on Automatic Control, 70(3):2074–2081, 2025.
+[18] Alireza Nadali, Ashutosh Trivedi, and Majid Zamani. Stochastic neural simulation relations for control
+transfer. In Proceedings of the International Conference on Neuro-symbolic Systems, volume 288 of Pro-
+ceedings of Machine Learning Research, pages 597–620, 2025.
+[19] Kumpati S. Narendra and Kannan Parthasarathy. Identification and control of dynamical systems using
+neural networks. IEEE Transactions on Neural Networks, 1(1):4–27, 1990.
+[20] George Em Karniadakis, Ioannis G. Kevrekidis, Lu Lu, Paris Perdikaris, Sifan Wang, and Liu Yang.
+Physics-informed machine learning. Nature Reviews Physics, 3:422–440, 2021.
+[21] Lukas Brunke, Melissa Greeff, Adam W. Hall, Zhaocong Yuan, Siqi Zhou, Jacopo Panerati, and Angela P.
+Schoellig. Safe learning in robotics: From learning-based control to safe reinforcement learning. Annual
+Review of Control, Robotics, and Autonomous Systems, 5:411–444, 2022.
+[22] Josh Tobin, Rachel Fong, Alex Ray, Jonas Schneider, Wojciech Zaremba, and Pieter Abbeel. Domain
+randomization for transferring deep neural networks from simulation to the real world. In 2017 IEEE/RSJ
+International Conference on Intelligent Robots and Systems, pages 23–30, 2017.
+[23] Jemin Hwangbo, Joonho Lee, Alexey Dosovitskiy, Dario Bellicoso, Vassilios Tsounis, Vladlen Koltun, and
+Marco Hutter. Learning agile and dynamic motor skills for legged robots. Science Robotics, 4(26):eaau5872,
+2019.
+Shanghai University of Electric Power, Shanghai, China
+Email address: xitongniu@mail.shiep.edu.cn

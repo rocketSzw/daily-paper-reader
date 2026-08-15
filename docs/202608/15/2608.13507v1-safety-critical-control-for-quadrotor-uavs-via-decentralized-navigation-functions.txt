@@ -1,0 +1,921 @@
+Safety-Critical Control for Quadrotor UAVs via
+Decentralized Navigation Functions
+Omayra Yago Nieto1, Alexandre Anahory Simoes2 and Leonardo Colombo3
+Abstract— We study safety-critical control for teams of
+quadrotor UAVs driven by decentralized navigation func-
+tions under learned model uncertainty. These functions
+generate fully actuated translational reference forces, while
+quadrotors can only produce thrust along their body-fixed
+vertical axes. We construct a thrust-attitude implementa-
+tion of the induced navigation forces and quantify its er-
+ror with respect to the fully actuated reference dynamics.
+An aggregated robust HOCBF-QP safety filter minimally
+modifies the nominal thrusts while guaranteeing pairwise
+collision avoidance with high probability.
+Index Terms— Safety-Critical Control, High-Order Con-
+trol Barrier Functions, Gaussian Processes, Quadrotor
+UAVs, Decentralized Navigation Functions.
+I. INTRODUCTION
+Teams of quadrotor UAVs are increasingly used in coordi-
+nated tasks such as inspection, coverage, surveillance, aerial
+cinematography, and cooperative sensing. These applications
+require controllers that combine goal-directed motion, colli-
+sion avoidance, and robustness to aerodynamic and modeling
+uncertainty. A central difficulty is that decentralized motion-
+planning methods often generate ideal translational fields or
+forces, whereas a quadrotor can only generate thrust along
+its body-fixed vertical axis. Thus, a collision-aware reference
+force cannot be applied directly, but must be implemented
+through thrust and attitude commands while preserving safety.
+Navigation functions provide a systematic way to gener-
+ate goal-directed and collision-aware motion. Starting from
+classical artificial-potential constructions [1], several decen-
+tralized navigation approaches have been developed for multi-
+agent systems [2], [3]. Recent work has extended this view-
+point to multi-agent systems evolving on SE(3), yielding
+decentralized navigation functions that generate fully actuated
+reference forces for collision-aware motion on SE(3)N [4].
+For quadrotor UAVs, however, these reference forces are not
+1 Omayra Yago Nieto is with Universidad Polit´ecnica de Madrid,
+Spain. omayra.yago.nieto@alumnos.upm.es
+2 A. Anahory Simoes is with the School of Science and Technology,
+IE University, Spain alexandre.anahory@ie.edu
+3Centre for Automation and Robotics (CSIC-UPM), Ctra. M300
+Campo Real, Km 0,200, Arganda del Rey - 28500 Madrid, Spain,
+leonardo.colombo @csic.es.
+The research leading to these results was supported in part by
+iRoboCity2030-CM, Rob´otica Inteligente para Ciudades Sostenibles
+(TEC-2024/TEC-62), funded by the Programas de Actividades I+D en
+Tecnolog´ıas en la Comunidad de Madrid. The authors also acknowl-
+edge financial support from Grants PID2022-137909NB-C21 funded by
+MCIN/AEI/10.13039/501100011033.
+admissible inputs. They must first be converted into desired
+thrust directions, thrust magnitudes, and attitude commands.
+This conversion introduces an implementation error that must
+be quantified before safety-critical constraints can be imposed
+on the actual underactuated dynamics.
+Control barrier functions (CBFs) provide a complementary
+framework for enforcing safety through forward invariance of
+a prescribed safe set. CBF-based quadratic programs allow
+safety constraints to be combined with nominal controllers in
+a minimally invasive way [5], and high-order or exponential
+CBFs extend this approach to constraints of relative degree
+greater than one
+[6]–[8]. Because collision avoidance for
+quadrotors is naturally a relative-degree-two constraint with
+respect to thrust, HOCBFs are well suited to this setting.
+Gaussian Processes (GP) have also been used to incorpo-
+rate learning uncertainty into safety-critical control, including
+quadrotor learning, GP-CBF synthesis, high-order GP-CBFs,
+and decentralized multirobot collision avoidance [9]–[12]. Re-
+lated NMPC methods address safe multi-quadrotor operation
+under sensing and actuation constraints [13].
+Despite these advances, the combination of decentralized
+navigation functions, quadrotor underactuation, learned model
+uncertainty, and HOCBF-based safety remains largely unex-
+plored. The main issue is that the navigation function produces
+a fully actuated reference force, while the HOCBF constraint
+must be enforced on the actual thrust-direction dynamics. This
+paper bridges that gap. The contributions are threefold. First,
+we construct a thrust–attitude implementation of decentralized
+navigation forces for quadrotor teams and derive an explicit
+error bound with respect to the fully actuated reference dynam-
+ics. Second, we incorporate GP force uncertainty directly into
+the pairwise relative-degree-two HOCBF constraint through an
+explicit robustness bound. Third, we formulate an aggregated
+robust HOCBF-QP safety filter that minimally modifies the
+nominal thrusts and guarantees pairwise collision avoidance
+with high probability.
+The remainder of the paper is organized as follows. Sec-
+tion II introduces the multi-quadrotor model and the pair-
+wise HOCBF safety constraints. Section III develops the
+decentralized-navigation-force implementation and derives the
+thrust–attitude error bound. Section IV constructs the aggre-
+gated robust GP-HOCBF-QP safety filter and establishes the
+probabilistic safety guarantee. Section V presents simulation
+results, and Section VI concludes.
+II. SYSTEM MODELING AND SAFETY CONSTRAINTS
+arXiv:2608.13507v1  [eess.SY]  13 Aug 2026
+
+
+A. Multi-agent quadrotor dynamics
+Consider a team of N quadrotor-type agents indexed by
+V = {1, . . . , N}. The configuration of agent i ∈V is gi =
+(Ri, pi) ∈SO(3) × R3, where Ri ∈SO(3) is the attitude
+and pi ∈R3 is the position in an inertial frame. Let vi ∈R3
+denote the translational velocity and let Ωi ∈R3 denote the
+body angular velocity. The kinematics are
+˙pi = vi,
+˙Ri = RibΩi,
+(1)
+where b· : R3 →so(3) is the standard hat map.
+The control input is ui = (fi, τi) ∈R×R3, where fi is the
+thrust magnitude along the body-fixed direction Rie3 and τi
+is the body torque. The dynamics are
+mi ˙vi = fiRie3 + mig + ∆f,i(xi),
+(2)
+Ji ˙Ωi + Ωi × JiΩi = τi + ∆τ,i(xi),
+(3)
+where mi > 0, Ji ∈R3×3, e3 = (0, 0, 1)⊤, g ∈R3 is the
+gravitational acceleration vector and it is directed along −e3,
+and xi = (pi, vi, Ri, Ωi) ∈R3 × R3 × SO(3) × R3.
+The terms ∆f,i and ∆τ,i represent state-dependent unknown
+force and torque contributions, respectively. They account
+for unmodeled aerodynamic effects, parametric uncertainty,
+actuator disturbances, and external perturbations. The nominal
+dynamics are recovered by setting ∆f,i = ∆τ,i = 0. In
+this work, these unknown dynamics are estimated online by
+learning-based methods and their prediction errors are incorpo-
+rated into the robust safety-critical controller. The translational
+dynamics remain underactuated because the control force
+cannot be chosen arbitrarily in R3, but is constrained to lie
+in span{Rie3} (for details, see [14]).
+B. Pairwise safety functions
+Collision-avoidance constraints are encoded by an undi-
+rected graph G = (V, E). An edge (i, j) ∈E indicates that
+agents i and j must satisfy a pairwise safety constraint. The
+neighbor set of agent i is Ni = {j ∈V : (i, j) ∈E}.
+For collision avoidance, each quadrotor is represented by a
+spherical safety envelope centered at its position pi. Therefore,
+pairwise safety depends only on the relative position between
+agents and not on their attitudes. For each (i, j) ∈E, define
+hij(pi, pj) = ∥pi −pj∥2 −d2
+min,
+(4)
+where dmin > 0 is the prescribed minimum separation dis-
+tance. The pairwise and global safe sets are
+Cij = {(xi, xj) : hij(pi, pj) ≥0},
+C =
+\
+(i,j)∈E
+Cij.
+(5)
+Let pij := pi −pj and vij := vi −vj. Along (1)–(3),
+˙hij = 2p⊤
+ijvij.
+(6)
+The relative acceleration entering the second derivative is
+aij := fi
+mi
+Rie3 −fj
+mj
+Rje3 + ∆f,i(xi)
+mi
+−∆f,j(xj)
+mj
+.
+(7)
+Since the common gravitational acceleration cancels from the
+relative dynamics, we obtain
+¨hij = 2∥vij∥2 + 2p⊤
+ijaij.
+(8)
+Therefore, the control inputs do not appear in ˙hij, whereas
+the thrust magnitudes fi and fj appear explicitly in ¨hij
+through the underactuated force directions Rie3 and Rje3.
+Thus, except at configurations where pij is orthogonal to both
+available thrust directions, hij has relative degree two with
+respect to the thrust inputs. This motivates the use of high-
+order control barrier functions for enforcing (4) [6], [7]. The
+body torques τi, τj do not enter ¨hij directly; they affect safety
+indirectly by changing the attitudes Ri, Rj and, therefore,
+the future thrust directions. This is precisely the quadrotor
+underactuation structure given in [14].
+C. High-order barrier constraints
+Since the pairwise safety function has relative degree two
+with respect to the thrust inputs, we employ the high-order
+zeroing-CBF framework to enforce (4). This framework ex-
+tends barrier-certificate and zeroing-CBF ideas for forward
+invariance to constraints whose control input appears only after
+repeated differentiation [5]–[8].
+Let α1 and α2 be differentiable extended class-K functions
+and define
+φ0,ij := hij,
+φ1,ij := ˙hij + α1(hij),
+(9)
+φ2,ij := ˙φ1,ij + α2(φ1,ij).
+(10)
+Equivalently,
+φ2,ij = ¨hij + α′
+1(hij)˙hij + α2
+
+˙hij + α1(hij)
+
+.
+(11)
+In the common linear choice α1(s) = ℓ1s, α2(s) = ℓ2s, (11)
+becomes
+¨hij + (ℓ1 + ℓ2)˙hij + ℓ1ℓ2hij ≥0.
+If ϕ0,ij(0) ≥0 and ϕ1,ij(0) ≥0, then enforcing ϕ2,ij(x, u) ≥
+0 guarantees forward invariance of the high-order safe set
+CH
+ij := {(xi, xj) : ϕ0,ij ≥0, ϕ1,ij ≥0}.
+Since ϕ0,ij = hij, this implies hij(t) ≥0 for all t ≥0 [6]–[8].
+The robust enforcement of this HOCBF condition under model
+uncertainty and underactuated thrust-direction constraints is
+developed in Section IV.
+III. DECENTRALIZED NAVIGATION FUNCTIONS AND
+THRUST-ATTITUDE CONTROL
+A. Decentralized navigation functions
+For each agent i ∈V, let gd,i = (Rd,i, pd,i) ∈SE(3) denote
+its desired configuration. Choose dnav < dmin and define
+Qnav := {g ∈SE(3)N : ∥pij∥> dnav, ∀(i, j) ∈E},
+where pij := pi −pj. Qnav is a configuration-space object,
+whereas the safe set C in (5) is defined on the state space. Since
+dnav < dmin, the navigation function is defined on an open
+neighborhood of the CBF safe set boundary ∥pij∥= dmin.
+We use the decentralized navigation function on SE(3)N in-
+troduced in [4]. This construction extends classical navigation
+functions [1] and earlier decentralized multi-agent navigation
+methods [2] to fully actuated dynamical agents evolving on
+SE(3). For agent i, this function is denoted by ψi : Qnav →
+
+
+R≥0. It is built from relation proximity functions, relation
+verification functions, and a collision-anticipation correction.
+Assumption 3.1: For each i ∈V, the function ψi : Qnav →
+R≥0 satisfies:
+1) ψi(g) ≥0 for all g ∈Qnav, and ψi(g) = 0 when gi =
+gd,i and no active collision relation involving agent i is
+present;
+2) ∇piψi depends only on locally available configuration in-
+formation associated with agent i and the agents involved
+in its collision relations;
+3) the negative gradient −∇piψi is attractive toward the de-
+sired configuration and repulsive with respect to collision
+configurations.
+A representative expression of the decentralized navigation
+function is
+ψi(g1, . . . , gN) =
+γd,i(gi) + ci(Gi)
+  γd,i(gi) + ci(Gi)
+κ + Gi
+1/κ ,
+(12)
+where κ > 0 is a design parameter, γd,i is a goal function,
+Gi collects the relation-verification functions associated with
+possible collision relations involving agent i, and ci(Gi) is the
+collision-anticipation correction term. This correction prevents
+agent i from remaining passive at its desired configuration
+when a potential collision relation involving that agent is still
+active. The detailed construction of Gi and ci is given in [4].
+The function ψi is used as a decentralized artificial potential
+on Qnav. Its negative position gradient determines the nominal
+collision-aware direction in which agent i should move. If the
+translational dynamics were fully actuated, this direction could
+be imposed directly as a feedback force. For a quadrotor UAV,
+however, the available force is constrained to the body-fixed
+thrust direction Rie3. Therefore, the control action induced
+by ψi must be implemented through a thrust magnitude and a
+desired attitude before it can be applied to the dynamics.
+B. Fully actuated reference dynamics
+The decentralized navigation function induces the ideal
+translational feedback force
+F nav
+i
+(x) := −kp∇piψi(g) −kvvi,
+(13)
+where kp, kv > 0 are navigation and damping gains, respec-
+tively, and g = (g1, . . . , gN). The first term is the negative
+position gradient of the decentralized navigation function and
+therefore combines attraction to the desired configuration
+with repulsion from collision configurations. The second term
+introduces linear damping in the translational velocity. For
+time-varying reference positions, the damping term can be
+replaced by −kv(vi−vd,i), with vd,i = ˙pd,i; the thrust–attitude
+implementation and the results below are unchanged.
+If agent i were fully actuated in translation, the reference
+closed-loop dynamics associated with (13) would be
+mi ˙vi = F nav
+i
+(x).
+(14)
+Thus, F nav
+i
+should be interpreted as a virtual fully actuated
+force generated by the decentralized navigation function. This
+is precisely the type of force that can be applied in the fully
+actuated SE(3) model of [4].
+For a quadrotor UAV, however, the admissible translational
+force is not arbitrary. The actual dynamics satisfy
+mi ˙vi = fiRie3 + mig + ∆f,i(xi),
+so the control force is constrained to the one-dimensional
+subspace span{Rie3}. Consequently, the reference force (13)
+cannot be applied directly. It must first be converted into a
+desired thrust direction, a thrust magnitude, and an attitude
+command. Therefore, the decentralized navigation function
+affects the quadrotor dynamics only through the virtual force
+F nav
+i
+, which is implemented below by means of thrust and
+attitude commands.
+C. Thrust-attitude implementation
+We compensate the unknown force and torque terms using
+the learning-based framework for underactuated vehicles with
+uncertain dynamics in [15]. Each agent uses collected data to
+obtain mean predictions µf,i(xi) and µτ,i(xi) of ∆f,i(xi) and
+∆τ,i(xi), respectively. The prediction uncertainty is incorpo-
+rated into the robust HOCBF constraints in Section IV.
+We define the desired total acceleration
+ad,i(x) := 1
+mi
+ F nav
+i
+(x) −µf,i(xi)
+
+−g.
+(15)
+Equivalently, if this acceleration were implemented exactly
+and the learned force model were exact, then
+miad,i + mig + µf,i = F nav
+i
+.
+Whenever ad,i(x)̸ = 0, define b3c,i(x) := ad,i(x)/∥ad,i(x)∥.
+Let Rc,i ∈SO(3) be any smooth commanded attitude satisfy-
+ing Rc,ie3 = b3c,i; the remaining degree of freedom may be
+assigned through a desired yaw direction.
+Since the actual thrust is applied along the current direction
+Rie3, we choose
+f nom
+i
+= mia⊤
+d,iRie3.
+(16)
+Thus, the applied force f nom
+i
+Rie3 is the orthogonal projection
+of miad,i onto span{Rie3}.
+The commanded attitude Rc,i is tracked with the geometric
+controller of [14]. Let bΩc,i = R⊤
+c,i ˙Rc,i, and let eR,i, eΩ,i be
+the standard tracking errors. We use
+τ nom
+i
+= −kReR,i −kΩeΩ,i + Ωi × JiΩi
+−Ji
+ bΩiR⊤
+i Rc,iΩc,i −R⊤
+i Rc,i ˙Ωc,i
+
+−µτ,i(xi).
+The corresponding nominal input is unom
+i
+= (f nom
+i
+, τ nom
+i
+).
+The following result quantifies the error between the fully
+actuated reference dynamics and their thrust-attitude imple-
+mentation on the quadrotor.
+Proposition 3.2: Consider agent i with dynamics (2) under
+the nominal thrust (16). Suppose that ad,i(x)̸ = 0 and
+∥Rie3 −b3c,i∥≤εi.
+(17)
+Then
+mi ˙vi = F nav
+i
+(x) + eatt
+i (x) + eGP
+i
+(xi),
+(18)
+where
+eGP
+i
+(xi) := ∆f,i(xi) −µf,i(xi),
+(19)
+eatt
+i (x) := mi
+
+(a⊤
+d,iRie3)Rie3 −ad,i
+
+.
+(20)
+
+
+Moreover, if θi ∈[0, π] is the angle between Rie3 and b3c,i,
+∥eatt
+i (x)∥= mi∥ad,i(x)∥sin θi ≤mi∥ad,i(x)∥εi.
+(21)
+Consequently, if eGP
+i
+= 0 and Rie3 = b3c,i, then the quadrotor
+translational dynamics coincide with the fully actuated refer-
+ence dynamics (14).
+Proof: Using (2) and (16),
+mi ˙vi = mi(a⊤
+d,iRie3)Rie3 + mig + ∆f,i(xi).
+Since miad,i + mig + µf,i = F nav
+i
+, this gives (18) with (19)–
+(20). Let ui := Rie3 and bi := b3c,i. Since ad,i = ∥ad,i∥bi,
+eatt
+i
+= mi∥ad,i∥
+ (b⊤
+i ui)ui −bi
+
+. The vector in parentheses is
+the component of bi orthogonal to ui, up to sign. Hence, if θi
+is the angle between ui and bi, ∥eatt
+i ∥= mi∥ad,i∥sin θi. For
+unit vectors, ∥ui −bi∥= 2 sin(θi/2), and therefore sin θi ≤
+∥ui −bi∥. Using (17) gives (21).
+Remark 3.3: The term eGP
+i
+denotes only the translational
+force-estimation error. Torque uncertainty is represented sepa-
+rately by ∆τ,i −µτ,i in the attitude dynamics and is compen-
+sated in the nominal torque, but it does not enter the second-
+order pairwise distance HOCBF margin. Thus, Proposition 3.2
+separates the translational learning error from the error induced
+by underactuation and attitude tracking.
+IV. ROBUST SAFETY-CRITICAL CONTROL VIA
+HOCBF-QP
+A. Learning uncertainty and robust HOCBF constraints
+For each agent i, let µf,i(xi) denote the learned mean
+prediction of ∆f,i(xi), and let Xi be a compact operating do-
+main containing its closed-loop trajectory. Assume the learning
+model provides a high-probability confidence bound.
+Assumption 4.1: For each agent i ∈V, there exists a known
+function ¯∆i : Xi →R≥0 and a confidence level δi ∈(0, 1)
+such that, with probability at least 1 −δi,
+∥∆f,i(xi) −µf,i(xi)∥≤¯∆i(xi),
+∀xi ∈Xi.
+(22)
+For componentwise GP regression, we use
+¯∆i(xi)
+=
+√βi∥σi(xi)∥, where σi collects the posterior standard de-
+viations of the force components and βi > 0 determines
+the confidence level under the adopted GP assumptions. The
+analysis below only requires Assumption 4.1.
+For each (i, j) ∈E, define the learned relative acceleration
+baij := fi
+mi
+Rie3 −fj
+mj
+Rje3 + µf,i(xi)
+mi
+−µf,j(xj)
+mj
+.
+(23)
+Accordingly, the learned estimate of ¨hij is
+b¨hij(x, f) := 2∥vij∥2 + 2p⊤
+ijbaij.
+(24)
+The learned HOCBF expression is then
+bφ2,ij(x, f) := b¨hij(x, f) + α′
+1(hij)˙hij
++ α2
+
+˙hij + α1(hij)
+
+.
+(25)
+The discrepancy between the true and learned HOCBF
+expressions is bounded by
+ρij(x) := 2∥pij∥
+ ¯∆i(xi)
+mi
++
+¯∆j(xj)
+mj
+
+.
+(26)
+Lemma 4.2: Suppose that Assumption 4.1 holds. Then, for
+every (i, j) ∈E, the difference between the true and learned
+HOCBF expressions is independent of f and satisfy
+φ2,ij(x, f) ≥bφ2,ij(x, f) −ρij(x),
+(27)
+for every admissible thrust vector f, with probability at least
+1 −δi −δj.
+Proof:
+The only difference between φ2,ij and bφ2,ij
+comes from the unknown force in ¨hij. From (8) and (24),
+¨hij −b¨hij = 2p⊤
+ij
+∆f,i −µf,i
+mi
+−∆f,j −µf,j
+mj
+
+.
+Therefore, by Cauchy-Schwarz and the triangle inequality and
+Assumption 4.1,
+¨hij −b¨hij
+ ≤2∥pij∥
+∥∆f,i −µf,i∥
+mi
++ ∥∆f,j −µf,j∥
+mj
+
+≤2∥pij∥
+ ¯∆i(xi)
+mi
++
+¯∆j(xj)
+mj
+
+= ρij(x).
+Since all other terms in φ2,ij and bφ2,ij are identical, the result
+follows. The probability claim follows by a union bound over
+the learning events of agents i and j.
+B. Aggregated robust safety-critical QP
+The nominal thrust f nom
+i
+introduced in Section III imple-
+ments the decentralized navigation force through the current
+thrust direction Rie3. We now minimally modify these nomi-
+nal thrust magnitudes in order to enforce the robust pairwise
+HOCBF conditions derived above.
+Let f := col(f1, . . . , fN), f nom := col(f nom
+1
+, . . . , f nom
+N
+),
+and define the admissible thrust set F :=
+Y
+i∈V
+[f min
+i
+, f max
+i
+]. At
+each time t, the robust safety filter is defined by the aggregated
+quadratic program
+f ⋆= arg min
+f∈F
+1
+2
+X
+i∈V
+ fi −f nom
+i
+2
+(28)
+s.t.
+bφ2,ij(x, f) ≥ρij(x),
+(i, j) ∈E.
+The applied input of agent i is then
+u⋆
+i =
+ f ⋆
+i , τ nom
+i
+
+.
+(29)
+Since the objective is strictly convex and the constraints are
+affine in f, whenever (28) is feasible its minimizer is unique.
+Problem (28) is solved simultaneously over the thrust mag-
+nitudes of all agents, and therefore constitutes an aggregated
+safety layer. The nominal navigation forces F nav
+i
+and the
+corresponding thrust–attitude controllers remain decentralized,
+whereas the HOCBF correction couples the agents through the
+pairwise constraints associated with E. Each such constraint
+involves only the two thrust magnitudes fi and fj correspond-
+ing to its endpoints.
+Remark 4.3: Each constraint in (28) is affine in the thrust
+magnitudes fi and fj, since bφ2,ij depends linearly on fiRie3
+and fjRje3. The body torques do not enter ¨hij directly; they
+affect safety through the evolution of the thrust directions Rie3
+and Rje3. Consequently, the safety filter modifies only the
+
+
+thrust magnitudes, while the attitude torques remain those of
+the nominal geometric controller in Section III.
+Remark 4.4: The safety guarantee below is conditional on
+feasibility of the robust HOCBF-QP. Feasibility may be limited
+by the thrust bounds and, in particular, can deteriorate when
+pij is nearly orthogonal to both thrust directions Rie3 and
+Rje3, so that the second-order distance constraint has poor
+instantaneous control authority. Higher-order or torque-aware
+filters for such singular cases are left for future work.
+C. Probabilistic safety guarantee
+Let CH := T
+(i,j)∈E CH
+ij be the aggregated safe set.
+Theorem 4.5: Consider the multi-quadrotor system (1)–(3)
+with pairwise safety functions (4). Suppose that Assump-
+tion 4.1 holds for all agents on the domain of the closed-loop
+trajectories and that x(0) ∈CH. Assume that, for every t ≥0,
+the aggregated QP (28) is feasible and its optimizer f ⋆(x) is
+locally Lipschitz in the state. Then CH is forward invariant with
+probability at least 1 −P
+i∈V δi. Consequently, every closed-
+loop trajectory initialized in CH satisfies ∥pi(t) −pj(t)∥≥
+dmin, (i, j) ∈E, for all t ≥0, with the same probability.
+Proof: For each i ∈V, let
+Ei :=
+
+∥∆f,i(xi) −µf,i(xi)∥≤¯∆i(xi), ∀xi ∈Xi
+	
+denote the confidence event of agent i, and define the joint
+event EGP := T
+i∈V Ei. By Assumption 4.1 and the union
+bound, P(EGP) ≥1 −P
+i∈V δi.
+We prove forward invariance conditioned on EGP. Fix an
+arbitrary edge (i, j) ∈E. Since f ⋆is feasible for (28),
+bφ2,ij(x, f ⋆) ≥ρij(x).
+(30)
+On EGP, the confidence bounds of both agents i and j hold.
+Hence, Lemma 4.2 and (30) imply
+φ2,ij(x, f ⋆) ≥bφ2,ij(x, f ⋆) −ρij(x) ≥0.
+From the definitions of φ2,ij and φ1,ij, we have φ2,ij =
+˙φ1,ij + α2(φ1,ij), and therefore ˙φ1,ij ≥−α2(φ1,ij). Since
+x(0) ∈CH implies φ1,ij(0) ≥0, the comparison principle
+yields φ1,ij(t) ≥0, t ≥0. Similarly, φ1,ij = ˙φ0,ij+α1(φ0,ij),
+so that ˙φ0,ij ≥−α1(φ0,ij). Because φ0,ij(0) ≥0, another
+application of the comparison principle gives φ0,ij(t) ≥0, t ≥
+0. Thus CH
+ij is forward invariant.
+Since the edge (i, j) was arbitrary and the same joint
+event EGP guarantees the above inequalities for all agents
+simultaneously, CH = T
+(i,j)∈E CH
+ij is forward invariant on
+EGP. Finally, φ0,ij = hij, and hence CH ⊆C. Therefore,
+hij(t) ≥0 implies ∥pi(t)−pj(t)∥≥dmin for every (i, j) ∈E
+and all t ≥0. Combining this deterministic implication on
+EGP with P(EGP) ≥1 −P
+i δi proves the claim.
+Corollary 4.6: Suppose that the hypotheses of Theorem 4.5
+hold. If, on an interval I ⊂R≥0, the nominal thrust vector
+f nom(x) is feasible for (28), then f ⋆(t) = f nom(t), t ∈I.
+Consequently, u⋆
+i (t) = unom
+i
+(t) for every i ∈V and t ∈I,
+and the closed-loop translational dynamics coincide with the
+thrust–attitude implementation described in Proposition 3.2.
+Proof: If f nom is feasible, the objective in (28) attains
+its minimum value zero at f = f nom. Since the objective is
+strictly convex, f ⋆= f nom is the unique minimizer. Equation
+(29) then gives u⋆
+i = unom
+i
+for every agent, and the last claim
+follows from Proposition 3.2.
+Remark 4.7: The navigation law of Section III is decentral-
+ized, whereas the safety filter (28) is solved jointly. Distributed
+realizations of CBF-constrained multi-agent optimization have
+been developed using auxiliary and consensus dynamics [16],
+[17]. In our setting, however, bounded scalar thrusts and
+multiple simultaneous HOCBF constraints share inputs whose
+effectiveness depends on p⊤
+ijRie3; we therefore retain the ag-
+gregated QP. Recursively feasible distributed implementations
+and the possible emergence of safety-filter-induced undesired
+equilibria [18], [19] are left for future work.
+V. SIMULATION RESULTS
+Consider a six-UAV cinematography-inspired reconfigura-
+tion in which the vehicles exchange camera viewpoints around
+a moving scene, producing crossing nominal trajectories.
+Camera-heading variables are used only for visualization,
+while safety is enforced through pairwise position constraints.
+The translational dynamics are affected by an unknown spa-
+tially varying wind disturbance learned online by each UAV.
+The navigation force (13) uses the DNF (12) of [4], with
+κ = 1, and is mapped into thrust and attitude commands
+through the underactuated tracking controller. Each UAV
+learns the translational disturbance from residual samples yi =
+mi ˙vi −fiRie3 −mig using [p⊤
+i , v⊤
+i ]⊤∈R6 as input. Three
+independent scalar GPs are used for the force components,
+with kernel k(x, x′) = 1.0 kRBF(x, x′; ℓ= 2.0) + kW (x, x′),
+noise level 2.5 × 10−4, posterior standard-deviation floor
+2.2 × 10−2 N per force component, β = 18, update period
+0.5 s, a minimum of 18 samples before fitting, and at most 300
+samples per UAV. All UAVs have mass mi = 1.30 kg; thrust
+and torque are bounded by 0 ≤fi ≤28 N and |τi,k| ≤9 N m,
+and the dynamics are integrated with time step 0.01 s.
+−2
+0
+2
+x [m]
+−3
+−2
+−1
+0
+1
+2
+3
+y [m]
+(a) viewpoint exchange
+0
+10
+20
+30
+40
+time [s]
+1
+2
+3
+4
+force [N]
+(b) implementation bound
+error
+bound
+Fig. 1: Baseline GP-aided thrust–attitude implementation. (a)
+Viewpoint exchange. See video at: https://youtu.be/
+XcRLlHjsYzQ. (b) Total implementation error and theoreti-
+cal bound.
+Fig 1 validates the thrust–attitude implementation of Sec-
+tion III. The six UAVs complete the viewpoint exchange while
+the total implementation error remains below its theoretical
+bound throughout the maneuver, with maxima 3.2396 N and
+4.7892 N, respectively. The maximum residual in (18) is
+4.68 × 10−15 N, confirming consistency with Proposition 3.2.
+We next use the same task and local GP models and
+activate the aggregated robust HOCBF-QP of Section IV.
+
+
+0
+10
+20
+30
+40
+time [s]
+1.5
+2.0
+2.5
+3.0
+distance [m]
+(a) minimum distance
+nominal GP
+HOCBF-QP
+dmin
+0
+10
+20
+30
+40
+time [s]
+0
+5
+10
+15
+20
+25
+30
+thrust intervention [N]
+(b) QP intervention
+Fig. 2: Robust HOCBF-QP safety correction. (a) Minimum
+pairwise distance for the nominal and safe controllers. (b)
+Team thrust correction ∥f ⋆−f nom∥2.
+0
+10
+20
+30
+40
+time [s]
+0
+1
+2
+3
+4
+5
+6
+7
+deficit
+(a) robust-certificate deficit
+nonrobust QP
+robust QP
+0
+10
+20
+30
+40
+time [s]
+1.5
+2.0
+2.5
+3.0
+distance [m]
+(b) minimum distance
+nominal GP
+robust QP
+nonrobust QP
+dmin
+Fig. 3: Effect of the GP robustness margin. (a) Robust-
+certificate deficit for the nonrobust and robust HOCBF-QPs.
+(b) Minimum pairwise distance for the nominal GP, nonrobust,
+and robust controllers.
+We set dmin = 1.16 m, ℓ1 = 1.6, ℓ2 = 2.0, and use
+the full robustness bound ρij in (26). Fig 2 shows that the
+nominal GP-compensated controller violates the prescribed
+separation, reaching 1.1093 m, whereas the HOCBF-QP main-
+tains a minimum distance of 1.2540 m. The QP is feasible
+throughout, with 100% feasibility and solver success ratios
+and a maximum constraint violation of 2.68 × 10−12. The
+mean and maximum values of ∥f ⋆−f nom∥2 are 2.3870 N
+and 31.0348 N, respectively. The realized GP error remains
+within the adopted confidence bound throughout the robust
+run, with a minimum coverage margin of 2.18 × 10−2 N.
+To isolate the role of the robustness term, we compare the
+aggregated robust HOCBF-QP with a nonrobust version ob-
+tained by setting ρij = 0. Both controllers use the same nomi-
+nal navigation law, local GP compensation, and thrust–attitude
+implementation. Fig 3 shows that the nonrobust QP maintains
+the prescribed distance, with a minimum of 1.1762 m, but
+violates the GP-aware tightened certificate, reaching a max-
+imum deficit of 6.9773. In contrast, the robust QP maintains
+a minimum distance of 1.2540 m and keeps the certificate
+deficit below 2.68 × 10−12, up to numerical precision. Thus,
+the robustness margin is required to enforce the GP-aware
+tightened HOCBF condition underlying Theorem 4.5.
+VI. CONCLUSIONS
+We developed a safety-critical control framework for
+quadrotor teams combining decentralized navigation functions
+with an aggregated robust HOCBF-QP safety layer under
+learned model uncertainty. The approach implements the
+nominal navigation forces through geometric thrust–attitude
+control, quantifies the resulting implementation error, and
+incorporates GP force uncertainty into explicit pairwise ro-
+bustness margins. The resulting safety filter minimally modi-
+fies the nominal thrusts and guarantees probabilistic collision
+avoidance whenever the robust QP remains feasible. Future
+work will address distributed realizations of the coupled safety
+QP under bounded thrust, as well as torque-aware treatments
+of thrust-direction singularities and experimental validation.
+REFERENCES
+[1] E. Rimon and D. E. Koditschek, “Exact robot navigation using artificial
+potential functions,” IEEE Transactions on Robotics and Automation,
+vol. 8, no. 5, pp. 501–518, 1992.
+[2] D. V. Dimarogonas and K. J. Kyriakopoulos, “Decentralized motion
+control of multiple agents with double integrator dynamics,” in IFAC
+Proceedings Volumes, vol. 38, no. 1, 2005, pp. 185–190.
+[3] C. K. Verginis, Z. Xu, and D. V. Dimarogonas, “Decentralized motion
+planning with collision avoidance for a team of uavs under high level
+goals,” in Proceedings of the 2017 IEEE International Conference on
+Robotics and Automation (ICRA), 2017, pp. 781–787.
+[4] O. Y. Nieto, A. A. Simoes, J. I. Giribet, and L. J. Colombo, “Learning-
+based decentralized control with collision avoidance for multiagent
+systems,” IEEE Transactions on Control of Network Systems, vol. 13,
+no. 2, pp. 636–647, 2026.
+[5] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier
+function based quadratic programs for safety critical systems,” IEEE
+Transactions on Automatic Control, vol. 62, no. 8, pp. 3861–3876,
+2017. [Online]. Available: http://ames.caltech.edu/ames2017cbf.pdf
+[6] Q. Nguyen and K. Sreenath, “Exponential control barrier functions for
+enforcing high relative-degree safety-critical constraints,” in Proceedings
+of the 2016 American Control Conference (ACC).
+IEEE, 2016, pp.
+322–328.
+[7] W. Xiao and C. Belta, “Control barrier functions for systems with high
+relative degree,” in Proceedings of the 2019 IEEE 58th Conference on
+Decision and Control (CDC).
+IEEE, 2019, pp. 474–479.
+[8] X. Tan, W. Shaw-Cortez, and D. V. Dimarogonas, “High-order barrier
+functions: Robustness, safety, and performance-critical control,” IEEE
+Transactions on Automatic Control, vol. 67, no. 6, pp. 3021–3028, 2022.
+[9] L. Wang, E. A. Theodorou, and M. Egerstedt, “Safe learning of quadro-
+tor dynamics using barrier certificates,” in Proceedings of the 2018 IEEE
+International Conference on Robotics and Automation (ICRA), 2018, pp.
+2460–2465.
+[10] P. Jagtap, G. J. Pappas, and M. Zamani, “Control barrier functions for
+unknown nonlinear systems using gaussian processes,” in Proceedings
+of the 59th IEEE Conference on Decision and Control (CDC), 2020, pp.
+3699–3704.
+[11] M. Aali and J. Liu, “Learning high-order control barrier functions for
+safety-critical control with gaussian processes,” in Proceedings of the
+2024 American Control Conference (ACC), 2024, pp. 1–6.
+[12] Y. Hu, J. Fu, and G. Wen, “Decentralized robust collision-avoidance
+for cooperative multirobot systems: A gaussian process-based control
+barrier function approach,” IEEE Transactions on Control of Network
+Systems, vol. 10, no. 2, pp. 706–717, 2023.
+[13] M. Goarin, G. Li, A. Saviolo, and G. Loianno, “Decentralized nonlinear
+model predictive control for safe collision avoidance in quadrotor
+teams with limited detection range,” in Proceedings of the 2025 IEEE
+International Conference on Robotics and Automation (ICRA), 2025, pp.
+5387–5393.
+[14] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control
+of a quadrotor uav on se (3),” in 49th IEEE conference on decision and
+control (CDC).
+IEEE, 2010, pp. 5420–5425.
+[15] T. Beckers, L. J. Colombo, S. Hirche, and G. J. Pappas, “Online learning-
+based trajectory tracking for underactuated vehicles with uncertain
+dynamics,” IEEE Control Systems Letters, vol. 6, pp. 2090–2095, 2022.
+[16] X. Tan and D. V. Dimarogonas, “Distributed implementation of con-
+trol barrier functions for multi-agent systems,” IEEE Control Systems
+Letters, vol. 6, pp. 1879–1884, 2022.
+[17] P. Mestres, C. Nieto-Granda, and J. Cort´es, “Distributed safe navigation
+of multi-agent systems using control barrier function-based controllers,”
+IEEE Robotics and Automation Letters, vol. 9, no. 7, pp. 6760–6767,
+2024.
+[18] X. Tan and D. V. Dimarogonas, “On the undesired equilibria induced
+by control barrier function based quadratic programs,” Automatica, vol.
+159, p. 111359, 2024.
+[19] P. Mestres, Y. Chen, E. Dall’Anese, and J. Cort´es, “Control barrier
+function-based safety filters: Characterization of undesired equilibria,
+unbounded trajectories, and limit cycles,” Journal of Nonlinear Science,
+vol. 36, p. 41, 2026.
