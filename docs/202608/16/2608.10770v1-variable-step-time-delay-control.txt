@@ -1,0 +1,1759 @@
+Title: Variable Step Time Delay Control
+
+URL Source: https://arxiv.org/pdf/2608.10770v1
+
+Published Time: Wed, 12 Aug 2026 00:56:09 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> 1
+
+# Variable Step Time Delay Control 
+
+Yonsoo Kim, Student Member, IEEE, and Hancheol Cho, Member, IEEE 
+
+Abstract —This paper presents Variable-step Time Delay Con-trol (VTDC), a proactive aperiodic robust control framework that jointly addresses feedback control and control-update scheduling, rather than treating the controller and triggering mechanism as separate components. Inspired by adaptive stepsize regulation in Runge–Kutta integration, VTDC exploits the fact that the local control error can be structured to scale with the realized timestep. Using sliding-manifold-based Time Delay Control, the resulting System Time Delay Error (TDE), which reflects local model and uncertainty variations, is shown to be quadratically bounded by the control interval. This relation enables a closed-form feedback law that automatically enlarges or reduces the subsequent interval to regulate the TDE magnitude. Because the scheduling law is constructed directly from the controller structure, the next update time is determined algebraically without continuous trigger monitoring, future-state prediction, or iterative search. The resulting variable-step closed loop is shown to admit bounded timesteps and step ratios, exclude Zeno behavior, and render the sliding variable uniformly ultimately bounded. Spacecraft attitude-control simulations further demon-strate the practical feasibility and low computational burden of the proposed framework. 
+
+Index Terms —Aperiodic control, adaptive sampling, space-craft attitude control, time-delay control, time-delay estimation, variable-step control. 
+
+I. I NTRODUCTION 
+
+# MOST physical systems, including real satellite sys-tems, evolve in continuous time. In practice, however, control is implemented in discrete time due to the limited computational speed of onboard computers, sensor update rates, communication constraints, and actuator limitations. Since the control input is maintained by a zero-order hold between sampling instants, the choice of the control interval directly affects closed-loop stability and tracking performance. If the control interval is too long, the control input may fail to sufficiently follow the system evolution, resulting in performance degradation or even instability. Conversely, if the control interval is too short, practical implementation issues such as increased computational burden, sensor noise, actuator bandwidth and saturation, and finite word length effects may become significant. Therefore, determining an appropriate control interval is a key issue in the design of digital control systems [1], [2]. In conventional sampled-data control studies, the inter-sample behavior induced by the zero-order hold has been interpreted as a time-varying input delay, and the maximum allowable sampling interval that guarantees closed-loop stabil-ity has been estimated using Lyapunov–Krasovskii functionals           
+
+> Preprint. This manuscript is currently being revised for journal submission. Y. Kim is with the Department of Astronomy, Yonsei University, Seoul, South Korea. e-mail: yonsooh@yonsei.ac.kr H. Cho is with the Department of Astronomy and the Department of Satellite Systems, Yonsei University, Seoul, South Korea. e-mail: han-cho37@yonsei.ac.kr
+
+and linear matrix inequality(LMI)-based conditions [3]. How-ever, such methods generally provide a uniform maximum allowable sampling interval that is commonly applied to all sampling sequences, making it difficult to directly reflect the instantaneous admissible control interval, which may vary depending on the system state, disturbance level, operating condition, and model uncertainty. Moreover, LMI-based stabil-ity conditions are often sufficient conditions and may therefore yield conservative values compared with the actual control interval that the system can tolerate [4], [5]. To alleviate these limitations, aperiodic control methods have been studied as alternatives to time-triggered control, in which the update times of the control input are determined according to the system state or performance requirements. Representative approaches include Event-Triggered Control (ETC) and Self-Triggered Control (STC) [6]. Both methods can be understood as combining a general feedback control law with a triggering mechanism that determines when the control input should be updated. ETC is a reactive approach that updates the control input when a triggering condition is violated based on measurements, whereas STC is a proactive approach that computes the next control time in advance using the current state and system model [6]. Satellites operate under multiple constraints, including lim-ited onboard computational resources, power consumption of sensors and actuators, communication bandwidth constraints with ground stations or between satellites, and communica-tion delays; therefore, they provide strong motivation for the application of aperiodic control [7]. For this reason, ETC-based control methods have recently been investigated in various spacecraft problems, including attitude control, attitude tracking, attitude synchronization of multiple satellites, and orbit maintenance [8]- [9]. However, although ETC can reduce unnecessary control updates, it requires continuous monitor-ing of the system state or output to determine whether the triggering condition is satisfied. In contrast, STC determines the next sensing and control time in advance, thereby reducing sensing, computation, and communication burdens, and can thus be a more suitable alternative for resource-constrained satellite control systems [6]. Nevertheless, important limitations remain when applying STC to nonlinear spacecraft attitude control problems. Since STC must predict the evolution of future states or triggering errors, prediction errors directly affect stability guarantees in the presence of model uncertainties and disturbances. To compensate for this issue, existing studies often rely on distur-bance bounds, uncertainty sets, reachable sets, or conservative calculations of the inter-execution time [10]. In addition, for general nonlinear systems, the next triggering time is difficult to compute in closed form, and numerical integration, iterative search, or conservative bound calculations may be required. arXiv:2608.10770v1 [eess.SY] 11 Aug 2026 2
+
+Although several attempts have been made to address these issues, some approaches rely on the homogeneity of nonlinear systems, which can become problematic in practical systems that may become nonhomogeneous due to disturbances and other effects [11], [12]. These characteristics limit their ap-plicability to realistic spacecraft attitude control problems, where actuator saturation, environmental disturbances, model uncertainties, and variations in operating conditions coexist. To address these issues, this study proposes a proactive aperiodic robust control framework that combines Sliding Mode Control (SMC) and Time Delay Control (TDC). SMC is a representative nonlinear control method that structures tracking error dynamics through a sliding manifold and pro-vides robustness against disturbances and model uncertainties. However, conventional SMC suffers from chattering caused by discontinuous switching inputs, which can induce actuator wear and excite unmodeled high-frequency dynamics [13]. To mitigate these limitations, Cho et al. proposed a smooth adaptive robust control structure for satellite formation flying, showing that chattering can be eliminated and trajectory errors can be maintained within a user-specified bound without prior knowledge of the upper bounds of disturbances and uncertainties [14]. Building on this smooth robust control perspective, the current study combines the sliding-manifold-based error dy-namics of SMC with the data-driven uncertainty compensa-tion of TDC. TDC estimates and compensates for lumped uncertainty using input and state information from the pre-vious time instant, thereby maintaining robustness even in control environments with significant disturbances and model uncertainties. [15]. In particular, since the Time-Delay Error (TDE) generated in TDC directly depends on the control interval, this study utilizes TDE not merely as an estimation error but as a key indicator for determining the next sensing and control time. Accordingly, this study designs Variable-step Time Delay Control (VTDC), which actively adjusts the control interval according to the current state and the estimated TDE level without directly predicting future state trajectories or continuously monitoring triggering conditions. The proposed VTDC provides a proactive aperiodic robust control framework that adapts the control interval according to the local System TDE while maintaining robust tracking under model uncertainties, disturbances, and actuator degradation. By linking control performance and update scheduling through the TDE, the framework is designed to improve resource efficiency without relying on continuous triggering or future-state prediction. The main contributions of this study are summarized as follows: 
+
+− (TDE-Based Control–Scheduling Co-Design) The System TDE is reinterpreted as an interval-dependent indicator of local model and disturbance variations and is directly incorporated into control scheduling. By establishing its quadratic dependence on the realized timestep, a closed-form feedback law is derived to proactively adapt the sub-sequent control interval, thereby integrating robust TDC and aperiodic scheduling within a unified framework. 
+
+− (Guaranteed Variable-Step Robustness and Stability) The proposed timestep law is analytically shown to atten-uate the influence of the initial timestep, maintain the timestep and consecutive step ratio within finite asymp-totic bounds, and exclude Zeno behavior. These schedul-ing properties are further incorporated into the variable-step closed-loop analysis to establish uniform ultimate boundedness of the sliding variable and its steady-state convergence radius. 
+
+− (Prediction-Free Lightweight Scheduling) A conservative System-TDE estimator is constructed from the equiva-lent and robust control-input variations, enabling online timestep adaptation without direct disturbance measure-ment, a separate disturbance observer, future-state predic-tion, or iterative trigger-time search. The online schedul-ing law therefore requires only locally available control and state information rather than explicit uncertainty-bound information. 
+
+− (Resource-Efficient Spacecraft Validation) The proposed framework is validated for nonlinear spacecraft atti-tude maneuvering under inertia uncertainty, environ-mental disturbances, and time-varying actuator degrada-tion. Comparative simulations with fixed-step TDC and Lyapunov-based self-triggered control demonstrate that VTDC maintains competitive tracking performance while reducing control-update and timestep-scheduling burdens, supporting its applicability to resource-constrained on-board spacecraft control. II. V ARIABLE -STEP TIME DELAY CONTROL FRAMEWORK 
+
+This section presents the formulation and theoretical devel-opment of the proposed VTDC framework. Fig. 1 summarizes the logical structure of the analysis, from robust controller design and TDE-based error characterization to timestep adap-tation, closed-loop stability, and practical implementation. 
+
+A. Controller Design 
+
+The primary objective of the controller is to ensure that the tracking error e ∈ RN for states such as attitude, position, angular velocity, and velocity converges to zero ( e → 0). To describe the error behavior over time, we define the state vector as follows: 
+
+x =
+
+e
+
+˙e
+
+
+
+∈ R2N (1) where the dot notation denotes the time derivative of avariable. The governing dynamics of this error state can be expressed as follows: 
+
+˙x(t) = f (x, t ) + g[u(t) + d(t)] (2) In this context, f (x, t ) ∈ R2N represents the known nom-inal nonlinear dynamics of the system, while u(t) ∈ RN
+
+denotes the control input to be designed. The constant matrix 
+
+g ∈ R2N ×N maps the control action into the state space. For the considered fully actuated N -DOF mechanical system, the generalized control input enters the error dynamics at the acceleration level. Therefore, it does not directly appear in the kinematic part of the error dynamics, but is mapped to the acceleration-error dynamics through the positive-definite 3 
+
+> Fig. 1. Overall structure and logical dependencies of the proposed VTDC framework, from robust controller design and TDE-based error analysis to timestep adaptation, closed-loop stability, and practical implementation.
+
+constant inertia matrix M ∈ RN ×N . Consequently, the input distribution matrix is given by: 
+
+g =
+
+0N ×N
+
+M −1
+
+
+
+(3) The term d(t) ∈ RN denotes the lumped uncertainty, which includes external disturbances and modeling mismatches ex-pressed in the generalized input coordinates. In sliding mode control, only uncertainties satisfying the matching condition can be compensated by the control action. That is, the un-certainty must enter the system through the same distribution channel as the control input [13]. According to Drazenovic, any disturbance satisfying the matching condition can be rep-resented through the same distribution matrix g as the control input [16]. That is, for an arbitrary disturbance w(t) entering the system as gu (t) + Dw (t), if Range( D) ⊆ Range( g),then there exists an equivalent lumped uncertainty d(t) such that Dw (t) = gd (t). Hence, the matched disturbance can be written in the control channel as g[u(t) + d(t)] .In this paper, a sliding variable s(t) ∈ RN is introduced as a linear combination of the error states: 
+
+s(t) = Cx (t) (4) where C ∈ RN ×2N is a constant gain matrix chosen so that the reduced-order dynamics on the sliding manifold s(t) = 0
+
+are stable, thereby ensuring the primary objective e → 0 as 
+
+t → ∞ . Accordingly, C is chosen as: 
+
+C = B IN ×N
+
+ (5) where B = diag( β1, . . . , β N ) ∈ RN ×N with βi > 0 is selected to make −B Hurwitz. With this choice, the sliding manifold yields ˙e = −Be , which guarantees the exponential convergence of the tracking error. [13] The fundamental principle of sliding mode control consists of two distinct phases: the reaching phase , where the controller drives the system state from any initial condition toward the sliding manifold ( s(t) → 0), and the sliding phase , where the state is confined to the manifold and slides toward the origin robustly against matched uncertainties. To analyze how the system state is driven toward this manifold during the reaching phase, we define the reaching dynamics by taking the time derivative of the sliding variable using (2): 
+
+˙s(t) = C ˙x(t) = C
+
+h
+
+f (x, t ) + g[u(t) + d(t)] 
+
+i
+
+(6) The control strategy aims to drive the system to the sliding manifold ( s(t) = 0) and maintain it there. Once the system reaches the manifold, invariance of the sliding motion requires 
+
+˙s(t) = 0. To achieve this in the presence of uncertainties, the control input is typically derived by first considering an ideal nominal case, followed by the addition of a robust compensation term. 
+
+1) Equivalent Control: The equivalent control, ueq (t), rep-resents the ideal control action required to maintain the sliding condition when the lumped uncertainty is neglected [17]. By assuming a nominal system where d(t) = 0, the reaching dynamics in (6) can be simplified as follows: 
+
+˙s(t) = C ˙x(t) = C[f (x, t ) + gu (t)] (7) The equivalent control ueq (t) is defined as the control input 
+
+u(t) that satisfies the condition ˙s(t) = 0 in the nominal dynamics of (7). From this condition, ueq (t) is analytically derived as: 
+
+ueq (t) = −(Cg )−1Cf (x, t ) (8) 
+
+Remark 1. From (3) and (5), the product Cg is given by 
+
+Cg = B IN ×N
+
+ 0N ×N
+
+M −1
+
+
+
+= M −1. (9) Since the inertia matrix M of a mechanical system is symmet-ric positive definite, it is nonsingular. Therefore, Cg = M −1
+
+is also nonsingular, and (Cg )−1 is well-defined. 
+
+2) Time Delay Control: To compensate for the lumped uncertainty d(t) that remains in the reaching dynamics (6), the total control input is partitioned into the nominal part and the robust compensation part: u(t) = ueq (t) + ud(t).By substituting this control law into (6) and utilizing the 4
+
+definition of ueq (t) in (8), the known nominal dynamics 
+
+f (x, t ) are effectively canceled. This yields the following reduced dynamics: 
+
+˙s(t) = Cg ud(t) + d(t) (10) In practice, direct computation of ud(t) via (10) is chal-lenging because the instantaneous values of the disturbance 
+
+d(t) and the time derivative of the sliding variable ˙s(t) are typically unavailable. To address this, the Time Delay Control (TDC) technique is employed to estimate these terms using past data [15]. 
+
+Approximation 1 (Time Delay Estimation ). Assuming that the lumped uncertainty d(t) varies slowly relative to a control interval h, the current disturbance can be estimated using input and state/output information from the previous step. Based on (10), d(t) is estimated as follows: 
+
+d(t) ≈ d(t − h) = ( Cg )−1 ˙s(t − h) − ud(t − h) (11) By substituting the estimated disturbance from (11) into the control law (10), the current robust control input is defined as: 
+
+ud(t) = ud(t − h) + ( Cg )−1[ ˙ s(t) − ˙s(t − h)] (12) 
+
+Approximation 2 (Euler Approximation ). To facilitate discrete-time implementation, the derivative terms ˙s(t) and 
+
+˙s(t − h) are approximated using the forward difference method: [1] 
+
+˙s(t) ≈ s(t + h) − s(t)
+
+h , ˙s(t − h) ≈ s(t) − s(t − h)
+
+h (13) In discrete-time sliding mode control, unlike the continuous-time case, the system state cannot reside exactly on the switching manifold s(t) = 0 due to the sampling effect; instead, it exhibits a characteristic oscillation within a small neighborhood known as the quasi-sliding mode band [18]. To ensure stable convergence to this band, we design the predicted sliding variable s(t + h) to follow a specific reaching law as (14), consistent with the control objective proposed by Gao et al [19]. By substituting this into (13), the control objective at the derivative level can also be calculated as shown in (15). 
+
+s(t + h) = γs(t), |γ| < 1 (14) 
+
+˙s(t) = ( γ − 1) s(t)
+
+h (15) where γ is a design parameter that determines the convergence rate. Finally, by substituting (13) and (14) into (12) the ud(t)
+
+is formulated as follows: 
+
+ud(t) = ud(t − h) + ( Cg )−1h
+
+(γ − 1) s(t)
+
+h − s(t) − s(t − h)
+
+h
+
+i
+
+(16) In summary, the total control input u(t) combines the model-based nominal action ( ueq ) and the data-driven robust compensation ( ud): 
+
+u(t) = 
+
+ueq (t)
+
+| {z }  
+
+> −(Cg )−1Cf (x(t),t )
+
++ ud(t)
+
+| {z } 
+
+> ud(t−h)+( Cg )−1
+
+[(γ−1) s(t)   
+
+> h−s(t)−s(t−h)
+> h
+
+]
+
+(17) 
+
+B. Error Dynamics 
+
+Although the control input designed based on the afore-mentioned approximations demonstrates robust control perfor-mance, it inherently involves errors originating from these two approximations. These errors are particularly sensitive to the sampling interval h. To investigate the analytical relationship of these errors, the total control law (17) is substituted into the reaching dynamics in (6). 
+
+˙s(t) = 
+
+h
+
+(γ−1) s(t)
+
+h − s(t) − s(t − h)
+
+h
+
+i
+
++Cg ud(t−h)+ d(t)
+
+(18) From (10), the term Cgu d(t−h) can be rearranged as follows: 
+
+Cgu d(t − h) = ˙ s(t − h) − Cgd (t − h) (19) By substituting (19) into (18), we obtain the following. 
+
+˙s(t) = 
+
+> Control Objective from (15)
+
+z }| {
+
+(γ − 1) s(t)
+
+h
+
++ Cg d(t) − d(t − h)| {z }
+
+> Error from Approximation 1
+
++
+
+h
+
+˙s(t − h) − s(t) − s(t − h)
+
+h
+
+i| {z }
+
+> Error from Approximation 2
+
+(20) The two error terms in (20), induced by Approximation 1 and Approximation 2, can be interpreted as local time-delay errors over the interval [t−h, t ). While the first term is already expressed as a time-delay difference of the disturbance, the second term is not yet written in terms of the nominal dynamics and disturbance variations. Before rewriting the Euler residual using a local Taylor expansion, we first specify the intersample behavior of the control input. Since VTDC is implemented under a zero-order hold (ZOH) [1], the control input may be discontinuously updated at each sampling instant while remaining constant between successive updates. 
+
+Assumption 1 (Interval-wise Zero-Order Hold ). Let {tk}∞
+
+> k=0
+
+denote the sequence of sampling instants. At each tk, the control input is updated and its post-update value is defined as uk ≜ u(t+ 
+
+> k
+
+). Under the ZOH implementation, 
+
+u(t) = uk, ∀t ∈ [tk, t k+1 ). (21) Consequently, 
+
+˙u(t) = 0, ∀t ∈ (tk, t k+1 ), (22) while u(t) may be discontinuous at the sampling instants. Because the control input may undergo a jump at tk, its classical time derivative need not exist exactly at the sampling instant. Moreover, since ˙s depends directly on u through (6), 
+
+˙s may also be discontinuous at tk. Therefore, throughout the following local intersample analysis, derivatives evaluated at the left endpoint of a sampling interval are understood as right-hand derivatives. For example, ˙s(tk) and ¨s(tk) represent 
+
+˙s(t+ 
+
+> k
+
+) and ¨s(t+ 
+
+> k
+
+), respectively. For notational simplicity, the superscript (·)+ is omitted hereafter whenever this convention is unambiguous. 5
+
+Under this convention, we rewrite the Euler residual by expanding s(t) about the previous control instant t − h using a Taylor expansion [20]: 
+
+s(t) = s(t − h) + h ˙s(t − h) + h2
+
+2 ¨s(t − h) + O(h3). (23) Subtracting s(t − h) from both sides and dividing by h yields 
+
+˙s(t − h) − s(t) − s(t − h)
+
+h = − h
+
+2 ¨s(t − h) + O(h2) (24) To characterize ¨s within an intersample interval, we differ-entiate the reaching dynamics in (6): 
+
+¨s(t) = ddt C
+
+h
+
+f (x, t ) + gu(t) + d(t)i!
+
+= C
+
+h ˙f (x, t ) + g ˙u(t) + ˙d(t)i (25) where ˙f (x(t), t ) ≜ ddt f (x(t), t ) denotes the total derivative of the nominal dynamics along the system trajectory. The dots on u and d likewise denote their time derivatives. Since C
+
+and g are constant, their derivatives vanish. Under Assumption 1, ˙u(t) = 0 within each intersample interval. Hence, the control-input derivative term in (25) vanishes. Using first-order forward-difference approximations at the beginning of the interval, we obtain: 
+
+¨s(t − h) = C ˙f (x(t − h), t − h) + Cg ˙d(t − h)= C f (x(t), t ) − f (x(t − h), t − h)
+
+h
+
++ Cg d(t) − d(t − h)
+
+h + O(h)
+
+(26) Based on this derivation, we formalize the lumped local error term. In this paper, the System Time Delay Error characterizes the combined effect of the interval-wise variations of the nominal dynamics and lumped uncertainty over a single sam-pling interval. It is analytically defined as the corresponding variation terms scaled by the local interval length h.
+
+Definition 1 (System Time Delay Error ). The system time delay error σ(t, h ) is expressed as the sum of the disturbance variation and the nominal model variation over the interval h:
+
+σ(t, h ) ≜ − h
+
+2 C[f (x(t), t ) − f (x(t − h), t − h)] 
+
+| {z } 
+
+> Model TDE : σm
+
++ h
+
+2 Cg [d(t) − d(t − h)] 
+
+| {z } 
+
+> Disturbance TDE : σd
+
+(27) For the variable-step implementation, let {tn}∞ 
+
+> n=0
+
+be the sampling instants and define the n-th sampling interval hn =
+
+tn − tn−1. For any signal z(t), we use the following discrete notation: 
+
+zn ≜ z(tn), ∆zn ≜ zn − zn−1 (28) The discrete System TDE in (27) evaluated at the n-th sampling instant is then denoted by 
+
+σn ≜ σ(tn, h n) (29)     
+
+> Fig. 2. Timing diagram of the variable-step implementation. The System TDE
+> σnis evaluated over the realized interval [tn−1, t n]and used to determine the subsequent control interval hn+1
+
+Since there is a limit to how much the disturbances and the system can change during the time interval hn, it is assumed that the Lipschitz continuity holds. 
+
+Assumption 2 (Interval-wise Lipschitz Continuity ). For every realized sampling interval [tn−1, t n], the lumped uncertainty 
+
+d(t) and the nominal dynamics f (x(t), t ) are assumed to satisfy an interval-wise Lipschitz condition [21]. That is, there exist positive constants Ld and Lf , independent of n, such that, for any τ1, τ 2 ∈ [tn−1, t n],
+
+∥d(τ2) − d(τ1)∥ ≤ Ld|τ2 − τ1|,
+
+∥f (x(τ2), τ 2) − f (x(τ1), τ 1)∥ ≤ Lf |τ2 − τ1|. (30) Consequently, 
+
+∥∆dn∥ ≤ Ldhn, ∥∆f n∥ ≤ Lf hn. (31) In particular, fn ≜ f (xn, t n). In addition, all derivatives required by the local Taylor and finite-difference expansions used below are assumed to exist and remain uniformly bounded over the admissible operating region, so that the con-stants implicit in the corresponding O(·) terms are independent of the sampling index n.Based on the definition of σn in (27)–(29), Assumption 2 provides an interval-wise upper bound on the magnitude of the TDE, ∥σn∥:
+
+∥σn∥ = hn
+
+Cg 
+
+2 ∆dn − C
+
+2 ∆f n
+
+≤ hn
+
+h ∥Cg ∥
+
+2 ∥∆dn∥ + ∥C∥
+
+2 ∥∆f n∥
+
+i
+
+≤ h2
+
+> n
+
+ ∥Cg ∥
+
+2 Ld + ∥C∥
+
+2 Lf
+
+
+
+(32) Therefore, we can derive the relationship between the error magnitude and the local sampling interval. 
+
+Lemma 1 (Boundedness of Error ). Under 2, the magnitude of the System TDE over an arbitrary sampling interval of length 
+
+hn is bounded by a constant multiple of h2
+
+> n
+
+. Specifically, 
+
+∥σn∥ ≤ 
+
+ ∥Cg ∥
+
+2 Ld + ∥C∥
+
+2 Lf
+
+
+
+h2 
+
+> n
+
+= Ψ h2 
+
+> n
+
+(33) Here, hn denotes the realized local sampling interval over 
+
+[tn−1, t n], rather than a globally fixed sampling period. 6
+
+With the System TDE and its interval-wise bound math-ematically established, we return to the raw error dynamics. Substituting (27) into (20) yields a simplified representation of the local rate-level dynamics: 
+
+˙s(t) = ( γ − 1) s(t)
+
+h + σ(t, h )
+
+h + O(h2), |γ| < 1. (34) Evaluating (34) at t = tn using the discrete notation in (28) and (29) yields the following local TDE-perturbed reaching dynamics. 
+
+Lemma 2 (Local TDE-Perturbed Reaching Dynamics ). Under the total control law in (17) and Assumptions 1 and 2, the sliding variable satisfies the following local rate-level dynamics over an interval of length hn:
+
+˙sn = ( γ − 1) sn
+
+hn
+
++ σn
+
+hn
+
++ O(h2
+
+> n
+
+) (35) Equation (35) defines the local continuous-time error dy-namics at tn. To bridge this rate-level formulation with the discrete reaching objective in (14), we predict the state at the next step sn+1 by projecting ˙sn across the subsequent interval 
+
+hn+1 . This forward one-step relation is approximated as: 
+
+sn+1 = sn + hn+1 ˙sn + O(h2
+
+> n+1
+
+) (36) Substituting (35) into (36) introduces two higher-order residual terms associated with the local rate-level approxi-mation and the subsequent state projection. Define the ratio between two consecutive sampling intervals as: 
+
+rn ≜ hn+1 
+
+hn
+
+. (37) Then, the discrete error dynamics can be written as 
+
+sn+1 = sn + hn+1 
+
+h
+
+(γ − 1) sn
+
+hn
+
++ σn
+
+hn
+
++ O(h2
+
+> n
+
+)
+
+i
+
++ O(h2
+
+> n+1
+
+)= 1 + rn(γ − 1) sn + rnσn + O(rnh3
+
+> n
+
+) + O(r2
+
+> n
+
+h2
+
+> n
+
+),
+
+(38) 
+
+Remark 2 (Order consistency under bounded step ratios) .
+
+If we design an appropriate timestep update rule such that 
+
+0 < r n ≤ ¯r < ∞, then the higher-order residual terms in (38) can be consistently expressed with respect to hn. By the standard definition and algebra of Landau order symbols [22], the uniform boundedness of rn allows the factors rn and r2
+
+> n
+
+to be absorbed into the constants implicit in the O(·) notation. 
+
+O(rnh3
+
+> n
+
+) = O(h3
+
+> n
+
+), O(r2
+
+> n
+
+h2
+
+> n
+
+) = O(h2
+
+> n
+
+). (39) Furthermore, in the local small-step limit, O(h3
+
+> n
+
+) ⊆ O (h2
+
+> n
+
+).Therefore, the two higher-order residual terms in (38) can be collectively represented as 
+
+O(rnh3
+
+> n
+
+) + O(r2
+
+> n
+
+h2
+
+> n
+
+) = O(h2
+
+> n
+
+). (40) Accordingly, once the boundedness of rn is established by the proposed timestep update rule, the higher-order residual terms in (38) can be collectively represented as O(h2
+
+> n
+
+).Applying Remark 2 and defining the effective reaching parameter γeff  
+
+> n
+
+≜ 1 + rn(γ − 1) , (38) reduces to 
+
+sn+1 = γeff  
+
+> n
+
+sn + rnσn + O(h2
+
+> n
+
+)
+
+| {z } 
+
+> ηn
+
+. (41) Here, ηn denotes the aggregate higher-order residual. The effective reaching parameter γeff  
+
+> n
+
+explicitly shows how the variable-step ratio rn modifies the nominal convergence rate 
+
+γ and governs the actual one-step attenuation of the sliding variable. 
+
+Remark 3 (Boundedness of the Higher-Order Residual ).
+
+Under the uniform local regularity in Under Assumption 2 and the bounded-step-ratio condition in Remark 2, there exists a constant κ > 0, independent of n, such that 
+
+∥ηn∥ ≤ κh 2
+
+> n
+
+. (42) Therefore, if an appropriate timestep update rule provides a finite asymptotic upper bound 
+
+lim sup 
+
+> n→∞
+
+hn ≤ hmax < ∞, (43) then the higher-order residual is also ultimately bounded as 
+
+lim sup 
+
+> n→∞
+
+∥ηn∥ ≤ κh 2max . (44) The existence of such a finite hmax is established later by the proposed timestep update rule. 
+
+C. Step Variation Algorithm 
+
+As demonstrated in Section II-B, the error dynamics of the system driven by the control input (17) are inherently governed by the System TDE, σn. Consequently, to maintain robust tracking performance, the timestep must be strategically adapted to regulate the magnitude of σn. Lemma 1 establishes that the σn admits a quadratic upper bound with respect to the local interval length hn. Building upon this quadratic relationship, we define the instantaneous TDE coefficient at the n-th step as follows: 
+
+∥σn∥ = ψnh2 
+
+> n
+
+≤ Ψh2
+
+> n
+
+, ψn ≜ ∥σn∥
+
+h2
+
+> n
+
+(45) 
+
+Assumption 3 (Persistent TDE Variation ). For the uncertain systems considered in this study, the TDE-based scheduling signal is assumed to remain nonvanishing over the operating interval. Specifically, there exists a constant ψmin > 0 such that 
+
+0 < ψ min ≤ ψn ≤ Ψ, ∀n. (46) Lemma 1 establishes that the magnitude of the System TDE scales quadratically with the realized timestep. Motivated by adaptive timestep regulation in numerical integration, we seek a closed-form update law that regulates the TDE magnitude toward a prescribed tolerance while avoiding abrupt variations in the control interval. The resulting update rule is summarized in the following theorem. 
+
+Theorem 1 (Timestep Update Rule ). For a given TDE mag-nitude ∥σn∥ > 0 and timestep hn at the n-th step (n ≥ 1) ,let the next timestep be determined by: 
+
+hn+1 = SF 
+
+ tol 
+
+∥σn∥
+
+ 12k
+
+hn, SF ∈ (0 , 1) , k > 1 (47) 7
+
+Equivalently, the step ratio is defined as: 
+
+rn ≜ hn+1 
+
+hn
+
+= SF 
+
+ tol 
+
+∥σn∥
+
+ 12k
+
+(48) Under the slowly varying TDE-coefficient condition used in the timestep-update derivation, the proposed update rule asymptotically regulates the System TDE below the prescribed tolerance, such that 
+
+lim  
+
+> n→∞
+
+∥σn∥ ≤ SF 2k · tol < tol (49) 
+
+Proof. The proposed stepsize adaptation is motivated by adaptive time-stepping techniques widely used in ordinary differential equation solvers, such as MATLAB ode45, and differential-algebraic equation solvers. In numerical integra-tion methods, including Runge–Kutta methods, the local error estimate En is commonly modeled as a ( p)-th power function of the timestep, En = ϕnhpn where ϕn is a local error coefficient. The most basic update rule, namely the elementary update rule in numerical integration, is given by [20]: 
+
+hn+1 = hn
+
+ tol 
+
+En
+
+ 1
+
+> p
+
+(50) S¨ oderlind interpreted this structure not merely as a numer-ical heuristic, but as a feedback control problem, where the error estimate En is regarded as the output, the timestep hn
+
+as the control input, and the prescribed tolerance tol as the setpoint [23]. Taking the logarithm of (50) gives 
+
+ln hn+1 = ln hn + 1
+
+p ln 
+
+ tol 
+
+En
+
+
+
+(51) This represents a negative feedback law for the error excess 
+
+En in the log-domain: when En < tol , the timestep is increased, whereas when En > tol , the timestep is decreased. In the present case, the error En corresponds to ∥σn∥, and the TDE is proportional to the square of the timestep ( p = 2 ). Therefore, the simplest deadbeat update rule becomes: 
+
+hn+1 = hn
+
+ tol 
+
+∥σn∥
+
+ 12
+
+(52) However, this rule is aggressive because it attempts to achieve 
+
+∥σn+1 ∥set ≈ tol directly at the next step. Therefore, instead of using tol itself as the setpoint, we relax the condition by using a geometric mean between tol and the current TDE ∥σn∥:
+
+∥σn+1 ∥set =  tol · ∥ σn∥k−1 1 
+
+> k
+
+(53) Here, k > 1 is a sensitivity parameter for timestep adapta-tion. A smaller k drives the target bound more directly toward 
+
+tol , whereas a larger k gives more weight to the previous TDE magnitude and results in smoother timestep variation. Taking the natural logarithm yields: 
+
+ln ∥σn+1 ∥set = 1
+
+k ln (tol) + k − 1
+
+k ln ∥σn∥. (54) Let k−1 
+
+> k
+
+= 1 − 1 
+
+> k
+
+= λ. Since k > 1, we have 
+
+0 < λ < 1. Note that the general solution of the first-order affine recurrence an+1 = xa n + C (where x̸ = 1 ) is 
+
+an = xna0 + (1 −xn)1−x C. Based on this, we can obtain the general form of ln ∥σn∥.
+
+ln ∥σn∥ = λn ln ∥σ0∥ + (1 − λn) · ln  tol  (55) If ∥σn+1 ∥ reaches the target, then as n → ∞ , λn → 0, and 
+
+σ satisfies the following: 
+
+lim  
+
+> n→∞
+
+ln ∥σn∥ = ln ( tol ) → lim  
+
+> n→∞
+
+∥σn∥ = tol (56) Substituting the setpoint tol from (52) into (53) yields the following: 
+
+hn+1 =
+
+ tol 
+
+∥σn∥
+
+ 12k
+
+hn (57) As is standard in numerical integration, the derivation of elementary update rules like (50) intrinsically relies on the assumption that the local error coefficient varies slowly (i.e., 
+
+ϕn+1 ≈ ϕn). In the proposed VTDC framework, while this condition is not directly targeted, it naturally emerges as a practical byproduct of the timestep adaptation. As the algorithm actively bounds the system TDE magnitude, it inher-ently prevents the control intervals from becoming excessively large. Under the Lipschitz continuity (Assumption 2) and the persistent variation condition (Assumption 3), the ratio 
+
+ψn+1 /ψ n is naturally bounded around unity. Any residual deviations are iteratively compensated by the feedback nature of the update algorithm [23]. Nevertheless, to provide a strictly conservative margin against unmodeled peak disturbances and to account for dynamic transients, we adopt the standard practice in adaptive time-stepping of introducing a safety factor SF ∈ (0 , 1) . By incorporating this safety factor into our smoothed adaptation, the effective setpoint is tightened to 
+
+SF 2k · tol , yielding the final proposed timestep update rule: 
+
+hn+1 = SF 
+
+ tol 
+
+∥σn∥
+
+ 12k
+
+hn, SF ∈ (0 , 1) , k > 1 (58) which completes the derivation. Introducing the safety factor 
+
+SF ∈ (0 , 1) modifies the asymptotic TDE level in (56). Under the same slowly varying local-coefficient assumption used in adaptive time-stepping, the corresponding asymptotic relation becomes: 
+
+lim  
+
+> n→∞
+
+∥σn∥ = SF 2k · tol < tol (59) Therefore, under the slowly varying TDE-coefficient condition 
+
+ψn+1 ≈ ψn, the safety factor places the nominal asymptotic TDE level strictly below the prescribed tolerance. The proposed update rule in (47) not only regulates the System TDE but also the attenuation of the influence of the initial timestep. 
+
+Corollary 1 (Initial Timestep Independence ). In the timestep update rule (47), the influence of the initial heuristic timestep 
+
+h0 decays exponentially. As the number of iterations n in-creases, the timestep sequence becomes asymptotically inde-pendent of h0.
+
+Proof. The result follows from the contractive recurrence of ln hn induced by the timestep update law in (47). The complete derivation is provided in Appendix A. 8
+
+Corollary 2 (Boundedness of Timestep and Exclusion of Zeno Behavior ). Under Assumption 3, the timestep sequence generated by (47) is ultimately bounded above and below. 
+
+SF k
+
+r tol Ψ ≤ lim inf  
+
+> n→∞
+
+hn ≤ lim sup 
+
+> n→∞
+
+hn ≤ SF k
+
+s
+
+tol 
+
+ψmin 
+
+(60) Consequently, the timestep does not vanish asymptotically, and Zeno behavior is excluded. 
+
+Proof. The result follows by applying the bounds ψmin ≤
+
+ψn ≤ Ψ to the logarithmic recurrence of the timestep se-quence. The complete proof is provided in Appendix B. 
+
+Remark 4 (Exclusion of Zeno Behavior ). From Corollary 2, the asymptotic lower bound of the timestep is strictly positive: 
+
+hmin ≜ SF k
+
+r tol Ψ > 0, (61) because SF ∈ (0 , 1, k > 1, tol > 0, and Ψ < ∞. Hence, after the transient phase, the VTDC update interval cannot vanish. Zeno behavior refers to the occurrence of infinitely many discrete updates within a finite time interval. Mathematically, as shown in (62), Zeno behavior occurs when the sampling instants accumulate at a finite time T ∗.
+
+lim  
+
+> n→∞
+
+tn = T ∗ < ∞ (62) Whether Zeno behavior occurs can be determined by the convergence of the following series [24]: 
+
+(
+
+Occurrence of Zeno behavior: P∞ 
+
+> n=0
+
+hn < ∞
+
+Avoidance of Zeno behavior: P∞ 
+
+> n=0
+
+hn = ∞ (63) However, since the proposed VTDC admits a positive lower bound hmin > 0 after the transient phase, 
+
+> ∞
+
+X
+
+> n=0
+
+hn ≥
+
+> ∞
+
+X
+
+> n=N
+
+hmin = ∞ (64) for some finite N . Therefore, an infinite number of control updates cannot occur within a finite time, and Zeno behavior is excluded. 
+
+Corollary 3 (Bounds of the Step Ratio ). Building upon the asymptotic timestep bounds hmin and hmax established in Corollary 2, uniform bounds on the consecutive step ratio rn
+
+can be obtained. From (48) and ∥σn∥ = ψnh2
+
+> n
+
+, the step ratio can be expressed as: 
+
+rn = SF 
+
+ tol 
+
+ψnh2
+
+> n
+
+ 12k
+
+. (65) Using the coefficient bounds ψmin ≤ ψn ≤ Ψ together with the asymptotic timestep bounds hmin ≤ hn ≤ hmax yields: 
+
+SF ·
+
+ tol Ψh2max 
+
+ 12k
+
+≤ rn ≤ SF ·
+
+ tol 
+
+ψmin h2min 
+
+ 12k
+
+. (66) Substituting the expressions for hmin and hmax from Corol-lary 2 gives 
+
+rmin =
+
+ ψmin 
+
+Ψ
+
+ 12k
+
+, rmax =
+
+ Ψ
+
+ψmin 
+
+ 12k
+
+, (67) such that 
+
+0 < r min ≤ rn ≤ rmax < ∞. (68) Therefore, the proposed timestep update rule satisfies both the bounded-step-ratio condition introduced in Remark 2 and the finite-timestep condition required in Remark 3. 
+
+D. Convergence of Sliding Variable 
+
+Corollaries 2 and 3 establish the timestep and step-ratio boundedness conditions invoked in Remarks 2 and 3. Accord-ingly, the discrete sliding dynamics in (41) can be represented as 
+
+sn+1 = γeff  
+
+> n
+
+sn + rnσn + ηn, (69) where 
+
+lim sup 
+
+> n→∞
+
+∥ηn∥ ≤ κh 2max (70) 
+
+Theorem 2 (Uniform Ultimate Boundedness of the Sliding Variable ). Suppose the sensitivity parameter k is chosen such that the worst-case effective reaching magnitude satisfies ¯γ < 
+
+1. Then, the sliding variable sn under the proposed VTDC framework is uniformly ultimately bounded (UUB), with the following ultimate bound: 
+
+lim sup 
+
+> n→∞
+
+∥sn∥ ≤ rmax · tol + κ · h2max 
+
+1 − ¯γ (71) where ¯γ ≜ max {| 1 + rmax · (γ − 1) |, |1 + rmin · (γ − 1) |} .
+
+Proof. From (69), define the aggregate perturbation as pn ≜
+
+rnσn + ηn. Then, the discrete sliding dynamics in (69) can be written as: 
+
+sn+1 = γeff  
+
+> n
+
+sn + pn (72) Using the ultimate bounds on the step ratio, System TDE, and higher-order residual, the aggregate perturbation ultimately satisfies: 
+
+∥pn∥ ≤ rn∥σn∥ + ∥ηn∥≤ rmax tol + κh 2max ≜ pmax . (73) Following the standard discrete-time Lyapunov analysis in [25], consider 
+
+Vn = 12 sTn sn = 12 ∥sn∥2. (74) Substituting (72) into the one-step Lyapunov difference ∆Vn
+
+yields: 
+
+∆Vn = Vn+1 − Vn = 12 ∥sn+1 ∥2 − 12 ∥sn∥2
+
+= 12 γeff  
+
+> n
+
+sn + pn 
+
+> 2
+
+− 12 ∥sn∥2
+
+= 12
+
+h (γeff  
+
+> n
+
+)2 − 1∥sn∥2 + 2 γeff  
+
+> n
+
+sTn pn + ∥pn∥2i
+
+.
+
+(75) Using the Cauchy–Schwarz inequality, |γeff  
+
+> n
+
+sTn pn| ≤|γeff  
+
+> n
+
+|∥ sn∥∥ pn∥, we obtain 
+
+∆Vn ≤ 12
+
+−(1 − | γeff  
+
+> n
+
+|2)∥sn∥2 + 2 |γeff  
+
+> n
+
+|pmax ∥sn∥ + p2max 
+
+| {z }
+
+> Φ( ∥sn∥)
+
+.
+
+(76) 9
+
+For 1 − | γeff  
+
+> n
+
+|2 > 0 (which is equivalent to |γeff  
+
+> n
+
+| < 1), the function Φ( ∥sn∥) is a concave quadratic function. Setting 
+
+Φ( ∥sn∥) = 0 , the positive root is: 
+
+∥sn∥ = pmax (|γeff  
+
+> n
+
+| + 1) 1 − | γeff  
+
+> n
+
+|2 = pmax 
+
+1 − | γeff  
+
+> n
+
+| . (77) Therefore, whenever |γeff  
+
+> n
+
+| < 1, ∆Vn < 0 outside the region defined by (77). Consequently, the sliding variable is driven toward an ultimate bounded region whose size depends on the worst-case magnitude of the effective reaching parameter. Recall from Section B that γeff  
+
+> n
+
+= 1 + rn(γ − 1) .By Corollary 3, the step ratio satisfies rmin ≤ rn ≤ rmax ,while γ is a prescribed reaching parameter satisfying |γ| < 1.Since |1 + r(γ − 1) | is a convex function of r, its maximum over the bounded interval [rmin , r max ] occurs at one of the two endpoints. We therefore define the worst-case effective reaching magnitude as: 
+
+¯γ ≜ max {| 1 + rmin (γ − 1) | , |1 + rmax (γ − 1) |} (78) If ¯γ < 1, then |γeff  
+
+> n
+
+| ≤ ¯γ < 1 for every admissible step ratio. Therefore, 
+
+lim sup 
+
+> n→∞
+
+∥sn∥ ≤ pmax 
+
+1 − ¯γ = rmax tol + κh 2max 
+
+1 − ¯γ (79) Hence, the sliding variable is uniformly ultimately bounded provided that ¯γ < 1.To guarantee ¯γ < 1, it is sufficient to require: 
+
+−1 < 1 + rn(γ − 1) < 1 (80) for all admissible rn, since rn > 0 and γ < 1, the upper inequality is automatically satisfied. The lower inequality is most restrictive at rn = rmax , because 1 + rn(γ − 1) 
+
+decreases monotonically with rn. Hence, it is sufficient to require 1 + rmax (γ − 1) > −1, which rearranges as follows with Corollary 3: 
+
+rmax =
+
+ Ψ
+
+ψmin 
+
+ 12k
+
+< 21 − γ (81) Taking the natural logarithm of both sides isolates the sensi-tivity parameter k, yielding the conditional stability criterion: 
+
+k > ln(Ψ /ψ min )2 ln(2 /(1 − γ)) (82) Therefore, choosing k according to (82) limits the worst-case step ratio sufficiently to ensure ¯γ < 1, thereby establishing the UUB result in (71). 
+
+Practical Feasibility: Although Theorem 2 establishes con-ditional stability, the requirement in (82) is mild. Rearranging the condition yields a maximum tolerable variation ratio of 
+
+Ψ/ψ min <  2/(1 − γ)2k. With the parameters used in our simulations ( γ = 0 .5, k = 24 ), this allowable ratio reaches an immense margin of ≈ 7.92 × 10 28 . Thus, for the parameter values considered in this study, the sufficient stability condition admits a very large range of TDE-coefficient variation. 
+
+Corollary 4 (Steady-State Convergence Radius ). Suppose that the timestep adaptation reaches a steady-state regime in which 
+
+hn → hss > 0. Then rn = hn+1 /h n → 1, and consequently 
+
+γeff  
+
+> n
+
+→ γ. Accordingly, the discrete sliding dynamics in (41) asymptotically reduce to 
+
+sn+1 = γsn + σn + O(h2ss ). (83) Here, O(h2ss ) denotes the second-order higher-order residual in the local small-step sense as hn → hss . Using the asymptotic TDE regulation ∥σn∥ ≤ tol and boundedness of residual 
+
+O(h2ss ) ≤ κ·h2ss , the corresponding steady-state ultimate bound becomes: 
+
+lim sup 
+
+> n→∞
+
+∥sn∥ ≤ tol 1 − | γ| + κ · h2ss 
+
+1 − | γ| . (84) Thus, once the timestep variation settles, the steady-state sliding-variable bound approaches the nominal fixed-step re-sult to leading order, with only a second-order correction associated with the finite control interval. 
+
+E. Practical Implementation 1) Time Delay Error Estimation: In the Time Delay Error defined in (27), the Model TDE is easily estimable as it is known during the controller design stage. However, the Disturbance TDE, which represents the variation in exter-nal disturbances, is difficult to estimate without a separate disturbance observer. To address this, we propose estimating the variation of disturbances using the control force. For this purpose, Assumption 4 is introduced regarding the control force. 
+
+Assumption 4 (Sufficient Control Authority ). It is assumed that the actuator-generated control variation can represent the interval-wise variation of the nominal dynamics and distur-bances within a bounded rate characterized by Lu. Using the discrete time notation introduced in (28) and (29), this condition is expressed as: 
+
+∥Cg ∥∥ un − un−1∥ = ∥Cg ∥∥ ∆un∥ ≤ Luhn,
+
+∥Cg ∥
+
+2 Ld + ∥C∥
+
+2 Lf ≤ Lu, (85) It is not σ itself but its magnitude, ∥σ∥, that is used to determine the time step. In this case, the following holds for 
+
+∥σ∥.
+
+∥σn∥ = ∥σmn + σdn∥ ≤ ∥ σmn ∥ + ∥σdn∥ (86) Estimating the system TDE with a larger value results in a more conservative choice of the time step, thereby maintaining stability. Therefore, the system TDE is estimated by separately estimating the magnitude of the model TDE and the disturbance TDE and then summing them. 
+
+Estimation of Model TDE : The equivalent control ueq n
+
+is defined as ueq n = −(Cg )−1Cf n as shown in (8), so Cf n
+
+can be expressed in terms of ueq n as follows. 
+
+Cf n = −(Cg )ueq n (87) 10 
+
+Based on this, the model TDE can be approximated by 
+
+ueq (t) as follows: 
+
+∥σmn ∥ = hn
+
+2 ∥Cf n − Cf n−1∥ ∼= hn
+
+2 Cg [ueq n − ueq n−1]
+
+≤ ∥Cg ∥
+
+2 hn∥∆ueq n ∥
+
+(88) 
+
+Estimation of Disturbance TDE : From the reduced dynamics ˙sn = Cg udn + dn
+
+ in (10), Cg ∆dn from dn and 
+
+dn−1 can be estimated as follows: 
+
+∆ ˙ sn = Cg 
+
+h
+
+∆dn + ∆ udn
+
+i
+
+(89) Therefore, ∆udn includes both the change in the time derivative of the sliding variable ∆ ˙ sn and the change in the disturbance 
+
+∆dn. If we analyze this by dividing it into the reaching phase and the steady state, the results are as follows. 
+
+> 1
+
+⃝ Steady State ( ∆ ˙ sn = 0 ): Since Cg ∆udn = −Cg ∆dn,the value of ∥∆dn∥ can be estimated using ∥∆udn∥.
+
+> 2
+
+⃝ Reaching Phase ( ∆ ˙ sn̸ = 0 ): The value ∥∆udn∥ reflects both system and disturbance variations, leading to a more conservative timestep selection than using ∥∆dn∥ alone. As time progresses and ∆ ˙ sn → 0, it primarily reflects the disturbances. Accordingly, the Disturbance TDE can be estimated as follows: 
+
+∥σdn∥ = hn
+
+2 ∥Cg ∆dn∥ ∼= hn
+
+2 ∥Cg ∆udn∥ ≤ hn
+
+2 ∥Cg ∥∥ ∆udn∥
+
+(90) 
+
+System Time Delay Error Estimation In practical im-plementation where the variations of the nominal dynamics 
+
+f (x, t ) and external disturbances d(t) are not directly mea-surable, the magnitude of the system time delay error ∥σn∥
+
+can be conservatively estimated using the known control inputs 
+
+ueq n and udn as follows: 
+
+∥ˆσn∥ = ∥Cg ∥
+
+2 hn
+
+ ∥∆ueq n ∥ + ∥∆udn∥ (91) The estimator is constructed as a conservative surrogate of the actual System TDE by separately bounding the model-and disturbance-related control variations. Although the distur-bance variation is indirectly inferred from the robust-control variation, the use of induced-norm bounds and the additive decomposition in (86) introduces additional conservative mar-gins. The resulting estimator is numerically shown in Fig.6 in Section III to remain above the actual System TDE under the considered operating conditions. III. N UMERICAL DEMONSTRATION 
+
+This section presents numerical simulation results to vali-date the feasibility and practical efficacy of the VTDC frame-work proposed in Section II. The VTDC algorithm is applied to a nonlinear satellite attitude control problem, representing a highly nonlinear dynamic system that inherently satisfies the Lipschitz continuity conditions. Numerical simulations are used to evaluate the closed-loop tracking performance, practical TDE estimation, timestep-dependent error scaling, adaptive timestep behavior, and consistency with the derived timestep and stability bounds. 
+
+A. Problem Statement: Spacecraft Attitude Control 
+
+To evaluate the performance of the proposed VTDC, we consider the attitude control of a rigid-body spacecraft. The attitude error is described by the error quaternion qe =[qe
+
+> 0
+
+, (qev )T ]T ∈ R4, defined as the quaternion product between the desired orientation qd and the body orientation qb:
+
+qe = ( qd)∗ ⊗ qb (92) In (92), the operator “ ⊗” denotes the quaternion multipli-cation. For any two quaternions p = [p0, pTv ]T and q =[q0, qTv ]T , their product is evaluated as p ⊗ q = p0q0 − pv ·
+
+qv , (p0qv +q0pv +pv ×qv )T T . The superscript “ (·)∗” denotes the quaternion conjugate, defined as q∗ = [ q0, −qTv ]T , which represents the inverse rotation. Furthermore, due to the topological property of quaternions where qe and −qe represent the same physical attitude, a conventional quaternion-based controller may suffer from the unwinding phenomenon, leading to unnecessary large-angle rotations. To resolve this issue and guarantee that the spacecraft always takes the shortest angular path toward the desired attitude, an anti-unwinding strategy is applied: 
+
+qe 
+
+> mod
+
+=
+
+(
+
+qe, if qe 
+
+> 0
+
+≥ 0
+
+−qe, if qe 
+
+> 0
+
+< 0 (93) By consistently ensuring a positive scalar component, the ambiguity in rotation direction is eliminated and the spacecraft always tracks the shorter angular path toward the desired attitude. The error angular velocity ωe ∈ R3 represents the body angular velocity relative to the desired angular velocity, with both terms expressed in the body-fixed frame. It is defined as follows: 
+
+ωe = ωb − Rω d (94) where ωb denotes the angular velocity of the spacecraft body frame and ωd is the desired angular velocity relative to the inertial frame. Here, the rotation matrix R serves to transform the desired angular velocity into the body frame, ensuring that the error dynamics are consistently formulated within the body-fixed coordinate system. Based on the error states defined above, we establish the state vector x ∈ R6 in (1) to describe the general behavior of the system as follows: 
+
+x =
+
+qev
+
+ωe
+
+
+
+∈ R6 (95) The derivative of this state vector can be defined in terms of the rotational kinetics and kinematics of the spacecraft. First, the kinematic equation for the vector part of the error quaternion is given by: 
+
+˙qev = 12 (qe
+
+> 0
+
+I + ( qev )×)ωe (96) In this formulation, the operator (·)× denotes the skew-symmetric matrix used to represent the vector cross product as a matrix multiplication. Next, the derivative of the error angular velocity is derived from Euler’s rotational equations for a rigid-body spacecraft and the definition in (94). Let J11 
+
+denote the inertia matrix of the spacecraft. The error kinetics, including various nonlinear terms, are expressed as: 
+
+J ˙ωb = J( ˙ ωe + ωe × Rω d − R ˙ωd)= −ωb × Jω b + u + d (97) By combining these kinematic and kinetic, we can define the nominal dynamics f (x, t ) of the general reaching dynamics in (6) as follows: 
+
+f (x, t ) = 
+
+ 12 (qe
+
+> 0
+
+I + ( qev )×)ωe
+
+J−1(−ωb × Jω b) − (ωe × Rω d − R ˙ωd)
+
+
+
+(98) The nominal dynamics f (x, t ) encapsulates all known nonlinearities of the system. The VTDC then utilizes this nominal model in conjunction with delayed data to effectively cancel the lumped uncertainty d, ensuring robust tracking performance. To implement the robust control framework in Section 2, the sliding variable s ∈ R3 is defined to characterize the desired error convergence behavior. In general quaternion-based attitude control, the sliding variable is typically defined as: 
+
+s = ωe + βsign (qe
+
+> 0
+
+)qev (99) where β = diag [β1, β 2, β 3] ≻ 0 is a positive definitie diagonal gain matrix. As discussed in the previous section, the anti-unwinding strategy employed in this study ensures qe 
+
+> 0
+
+≥ 0 at all times. Consequently, the term sign (qe
+
+> 0
+
+) can be simplified to unity without loss of generality. To align this definition with the state-space formulation s = Cx in (4), the sliding variable is expressed using the sliding manifold gain matrix C ∈ R3×6
+
+as follows: 
+
+s = ωe + βq ev = β I3
+
+| {z }
+
+> C
+
+qev
+
+ωe
+
+| {z } 
+
+> x
+
+(100) The following uncertainties are present in this attitude control simulation. 
+
+> 1
+
+⃝ Moment of inertia Uncertainty: The spacecraft’s mo-ment of inertia is composed of a nominal term J0 and an uncertainty ∆J, expressed as J = J0 + ∆ J ∈ R3×3.
+
+> 2
+
+⃝ Disturbance Torque: Disturbance torque τ d is the sum-mation of three types of disturbance torques act during the simulation: Gravity Gradient Torque ( τ gg ), Constant Bias Torque ( τ bias ), and Sine Torque ( τ sin ). 
+
+τ gg = 3 μ
+
+∥rI ∥3 (ˆ rb × (J ˆrb)) 
+
+τ bias = 0 .01 × 0.5 −0.3 0.2T
+
+τ sin = 0 .01 × sin 0 .1t sin 0 .2t sin 0 .3tT
+
+where μ is the Earth’s standard gravitational parameter, and rI is the position vector of the spacecraft in the inertial frame. The unit vector ˆrb represents the direction from the center of the Earth to the spacecraft center of mass, transformed into the body-fixed coordinate system. 
+
+> 3
+
+⃝ Actuator Failure: In the simulation, actuator perfor-mance is degraded such that only approximately 90% of the original control input is applied. 
+
+J ˙ωb = −ωb × Jω b + ( I − a)u
+
+| {z }
+
+> Actuator fail
+
++d
+
+Here, the Actuator Failure Parameter a is defined as follows: 
+
+a = 0 .1 ×  I + 0 .1 · diag sin( t 
+
+> 10
+
+) cos( t 
+
+> 15
+
+) sin( t 
+
+> 20
+
+) 
+
+By mapping the attitude dynamics and uncertainties into the general reaching dynamics form (6), we obtain the following formulated expression: 
+
+˙s(t) = β I3
+
+| {z }
+
+> C
+
+03×3
+
+J−10
+
+| {z }
+
+> g
+
+h
+
+u(t) + ∆ J ˙s + τ d − au c
+
+| {z }
+
+> d(t)
+
+i
+
++
+
+ 12 (qe
+
+> 0
+
+I + ( qev )×)ωe
+
+J−10
+
+  − ωb × J0ωb −  ωe × Rω d − R ˙ωd| {z } 
+
+> f(x,t )
+
+!
+
+(101) To prevent abrupt initial transients and mitigate excessive control effort at the onset of the maneuver, a smooth guidance trajectory is generated. The guidance is designed such that the principal angle θ(t) follows a fifth-order polynomial scaling factor ρ(τ ) for a specified slewing time ts. This profile is determined based on the total principal angle ∆θ and the principal unit axis ˆe, which are calculated from the initial error quaternion qe(t0) = [ qe
+
+> 0
+
+(t0), qev (t0)T ]T as follows: 
+
+∆θ = 2 cos −1  qe
+
+> 0
+
+(t0), ˆe = qev (t0)
+
+|qev (t0)| (102) Using these parameters, the reference trajectory for the space-craft maneuver is formulated as: 
+
+ρ(τ ) = 
+
+(
+
+10 τ 3 − 15 τ 4 + 6 τ 5, τ ∈ [0 , 1] 1, τ > 1
+
+θ(t) = ρ
+
+ tts
+
+
+
+∆θ
+
+ωd(t) = ˙θ(t)ˆ e, qd(t) = 
+
+ cos( θ(t)/2) ˆe sin( θ(t)/2) 
+
+
+
+(103) The resulting slewing guidance profiles for the attitude and angular velocity are illustrated in Figure 3: The parameters for the simulation set as Table I. There are only five parameters for designing controller and timestep adjustment as we can see in Table II: 
+
+B. Closed-Loop Performance and Theoretical Validation 1) Closed-Loop Performance: Fig. 4 shows that the space-craft accurately follows the commanded slew despite inertia uncertainty, environmental disturbances, and time-varying ac-tuator degradation, with after completion of the slew, the atti-tude and angular-velocity errors are confined to approximately 
+
+±2.5 × 10 −3 deg and ±1.5 × 10 −5 rad/s. As shown in Fig. 5, the equivalent and robust control components generate a 12 
+
+Fig. 3. Reference trajectory for the spacecraft slew generated by (103): (top) commanded attitude expressed in Euler ZYX angles and (bottom) commanded angular velocity. TABLE I SYSTEM PARAMETERS 
+
+Parameter Value Initial attitude qb 
+
+> 0
+
+= [0 .8832 , 0.3, −0.2, −0.3] T
+
+Initial angular velocity ωb 
+
+> 0
+
+= [0 , 0, 0] T rad /s
+
+Desired attitude qd = [1 , 0, 0, 0] T
+
+Desired angular velocity ωd = [0 , 0, 0] T rad /s
+
+Slewing/Simulation time ts = 60 s , t ∈ [0 , 100] s 
+
+Nominal moment of inertia J =
+
+
+
+20 1.2 0.91.2 17 1.40.9 1.4 15 
+
+ kg · m2
+
+Inertia uncertainty ∆J = diag 2 2 1.5 kg · m2
+
+Gravitational parameter μ = 3 .986 × 10 14 m3/s2
+
+Orbital radius ∥rI ∥ = 6878 .137 km 
+
+bounded total control torque of approximately ±0.04 Nm. The proposed scheduling law simultaneously adapts the control interval to the local TDE level, yielding a mean timestep of 
+
+0.35297 s while maintaining the above tracking performance. The resulting timestep behavior is examined in Fig. 9 
+
+2) TDE Characterization and Estimation: Fig. 6 assesses the practical System TDE estimator in (91) using the actual model and disturbance information available in simulation. The estimated model, disturbance, and total TDEs closely follow their actual counterparts, while the estimation margins remain strictly positive and on the order of 10 −6 to 10 −5
+
+throughout the maneuver. This supports the use of the pro-
+
+Fig. 4. Closed-loop spacecraft response under VTDC: (top) body attitude expressed in Euler ZYX angles and (bottom) body angular velocity. Insets show the post-slew steady-state response. TABLE II CONTROLLER PARAMETERS 
+
+Parameter Value Control gain β = diag(3 .8, 3.8, 3.8) 
+
+Decay factor γ = 0 .5
+
+Tolerance tol = 5 × 10 −5
+
+Safety factor SF = 0 .98 
+
+Timestep update gain k = 24 
+
+Fig. 5. Control torque decomposition under VTDC for each body axis, showing the equivalent control ueq , robust time-delay compensation ud, and total control input u.
+
+posed estimator as a conservative scheduling surrogate under the considered operating conditions. The timestep dependence predicted by Lemma 1 was further examined using fixed-step simulations with h =10 −4, 10 −3, 10 −2, 10 −1 s. Fig. 7 shows that the maximum System TDE increases by approximately two orders of mag-nitude for each tenfold increase in h, consistent with the 
+
+Fig. 6. Assessment of the practical System-TDE estimator in (91): (left) actual and estimated magnitudes of the model, disturbance, and total System TDEs; (right) corresponding estimation margins, showing conservative estimation under the considered operating conditions. 13                            
+
+> Fig. 7. Fixed-step assessment of the timestep dependence for h= 10 −4,
+> 10 −3,10 −2, and 10 −1s: (top) quaternion-error IAE, (middle) maximum System TDE, and (bottom) System-TDE histories. The maximum TDE exhibits the O(h2)scaling predicted by Lemma 1, while the quaternion-error IAE shows the same empirical trend.
+> Fig. 8. Monte Carlo assessment of initial-timestep independence for NMC =100 and h0∈[0 .1,1] s:(a) mean timestep with min–max envelope, (b) timestep standard deviation, and (c) normalized standard deviations of q,ω,and ∥u∥, showing attenuation of the initial timestep-induced dispersion.
+
+O(h2) bound in (33). The quaternion-error IAE exhibits the same empirical trend, illustrating the associated degradation in tracking accuracy. 
+
+3) Validation of Timestep and Stability Properties: The initial-timestep dependence in Corollary 1 was assessed through 100 Monte Carlo simulations with h0 ∈ [0 .1, 1] s. As shown in Fig. 8, the initially broad timestep distribution rapidly contracts, and its standard deviation decreases from approximately 0.25 s to 10 −3 s, confirming strong attenuation of the initial-timestep influence. For the post-transient interval t ≥ 15 s, the observed TDE coefficients give ˆΨ = 2 .7858 × 10 −4 and ˆψmin = 4 .9566 ×
+
+10 −5. Corollaries 2 and 3 therefore predict               
+
+> Fig. 9. Consistency of the realized TDE, timestep, and step ratio with the derived scheduling properties: (top) System TDE and prescribed tolerance, (middle) variable timestep hn, and its post-transient bounds hmin and hmax ,and (bottom) step ratio rnand its bounds rmin and rmax . The theoretical bounds are evaluated over post-transient interval t≥15 s
+
+hmin = 0 .26088 s , hmax = 0 .61847 s 
+
+rmin = 0 .96467 , rmax = 1 .03662 . (104) Fig. 9 shows that the realized post-transient timestep, hn ∈
+
+[0 .317 , 0.450] s, and the corresponding step ratios remain within these predicted ranges while the System TDE remains below the prescribed tolerance. Using the theoretical step-ratio bounds gives ¯γ = 0 .51766 <
+
+1 satisfying the stability condition of Theorem 2. Neglecting the higher-order O(h2) residual terms, the leading-order gen-eral and steady-state convergence radii are: 
+
+rmax 
+
+1 − ¯γ · tol = 1 .0746 × 10 −4, tol 1 − | γ| = 1 .0000 × 10 −4.
+
+(105) Fig. 10 shows that the sliding-variable norm remains be-low even these leading-order reference radii throughout the simulation. Since the complete UUB bounds in Theorem 2 and Corollary 4 additionally contain bounded O(h2) residual terms, the observed response is consistent with the derived stability result and indicates that the higher-order contribution is small under the considered operating conditions. 
+
+C. Comparative Evaluation of Control and Scheduling Per-formance 
+
+The proposed VTDC was compared with a Lyapunov-based self-triggered controller (STC) and fixed-step TDC (FTDC). All methods were evaluated under identical spacecraft dy-namics, initial conditions, reference trajectories, uncertainties, disturbances, and actuator degradation. The same TDC-based control law in (17) and zero-order hold implementation were used; therefore, the primary difference among the methods is the determination of the control-update interval. VTDC determines the next timestep directly from the esti-mated System TDE using (47). For comparison, STC predicts 14 
+
+TABLE III COMPARISON OF TRACKING ERROR AND CONTROL EFFORT AMONG STC, VTDC, AND FTDC                                                                                       
+
+> Method Attitude Error Angular Velocity Error Control Effort IAE ISE ITAE IAE ISE ITAE Max Torque IAC ISC STC 1.1836 ×10 −32.2856 ×10 −86.5074 ×10 −21.0556 ×10 −31.9343 ×10 −85.4860 ×10 −25.0146 ×10 −22.3852 7.3162 ×10 −2
+> VTDC 1.1102 ×10 −31.2368 ×10 −86.5405 ×10 −26.5684 ×10 −45.0111 ×10 −93.7210 ×10 −25.0176 ×10 −22.3822 7.3115 ×10 −2
+> FTDC 1.0218 ×10 −39.3963 ×10 −95.1869 ×10 −26.4220 ×10 −45.9835 ×10 −92.9756 ×10 −25.0169 ×10 −22.3822 7.3149 ×10 −2
+
+TABLE IV COMPARISON OF TIMESTEP BEHAVIOR AND TIMESTEP COMPUTATION COST BETWEEN STC AND VTDC                                              
+
+> Method Timestep Behavior Timestep Computation Cost Mean h[s] Max h[s] Min h[s] Iterations Mean [s] Max [s] Min [s] Total [s] STC 0.33165 0.886 0.100 343 7.6163 ×10 −23.1444 ×10 −14.5463 ×10 −226 .048
+> VTDC 0.35297 0.450 0.0985 299 4.2032 ×10 −53.7600 ×10 −43.0700 ×10 −51.2525 ×10 −2
+
+Fig. 10. Sliding-variable response relative to the leading-order convergence radii: (top) ∥s∥
+
+with the general and steady-state leading-order reference radii, and (bottom individual sliding-variable components s1,
+
+s2 and s3. The reference radii omit the bounded O(h2)
+
+residual terms in Theorem 2 and Corollary 4 
+
+Fig. 11. Comparison of STC and VTDC scheduling behavior: (top) control-interval histories and (bottom) computation time required to determine each subsequent control interval. 
+
+the future sliding variable under the held control input and selects the largest admissible interval satisfying: 
+
+V (s(tk + τ )) ≤ V (s(tk)) e−δτ + Tol . (106) The STC parameters were set to δ = 5 and Tol = 6 ×10 −8,with the candidate interval searched numerically in increments of 10 −4 s. FTDC used the VTDC mean timestep, h =0.35297 s, providing a fixed-step reference with approximately the same average control-update rate. The performance comparison was conducted in terms of tracking accuracy, control effort, update efficiency, and scheduling cost. Tracking performance was evaluated using the Integral Absolute Error (IAE), Integral Squared Error (ISE), and Integral Time-weighted Absolute Error (ITAE), while control effort was assessed using the maximum torque, Integral Absolute Control (IAC), and Integral Squared Control (ISC). IAE represents the accumulated tracking error, ISE emphasizes large deviations, and ITAE penalizes persistent errors, whereas IAC and ISC quantify the overall and squared control usage, respectively. Table III compares tracking error and control effort using IAE, ISE, and ITAE for the attitude and angular-velocity errors, together with maximum torque, IAC, and ISC. All three methods produced nearly identical control-effort metrics, as expected from their common TDC-based feedback structure. Compared with STC, VTDC reduced the attitude IAE and ISE by approximately 6.2% and 45 .9% , respectively, and reduced the angular-velocity IAE, ISE, and ITAE by 37 .8% , 74 .1% ,and 32 .2% , respectively. Thus, the reduced update frequency of VTDC did not compromise closed-loop performance. FTDC achieved smaller values for several tracking metrics under the considered simulation condition. However, unlike VTDC, its control interval is fixed and therefore cannot respond to changes in the local TDE or system variation. The FTDC comparison consequently indicates that VTDC achieves adaptive operation without a substantial control-performance penalty at a comparable average update rate. The principal advantage of VTDC is evident in its schedul-ing efficiency. As summarized in Table IV, VTDC increased the mean control interval from 0.33165 s for STC to 0.35297 sand reduced the number of control updates from 343 to 
+
+299 , corresponding to a 6.4% longer mean interval and 
+
+12 .8% fewer updates. More importantly, the accumulated timestep-computation time decreased from 26 .048 s for STC to 0.012525 s for VTDC, representing an approximately 
+
+2.08 × 10 3-fold reduction in scheduling overhead. Fig. 11 illustrates this difference directly. STC requires repeated future-state integration to determine each triggering instant, whereas VTDC evaluates the next timestep through the closed-form TDE-based update rule. Consequently, VTDC 15 
+
+retains proactive aperiodic scheduling while avoiding the computational burden associated with iterative future-state prediction. IV. C ONCLUSION 
+
+This paper developed Variable-step Time Delay Control (VTDC), a proactive aperiodic robust control framework that integrates TDC-based uncertainty compensation with TDE-based control scheduling. The key idea is to reinterpret the System TDE as an interval-dependent indicator of local model and disturbance variations and to use it directly for control-interval adaptation. By establishing the quadratic dependence of the System TDE on the realized timestep, a closed-form feedback update law was derived to increase the control interval under slowly varying conditions and decrease it as the local TDE grows. The variable-step closed-loop behavior was analyzed theo-retically. The influence of the initial timestep was shown to decay asymptotically, while the timestep and consecutive step ratio were proven to remain within finite asymptotic bounds. The strictly positive lower timestep bound excludes Zeno behavior, and the resulting step-ratio bounds were incorporated into the closed-loop analysis to establish uniform ultimate boundedness of the sliding variable. The corresponding steady-state convergence radius was also characterized. For practical implementation, a conservative System-TDE estimator was constructed from variations in the equivalent and robust control inputs. This enables online timestep scheduling without direct disturbance measurement, a separate distur-bance observer, continuous triggering-condition monitoring, future-state prediction, or iterative trigger-time search. Numer-ical results confirmed that the estimator remained conservative under the considered operating conditions and that the realized timestep, step ratio, and sliding-variable response were con-sistent with the derived theoretical properties. The proposed framework was further evaluated for nonlinear spacecraft attitude maneuvering under moment-of-inertia un-certainty, environmental disturbance torques, and time-varying actuator degradation. VTDC maintained accurate tracking and bounded control effort while adaptively varying the con-trol interval according to the System TDE. Compared with Lyapunov-based self-triggered control, VTDC achieved com-parable or improved tracking performance while reducing the number of control updates from 343 to 299 . More im-portantly, the accumulated timestep-scheduling computation was reduced from 26 .048 s to 0.012525 s, corresponding to an approximately 2.08 × 10 3-fold reduction in scheduling overhead. Compared with fixed-step TDC, VTDC retained the ability to respond to time-varying operating conditions rather than relying on a predetermined update interval. These results demonstrate that VTDC provides a theoretically grounded and computationally lightweight approach to proactive aperiodic robust control for resource-constrained nonlinear spacecraft systems. APPENDIX APROOF OF COROLLARY 1: I NITIAL TIMESTEP 
+
+INDEPENDENCE 
+
+Substituting the definition of ∥σn∥ = ψnh2 
+
+> n
+
+in (45) into the update rule in (47) yields the following recurrence relation for time step h.
+
+hn+1 = SF · tol 
+
+ψnh2
+
+> n
+
+! 12k
+
+hn = SF ·
+
+ tol 
+
+ψn
+
+ 12k
+
+h1− 1 
+
+> k
+> n
+
+(107) By substituting λ = 1 − 1 
+
+> k
+
+∈ (0 , 1) and taking the natural loga-rithm of both sides, we obtain the following non-homogeneous linear difference equation for ln hn:
+
+ln hn+1 = λ ln hn + ln SF ·
+
+ tol 
+
+ψn
+
+ 12k
+
+!| {z }
+
+> Cn
+
+(108) Here, Cn represents the time-varying input driven by the actual system state ψn. The general solution for the first-order difference equation xn+1 = λx n + Cn is xn = λnx0 +Σn−1 
+
+> i=0
+
+λn−1−iCi. Using this, the general solution for ln hn in (108) is given as follows: 
+
+ln hn = λn ln h0 +
+
+> n−1
+
+X
+
+> i=0
+
+λn−1−iCi (109) Since 0 < λ < 1. As the number of iterations n → ∞ , the term involving the initial timestep, λn ln h0, decays exponen-tially to zero. 
+
+lim  
+
+> n→∞
+
+ln hn = lim  
+
+> n→∞
+
+λn ln h0
+
+| {z }
+
+> =0
+
++ lim 
+
+> n→∞
+> n−1
+
+X
+
+> i=0
+
+λn−1−iCi (110) This mathematical property demonstrates that the transient influence of the initial heuristic setting h0 vanishes over time. Ultimately, the control interval hn is self-optimized into a continuous profile defined solely by the accumulation of the system’s inherent states ( Ci), achieving global independence from the initial timestep condition. APPENDIX BPROOF OF COROLLARY 2: T IMESTEP BOUNDEDNESS AND 
+
+EXCLUSION OF ZENO BEHAVIOR 
+
+By Assumption 2 and Assumption 3, the condition 0 <ψmin ≤ ψi ≤ Ψ holds for all steps i. Therefore, Ci from (108) is uniformly bounded as 
+
+Cmin ≤ Ci = ln SF ·
+
+ tol 
+
+ψi
+
+ 12k
+
+!
+
+≤ Cmax , (111) with 
+
+Cmin = ln 
+
+"
+
+SF 
+
+ tol Ψ
+
+ 12k
+
+#
+
+, Cmax = ln 
+
+"
+
+SF 
+
+ tol 
+
+ψmin 
+
+ 12k
+
+#
+
+(112) 16 
+
+Note that the general solution for ln hn is given as (109). Using the bounds on Ci gives 
+
+ln hn ≥ λn ln h0 + Cmin 
+
+> n−1
+
+X
+
+> i=0
+
+λn−1−i
+
+ln hn ≤ λn ln h0 + Cmax 
+
+> n−1
+
+X
+
+> i=0
+
+λn−1−i
+
+(113) The summation term Pn−1 
+
+> i=0
+
+λn−1−i represents a finite ge-ometric series. By reversing the index of summation (letting 
+
+j = n − 1 − i), it can be rewritten and evaluated as follows: 
+
+> n−1
+
+X
+
+> i=0
+
+λn−1−i =
+
+> n−1
+
+X
+
+> j=0
+
+λj = 1 − λn
+
+1 − λ (114) Taking the limit as n → ∞ , the term λn exponentially de-cays to zero because of the condtion 0 < λ < 1. Consequently, the infinite geometric series converges to 11−λ , simplifying the inequality to: 
+
+11 − λ Cmin ≤ lim  
+
+> n→∞
+
+ln hn ≤ 11 − λ Cmax (115) Recalling the definition 11−λ = k, we have the condition: 
+
+lim inf  
+
+> n→∞
+
+ln hn ≥ kC min lim sup 
+
+> n→∞
+
+ln hn ≤ kC max (116) Finally, taking the exponential of both sides yields 
+
+lim inf  
+
+> n→∞
+
+hn ≥ SF k
+
+r tol Ψ , lim sup 
+
+> n→∞
+
+hn ≤ SF k
+
+s
+
+tol 
+
+ψmin 
+
+, (117) which proves (60). REFERENCES [1] G. F. Franklin, J. D. Powell, M. L. Workman et al. , Digital control of dynamic systems . Addison-wesley Menlo Park, CA, 1998, vol. 3. [2] B. Wittenmark, K.-E. ˚ Arz´ en, and K. J. ˚ Astr¨ om, “Computer control: An overview,” IFAC Professional Brief , 2002. [3] E. Fridman, “Introduction to time-delay systems,” Analysis and Control. Birkh¨ auser , vol. 75, p. 102, 2014. [4] E. Fridman, U. Shaked, and V. Suplin, “Input/output delay approach to robust sampled-data h ∞ control,” Systems & Control Letters , vol. 54, no. 3, pp. 271–282, 2005. [5] A. Seuret, “A novel stability analysis of linear systems under asyn-chronous samplings,” Automatica , vol. 48, no. 1, pp. 177–182, 2012. [6] W. P. Heemels, K. H. Johansson, and P. Tabuada, “An introduction to event-triggered and self-triggered control,” in 2012 ieee 51st ieee conference on decision and control (cdc) . IEEE, 2012, pp. 3270–3285. [7] P. Fortescue, G. Swinerd, and J. Stark, Spacecraft systems engineering .John Wiley & Sons, 2011. [8] F.-Q. Di, A.-J. Li, Y. Guo, C.-Q. Xie, and C.-Q. Wang, “Event-triggered sliding mode attitude coordinated control for spacecraft formation flying system with disturbances,” Acta Astronautica , vol. 188, pp. 121–129, 2021. [9] X. Xie, T. Sheng, and X. Chen, “Dynamic event-triggered and self-triggered fault-tolerant attitude control for multiple spacecraft sys-tems with uncertainties and input saturation,” IEEE Transactions on Aerospace and Electronic Systems , vol. 60, no. 3, pp. 2922–2933, 2024. [10] G. de Albuquerque Gleizer and M. Mazo Jr, “Self-triggered output-feedback control of lti systems subject to disturbances and noise,” 
+
+Automatica , vol. 120, p. 109129, 2020. [11] A. Anta and P. Tabuada, “To sample or not to sample: Self-triggered control for nonlinear systems,” IEEE Transactions on automatic control ,vol. 55, no. 9, pp. 2030–2042, 2010. [12] G. Delimpaltadakis and M. Mazo, “Region-based self-triggered control for perturbed and uncertain nonlinear systems,” IEEE Transactions on Control of Network Systems , vol. 8, no. 2, pp. 757–768, 2021. [13] V. I. Utkin, Sliding modes in control and optimization . Springer Science & Business Media, 2013. [14] H. Cho, F. E. Udwadia, and T. Wanichanon, “Autonomous precision control of satellite formation flight under unknown time-varying model and environmental uncertainties,” The Journal of the Astronautical Sciences , vol. 67, no. 4, pp. 1470–1499, 2020. [15] K. Youcef-Toumi and O. Ito, “A time delay controller for systems with unknown dynamics,” Journal of Dynamic Systems, Measurement, and Control , vol. 112, no. 1, pp. 133–142, 03 1990. [16] B. Draˇ zenovi´ c, “The invariance conditions in variable structure systems,” 
+
+Automatica , vol. 5, no. 3, pp. 287–295, 1969. [17] V. Utkin, “Variable structure systems with sliding modes,” IEEE Trans-actions on Automatic Control , vol. 22, no. 2, pp. 212–222, 1977. [18] ˇC. Milosavljevi´ c, “General conditions for the existence of a quasi-sliding mode on the switching hyperplane in discrete variable structure systems,” Automation and Remote Control , vol. 46, no. 3, pp. 307–314, 1985. [19] W. Gao, Y. Wang, and A. Homaifa, “Discrete-time variable structure control systems,” IEEE transactions on Industrial Electronics , vol. 42, no. 2, pp. 117–122, 1995. [20] J. C. Butcher, Numerical Methods for Ordinary Differential Equations ,3rd ed. John Wiley & Sons, Ltd, 2016. [21] H. K. Khalil, Nonlinear Systems , 3rd ed. Upper Saddle River, NJ: Prentice Hall, 2002. [22] F. W. J. Olver, Asymptotics and Special Functions . Wellesley, MA: A K Peters, 1997. [23] G. S¨ oderlind, “Automatic control and adaptive time-stepping,” Numeri-cal Algorithms , vol. 31, no. 1–4, pp. 281–310, 2002. [24] K. H. Johansson, M. Egerstedt, J. Lygeros, and S. Sastry, “On the regularization of zeno hybrid automata,” Systems & Control Letters ,vol. 38, no. 3, pp. 141–150, 1999. [25] K. Furuta, “Sliding mode control of a discrete system,” Systems and Control Letters , vol. 14, no. 2, pp. 145–152, 1990. [Online]. Available: https://www.sciencedirect.com/science/article/pii/016769119090030X 
+
+Yonsoo Kim received the bachelor’s degree in as-tronomy from Yonsei University, Seoul, Republic of Korea, in 2025. From 2023 to 2024, Kim studied aerospace engineering as an exchange student at the University of California, Los Angeles. Kim is currently pursuing the M.S. degree in astronomy at Yonsei University. The research interests include spacecraft guidance, navigation, and control, nonlin-ear and robust control, and aperiodic control, with particular emphasis on variable-step control methods for nonlinear spacecraft systems. 
+
+Hancheol Cho received the B.S. and M.S. degrees in astronomy from Yonsei University, Seoul, Re-public of Korea, in 2006 and 2008, respectively, and the Ph.D. degree in aerospace engineering from the University of Southern California, Los Angeles, USA, in 2012. From 2013 to 2015, he was a Senior Research Engineer with Samsung Techwin Co., Ltd., Republic of Korea. He was a Marie Curie CO-FUND Postdoctoral Fellow with the University of Liege, Belgium, and a Postdoctoral Appointee with Sandia National Laboratories, Albuquerque, USA. From 2021 to 2023, he was an Assistant Professor with the Department of Aerospace Engineering, Embry-Riddle Aeronautical University, Daytona Beach, USA. Since September 2023, he has been an Associate Professor with the Department of Astronomy and the Department of Satellite Systems, Yonsei University, Republic of Korea. His research interests include spacecraft dynamics and control, robust adaptive control, optimization, and robotics. He is an Associate Editor of the International Journal of Aeronautical and Space Sciences and the Journal of Control, Automation and Electrical Systems , and a member of the AIAA Astrodynamics Technical Committee.

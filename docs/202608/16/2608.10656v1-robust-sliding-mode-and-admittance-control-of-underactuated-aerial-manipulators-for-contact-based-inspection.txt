@@ -1,0 +1,278 @@
+Title: Robust Sliding Mode and Admittance Control of Underactuated Aerial Manipulators for Contact-Based Inspection
+
+URL Source: https://arxiv.org/pdf/2608.10656v1
+
+Published Time: Wed, 12 Aug 2026 00:48:22 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Robust Sliding Mode and Admittance Control of Underactuated Aerial Manipulators for Contact-Based Inspection 
+
+Tareq Aziz Alqutami §
+
+Heriot-Watt University , Edinburgh, UK 
+
+§Petroliam Nasional Berhad (PETRONAS) , Malaysia ta2024@hw.ac.uk 
+
+Yvan Petillot 
+
+School of Engineering and Physical Sciences Heriot-Watt University 
+
+Edinburgh, UK Y.R.Petillot@hw.ac.uk 
+
+Matthew W. Dunnigan 
+
+School of Engineering and Physical Sciences Heriot-Watt University 
+
+Edinburgh, UK M.W.Dunnigan@hw.ac.uk 
+
+Mustafa Suphi Erden 
+
+School of Engineering and Physical Sciences Heriot-Watt University 
+
+Edinburgh, UK m.s.erden@hw.ac.uk 
+
+Abstract —Contact-based industrial inspection requires aerial platforms to maintain stable interaction while rejecting dis-turbances. Underactuated aerial manipulators present control challenges due to the dynamic coupling between vehicle attitude and force generation. This paper proposes a robust control framework for an underactuated hexarotor equipped with a 1-DoF manipulator to perform sustained contact inspection. The architecture integrates integral-augmented Sliding Mode Control (SMC) for trajectory tracking with an admittance control law for force regulation. The contact force is mapped to a feedfor-ward attitude term, while the 1-DoF arm actively compensates for the tilt to maintain surface alignment. Software-in-the-loop simulations demonstrate that the SMC-based approach achieves superior tracking and coupling rejection compared to traditional PID. Furthermore, the interaction strategy achieved precise force regulation with an RMSE of 0.12 N and was able to stably exert up to 20 N force, confirming the system’s efficacy for stable, reliable contact-based inspection. 
+
+Index Terms —Aerial Manipulator, Contact Inspection, NDT, Sliding Mode Control, Underactuated UAVs, Admittance Control. 
+
+I. I NTRODUCTION 
+
+Unmanned aerial vehicles (UAVs) have evolved from pas-sive inspection tools into active platforms for Aerial Physical Interaction and Manipulation (APIM) [1], enabling tasks such as pick-and-place [1], pushing/pulling [2], writing [3], and contact-based inspection [4]. Industrial contact tasks, such as non-destructive testing (NDT), minimize human hazards and operational downtime. However, maintaining stable surface contact remains challeng-ing with underactuated multirotors, where force generation is inherently coupled with vehicle attitude. To address this limitation, two main approaches have been pursued in the literature. The first involves fully-actuated UAV platforms, which employ tilted [5], [6] or actively tilting rotors [4] to decouple translational and rotational dynamics. While this enables improved force regulation and interaction control, it comes at the cost of increased mechanical complexity, reduced efficiency, and higher control burden. The second approach retains underactuated UAVs and augments them with lightweight manipulators to facilitate interaction [7], [8]. While more practical and energy-efficient, it introduces strong dynamic coupling between the vehicle and the manipulator, significantly complicating force regulation during contact. From a control perspective, a variety of methods have been explored for aerial interaction. Classical PID control has been used for contact tasks such as emergency button pressing with underactuated UAVs [8], and has been further combined with admittance [9] and impedance [4] strategies for interaction control. Adaptive backstepping control has been applied to underactuated UAVs for manipulation tasks such as pick-and-place [10], while prescribed performance control (PPC) has been proposed to enforce transient and steady-state error bounds [11], and extended with disturbance observers for improved trajectory tracking [12]. PPC has also been integrated with image-based visual servoing and variable stiffness control to achieve stable contact using underactuated platforms [7]. Despite their advantages, these approaches present notable limitations. PID-based methods lack robustness to disturbances and model uncertainties. Backstepping-based controllers often result in complex recursive designs, which complicates real-time implementation, and rely heavily on accurate system models. PPC, while theoretically appealing, imposes rigid error constraints that can lead to control singularities and increased sensitivity to sensor noise, actuator saturation, and abrupt disturbances, potentially causing violations of the pre-scribed performance bounds. arXiv:2608.10656v1 [cs.RO] 11 Aug 2026 Sliding Mode Control (SMC) offers a robust alternative due to its inherent ability to reject matched uncertainties and external disturbances with relatively low computational complexity [13]. SMC [14] and its variants, such as integral SMC [15], have been investigated for trajectory tracking of fully-actuated aerial manipulators. For underactuated systems, terminal SMC (TSMC) [16] and nonsingular fast terminal SMC (NFTSMC) [17], often combined with disturbance ob-servers, have demonstrated improved tracking performance in free-flight scenarios. However, despite these advances, the application of SMC to sustained-contact tasks has yet to be explored for underactuated aerial manipulators. This paper presents a robust control framework for con-tinuous contact inspection using an underactuated hexarotor with a 1-DoF manipulator. The approach combines SMC for motion stabilization, a geometric force feedforward term, and admittance force control. The framework is validated in high-fidelity software-in-the-loop (SITL) simulations. The remainder of this paper is organized as follows: Section II describes system modeling; Sections III and IV detail mo-tion and interaction control; Section V presents SITL results; and Section VI concludes the paper. II. A ERIAL PLATFORM DESCRIPTION 
+
+A. Dynamic modeling 
+
+The aerial manipulator comprises an underactuated hexaro-tor UAV and an independently actuated 1-DoF manipulator arm carrying an NDT end-effector and force sensor (Fig. 1). The arm actively compensates for UAV tilt to preserve sensor-surface alignment during contact.  
+
+> Fig. 1. Schematic view of the proposed aerial manipulator
+
+Let FI , FB , and FE denote the inertial, body-fixed, and end-effector frames, respectively. The vehicle position is p =[x, y, z ]T ∈ F I , and orientation is represented by rotation matrix R ∈ SO (3) corresponding to Z-Y-X Euler angles 
+
+Φ = [ ϕ, θ, ψ ]T , where ϕ is roll, θ is pitch, and ψ is yaw angle. The velocity and acceleration are denoted by ˙p and ¨p
+
+respectively, while the angular velocity in FB is ω = [ p, q, r ]T .The Newton-Euler equations of motion are: 
+
+m¨p= mg + Rf c + fe + ∆f (1) 
+
+J ˙ω = −ω × (Jω) + τ c + τ e + ∆τ (2) 
+
+˙R = R S (ω) (3) where m is mass, g = [0 , 0, −g]T is the gravity vector, J is in-ertia, fc = [0 , 0, T ]T is total thrust vector ( T = Pni=1 Ti ∈ R), 
+
+τ c is control torque, and S(·) is the skew-symmetric matrix. More details of actuation dynamics and rotor kinematics are given in [6]. fe and τ e are external contact forces/torques. Terms ∆f and ∆τ represent lumped, bounded disturbances (∥∆f ∥ ≤ σf , ∥∆τ ∥ ≤ στ ) including arm reaction forces, aerodynamic effects, and model uncertainties. This allows treating the arm motion as a bounded disturbance in the vehicle control loop. This assumption is reasonable for lightweight mechanisms whose inertia is small relative to the vehicle mass and whose motion ( q, and ˙q) is independently controlled. During contact inspection, the dominant interaction force acts in the normal direction of the surface. 
+
+B. System architecture 
+
+The system architecture (Fig. 2) utilizes PX4 for geometric attitude control [18] and control allocation. Motion, interac-tion, and manipulator control run on a ROS2 companion com-puter, sending orientation setpoints Rd and thrust commands 
+
+Td via DDS middleware as proposed in [6]. III. M OTION CONTROL DESIGN 
+
+A. Sliding mode control law 
+
+SMC is a nonlinear robust control framework designed to ensure stable tracking in the presence of model uncer-tainties and matched disturbances. Its key principle is the enforcement of system trajectories onto a predefined sliding surface (manifold), on which the closed-loop dynamics exhibit reduced order and prescribed behavior that is insensitive to uncertainties. From the dynamics model (1), Define the virtual control vector uc = Rf c 
+
+> m
+
+. The contact force is omitted and considered later in the interaction control law. The position and velocity tracking errors are ep = p−pd and ˙ep = ˙ p− ˙pd. The integral-augmented sliding surface s(t) and its derivative are: 
+
+s= ˙ ep + Λe p + η
+
+Z t
+
+> 0
+
+ep(τ )dτ (4) 
+
+˙s= ¨ ep + Λ ˙ep + ηep (5) where Λ, η > 0 are positive definite diagonal gain matrices. R t 
+
+> 0
+
+ep(τ )dτ is the additional integral term with integral gain η.
+
+Λ governs the error convergence bandwidth while η eliminates the steady-state errors under constant disturbances. The control output uc = ueq + usw combines nominal equivalent control ueq to handle nominal dynamics and switch-ing control usw to provide robustness. Setting ˙s = 0 yields: 
+
+˙s = ¨ ep + Λ ˙ep + ηep = 0 (¨ p − ¨pd) + Λ ˙ep + ηep = 0 (g + uc − ¨pd) + Λ ˙e + ηep = 0 
+
+(6) Fig. 2. Proposed system and control architecture 
+
+Solving for uc to obtain the equivalent control ueq 
+
+ueq = ¨ pd − Λ ˙ep − ηep − g (7) To dominate the disturbance bound σf , the switching term is defined with a positive definite diagonal gain matrix K >
+
+0 ∈ R3×3 :
+
+usw = −Ksgn (s) (8) where, sgn (s) is the signum function acting element-wise. This results in the complete virtual control law: 
+
+uc = ¨ pd − Λ ˙ep − ηep − g − Ksgn (s) (9) 
+
+B. SMC stability proof Theorem 1: Control law (9) drives tracking errors to mani-fold s = 0, ensuring asymptotic stability ( lim t→∞ ep(t) = 0). 
+
+Proof: Consider candidate Lyapunov function V (s) = 
+
+> 12
+
+sT s. Its time derivative along system trajectories, Substitut-ing (9) and (1), gives: 
+
+˙V = sT (g + uc + ∆f − ¨pd + Λ ˙ep + ηep)= sT (−Ksgn (s) + ∆f )= −K∥s∥ + sT ∆f
+
+(10) Using the Cauchy–Schwarz inequality sT ∆f ≤ ∥ s∥∥ ∆f ∥ ≤ ∥s∥σf and K∥s∥ ≥ 0˙V ≤ − K∥s∥ + ∥s∥σf
+
+≤ − (K−σf ) ∥s∥ (11) Selecting gain matrix K such that δ = K − σf > 0 ensures: 
+
+˙V ≤ − δ∥s∥ (12) Eq. (12) satisfies the sliding condition ˙V < 0 for s̸ = 0,ensuring stability. On the manifold ( s = 0), linear differential dynamics ¨ep + Λ ˙ep + ηep = 0 satisfy the Hurwitz stability criterion, proving ep → 0 as t → ∞ .
+
+C. Chattering mitigation 
+
+The discontinuous control action in (8) can cause high-frequency chattering which may excite unmodeled dynamics and cause actuator saturation and wear, particularly during rigid surface contact and aggressive maneuvers. This is at-tenuated by replacing sgn (s) in (8) with a smooth hyperbolic tangent function, sgn (s) ≈ tanh   s
+
+> ϵ
+
+, where ϵ defines the width of the boundary layer. IV. I NTERACTION CONTROL 
+
+In addition to motion control, regulating interaction forces is essential for safe and reliable inspection. A feedforward attitude augmented with an admittance controller is proposed for regulating the interaction force along the contact direction. In addition, the arm joint is used to compensate for the vehicle’s tilt to exert force against the surface. 
+
+A. Admittance-based force control 
+
+Static force equilibrium along the contact direction relates force Fx, pitch angle θ, and gravity: 
+
+Fx = −mg tan( θ) = ⇒ θd = − arctan 
+
+ Fd
+
+mg 
+
+
+
+(13) The desired pitch angle θd required to achieve a target force 
+
+Fd is feedforward to the attitude controller. Furthermore, a physical force sensor directly captures contact interaction and dynamic coupling. To ensure smooth interaction, an admittance law shapes the dynamic relationship between motion and force and dynami-cally modifies trajectory based on force error [9]: 
+
+Ma ¨xr + Da ˙xr = Fd − Fx (14) where Ma and Da denote virtual mass and damping and Fx
+
+is the measured contact force. The stiffness term is set to zero since the position of the environment is assumed to be unknown; a constant forward velocity is used to approach the surface and establish contact. Reference trajectory xr , ˙xr is updated via discrete integration: 
+
+¨xr [t] = M −1 
+
+> a
+
+(Fd − Fx − Da ˙xr [t − 1]) ˙xr [t] = ˙ xr [t − 1] + ¨ xr [t]∆ txr [t] = xr [t − 1] + ˙ xr [t]∆ t
+
+(15) Admittance control triggers when measured contact force reaches −1 N and the reference motion is tracked by the inner SMC controller along the interaction force. 
+
+B. Manipulator control 
+
+To maintain sensor alignment against the surface, joint angle setpoint qd offsets vehicle pitch angle θ:
+
+qd =
+
+(
+
+−θ if |Fx| > 1 N
+
+0 otherwise (16) This joint trajectory allows the arm to counteract UAV tilt by adjusting the contact geometry and improves contact stability during inspection. Joint motion is bounded by mechanical limits ( −π/ 2 ≤ q ≤ π/ 2), while admittance filter smooths pitch transitions during contact onset. A rate limiter is also recommended to avoid large overshoots. 
+
+C. Attitude projection 
+
+The virtual command uc is mapped to desired orientation matrix Rr = [ xb, yb, zb] ∈ SO (3) and thrust Td. Since the vehicle’s thrust is always produced along its vertical body axis, the desired body z-axis is the normalized control vector 
+
+zb = uc
+
+∥uc∥ (17) Projecting the desired yaw ψd onto the horizontal plane to get the heading vector in FI , xψ = [cos ψd, sin ψd, 0] T then constructing the orthonormal vector yb using the cross product of heading vector and thrust direction 
+
+yb = zb × xψ
+
+∥zb × xψ ∥ (18) Finally, xb is computed to complete the right-handed coordi-nate system 
+
+xb = yb × zb (19) The resulting rotation matrix Rr represents the transformation from FI to FB that is executed by the attitude controller. V. R ESULTS AND DISCUSSION 
+
+System performance was evaluated in PX4-Gazebo SITL (ROS2, 80 Hz control loop) using parameters listed in Table I. A 5% mass estimation error was injected to test controller robustness. Contact surface parameters were set to 10 7 N/m stiffness and 0.1 N·s/m damping. Arm joint was controlled by PID to track the desired joint angle qd. Control gains:                  
+
+> TABLE I AERIAL MANIPULATOR PARAMETERS
+> Parameter Value Unit
+> UAV mass m3.0 kg UAV inertia Jdiag(0.08, 0.08, 0.12) kg ·m2
+> UAV wheelbase 0.48 mArm length re0.4 mArm weight 0.3 kg
+
+K = diag (4 .0, 5.0, 6.0) , Λ = diag (5 .5, 5.0, 4.0) , η =
+
+diag (0 .01 , 0.01 , 2.5) , ϵ = 2 .3, Ma = 5 .0 kg, Da = 0 .8 N·s/m, obtained through empirical trial and error. Two scenarios have been used to evaluate the performance of the proposed system: free-flight and contact inspection scenarios. Performance metrics used are Root Mean Squared Errors (RMSE), error norm ∥ep∥ =
+
+q
+
+e2 
+
+> x
+
++ e2 
+
+> y
+
++ e2 
+
+> z
+
+, and control input norm ∥uc∥.
+
+A. Free flight tracking and coupling rejection 
+
+Free-flight motion tracking was tested along trajectory 
+
+pd(t) = [2 .0 sin( π 
+
+> 8
+
+t), 1.0 sin( π 
+
+> 4
+
+t), 1.0 sin( π 
+
+> 8
+
+t) + 2 .0] T m with simultaneous arm motion qd(t) = 0 .5 sin( π 
+
+> 6
+
+t) rad. The desired yaw ψd is kept zero. To demonstrate the performance of the proposed SMC controller, it is compared with classical PD control with inverse-dynamics compensation. The control parameters are set to Kp = [7 .5, 7.5, 13 .0] , and Kd = [5 .0, 5.0, 7.0] .As shown in Fig. 3 and the performance summary in Table II, SMC achieves lower tracking errors than PID control. Despite periodic arm motion (top-right), the controllers main-tained stable trajectory tracking (top-left).                
+
+> TABLE II PERFORMANCE SUMMARY FOR TRAJECTORY TRACKING
+> Controller x-RMSE y-RMSE z-RMSE ∥eR∥∥uc∥
+> SMC 0.021 0.034 0.004 0.01 0.698
+> PID 0.023 0.039 0.038 0.01 0.693
+
+Robustness was further tested by forcing the UAV to hover while subject to large arm swings qd(t) = π 
+
+> 2
+
+sin( π 
+
+> 2
+
+t) rad (Fig. 4). SMC suppressed dynamic coupling significantly better than PID. The RMSE of the x-position, the most affected by arm motion, is almost double for PID compared to SMC. The position error norm for PID is 4.5 cm, while the error norm for SMC is only 0.8 cm. 
+
+B. Contact interaction 
+
+The second scenario evaluates the proposed pitch-compensation and interaction control using the proposed aerial manipulator. The vehicle approaches the surface at constant velocity of 8 cm/s, establishes contact, and exerts a setpoint force Fd = −4 N as shown in Fig. 5. This scenario demonstrates the effectiveness of the proposed mechanism in maintaining stable contact. The UAV maintained a pitch angle of approximately 7◦ to achieve the -4 N pushing force, which was compensated by joint qd to preserve surface alignment. The x-position response, bottom-left plot, is color-coded with time to show how the SMC phase-plane (error vs error derivative in the bottom right plot) maintained the sliding state at the origin and quickly pulled the sliding surface back to the origin when the position setpoint changed at contact. The SMC maintained a UAV error norm of 1 cm for the yz-axes. Dynamic force tracking was evaluated using sinusoidal command Fd(t) = 2 sin( π 
+
+> 6
+
+t) − 5 N. The force tracking response and corresponding arm joint compensation are shown in Fig. 6. The controller tracked the target force accurately (RMSE = 0.12 N) with minimal position drift ( y-RMSE =0.009 m, z -RMSE = 0.003 m) and smooth control effort (∥uc∥ = 2 .46 ). Finally, to evaluate the system limit, the force setpoint was increased in steps until attitude stability was lost. The controller was able to exert up to 20 N of contact force, shown in Fig. 7, with a corresponding pitch angle of 31 degrees Fig. 3. Position tracking for SMC and PID. 
+
+Fig. 4. Position hold performance of PID and SMC under arm swing disturbance Fig. 5. Approach and establish contact 
+
+Fig. 6. Contact force tracking performance. 
+
+and a 0.88 N force RMSE. Without active arm compensation (qd = 0), the vehicle lost stability past 9 N, proving the importance of active joint alignment. 
+
+Fig. 7. Contact force step response with active pitch compensation. 
+
+VI. C ONCLUSION AND FUTURE WORK 
+
+This paper presented a robust control architecture for an underactuated aerial manipulator. By combining SMC with admittance-based force regulation, the system effectively man-ages the dynamic coupling between the UAV and its 1-DoF manipulator. Results confirmed that the proposed scheme outperforms classical PID control in tracking accuracy and disturbance rejection, achieving a force regulation RMSE of 0.12 N while maintaining surface alignment through active pitch compensation. Future work will focus on experimental validation on a physical prototype and extend the design to support push-and-slide applications, such as cleaning, and to handle different surface geometries. REFERENCES [1] A. Ollero, M. Tognon, A. Suarez, D. Lee, and A. Franchi, “Past, Present, and Future of Aerial Robotic Manipulators,” IEEE Transactions on Robotics , vol. 38, no. 1, pp. 626–645, Feb. 2022. [2] D. Lee, H. Seo, I. Jang, S. J. Lee, and H. J. Kim, “Aerial Manipulator Pushing a Movable Structure Using a DOB-Based Robust Controller,” 
+
+IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 723–730, Apr. 2021. [3] T. Nishio, M. Zhao, K. Okada, and M. Inaba, “Design, Control, and Motion Planning for a Root-Perching Rotor-Distributed Manipulator,” 
+
+IEEE Transactions on Robotics , vol. 40, pp. 660–676, 2024. [4] K. Bodie, M. Brunner, and M. Allenspach, Omnidirectional Tilt-Rotor Flying Robots for Aerial Physical Interaction: Modelling, Control, Design and Experiments . Springer Nature, 2023, vol. 157. [5] S. Yi, K. Watanabe, and I. Nagai, “Backstepping-based Super-Twisting Sliding Mode Control for a Quadrotor Manipulator with Tiltable Rotors,” 
+
+Journal of Robotics and Control (JRC) , vol. 3, no. 2, pp. 128–137, Feb. 2022. [6] T. A. H. Alqutami, M. W. Dunnigan, and Y. Petillot, “Modeling and mo-tion control of a fully actuated multirotor for aerial manipulation using px4 and ros2,” in 2024 9th International Conference on Mechatronics Engineering (ICOM) . IEEE, 2024, pp. 396–401. [7] Y. Chen, L. Lan, X. Liu, G. Zeng, C. Shang, Z. Miao, H. Wang, Y. Wang, and Q. Shen, “Adaptive Stiffness Visual Servoing for Unmanned Aerial Manipulators With Prescribed Performance,” IEEE Transactions on Industrial Electronics , vol. 71, no. 9, pp. 11 028–11 038, Sep. 2024. [8] X. Meng, Y. He, Q. Li, F. Gu, L. Yang, T. Yan, and J. Han, “Contact force control of an aerial manipulator in pressing an emergency switch process,” in 2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2018, pp. 2107–2113. [9] T. A. H. Alqutami, M. W. Dunnigan, Y. Petillot, and I. A.-T. Mahmood, “Modeling and control of a fully actuated aerial manipulator using px4 for aerial interaction,” in International Conference on E-Mobility .Springer, 2024, pp. 65–77. [10] M. A. Rafique, M. E. Elshaar, and A. F. Lynch, “Adaptive Backstepping Control of an Unmanned Aerial Manipulator,” Machines , vol. 13, no. 10, p. 915, Oct. 2025. [11] J. Liang, Y. Chen, Y. Wu, H. Zhong, Z. Miao, H. Zhang, and Y. Wang, “Active Physical Interaction Control for Aerial Manipulator Based on External Wrench Estimation,” IEEE/ASME Transactions on Mechatron-ics , vol. 28, no. 5, pp. 2774–2785, Oct. 2023. [12] J. Liang, Y. Chen, N. Lai, B. He, Z. Miao, and Y. Wang, “Low-Complexity Prescribed Performance Control for Unmanned Aerial Manipulator Robot System Under Model Uncertainty and Unknown Disturbances,” IEEE Transactions on Industrial Informatics , vol. 18, no. 7, pp. 4632–4641, Jul. 2022. [13] D. K. D. Villa, A. S. Brand˜ ao, and M. Sarcinelli-Filho, “Adaptive sliding mode control applied to quadrotors - a practical comparative study,” 
+
+Journal of the Franklin Institute , vol. 360, no. 16, pp. 11 578–11 599, Nov. 2023. [14] J. M. Arizaga, A. Miranda-Moya, H. Casta˜ neda, and P. Castillo, “Observer-based adaptive control for slung payload stabilization with a fully-actuated multirotor UAV,” ISA Transactions , vol. 147, pp. 109– 117, Apr. 2024. [15] C. Yao, J. Krieglstein, and K. Janschek, “Modeling and Sliding Mode Control of a Fully-actuated Multirotor with Tilted Propellers,” IFAC-PapersOnLine , vol. 51, no. 22, pp. 115–120, Jan. 2018. [16] M. Zhao, X. Tang, S. Liu, H. Liu, and Y. Zhang, “Based on Iterative Terminal Sliding Mode Aerial Manipulation Control,” in 2023 5th International Conference on Robotics, Intelligent Control and Artificial Intelligence (RICAI) , Dec. 2023, pp. 322–327. [17] W. Xu, L. Cao, B. Peng, L. Wang, C. Gen, and Y. Liu, “Adaptive Nonsingular Fast Terminal Sliding Mode Control of Aerial Manipulation Based on Nonlinear Disturbance Observer,” Drones , vol. 7, no. 2, p. 88, Feb. 2023. [18] D. Brescianini, M. Hehn, and R. D’Andrea, “Nonlinear quadrocopter attitude control: Technical report,” ETH Zurich, Tech. Rep., 2013.

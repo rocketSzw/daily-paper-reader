@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-15</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-16</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 14 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-15 20:45:45 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-16 20:48:59 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读7篇、速读12篇，聚焦无人机对接与空中视觉语言导航，共19篇论文。</p>
-<p>最值得看：基于序列凸优化的无人机对接控制（9.0）与因果记忆扩散规划导航（9.0），速读中世界动作模型与风感规划也值得关注。</p>
-<p>建议优先精读这两篇高分论文，并速读速读列表中的三篇8分工作以拓宽视野。</p>
+<p>今日精读6篇、速读8篇，共14篇论文，重点覆盖自动驾驶4D世界建模与具身智能赛车智能体。</p>
+<p>最值得关注的是《4D-WAM》提出的4D一致世界模型，以及世界模型驱动赛车智能体在认知-物理极限上的突破，均获8.0高分。</p>
+<p>建议普通读者优先追踪“世界模型”方向，它正同时赋能自动驾驶和高动态具身控制，未来应用潜力大。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">6 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Nonlinear Model Predictive Control via Sequential Convex Programming for Drone-to-Drone Docking">Nonlinear Model Predictive Control via Sequential Convex Programming for Drone-to-Drone Docking</span></li><li><span class="dpr-home-dashboard-paper-title" title="DreamFly: Causal Memory and Receding-Horizon Diffusion Planning for Aerial Vision-Language Navigation">DreamFly: Causal Memory and Receding-Horizon Diffusion Planning for Aerial Vision-Language Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN">AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="4D-WAM: 4D Consistent World Modeling for Autonomous Driving">4D-WAM: 4D Consistent World Modeling for Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="Toward the Cognitive--Physical Limits of Embodied Intelligence through a World-Model-Centric Autonomous Racing Agent">Toward the Cognitive--Physical Limits of Embodied Intelligence through a World-Model-Centric Autonomous Racing Agent</span></li><li><span class="dpr-home-dashboard-paper-title" title="IADD-TR: Intervention-Aware Dynamics Decoupling with Targeted Regularization for Model-Based Reinforcement Learning">IADD-TR: Intervention-Aware Dynamics Decoupling with Targeted Regularization for Model-Based Reinforcement Learning</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HarnessWAM: Bridging Prediction and Deliberation in World Action Models">HarnessWAM: Bridging Prediction and Deliberation in World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Wind-Informed Rapid Flight-Planning in Complex Urban Topologies via Machine Learning and Experimental Validation">Wind-Informed Rapid Flight-Planning in Complex Urban Topologies via Machine Learning and Experimental Validation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Dreamer-SAC: Off-Policy Learning in Latent World Models for Sample-Efficient Autonomous Driving">Dreamer-SAC: Off-Policy Learning in Latent World Models for Sample-Efficient Autonomous Driving</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Tether-Inertial Localization for Planetary Drones">Tether-Inertial Localization for Planetary Drones</span></li><li><span class="dpr-home-dashboard-paper-title" title="Information-Aware Model Predictive Control for Satellite Inspection Missions">Information-Aware Model Predictive Control for Satellite Inspection Missions</span></li><li><span class="dpr-home-dashboard-paper-title" title="V-Simba: Unleashing the Architectural Potential of RL in Visual Continuous Control">V-Simba: Unleashing the Architectural Potential of RL in Visual Continuous Control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 
