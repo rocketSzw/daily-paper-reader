@@ -1,0 +1,1082 @@
+Title: Submillisecond Sequential Convex Optimization for Powered Landing via Dynamics Condensation and xPIPG
+
+URL Source: https://arxiv.org/pdf/2608.10395v1
+
+Published Time: Wed, 12 Aug 2026 00:28:51 GMT
+
+Number of Pages: 34
+
+Markdown Content:
+# Submillisecond Sequential Convex Optimization for Powered Landing via Dynamics Condensation and xPIPG 
+
+Wenbo Li 1, Ziqi Xu 2, Dai Shen 2, and Shengping Gong 2,3,* 
+
+> 1
+
+School of Aerospace Engineering, Tsinghua University, Beijing 100084, China 
+
+> 2
+
+School of Astronautics, Beihang University, Beijing 102206, China 
+
+> 3
+
+State Key Laboratory of High-Efficiency Reusable Aerospace Transportation Technology, Beijing 102206, China 
+
+> *
+
+Corresponding author 
+
+Manuscript prepared July 27, 2026 
+
+Powered landing with variable mass, free final time, and quadratic aerodynamic drag requires the repeated solution of local convex subproblems, whose main online cost lies in the long dynamics-equality chain and the inner iterations. This paper develops a condensed sequential convex approximation designed for low latency. Exact block elimination removes 217 intermediate-state components and 210 interval equations from a 31-node model, leaving 100 primal variables coupled by six terminal equalities. A low-weight energy term and fixed quadratic proximal regularization make the ideal surrogate strongly convex with predictable curvature. The inner solver is an extrapolated proportional–integral projected gradient (xPIPG) implemented with fixed-size arrays, 3 × 3 interval solves, and a fused one-pass node map. The one-pass map is a deliberate low-cost approximation, not the exact joint proximal operator. We therefore evaluate the timed code by nonlinear trajectory residuals and independent physical checks rather than by a claim of exact KKT convergence. The single-precision C implementation completes one plan in four outer updates and 336 xPIPG updates. On an Intel Core i7-10875H, the median end-to-end solve time is 374 μs and the P99 value is 512 μs. All 100 common initial-state perturbations pass validation, and the median remains below 0.7 ms for 15–51 nodes. An independent high-accuracy first-order-hold integration gives a terminal position error of 0.183 m. Within the stated model, hardware, stopping rule, and timing boundary, this is, to the authors’ knowledge, the first submillisecond end-to-end sequential-convex solve for a single powered-landing trajectory. 
+
+# Nomenclature 
+
+𝐴 𝑘 , 𝐵 𝑘 , 𝐸 𝑘 = interval state-transition and endpoint-control matrices 
+
+𝐶 𝑓 = selector for terminal position and velocity arXiv:2608.10395v1 [math.OC] 11 Aug 2026 𝐷 𝑐 = invertible column-scaling matrix 
+
+𝑒 𝑓 = normalized nonlinear terminal residual 
+
+𝐹 𝑥 , 𝐹 𝑞 = continuous-time state and control Jacobians 
+
+𝐻, 𝒃 = condensed terminal-equality matrix and right-hand side 
+
+𝐼 𝑠 𝑝 = specific impulse 
+
+𝐽 𝑓 , 𝐽 𝜆 = pure-fuel and fuel–energy objectives 
+
+𝑚, 𝑚 dry = vehicle mass and dry-mass lower bound 
+
+𝑁 = number of temporal nodes 
+
+𝑃, 𝒄 , 𝑔 = quadratic-cost matrix, linear-cost vector, and nonsmooth function 
+
+𝒒 , 𝑻 = normalized and dimensional thrust vectors 
+
+𝒓 , 𝒗 = position and velocity 
+
+𝑡 𝑓 , 𝜏 = final time and normalized final time 
+
+𝑇 min , 𝑇 max = minimum and maximum thrust magnitudes 
+
+𝛼, 𝛽, 𝜌 𝑒 = primal step size, dual step size, and extrapolation factor 
+
+𝜆 = energy fraction in the fuel-dominant objective 
+
+𝜇 𝜈 = virtual-buffer penalty 
+
+𝜼 = terminal-equality multiplier 
+
+𝝂 = terminal virtual buffer 
+
+𝜔 𝑘 = trapezoidal quadrature weight Superscripts and decorations 
+
+(·) 𝑝 = outer sequential-convex-approximation iteration 
+
+(¯·) = reference quantity about which a model is linearized 
+
+(e·) = scaled internal quantity 
+
+# I. Introduction 
+
+# Powered-landing guidance must produce a feasible thrust history within a short guidance cycle while satisfying terminal position, terminal velocity, and actuator constraints. Convex optimization provides globally optimal solutions for important translational landing models [1, 2], and flight demonstrations have established the practical relevance of optimization-based guidance [3]. More general models with aerodynamic forces, free final time, six-degree-of-freedom dynamics, and state-triggered constraints are commonly treated through successive or sequential convexification [4–6], which replaces a difficult nonlinear optimal-control problem with a sequence of locally valid convex subproblems. 2The online bottleneck is often not the outer linearization itself but the repeated solution of those subproblems. Interior-point methods solve these conic subproblems accurately and robustly in a small number of iterations, and embedded implementations have reduced their computational burden considerably [7–9]. Nevertheless, retaining every discrete state produces a large equality chain and a Karush–Kuhn–Tucker (KKT) system whose dimension grows with the number of nodes. First-order primal–dual methods replace factorization with matrix–vector products and projections. In particular, proportional–integral projected gradient (PIPG) and extrapolated PIPG (xPIPG) provide a useful basis for customized trajectory-optimization solvers [10–13]. An inexpensive inner iteration does not by itself guarantee an inexpensive end-to-end solve. The formulation must expose the dimensions that actually matter. For the translational problem considered here, hard equalities act only on the terminal position and velocity, whereas the intermediate states are uniquely determined by the initial condition, the controls, and the final time once a linearized dynamics chain is fixed. Those states can therefore be eliminated before the inner iteration. Moreover, a pure fuel objective has broad, low-curvature faces and nonsmooth nodewise norms. Adding a small energy term and fixed proximal regularization yields a strongly convex local surrogate with predictable diagonal curvature. Table 2 places the reported timing in context. The entries are deliberately not normalized across hardware, dynamics, accuracy, or timing boundaries; they show only the latency regime that each source actually reports. The closest customized three-degree-of-freedom PIPG result solves a single lossless-convexification problem in 4.25 ms for 20 nodes, whereas a complete 16-node sequential-conic rocket-landing solve averages 13.7 ms [12, 14]. Atmospheric and six-degree-of-freedom successive-convexification studies report hundreds of milliseconds [5, 15]. Recent GPU work targets throughput for large Monte Carlo batches rather than submillisecond serial latency for one trajectory [16]. A search of the published powered-landing literature through July 2026 found no other single-instance end-to-end sequential-convex solve reported below 1 ms. The “first” and “fastest” statements in this paper are therefore qualified by the authors’ knowledge, the literature surveyed here, and the nonuniform test conditions. The paper is organized around one practical question: what work must actually be performed during each online plan? Its principal contributions are: 1) A proximal-regularized sequential convex approximation is derived for variable-mass powered landing with free final time, exponential atmospheric density, quadratic drag, thrust pointing, and an inner approximation of the minimum-thrust set. A dimensionally scaled fuel–energy term and fixed quadratic regularization make the ideal surrogate strongly convex. 2) Exact algebraic condensation is proved to preserve the projected feasible set and the optimum of each linearized subproblem. For 𝑁 = 31, it replaces 217 intermediate-state variables and 210 interval equations with a 6 × 100 terminal-equality matrix. 3) The condensed structure is then matched to xPIPG: the only global couplings are products involving the six 3Table 2 Position of the present result relative to representative customized powered-landing optimizers. The reported times are source-specific and do not constitute a hardware-normalized benchmark. 
+
+Source Landing problem Online formulation Reported latency Distinguishing scope Szmuk et al. [5] 6-DoF, free final time, state-triggered constraints Full-state successive convexification with ECOS maximum below 0.7 s Broad nonlin-ear model and trust-region acceptance Elango et al. [12] 3-DoF, fixed-time LCvx Customized full-state PIPG; one convex prob-lem 4.25 ms reference tracking; 10.61 ms minimum fuel at 20 nodes Exact simple-set projections; not an outer sequen-tial solve Kamath et al. [14] Multiphase nonlinear rocket landing, 16 nodes Sequential conic opti-mization with PIPG 13.7 ms mean for an end-to-end solve Free phase times and compound constraints Chen et al. [15] Atmospheric powered de-scent Successive convexifica-tion with customized interior-point solves approximately 0.6 s on a radiation-hardened processor Representative flight processor and aerodynamic dynamics Chari et al. [16] 6-DoF, free-final-time Monte Carlo Prox-linear SCP and customized PIPG on GPU batch-throughput result; no compara-ble submillisecond serial claim Continuous-time constraint refor-mulation and parallel Monte Carlo Present work 3-DoF, free final time, vari-able mass, constant-𝐶 𝐷 drag, 31 nodes Exact dynamics con-densation, strongly con-vex surrogate, one-pass xPIPG map 0.374 ms median; 0.512 ms P99 end to end First reported submillisecond regime within the stated scope terminal rows, while a deliberately approximate one-pass node map prioritizes latency. The paper distinguishes this map from the exact joint proximal operator and limits its convergence claims accordingly. 4) A fixed-array C17 implementation combines node reuse, a 3 × 3 interval Schur complement, active-column sensitivity propagation, cached matrix products, and downsampled stopping checks. End-to-end solves require hundreds of microseconds rather than milliseconds on the reported desktop processor. 5) Nominal, common-sample Monte Carlo, grid-size, high-order propagation, proximal-map, and spectral audits report both performance and its validity limits. Within the reviewed literature, the measured 374 μs median is the fastest known reported end-to-end result for one sequential-convex powered-landing trajectory. The main novelty is therefore not a new generic PIPG iteration, nor a claim that the nonlinear landing problem has become globally convex. It lies instead in the joint construction of a completely condensed, strongly curved sequence of local models and a fixed-work implementation that reaches a previously unreported latency regime. Exactness applies to the dynamics elimination, not to the one-pass node map or to the global convergence of the outer nonlinear iteration. 4II. Nonlinear Powered-Landing Problem 
+
+A. States, Controls, and Aerodynamics 
+
+We use a local Cartesian frame with the 𝑦 axis vertical and the 𝑥 and 𝑧 axes horizontal. The state and thrust are 
+
+𝒙 = [𝒓 T, 𝒗 T, 𝑚 ]T ∈ R7, 𝑻 ∈ R3, (1) where 𝒓 , 𝒗 , and 𝑚 denote position, velocity, and mass. Gravity is 𝒈 = [0, −𝑔 0, 0]T. The normalized control and final time are 
+
+𝒒 = 𝑻 
+
+𝑇 max 
+
+, 𝜏 = 𝑡 𝑓 
+
+𝑡 𝑠 
+
+, 𝑡 𝑠 = 30 s . (2) The continuous dynamics are 
+
+¤𝒓 = 𝒗 , (3a) 
+
+¤𝒗 = 𝒈 + 𝑻 + 𝑫 
+
+𝑚 , (3b) 
+
+¤𝑚 = − ∥𝑻 ∥2
+
+𝐼 𝑠 𝑝 𝑔 0
+
+. (3c) With the relative velocity 𝒗 𝑎 = 𝒗 − 𝒗 𝑤 and altitude ℎ = max (𝑦, 0), the density law and drag model are 
+
+𝜌 (ℎ) = 𝜌 0 exp (− ℎ/𝐻 𝑠 ), (4) 
+
+𝑫 = − 12 𝜌 (ℎ)𝑆𝐶 𝐷 ∥𝒗 𝑎 ∥2 𝒗 𝑎 . (5) The nominal case sets 𝒗 𝑤 = 0 and 𝐶 𝐷 = 1.5. Equation (5) guarantees 
+
+𝑫 T 𝒗 𝑎 = − 12 𝜌𝑆𝐶 𝐷 ∥𝒗 𝑎 ∥32 ≤ 0, (6) so the drag force cannot add mechanical energy. The constant drag coefficient deliberately isolates the algorithmic effects of state-dependent density, velocity-squared drag, and variable mass; it does not represent a vehicle-specific aerodynamic database. 
+
+B. Boundary Conditions and Thrust Set 
+
+The initial state is fixed, and the terminal position and velocity are zero: 
+
+𝒙 (0) = 𝒙 0, 𝒓 (𝑡 𝑓 ) = 0, 𝒗 (𝑡 𝑓 ) = 0. (7) 5The remaining physical constraints are 
+
+𝑚 (𝑡 ) ≥ 𝑚 dry , (8) 
+
+𝑇 min ≤ ∥ 𝑻 ∥2 ≤ 𝑇 max , (9) 
+
+𝒆 T
+
+> 𝑦
+
+𝑻 ≥ cos 𝜃 max ∥𝑻 ∥2 , 𝒆 𝑦 = [0, 1, 0]T . (10) In normalized coordinates, the pointing constraint becomes the second-order cone 
+
+[𝑞 𝑥 , 𝑞 𝑧 ]T 
+
+> 2
+
+≤ tan 𝜃 max 𝑞 𝑦 . (11) The lower-thrust set ∥𝒒 ∥2 ≥ 𝑞 min is nonconvex, so we replace it at each outer iteration by a conservative inner approximation. At outer iteration 𝑝 , define 
+
+𝒅 𝑝 𝑘 = ¯𝒒 𝑝 𝑘 
+
+¯𝒒 𝑝 𝑘 2
+
+(12) and impose the conservative half-space 
+
+( 𝒅 𝑝 𝑘 )T 𝒒 𝑘 ≥ 𝑞 min . (13) Because 𝒅 𝑝 𝑘 has unit norm, Eq. (13) implies the true lower bound. We nevertheless check every accepted trajectory against the original Euclidean thrust magnitude. 
+
+C. Fuel-Dominant Objective 
+
+In normalized time 𝑠 = 𝑡 /𝑡 𝑓 ∈ [ 0, 1], the main solver minimizes 
+
+𝐽 𝜆 = 𝜏 
+
+∫ 10
+
+(1 − 𝜆 ) ∥ 𝒒 (𝑠 )∥ 2 + 𝜆 ∥𝒒 (𝑠 )∥ 22
+
+ d𝑠, 𝜆 = 0.01 . (14) The first term approximates total impulse, whereas the small quadratic term supplies control curvature. The full-state ECOS reference uses the pure-fuel objective 
+
+𝐽 𝑓 = 𝜏 
+
+∫ 10
+
+∥𝒒 (𝑠 )∥ 2 d𝑠. (15) Consequently, the two implementations serve as engineering references with closely related physical objectives, not as two algorithms applied to an identical conic program. 6III. Proximal-Regularized Sequential Convex Approximation 
+
+A. Trapezoidal Discretization 
+
+The default grid has 𝑁 = 31 nodes and spacing ℎ𝑠 = 1/( 𝑁 − 1). In normalized time, d𝒙 
+
+d𝑠 = 𝑡 𝑠 𝜏 𝒇 (𝒙 , 𝒒 ). (16) The implicit trapezoidal defect on interval 𝑘 is 
+
+𝒄 𝑘 = 𝒙 𝑘 +1 − 𝒙 𝑘 − 𝛾𝜏 ( 𝒇 𝑘 + 𝒇 𝑘 +1) = 0, 𝛾 = ℎ𝑠 𝑡 𝑠 
+
+2 . (17) For nonlinear propagation, Newton iteration recovers 𝒙 𝑘 +1 in at most 12 steps, with the previous outer trajectory as the initial guess. 
+
+B. Interval Linearization 
+
+At the reference ( ¯𝒙 , ¯𝒒 , ¯𝜏 ), let 𝐹 𝑥,𝑘 = 𝜕 𝒇 𝑘 /𝜕 𝒙 𝑘 and 𝐹 𝑞,𝑘 = 𝜕 𝒇 𝑘 /𝜕 𝒒 𝑘 . A first-order expansion of Eq. (17) gives 
+
+𝑀 𝑘 𝛿 𝒙 𝑘 +1 = 𝑅 𝑘 𝛿 𝒙 𝑘 + 𝑈 𝑘 𝛿 𝒒 𝑘 + 𝑉 𝑘 𝛿 𝒒 𝑘 +1
+
++ 𝒔 𝑘 𝛿𝜏 − ¯𝒄 𝑘 , (18) where 
+
+𝑀 𝑘 = 𝐼 − 𝛾 ¯𝜏𝐹 𝑥,𝑘 +1, 𝑅 𝑘 = 𝐼 + 𝛾 ¯𝜏𝐹 𝑥,𝑘 , (19) 
+
+𝑈 𝑘 = 𝛾 ¯𝜏𝐹 𝑞,𝑘 , 𝑉 𝑘 = 𝛾 ¯𝜏𝐹 𝑞,𝑘 +1, (20) 
+
+𝒔 𝑘 = 𝛾 ( ¯𝒇 𝑘 + ¯𝒇 𝑘 +1). (21) Solving for the right endpoint yields 
+
+𝛿 𝒙 𝑘 +1 = 𝐴 𝑘 𝛿 𝒙 𝑘 + 𝐵 𝑘 𝛿 𝒒 𝑘 + 𝐸 𝑘 𝛿 𝒒 𝑘 +1 + 𝒈 𝑘 𝛿𝜏 + 𝒂 𝑘 . (22) The C implementation fills the known Jacobian blocks analytically. In particular, 
+
+𝜕 ¤𝒓 
+
+𝜕 𝒗 = 𝐼 3, 𝜕 [( 𝑻 + 𝑫 )/ 𝑚 ]
+
+𝜕𝑚 = − 𝑻 + 𝑫 
+
+𝑚 2 , (23) 7and the control Jacobian is 
+
+𝜕 ¤𝒗 
+
+𝜕 𝑻 = 𝐼 3
+
+𝑚 , 𝜕 ¤𝑚 𝜕 𝑻 = − 𝑻 T
+
+∥𝑻 ∥2 𝐼 𝑠 𝑝 𝑔 0
+
+. (24) Only the three drag derivatives with respect to velocity use forward differences, 
+
+Δ𝑣 𝑖 = 10 −4 max (1, |𝑣 𝑖 |) . (25) Each node is linearized once and shared by the two adjacent intervals, which reduces the 60 nominal endpoint evaluations to 31 unique-node evaluations per outer iteration. 
+
+C. Virtual Buffer and Fixed Quadratic Proximal Regularization 
+
+Early linearized models may be unable to satisfy the six terminal equations exactly, so a physical terminal buffer 
+
+𝝂 ∈ R6 is introduced and penalized through 
+
+𝐽 𝜈 = 𝜇 𝜈 
+
+2 ∥𝝂 ∥22 . (26) The initial 𝜇 𝜈 = 50 is multiplied by five while the nonlinear terminal residual exceeds 10 −3, up to 2 × 10 6. Internally, the scaled variable 𝒗 𝜈 = √𝜇 𝜈 𝝂 has unit curvature and enters the terminal equality through the factor 𝐼 /√𝜇 𝜈 .The current implementation uses a fixed quadratic proximal regularization, 
+
+𝐽 prox = 𝑤 𝑞 
+
+2 ∥𝒒 − ¯𝒒 ∥22 + 𝑤 𝑡 
+
+2 (𝜏 − ¯𝜏 )2, 𝑤 𝑞 = 0.02 , 𝑤 𝑡 = 1. (27) The term penalizes deviation from the linearization point without shrinking the physical feasible set. Every solved step is accepted in full and followed by one nonlinear propagation; no acceptance ratio, candidate enumeration, backtracking, or dynamic radius update is used. One outer iteration is therefore a fixed sequence: linearize, condense, solve once, and propagate once. 
+
+D. Full-State Convex Subproblem 
+
+Define the nodewise convex thrust set 
+
+U 𝑝 𝑘 = {𝒒 : ∥𝒒 ∥2 ≤ 1, [𝑞 𝑥 , 𝑞 𝑧 ]T 
+
+> 2
+
+≤ tan 𝜃 max 𝑞 𝑦 ,
+
+( 𝒅 𝑝 𝑘 )T 𝒒 ≥ 𝑞 min }.
+
+(28) The absolute-control form of Eq. (22) is 
+
+𝛿 𝒙 𝑘 +1 = 𝐴 𝑘 𝛿 𝒙 𝑘 + 𝐵 𝑘 𝒒 𝑘 + 𝐸 𝑘 𝒒 𝑘 +1 + 𝒈 𝑘 𝜏 + e𝒂 𝑘 . (29) 8Let 𝜑 (𝒒 ) denote the trapezoidal discretization of the integrand in Eq. (14). At iteration 𝑝 , the subproblem is min ¯𝜏 𝑝 𝜑 (𝒒 ) + 𝜑 ( ¯𝒒 𝑝 )( 𝜏 − ¯𝜏 𝑝 ) + 𝐽 prox + 𝐽 𝜈 , (30a) s.t. 𝛿 𝒙 1 = 0, (30b) Eq. (29) , 𝑘 = 1, . . . , 𝑁 − 1, (30c) 
+
+𝐶 𝑓 ( ¯𝒙 𝑝 𝑁 + 𝛿 𝒙 𝑁 ) − 𝒙 (6) 
+
+> 𝑓
+
++ 𝝂 = 0, (30d) 
+
+𝒒 𝑘 ∈ U 𝑝 𝑘 , 𝜏 min ≤ 𝜏 ≤ 𝜏 max . (30e) The time–control product is linearized in time alone; the convex group norms and control curvature are retained. All constraints are affine or closed convex sets, and the quadratic terms give every control, time, and scaled-buffer component positive curvature. Each subproblem is therefore strongly convex even though the original aerodynamic problem is not. 
+
+# IV. Exact Dynamics Condensation 
+
+A. Block-Elimination Interpretation 
+
+Stack the unknown state increments as 
+
+Δ𝑿 = [𝛿 𝒙 T 
+
+> 2
+
+, . . . , 𝛿 𝒙 T 
+
+> 𝑁
+
+]T (31) and the control-time increments as Δ𝒖 . Before explicit inversion, the interval equations assemble into 
+
+
+
+𝑀 1
+
+−𝑅 2 𝑀 2
+
+. . . . . .
+
+−𝑅 𝑁 −1 𝑀 𝑁 −1
+
+| {z }
+
+> L
+
+Δ𝑿 = BΔ𝒖 + 𝒅 . (32) If every implicit-trapezoid block 𝑀 𝑘 is nonsingular, then the block lower-triangular matrix L is nonsingular and 
+
+Δ𝑿 = L−1BΔ𝒖 + L −1 𝒅 . (33) The inverse in Eq. (33) is not formed; it only expresses the algebraic equivalence between a block forward solve and elimination of the state chain. Selecting the last state and substituting it into Eq. (30d) yields the terminal Schur complement. 9B. Terminal-Sensitivity Recursion 
+
+For all 93 control increments, write each state increment as 
+
+𝛿 𝒙 𝑘 = 𝒄 𝑘 + 𝐺 𝑘 𝛿 𝒒 + 𝒈 𝜏,𝑘 𝛿𝜏. (34) Starting from 𝒄 1 = 0, 𝐺 1 = 0, and 𝒈 𝜏, 1 = 0, the forward recursion is 
+
+𝒄 𝑘 +1 = 𝐴 𝑘 𝒄 𝑘 + 𝒂 𝑘 , (35) 
+
+𝐺 𝑘 +1 = 𝐴 𝑘 𝐺 𝑘 + B 𝑘 , (36) 
+
+𝒈 𝜏,𝑘 +1 = 𝐴 𝑘 𝒈 𝜏,𝑘 + 𝒈 𝑘 , (37) where B𝑘 retains only the current 𝐵 𝑘 and 𝐸 𝑘 control blocks. The terminal position and velocity, together with the virtual buffer, reduce to 
+
+𝐻 𝑞 𝛿 𝒒 + 𝒉 𝜏 𝛿𝜏 + 𝐷 𝜈 𝒗 𝜈 = 𝒃 , 𝐻 𝒛 = 𝒃 , (38) with 
+
+𝒛 = [𝛿 𝒒 T, 𝛿𝜏, 𝒗 T 
+
+> 𝜈
+
+]T ∈ R100 , 𝐻 ∈ R6×100 . (39) Let F 𝑝  
+
+> full
+
+be the feasible set of Eq. (30) and let Π𝑞, 𝜏,𝜈 denote the projection onto the control, time, and buffer coordinates. Because L is invertible, each condensed feasible point generates exactly one state sequence through Eq. (34), and each full-state feasible point satisfies Eq. (38). Thus 
+
+Π𝑞, 𝜏,𝜈 (F 𝑝 
+
+> full
+
+) = F 𝑝 
+
+> con
+
+. (40) Because the objective depends only on (𝒒 , 𝜏, 𝝂 ), the condensed and full-state forms share the same optimal control, time, buffer, and objective value for the current linearization. This equivalence does not extend to the nonlinear dynamics; nonlinear consistency is restored by the outer propagation. 
+
+C. Structured Interval Solve 
+
+With state order (𝒓 , 𝒗 , 𝑚 ), the state Jacobian has the approximate block form 
+
+𝐹 𝑥 =
+
+
+
+0 𝐼 0
+
+𝐴 𝑟 𝐴 𝑣 𝒂 𝑚 
+
+0 0 0
+
+
+
+. (41) 10 For 𝑐 = 𝛾 ¯𝜏 , solving (𝐼 − 𝑐𝐹 𝑥 )𝒘 = 𝒃 yields 
+
+𝒘 𝑟 = 𝒃 𝑟 + 𝑐 𝒘 𝑣 , 𝑤 𝑚 = 𝑏 𝑚 , (42) and leaves only 
+
+(𝐼 − 𝑐 𝐴 𝑣 − 𝑐 2 𝐴 𝑟 )
+
+| {z }
+
+> 𝑆 𝑣
+
+𝒘 𝑣 = 𝒃 𝑣 + 𝑐 𝐴 𝑟 𝒃 𝑟 + 𝑐 𝒂 𝑚 𝑏 𝑚 . (43) The implementation reuses a single pivoted 3 × 3 LU factorization of 𝑆 𝑣 across 15 right-hand sides: seven state-transition columns, six endpoint-control columns, one time column, and one defect column. The condensation requires every interval matrix 𝑀 𝑘 = 𝐼 − 𝛾 ¯𝜏𝐹 𝑥,𝑘 +1, equivalently its Schur complement 𝑆 𝑣 , to be nonsingular. The implementation rejects any factorization whose pivot falls below its numerical threshold; no rejection occurs in the nominal solve. An offline double-precision audit of the final 30 interval matrices yields a maximum two-norm condition number of 1.436 and a minimum reciprocal one-norm condition estimate of 5.333e-01. These values support the nonsingularity assumption for the reported trajectory but do not guarantee invertibility over a wider mission envelope. At interval 𝑘 , future controls cannot yet influence the current state, so the implementation propagates only the active prefix of 𝐺 𝑘 . For 𝑁 = 31, the number of propagated control-column instances is  
+
+> 𝑁 −2
+
+∑︁ 
+
+> 𝑘 =0
+
+3(𝑘 + 2) = 32 (𝑁 − 1)( 𝑁 + 2) = 1485 , (44) instead of the 2790 instances required by an unconditional 93-column propagation—a 46.8% reduction. 
+
+D. Scaling and Rank 
+
+We scale terminal position and velocity by 500 m and 50 m s −1, respectively, and then normalize each terminal row to unit Euclidean norm. The internal column scale is 
+
+𝐷 𝑐 = diag (1, . . . , 1
+
+| {z }
+
+> 93
+
+, 0.5, 0.25 , . . . , 0.25 
+
+| {z }
+
+> 6
+
+). (45) With terminal physical scale 𝑆 𝑓 and row normalization 𝑅 , the solver receives 
+
+e𝐻 = 𝑅𝑆 𝑓 𝐻𝐷 𝑐 , e𝒃 = 𝑅𝑆 𝑓 𝒃 . (46) The objective curvature and linear vector are transformed consistently. Because the six buffer columns are diagonal and nonzero for finite 𝜇 𝜈 , the condensed equality retains full row rank even when the early control sensitivities are nearly 11 Table 3 Dimensions of the convex subproblem for the default 31-node case 
+
+Quantity Condensed xPIPG Full-state ECOS Intermediate-state variables 0 217 Control variables 93 93 Final-time variables 1 1Buffer and epigraph variables 6 45 Total primal variables 100 356 Equality constraints 6 223 Second-order cones proximal 64 Dominant linear algebra 6 × 100 products sparse KKT factorization dependent. Complete condensation is most favorable when hard state-path constraints are absent or few. Condensing nodewise dynamic-pressure, heating, obstacle, or angle-of-attack constraints would introduce dense control rows, so such problems may instead favor partial condensation or the original sparse full-state form. 
+
+# V. Strongly Convex Surrogate and Latency-Oriented xPIPG 
+
+A. Separable Objective 
+
+Let 𝜔 1 = 𝜔 𝑁 = 1/2 and all other trapezoidal weights equal one, and set Δ𝑠 = 1/( 𝑁 − 1). Define 
+
+𝜑 (𝒒 ) = Δ 𝑠 
+
+> 𝑁
+
+∑︁ 
+
+> 𝑘 =1
+
+𝜔 𝑘 
+
+h
+
+(1 − 𝜆 ) 𝒒 𝑘 2 + 𝜆 𝒒 𝑘 
+
+> 22
+
+i
+
+. (47) The product 𝜏𝜑 (𝒒 ) is not jointly convex. The outer model therefore retains its complete convex dependence on the control and linearizes only the time factor: 
+
+𝜏𝜑 (𝒒 ) ≈ ¯𝜏𝜑 (𝒒 ) + 𝜑 ( ¯𝒒 )( 𝜏 − ¯𝜏 ). (48) After condensation and scaling, the subproblem reads min 
+
+> 𝒛
+
+12 𝒛 T 𝑃 𝒛 + 𝒄 T 𝒛 + 𝑔 (𝒛 ) s.t. 𝐻 𝒛 = 𝒃 . (49) The nonsmooth term is 
+
+𝑔 (𝒛 ) =
+
+> 𝑁
+
+∑︁ 
+
+> 𝑘 =1
+
+𝑎 𝑘 𝒒 𝑘 2 +
+
+> 𝑁
+
+∑︁ 
+
+> 𝑘 =1
+
+IU 𝑝 𝑘 (𝒒 𝑘 ) + I [ 𝜏 min , 𝜏 max ] (𝜏 ), (50) 12 where 
+
+𝑃 𝑞,𝑘 = 2𝜆 ¯𝜏 Δ𝑠𝜔 𝑘 + 𝑤 𝑞 , (51) 
+
+𝒄 𝑞,𝑘 = −𝑤 𝑞 ¯𝒒 𝑘 , (52) 
+
+𝑎 𝑘 = (1 − 𝜆 ) ¯𝜏 Δ𝑠𝜔 𝑘 , (53) 
+
+𝑃 𝜏 = 𝑤 𝑡 , 𝑐 𝜏 = 𝜑 ( ¯𝒒 ) − 𝑤 𝑡 ¯𝜏. (54) Because the scaled buffer has unit curvature and no nonsmooth term, 𝑃 ≻ 0, and the primal optimum of the mathematical problem in Eq. (49) is unique. This uniqueness statement concerns the ideal surrogate; whether an iterative implementation reaches that optimizer depends on its actual node operator. 
+
+B. Ideal-Surrogate Optimality Conditions and Implemented xPIPG Feedback 
+
+If the exact joint proximal map of 𝑔 were evaluated, the optimality conditions for Eq. (49) would be 
+
+0 ∈ 𝑃 𝒛 ★ + 𝒄 + 𝜕𝑔 (𝒛 ★) + 𝐻 T𝜼 ★, (55a) 
+
+0 = 𝐻 𝒛 ★ − 𝒃 . (55b) These relations define the reference KKT point of the strongly convex surrogate. The timed implementation does not claim to solve them exactly: it replaces the exact control-block proximal operator by the one-pass map M1 defined below, while retaining exact clipping for time and the identity map for the unconstrained scaled buffer. The resulting latency-oriented xPIPG iteration is 
+
+𝒚 𝑗 +1 = M1
+
+
+
+𝝃 𝑗 − 𝛼 (𝑃 𝝃 𝑗 + 𝒄 + 𝐻 T𝜼 𝑗 )
+
+
+
+, (56a) 
+
+b𝜼 𝑗 +1 = 𝜼 𝑗 + 𝛽 𝐻 (2𝒚 𝑗 +1 − 𝝃 𝑗 ) − 𝒃  , (56b) 
+
+𝝃 𝑗 +1 = 𝝃 𝑗 + 𝜌 𝑒 (𝒚 𝑗 +1 − 𝝃 𝑗 ), (56c) 
+
+𝜼 𝑗 +1 = 𝜼 𝑗 + 𝜌 𝑒 (b𝜼 𝑗 +1 − 𝜼 𝑗 ), 𝜌 𝑒 = 1.55 . (56d) where 𝜌 𝑒 = 1.55 makes the implemented method an extrapolated PIPG variant. Because M1 ≠ prox 𝛼𝑔 in general, Eq. (56) is an explicitly approximate fixed-point iteration. The KKT system in Eq. (55) is retained only to define the ideal convex reference, not as a theorem about the timed trajectory. The step-size calculation requires an estimate of ∥𝐻 ∥22 = 𝜆 max (𝐻𝐻 T). Because 𝐻 has six rows, the solver forms a 6 × 6 Gram matrix and applies 80 power iterations, giving b𝜎 2. With 𝐿 = max 𝑗 𝑃 𝑗 𝑗 , primal–dual ratio 𝑟 = 1, and 13 empirical safety factor 𝑠 = 0.97, 
+
+𝛼 = 2𝑠 𝐿 + √𝐿 2 + 4𝑠𝑟 b𝜎 2 , 𝛽 = 𝑟𝛼. (57) Direct substitution gives 
+
+𝛼 (𝐿 + 𝛽 b𝜎 2) = 𝑠 < 1. (58) Finite power iteration returns a Rayleigh quotient, which is generally a lower estimate rather than a certified upper bound. Multiplication by 1 .0000001 only protects against the observed rounding scale; it does not prove b𝜎 2 ≥ ∥ 𝐻 ∥22. For the audited final nominal subproblem, the relative estimate error is 1.000e-07, and the exact eigenvalue remains inside the 3% empirical step margin. A Gershgorin bound computed offline is 1.1325 times the exact eigenvalue. The present step sizes are therefore well resolved for the tested case, but they do not provide a universal stability certificate. 
+
+C. Exact Component Operators and the One-Pass Node Map 
+
+For the fuel term, the exact component operator is prox 𝛼𝑎 𝑘 ∥ · ∥ 2 (𝒖 ) = max 
+
+
+
+1 − 𝛼𝑎 𝑘 
+
+∥𝒖 ∥2
+
+, 0
+
+
+
+𝒖 . (59) This group shrinkage is well defined at zero and does not rotate thrust. For the pointing cone, let 𝑎 = 𝒆 T 𝒖 , 𝒖 ⊥ = 𝒖 − 𝑎 𝒆 , 𝑏 = ∥𝒖 ⊥ ∥2, and 
+
+𝒘 𝜃 = cos 𝜃 𝒆 + sin 𝜃 𝒖 ⊥
+
+𝑏 . (60) The cone projection is proj K𝜃 (𝒖 ) =
+
+
+
+𝒖 , 𝑏 ≤ 𝑎 tan 𝜃, 
+
+0, 𝑎 cos 𝜃 + 𝑏 sin 𝜃 ≤ 0,
+
+(𝑎 cos 𝜃 + 𝑏 sin 𝜃 )𝒘 𝜃 , otherwise .
+
+(61) Projection onto the intersection of this cone and the unit ball is obtained by applying Eq. (61), followed by radial clipping when necessary; positive radial scaling preserves cone membership. The lower-thrust half-space projection is proj 𝒅 T𝒒 ≥𝑞 min (𝒖 ) = 𝒖 + max (0, 𝑞 min − 𝒅 T 𝒖 ) 𝒅 . (62) Let S𝛾 denote Eq. (59), C = K𝜃 ∩ { 𝒒 : ∥𝒒 ∥2 ≤ 1}, and H𝑘 = {𝒒 : ( 𝒅 𝑝 𝑘 )T 𝒒 ≥ 𝑞 min }. The timed node operator is exactly 
+
+M1,𝑘 (𝒖 ) = proj H𝑘 
+
+proj C
+
+ S𝛼𝑎 𝑘 (𝒖 ) . (63) 14 It performs one shrinkage, one cone–ball projection, and one half-space projection, with no persistent Dykstra corrections. In general, 
+
+M1,𝑘 ≠ prox 𝛼𝑎 𝑘 ∥ · ∥ 2+I C +I H𝑘 
+
+. (64) The distinction is structural. For example, choose unit vectors 𝒒 and 𝒅 on opposite boundaries of a 45 ◦ cone such that 
+
+𝒒 T 𝒅 = 0. Both lie in C. A final half-space correction with 𝑞 min = 0.4 gives 𝒒 ′ = 𝒒 + 0.4𝒅 and ∥𝒒 ′ ∥2 = √1.16 > 1, thereby breaking the unit-ball constraint. An offline audit compares Eq. (63) against converged Dykstra splitting [17] over 50000 randomly generated three-dimensional inputs, with reference directions inside the pointing cone and thresholds spanning the nominal scale. The median and 99th-percentile map discrepancies are 3.022e-03 and 5.101e-01, respectively; 9.51% of the broad synthetic inputs have a set violation above 10 −7. These results rule out interpreting one pass as an exact joint prox. The production choice is intentional: the map has fixed work and minimal memory traffic, and the complete trajectory is accepted only after independent nodewise physical checks. These checks safeguard the reported task-level output but do not restore exact KKT optimality of Eq. (49). 
+
+D. Per-Update Cost and Stopping Criteria 
+
+For 𝑛 𝑧 = 3𝑁 + 7 and terminal dimension 𝑚 𝑓 = 6, the cost of one inner update is dominated by the products 𝐻 T𝜼 
+
+and 𝐻 𝒚 , 𝑁 three-dimensional one-pass map evaluations, and the vector extrapolation: 
+
+O( 2𝑚 𝑓 𝑛 𝑧 + 𝑁 ) = O( 𝑁 ). (65) The spectral estimate is computed once per outer iteration. Persistent storage consists of the node trajectories, a 6 × 100 condensed matrix, a 93 × 7 terminal sensitivity, and several 100-vectors, all statically sized. The first outer iteration uses inner tolerance 2 × 10 −3; subsequent tolerances are 
+
+𝜖 in = max 2 × 10 −4, min (2 × 10 −3, 0.05 𝑒 𝑓 ) . (66) Every fourth inner update checks 
+
+∥𝐻 𝒚 − 𝒃 ∥∞ ≤ 𝜖 in , (67) 
+
+𝐷 𝑐 (𝒚 𝑗 − 𝒚 𝑗 −1) 2
+
+max (1, ∥𝐷 𝑐 𝒚 𝑗 ∥2) ≤ 𝜖 in . (68) This check interval avoids copying a 100-vector and evaluating two norms on the remaining three iterations. The minimum and maximum inner budgets are 20 and 6000 updates. 15 VI. Fixed-Array Implementation 
+
+A. Data Layout and Hot Loop 
+
+The C17 solver fixes 𝑁 = 31, a state dimension of seven, a control dimension of 93, a primal dimension of 100, and a dual dimension of six at compile time. The primal ordering is 
+
+[𝑞 1𝑥 , 𝑞 1𝑦 , 𝑞 1𝑧 , . . . , 𝑞 𝑁 𝑧 , 𝜏, 𝜈 1, . . . , 𝜈 6]. (69) The three control components of each node are stored contiguously, which enables a fused nodewise map. The row-major 
+
+𝐻 [6] [ 100 ] matrix occupies approximately 2.4 kB in single precision, and every component of 𝐻 T𝜼 is a fixed six-term dot product. No memory is dynamically allocated inside the outer approximation or the xPIPG loop. Before the hot loop, the solver caches 
+
+𝑝 𝑗 = 1 − 𝛼𝑃 𝑗 𝑗 , 𝑑 𝑗 = −𝛼𝑐 𝑗 , b𝐻 = 𝛼𝐻, (70) so the primal trial component is 
+
+𝑢 𝑗 = 𝑝 𝑗 𝜉 𝑗 + 𝑑 𝑗 −
+
+> 6
+
+∑︁ 
+
+> 𝑖 =1
+
+b𝐻 𝑖 𝑗 𝜂 𝑖 . (71) Only one explicit b𝐻 𝒚 product is evaluated per iteration; the second follows from 
+
+b𝐻 𝝃 𝑗 +1 = (1 − 𝜌 𝑒 ) b𝐻 𝝃 𝑗 + 𝜌 𝑒 b𝐻 𝒚 𝑗 +1. (72) 
+
+B. End-to-End Solve Workflow 
+
+Figure 1 shows only the online sequence. Each outer update performs one linearization, one exact condensation, one strongly convex surrogate construction, one latency-oriented xPIPG pass up to the stopping criterion, and one nonlinear propagation. The “no” branch returns directly from the decision node to the next linearization. MATLAB scripting, high-order integration, the converged Dykstra reference, and full-state ECOS serve as offline audits and are deliberately omitted from the online flow. The timed C build uses Visual Studio 2022 Release x64 with C17, /O2 , /Oi , /Ot , /GL , /arch:AVX2 , and /fp:fast .These settings expose the implementation potential on the test processor; they do not establish flight qualification. Strict floating-point agreement, worst-case execution time on the target processor, cache and frequency controls, timeout behavior, and retention of a previously validated trajectory all remain necessary for flight software. 16 Initialize reference trajectory Trapezoidal linearization Exact dynamics condensation Strongly convex surrogate xPIPG with one-pass node map Full-step update and nonlinear propagation Terminal tolerance? Trajectory, control, and final time yes no 
+
+Fig. 1 Online workflow of the condensed sequential convex approximation. Offline reference solvers and validation routines lie outside the timed path. Table 4 Observed per-stage workload for one nominal condensed C solve 
+
+Stage Count Principal operation Fixed structure or bound Node linearization 4 × 31 = 124 nodes baseline dynamics, three velocity differences, and the analytic control Jacobian each unique node is evaluated once per outer iteration Interval model and condensation 4 × 30 = 120 intervals one 3 × 3 LU factorization, 15 right-hand sides, active-column propagation a fixed set of 30 intervals and no candidate steps Spectral estimate and step size 4 21 length-100 dot products and 80 six-dimensional power iterations once per surrogate; an empirical rather than a certified upper bound xPIPG hot loop 336 terminal matrix products and 31 three-dimensional one-pass maps static arrays; the stopping test runs every fourth update Nonlinear propagation 4 × 30 = 120 intervals implicit trapezoidal Newton solve at most 12 Newton steps per interval Final physical verification 1 thrust, pointing, mass, impulse, time, and terminal checks independent of dual variables and scaling 
+
+# VII. Numerical Results 
+
+A. Case Definition and Timing Protocol 
+
+Table 5 lists the nominal case. The initial velocity has a magnitude of 210 m s −1 and points approximately toward the target. The final time is initialized at the midpoint of the allowable interval. The first state reference is a bounded endpoint interpolation; after each convex solve, the original implicit nonlinear dynamics generate the next reference. The test platform is an Intel Core i7-10875H running Windows 11 and Visual Studio 2022. A high-resolution performance counter brackets the complete sequence of initialization, outer approximation, inner solve, nonlinear propagation, and nodewise physical verification; process startup, console output, file writing, and plotting are excluded. The nominal tests use 20 warmups followed by 2,000 measured solves for xPIPG, and five warmups followed by 200 measured solves for ECOS. The Monte Carlo cases use five repetitions per sample for xPIPG and three for ECOS, 17 Table 5 Nominal powered-landing parameters 
+
+Group Parameter Value Initial state 𝒓 0 (m) [500 , 2500 , 500 ]
+
+𝒗 0 (m s −1) [− 49 .5026 , −197 .9873 , −49 .5026 ]
+
+Mass 𝑚 0, 𝑚 dry (kg) 32000 , 25600 Engine 𝐼 𝑠 𝑝 (s) 282 
+
+𝑇 min , 𝑇 max (kN) 338 , 845 Geometry 𝑆 (m 2) 10 .752 
+
+𝜃 max 45 ◦
+
+Time and grid [𝑡 𝑓 , min , 𝑡 𝑓 , max ] (s) [15 , 45 ]
+
+𝑁 31 Atmosphere 𝜌 0 (kg m −3) 1.225 
+
+𝐻 𝑠 (m), 𝐶 𝐷 8500 , 1.5Objective 𝜆, 𝑤 𝑞 , 𝑤 𝑡 0.01 , 0.02 , 1.0Tolerance 𝑒 𝑓 , 𝜖 in ,min 10 −3, 2 × 10 −4
+
+Table 6 Nominal solution and end-to-end solve-time statistics 
+
+Method Outer Inner Median P99 𝑡 𝑓 Propellant (ms) (ms) (s) (kg) Condensed xPIPG 4 336 0.374 0.512 21.5283 3464.57 Full-state ECOS 4 64 24.96 32.55 21.5252 3463.61 retaining the within-sample median. The grid tests use 300 repetitions for xPIPG and 20 for ECOS. Both executables share the same task-level success condition: a six-dimensional nonlinear terminal residual no larger than 10 −3, together with final-time, nodewise thrust-magnitude, pointing-cone, dry-mass, and mass–impulse checks. Because the ECOS P99 is inferred from only 200 timings, it is a descriptive tail statistic rather than a stable extreme-quantile estimate. 
+
+B. Nominal Solution and Microsecond-Class Latency 
+
+Figure 2 compares the nominal trajectories and the end-to-end solve-time distributions. Both solutions reach the target at zero terminal velocity and satisfy the lower and upper thrust-magnitude bounds of 338–845 kN and the 45 ◦
+
+pointing cone. The condensed solver terminates with 𝑒 𝑓 = 8.77 × 10 −4; ECOS reaches 9 .91 × 10 −6. The final times differ by only 2.79 ms, and the propellant consumption by 0.96 kg. The maximum nodewise position and velocity differences are 0.435 m and 0.371 m s −1, respectively. These small differences support physical agreement between the two solutions, but they are not an optimality-error claim, because the objective and buffer norms differ. The xPIPG median of 0.374 ms corresponds to 374 μs, with a P99 of 512 μs. The median end-to-end speed ratio relative to the present ECOS implementation is 66.8. Although xPIPG performs more inner updates, each update 18 0 400 0500 
+
+(a) Nominal three-dimensional trajectory 
+
+> 1000 100
+
+z (m) 
+
+> y (m)  1500 200
+
+x (m)       
+
+> 200 2000 300 2500 400 0500
+> Condensed xPIPG Full-state ECOS Target
+> 0510 15 20 25
+
+Time (s) 
+
+> 0500 1000 1500 2000 2500
+> Altitude (m)
+> 050 100 150 200 250
+> Speed (m s !1)
+
+(b) Altitude and speed      
+
+> 0510 15 20 25
+
+Time (s) 
+
+> 300 400 500 600 700 800 900
+> Thrust magnitude (kN)
+
+(c) Thrust magnitude 
+
+Minimum Maximum  
+
+> Condensed xPIPG Full-state ECOS
+> 10 010 1
+
+Complete-solve time (ms) 
+
+> 00.2 0.4 0.6 0.8 1
+> Empirical cumulative probability
+
+(d) Nominal timing distribution 
+
+> xPIPG: median 0.369 ms ECOS: median 24.94 ms
+
+Fig. 2 Nominal trajectory, states, thrust history, and end-to-end solve-time distributions. All labels and annotations are regenerated in English from the archived benchmark data. 
+
+involves only fixed-size matrix–vector products and nodewise one-pass node maps, whereas an ECOS interior-point step updates the cone scaling and factorizes a full-state KKT system. The ratio therefore compares two complete formulations and implementations; it does not isolate the benefit of xPIPG or of condensation alone. More importantly, the absolute 374 μs result places the implementation in the submillisecond regime. Within the scope surveyed in Table 2, it is the fastest sequential-convex powered-landing solve known to the authors and the only surveyed result below 1 ms. 
+
+C. Independent Continuous-Time Audit 
+
+The online propagation uses the same implicit trapezoidal transcription as the outer model, so agreement at the nodes alone cannot exclude intersample error. A separate offline audit therefore propagates the archived C control with first-order hold using MATLAB ode113 at a relative tolerance of 10 −11 and 101 query points per interval. This audit changes both the integration method and the intersample evaluation density. Table 7 compares the terminal state and the dense constraint checks. The high-order propagation reaches the target with smaller terminal errors than the node trajectory, but dense sampling detects a 1.688 N lower-thrust undershoot, approximately 5 .0 × 10 −6 of 𝑇 min . This undershoot is negligible for 19 Table 7 Independent first-order-hold continuous-time audit 
+
+Quantity Node/trapezoidal FOH/ ode113 
+
+Terminal position error (m) 0.439 0.183 Terminal velocity error (m s −1) 0.040 0.011 Normalized terminal infinity norm 8.77 × 10 −4 3.606e-04 Minimum-thrust violation (N) 0 1.688 Maximum-thrust violation (N) 0 0.048 Pointing violation (N) 0 0.000 
+
+Table 8 Statistics over 100 common perturbed initial states 
+
+Method Valid P50 P95 P99 Maximum Mean outer (%) (ms) (ms) (ms) (ms) Condensed xPIPG 100 0.36 0.47 0.60 0.81 4.25 Full-state ECOS 100 25.55 29.77 34.56 59.19 3.73 the present numerical demonstration, yet it is a genuine intersample violation under a zero-tolerance interpretation. Flight use would require tightening the node lower bound, enforcing a continuous-time margin, or changing the hold parameterization. The audit therefore supports the continuous-dynamics accuracy of the nominal result while preventing nodewise validation from being presented as an exact guarantee of continuous-time feasibility. 
+
+D. Common-Sample Monte Carlo Results 
+
+Each component of the initial position and velocity is perturbed independently by a uniform relative factor between 
+
+−10 and 10%. A fixed random seed generates 100 six-dimensional samples, which are written once and read by both executables. Every case starts from the default initialization, with no sample-specific parameter tuning. Both implementations validate all 100 cases. Among the cases solved by both methods, the casewise median ECOS/xPIPG speed ratio is 68.6. xPIPG uses slightly more outer iterations on average, but the small condensed inner model keeps its P95 below 0.5 ms. For both solvers, the maxima exceed P99, which illustrates why a statistical desktop tail must not be presented as a target-processor worst-case execution time. The ±10% sample is a local engineering screen, not evidence of robustness over a mission-wide envelope or against aerodynamic, wind, mass, and actuator uncertainty. 
+
+E. Grid-Size Scaling 
+
+The scan uses five grids from 15 to 51 nodes while holding the physical parameters, stopping criteria, and algorithm parameters fixed. All ten combinations of solver and grid pass independent physical validation. The condensed median latency ranges from 0.180 ms to 0.696 ms; the ECOS median ranges from 8.18 ms to 20 0 400 0
+
+(a) Condensed xPIPG trajectories: 100% valid 
+
+1000 
+
+z (m) 
+
+> y (m)
+
+200 2000 
+
+x (m) 
+
+200 400 00 400 0
+
+(b) Full-state ECOS trajectories: 100% valid 
+
+1000 
+
+z (m) 
+
+> y (m)
+
+200 2000 
+
+x (m) 
+
+200 400 010 -1 10 0 10 1 10 2
+
+Per-case median solve time (ms) 
+
+00.2 0.4 0.6 0.8 1
+
+> Empirical cumulative probability
+
+(c) Monte Carlo timing 
+
+> xPIPG: P50 0.36, P95 0.47 ms ECOS: P50 25.55, P95 29.77 ms
+
+10 -1 10 0 10 1 10 2
+
+xPIPG time (ms) 
+
+10 -1 
+
+10 0
+
+10 1
+
+10 2
+
+> ECOS time (ms)
+
+(d) Casewise timing for joint successes 
+
+100/100 joint successes median speedup 68.6x Fig. 3 Trajectory families and timing distributions for 100 common initial-state perturbations. Failed cases would appear as dashed red trajectories; none occur in this test. 15 20 25 30 35 40 45 50 55 
+
+Number of nodes, N
+
+> 10 -1
+> 10 0
+> 10 1
+> 10 2
+> Complete-solve time (ms)
+
+(a) Median and 95th-percentile latency         
+
+> xPIPG median ECOS median xPIPG P95 ECOS P95
+> 15 20 25 30 35 40 45 50 55
+
+Number of nodes, N
+
+> 010 20 30 40 50 60 70 80 90
+> Median latency ratio, ECOS/xPIPG
+> 0100 200 300 400 500 600
+> Accumulated inner iterations
+
+(b) Speedup and iterative workload 
+
+> Latency ratio xPIPG iterations ECOS iterations
+
+Fig. 4 End-to-end solve time and accumulated iterative workload as the number of discretization nodes varies. 
+
+52.27 ms. The runtime is not strictly monotone across the two coarsest grids, because refining the grid also changes the trapezoidal-model error, the conditioning of the terminal sensitivity, and the location of thrust-set transitions. The 21 Table 9 End-to-end scaling with the number of discretization nodes 
+
+𝑁 xPIPG median xPIPG P95 ECOS median ECOS P95 Median ratio xPIPG inner ECOS inner (ms) (ms) (ms) (ms) 15 0.268 0.303 8.18 9.04 30.5 544 42 21 0.180 0.321 14.33 16.14 79.6 228 45 31 0.352 0.414 27.66 28.66 78.6 336 64 41 0.520 0.558 39.55 42.23 76.0 372 71 51 0.696 0.744 52.27 55.93 75.1 408 75 
+
+Table 10 Physical outputs of the xPIPG solver under grid refinement 
+
+𝑁 𝑡 𝑓 (s) Propellant (kg) 𝑒 𝑓 
+
+15 21.5884 3469.33 2.25 × 10 −4
+
+21 21.5456 3465.27 5.54 × 10 −4
+
+31 21.5283 3464.57 8.77 × 10 −4
+
+41 21.5341 3465.72 9.89 × 10 −4
+
+51 21.5445 3466.69 4.41 × 10 −4
+
+15-node case therefore requires 544 xPIPG updates, compared with 228 for 21 nodes. From 21 to 51 nodes, the median speed ratio remains between 75.1 and 79.6. Across 15–51 nodes, the final time varies by 0.061 s and the propellant consumption by 4.76 kg, or 0.14% of the nominal value. The nonmonotone propellant sequence shows that this scan indicates discretization consistency rather than proving convergence to a continuous optimum. 
+
+# VIII. Discussion 
+
+A. Why the Runtime Reaches Hundreds of Microseconds 
+
+The measured latency follows from structure at four interacting levels. At the model level, exact dynamics condensation eliminates the entire intermediate-state chain before optimization begins. At the algorithm level, only six terminal dual variables remain, and every control operation is three-dimensional. At the numerical level, row and column scaling together with a small Gram-matrix estimate remove any need for KKT factorization. At the implementation level, static single-precision arrays, shared node Jacobians, 3 × 3 Schur complements, active sensitivity columns, a one-pass node map, product recurrences, and downsampled stopping checks cut memory traffic and branching. No single transformation accounts for the 374 μs median. The timing comparison is deliberately end to end: the xPIPG and ECOS bars combine different state representations, objective details, buffer norms, inner tolerances, arithmetic modes, memory layouts, warmup policies, and repetition counts. The results therefore support the computational value of the complete condensed design; they do not isolate the 22 speedup attributable to xPIPG, to condensation, or to compiler choices. In particular, the factor 66.8 is not the outcome of a same-cone solver competition, and the literature comparison in Table 2 is likewise contextual. The defensible efficiency claim is the absolute measured latency under the stated timing boundary, not a universal solver ranking. 
+
+B. Strong Convexity and the Implemented Approximation 
+
+The 𝜆 = 0.01 energy fraction keeps the Euclidean fuel norm dominant while contributing smooth curvature. The fixed 𝑤 𝑞 and 𝑤 𝑡 weights further regularize the change between adjacent outer iterates. Because these choices modify every local subproblem, the computed solution is not a mathematically exact pure-fuel optimum. Reducing the curvature moves the solution toward bang–bang fuel behavior but can slow or destabilize a first-order fixed point near shifting active sets; increasing it smooths the thrust profile but may cost additional impulse. Strong convexity guarantees a unique primal solution only for the ideal condensed surrogate of Eq. (49). Because the timed one-pass node map is not its exact joint prox, that uniqueness does not imply that the implemented iteration returns the unique optimizer. Likewise, the 80-step power estimate is not a certified spectral upper bound. The random proximal audit and the exact 6 × 6 eigenvalue audit quantify these two approximations rather than concealing them. The evidence supports a fast, physically screened approximate solution; it does not establish full KKT convergence. 
+
+C. Outer Update and Failure Handling 
+
+The outer method is best described as a proximal-regularized sequential convex approximation. It accepts every computed update in full, with no actual-to-predicted reduction ratio, no backtracking, no candidate rejection, and no dynamic trust-region radius. Although the fixed 𝑤 𝑞 and 𝑤 𝑡 terms discourage large changes, they are not equivalent to a trust-region acceptance mechanism. Conventional convergence statements for safeguarded SCP therefore do not transfer directly. The present initialization and all 100 local perturbations converge, but failures are expected for sufficiently remote initial guesses, ill-conditioned interval matrices, inconsistent final-time guesses, abrupt changes in the minimum-thrust active set, or one-pass maps that fail the final physical screen. The implementation responds deterministically: it rejects the candidate trajectory and retains a previously validated command. The current experiments map neither these failure boundaries nor the sensitivity to all four regularization and penalty parameters. 
+
+D. Consolidated Validity Boundary 
+
+The favorable condensed dimension rests on a small terminal constraint set and few hard state-path constraints. Dense nodewise limits on dynamic pressure, heating, obstacles, glide slope, or angle of attack can make complete condensation unattractive; partial condensation or a full-state sparse formulation should then be considered. The validated claim covers only a three-degree-of-freedom point-mass model with constant 𝐶 𝐷 , no hard state-path 23 Table 11 Roles and mismatch signatures of the principal parameters                  
+
+> Parameter Direct role Typical symptom when too small Typical symptom when too large Present value
+> 𝜆 quadratic thrust curvature near-switching control with sensi-tive active-set changes excessive smoothing and possibly larger impulse 0.01
+> 𝑤 𝑞 proximal regularization of the control large control changes across outer iterations, with model mismatch reference-control locking and slow outer progress 0.02
+> 𝑤 𝑡 proximal regularization of the final time rapid time changes amplify the bi-linear error final time remains close to its initial value 1.0
+> 𝜇 𝜈 terminal virtual buffer easy surrogate feasibility but large nonlinear terminal error stiff scaling while the early refer-ence is still inaccurate starts at 50 and increases
+> 𝑠 primal–dual stability mar-gin conservative steps and more inner work insufficient margin under spectral underestimation 0.97
+> 𝜌 𝑒 synchronous extrapola-tion reverts toward the slower basic-PIPG path oscillation near active-set changes 1.55
+> 𝜖 in inner stopping accuracy wasted work on an inaccurate early model when overly strict an error floor limits the outer termi-nal accuracy 2×10 −3to 2×10 −4
+
+constraints, a 31-node nominal grid, a local ±10% initial-state sample, and a desktop i7 processor. The model omits attitude and angular-rate dynamics, gimbal-rate limits, structural loads, terrain, wind and parameter uncertainty, and plume–surface interaction. Node checks do not imply exact intersample feasibility, as the small FOH lower-thrust undershoot demonstrates. The statistical desktop tail is not a flight-processor worst-case execution time. Flight application further requires a vehicle-specific aerodynamic database, six-degree-of-freedom coupling where appropriate, explicit continuous-time margins, mission-envelope Monte Carlo campaigns that include failures and infeasible cases, identical-precision ablations, processor- and hardware-in-the-loop testing, a certified timeout policy, and worst-case timing on the intended processor. These items are requirements for future extension, not claims of the present paper. 
+
+# IX. Parameter Roles, Validation Layers, and Reproducibility 
+
+A. Layered Effects of the Algorithm Parameters 
+
+These parameters do not act at a common level, and tuning them as if they did can be misleading. The fuel–energy weight 𝜆 changes both the physical preference and the control curvature of each local objective. The fixed proximal weights 𝑤 𝑞 and 𝑤 𝑡 limit how far the control and the final time may move between consecutive linearizations. The virtual-buffer penalty 𝜇 𝜈 governs how readily the linearized terminal equality may borrow artificial feasibility. The quantities 𝑟 , 𝑠 , 𝜌 𝑒 , and the stopping tolerance primarily control the fixed-point path and the work required for a given surrogate. Table 11 separates these effects. The distinction matters because varying 𝜆 , 𝑤 𝑞 , or 𝑤 𝑡 changes the surrogate itself, whereas varying an admissible xPIPG step size or extrapolation factor leaves the optimizer of the ideal problem with an exact proximal map unchanged. The outer loop accepts each computed candidate in full and never evaluates an actual-to-predicted reduction ratio. 24 Accordingly, 𝑤 𝑞 and 𝑤 𝑡 act as a fixed soft proximal regularization rather than as a trust region with radius updates and candidate rejection. This choice yields a single execution path per outer update, with no repeated candidate construction or propagation; the price is the absence of automatic recovery from severe linearization mismatch. The 100 local perturbations show that the selected parameters are adequate in the tested neighborhood; they do not establish convergence from arbitrary initial conditions or under arbitrary aerodynamic models. 
+
+B. Three Distinct Levels of Correctness 
+
+The method is best interpreted through three separate statements, which should not be conflated. 1) Condensation level. If every 𝑀 𝑘 and every scaling transformation is nonsingular, the state recursion amounts to block Gaussian elimination of the full-state linear equality system. The condensed and uncondensed mathematical linearizations then share the same control–time feasible projection, and every condensed point has a unique recovered state sequence. The condensation at this level is exact. 2) Surrogate level. The small energy term and the fixed quadratic proximal terms together give the smooth part of the ideal condensed surrogate positive curvature. With an exact joint proximal operator and admissible steps, that ideal problem has a unique primal solution characterized by its KKT system. 3) Implementation level. The timed code replaces the joint proximal operator with a one-pass node map and obtains its step from finite power iteration. Its hot loop is therefore a latency-oriented approximate fixed-point iteration. Exact KKT convergence of the ideal surrogate does not transfer to this implementation; its output is instead screened through nonlinear terminal residuals, nodewise physics, and an independent continuous-time propagation. This separation also explains why “the final trajectory passes the physical checks” and “the inner loop returns the exact strongly convex surrogate optimizer” are different propositions: the first supports the engineering latency result reported here, whereas the second would require an exact joint proximal map, a certified spectral bound, and complete KKT residuals—none of which is claimed for the timed configuration. 
+
+C. End-to-End Work and Resident Storage 
+
+For 𝑁 = 31, one nominal plan contains 124 unique node linearizations, 120 interval models with their 3 × 3 Schur factorizations, four 6 × 6 Gram-matrix estimates, 336 inner updates, and four nonlinear propagations. At interval 𝑘 ,active-column propagation touches only the first 3 (𝑘 + 1) control columns; future columns remain structurally zero. Compared with propagating all 93 columns at every interval, this removes approximately half of the early dense products and avoids forming a global 210 × 217 state-chain matrix. The principal resident arrays are the 31 × 7 state trajectory, the 31 × 3 control trajectory, the 6 × 100 condensed matrix, the terminal sensitivities, and several vectors of length 100. In row-major single precision, 𝐻 occupies approximately 25 2.4 kB, and every entry of 𝐻 T𝜼 is a fixed six-term dot product. The three control components are stored contiguously, so the shrinkage, cone–ball projection, and minimum-thrust half-space projection fuse into a single node loop. The stopping test runs only every fourth update, so the other three updates neither copy the previous 100-vector nor evaluate two norms. Together, these details explain how 336 inner updates remain compatible with an end-to-end solve time in the hundreds of microseconds. 
+
+D. Reproducibility Protocol and Result-Freezing Rule 
+
+The top-level reproduction entry point is run_paper_tests.ps1 under test . It calls build_and_run_core_e xperiments.ps1 to generate the repeated nominal timings, the 100 common Monte Carlo cases, and the five grid-size cases. The script generate_core_experiment_results.m then rebuilds the statistics, tables, and English figures from the archived CSV files. The proximal, spectral, interval-conditioning, and continuous-time checks are offline audits and are therefore excluded from the reported online timing. A reproduction run must freeze the physical parameters, initial condition, random seed, grid, compiler options, floating-point mode, warm-up count, repeat count, stopping conditions, and timing boundary. Changing any one of these items requires regenerating all tables and figures; individual numbers must not be substituted in isolation. Verification proceeds at four levels: agreement between the condensed prediction and the full linearized dynamics chain; inner equality and fixed-point residuals; terminal error under the original nonlinear trapezoidal propagation; and independent FOH high-order integration with intersample control checks. A case counts as successful only when all task-level online checks pass. 
+
+# X. Conclusions 
+
+This paper has presented a latency-oriented sequential convex approximation for powered-landing optimization. For each local linearized model, exact dynamics condensation replaces 210 interval equations with six terminal equalities. A fuel–energy objective with fixed quadratic proximal terms gives the ideal surrogate its strong-convexity curvature. The xPIPG inner solver and fixed-size arrays then reduce every online update to small matrix–vector products and three-dimensional node operations. The nominal C implementation completes one plan in four outer and 336 inner updates. Its median end-to-end solve time is 374 μs, with a P99 of 512 μs. All 100 common ±10% initial-state perturbations pass task-level validation, and the median stays below 0.7 ms through 51 nodes. Independent first-order-hold integration yields a terminal position error of 0.183 m and reveals a small 1.688 N intersample lower-thrust violation. The result should therefore be read as a low-latency, physically screened approximate solution rather than as an exact KKT solution of the ideal strongly convex surrogate. Both the one-pass node map and the finite power iteration are deliberate low-cost approximations. Future work will pursue exact low-cost node active sets, certified spectral bounds, 26 safeguarded outer updates, partial condensation, wider mission envelopes, and representative flight processors. 
+
+# Funding Sources 
+
+This research received no external funding. 
+
+# Declarations 
+
+None. 
+
+# A. Supplementary Analyses of the Node Map and Spectral Estimate 
+
+A. Geometry and Counterexample for the One-Pass Node Map 
+
+The ideal nonsmooth node term combines the fuel norm, the pointing cone, the unit ball, and the local minimum-thrust half-space. Group shrinkage, 
+
+S𝜅 (𝒛 ) = max 
+
+
+
+1 − 𝜅 
+
+∥𝒛 ∥2
+
+, 0
+
+
+
+𝒛 , (73) is the exact proximal operator of the fuel norm. The cone–ball and half-space components also have low-dimensional closed-form projections. Applying these maps in series, however, generally yields neither the joint proximal operator of their sum nor the projection onto the full intersection. A direct counterexample shows how the last half-space step can destroy unit-ball feasibility. Choose unit vectors 𝒒 
+
+and 𝒅 on opposite boundaries of a 45-deg pointing cone such that 𝒒 T 𝒅 = 0. Both vectors satisfy the cone and unit-ball constraints. For 𝑞 min = 0.4, the final minimum-thrust half-space projection can produce 
+
+𝒒 ′ = 𝒒 + 0.4𝒅 , ∥𝒒 ′ ∥2 = √1.16 > 1. (74) The production node operation must therefore be understood as a fixed-work approximation, and the 50,000-point offline Dykstra audit quantifies the resulting discrepancy. Final physical screening can reject an infeasible trajectory, but it cannot retroactively prove that the inner loop satisfies the ideal KKT system. 
+
+B. Spectral Estimate, Certified Bounds, and the Latency Choice 
+
+Finite power iteration on 𝐺 = 𝐻𝐻 T ⪰ 0 returns a Rayleigh quotient that generally approaches 𝜆 max (𝐺 ) from below. Multiplication by 1 .0000001 therefore does not yield a rigorous upper bound. In the final nominal subproblem, the 80-step estimate is 1.580279627, whereas a double-precision symmetric eigensolve gives 1.580279469. The small positive error demonstrates adequate resolution only for that instance. A certified Gershgorin bound is approximately 1.13249 times the exact eigenvalue; using it online would reduce the step size and could increase the iteration count. Because the present algorithm prioritizes computational efficiency, it retains finite power iteration and a 3% empirical 27 margin, while the exact-eigenvalue and Gershgorin computations remain offline audits. This choice follows the same principle as the one-pass node map: keep online work fixed and extremely small, state the approximation boundary precisely, and use task-level physical acceptance rather than an unsupported exact-optimality claim. 
+
+# B. Definitions of Residuals, Violations, and Timing Statistics 
+
+A. Outer Terminal Metrics 
+
+To separate the stopping test from physical units, the terminal metric after nonlinear propagation is 
+
+𝑒 𝑓 = max 
+
+ ∥ 𝒓 𝑁 ∥∞
+
+500 m , ∥𝒗 𝑁 ∥∞
+
+50 m s −1
+
+
+
+. (75) It is evaluated on the nonlinearly propagated state, not on a scaled variable in the condensed equality. The relative control and time changes are 
+
+𝑒 𝑞 = 𝒒 𝑝 +1 − 𝒒 𝑝 
+
+> 2
+
+max (1, ∥𝒒 𝑝 ∥2) , (76) 
+
+𝑒 𝑡 = |𝜏 𝑝 +1 − 𝜏 𝑝 |
+
+max (1, |𝜏 𝑝 |) . (77) They diagnose stabilization of the reference trajectory but do not replace 𝑒 𝑓 or the physical feasibility tests. The virtual-buffer norm is reported separately so that a small condensed equality residual cannot conceal extensive borrowing of artificial feasibility. 
+
+B. Inner Residuals 
+
+Every fourth update evaluates the scaled equality residual 
+
+𝑟 eq = ∥𝐻 𝒚 − 𝒃 ∥∞ (78) and the relative fixed-point change 
+
+𝑟 fp = 𝐷 𝑐 (𝒚 𝑗 − 𝒚 𝑗 −1) 2
+
+max (1, ∥𝐷 𝑐 𝒚 𝑗 ∥2) . (79) These quantities only describe stopping under the implemented map. Because that map is not the exact joint proximal operator, 𝑟 fp is not a complete KKT residual for the ideal composite problem. The offline audit separately evaluates primal feasibility, set violations, and the map error relative to converged Dykstra splitting. 28 C. Task-Level Violations 
+
+Nodewise validation records 
+
+𝑣 min = max  
+
+> 𝑘
+
+(𝑇 min − ∥ 𝑻 𝑘 ∥2)+, (80) 
+
+𝑣 max = max  
+
+> 𝑘
+
+(∥ 𝑻 𝑘 ∥2 − 𝑇 max )+, (81) 
+
+𝑣 𝜃 = max 
+
+> 𝑘
+
+
+
+cos 𝜃 max ∥𝑻 𝑘 ∥2 − 𝒆 T
+
+> 𝑦
+
+𝑻 𝑘 
+
+ 
+
+> +
+
+, (82) 
+
+𝑣 𝑚 = max  
+
+> 𝑘
+
+(𝑚 dry − 𝑚 𝑘 )+. (83) It also checks mass monotonicity, agreement between the mass change and the trapezoidally integrated propellant consumption, and every nonlinear trapezoidal defect. The FOH high-order propagation reuses the same control nodes but applies a different integrator at dense query points, exposing intersample minimum-thrust violations that a nodewise test cannot detect. 
+
+D. Latency Statistics 
+
+P50, P95, and P99 are empirical quantiles of complete-plan samples; inner-call time, one-outer-step time, and batch throughput are not mixed into the same statistic. The 2000 nominal xPIPG repetitions describe the central timing distribution reliably. ECOS has only 200 repetitions, so its P99 is determined by approximately the two slowest observations and is treated as descriptive. For Monte Carlo results, repeated timings are first reduced to a within-case median and then aggregated across common successful cases. This prevents an operating-system interruption in a single repeat from being misinterpreted as a mission-envelope effect. Failed cases remain in the denominator of the success rate. 
+
+# C. Complete Algorithmic Sequence 
+
+This appendix gives the complete sequence from initialization through timing and validation. The one-pass node operation is explicitly identified as an approximation. The word “exact” is reserved for block elimination of the linearized dynamics equalities. 
+
+Algorithm A1: Proximal-Regularized Condensed Sequential Convex Approximation                   
+
+> Input: 𝑁 =31, physical parameters, initial and terminal states, final-time bounds, 𝜆, 𝑤 𝑞 , 𝑤 𝑡 , and stopping thresholds.
+> Output: Nonlinear trajectory, control, final time, iteration history, and an independent validity flag.
+> 1. Linearly interpolate position, velocity, and mass; construct a control reference satisfying the pointing and magnitude bounds; set ¯ 𝜏 =(15 +45 )/( 2×30 )=1.
+> 2. Evaluate the initial nonlinear metrics and set the terminal-buffer penalty to 𝜇 𝜈 =50.
+
+29 3. For outer index 𝑝 = 1, . . . , 25, perform Steps 4–13. 
+
+4. Evaluate 𝒇 , 𝐹 𝑥 , 𝐹 𝑞 at the 31 unique nodes and share node data between adjacent intervals. 
+
+5. Use Algorithm A2 to assemble the trapezoidal interval models and condensed terminal sensitivities. 
+
+6. Normalize the six terminal rows by 500 m and 50 m s −1, apply unit-row-norm scaling, and append the 𝐼 /√𝜇 𝜈 buffer columns. 
+
+7. Set 𝜖 in = 2 × 10 −3 initially and subsequently use max {2 × 10 −4, min (2 × 10 −3, 0.05 𝑒 𝑓 )} .
+
+8. Construct the fuel-dominant strongly convex composite surrogate and call the latency-oriented xPIPG implementation in Algorithm A3. 
+
+9. Record the control and time changes and accept the full update ¯ 𝒒 ← 𝒒 ★, ¯𝜏 ← 𝜏 ★.
+
+10. Using the preceding trajectory as the Newton initial guess, propagate exactly one full-step nonlinear implicit-trapezoidal trajectory. 
+
+11. Recompute the objective, nonlinear terminal error, dry-mass margin, spectral estimate, step sizes, inner-iteration count, and buffer. 
+
+12. Exit successfully when 𝑒 𝑓 ≤ 10 −3 and the dry-mass check passes; retain the control and time changes as diagnostics. 
+
+13. If 𝑒 𝑓 > 10 −3, update 𝜇 𝜈 ← min (5𝜇 𝜈 , 2 × 10 6).
+
+14. Apply Algorithm A4 to the final trajectory; never return an invalid candidate as a valid plan. 
+
+Algorithm A2: Trapezoidal Linearization, Schur Solve, and Active-Column Condensation 
+
+Input: Reference trajectory ¯ 𝒙 1: 𝑁 , ¯𝒒 1: 𝑁 , ¯𝜏 .
+
+Output: 𝐻 𝑞 , 𝒉 𝜏 , 𝒃 and the interval linear models. 
+
+1. Evaluate the baseline dynamics once per node; fill the position–velocity, density–altitude, mass, and control Jacobian entries analytically. 
+
+2. Apply scaled forward differences only to the three velocity components, reusing the baseline dynamics. 
+
+3. For every interval, form 𝑀 𝑘 , 𝑅 𝑘 , 𝑈 𝑘 , 𝑉 𝑘 , 𝒔 𝑘 and the reference trapezoidal defect. 
+
+4. Form and factor the 3 × 3 velocity Schur complement of 𝑀 𝑘 once; solve all right-hand sides in one batch, and reject the outer update if a pivot test fails. 
+
+5. Recover 𝐴 𝑘 , 𝐵 𝑘 , 𝐸 𝑘 , 𝒈 𝑘 , 𝒂 𝑘 .
+
+6. Initialize the state offset, control sensitivity, and time sensitivity to zero. 
+
+7. For 𝑘 = 1, . . . , 𝑁 − 1, propagate the offset and time column while multiplying only the first 3 (𝑘 + 1) active control columns. 
+
+8. Accumulate 𝐵 𝑘 and 𝐸 𝑘 in control blocks 𝑘 and 𝑘 + 1; retain future columns as structural zeros. 
+
+9. Extract the six terminal position and velocity rows and combine them with the reference terminal error to obtain 𝐻 𝑞 , 𝒉 𝜏 , 𝒃 .
+
+10. In debug validation, compare the condensed prediction with the complete linear dynamics chain for random 𝛿 𝒒 , 𝛿𝜏 .
+
+Algorithm A3: Spectral-Step Latency-Oriented xPIPG Inner Loop 
+
+Input: 𝑃, 𝒄 , 𝐻, 𝒃 , node reference directions, thrust thresholds, time bounds, and 𝜖 in .
+
+30 Output: 𝒒 ★, 𝜏 ★, 𝝂 ★ and inner-loop diagnostics. 
+
+1. Form 𝐺 = 𝐻𝐻 T, perform 80 power iterations on the 6 × 6 matrix, and multiply by 1 .0000001. Treat the result as an empirical estimate, not a certified spectral upper bound. 
+
+2. Set 𝐿 = max 𝑗 𝑃 𝑗 𝑗 and use 𝑟 = 1, 𝑠 = 0.97 to compute primal and dual steps 𝛼, 𝛽 .
+
+3. Cache 1 − 𝛼𝑃 𝑗 𝑗 , −𝛼𝑐 𝑗 , and 𝛼𝐻 ; initialize the primal variables from the reference control and time. 
+
+4. Choose six buffer variables analytically so that the initial condensed equality holds; apply column scales of 0.5 and 0.25 to the time and buffer columns, and set 𝝃 = 𝒚 , 𝜼 = 0. 
+
+5. For 𝑗 = 1, . . . , 6000, perform Steps 6–11. 
+
+6. Compute the trial point 𝒖 = 𝝃 − 𝛼 (𝑃 𝝃 + 𝒄 + 𝐻 T𝜼 ).
+
+7. At each control node, apply group shrinkage, cone–ball projection, and the minimum-thrust half-space projection in sequence. This single composition is the approximate node map. 
+
+8. Clip time to [15 /30 , 45 /30 ] and apply the smooth quadratic-gradient step to the virtual buffer. 
+
+9. Evaluate 𝐻 𝒚 once, update the temporary dual variable, and synchronously extrapolate primal and dual variables with 𝜌 𝑒 = 1.55. 
+
+10. Evaluate the equality residual and the scaled fixed-point change only on every fourth update or at the iteration limit; stop once both pass, provided at least 20 updates have elapsed. 
+
+11. Update the cached 𝐻 𝝃 through the extrapolation recurrence; do not copy the previous 100-vector on unchecked updates. 
+
+12. Undo the column scaling, recover the physical buffer, and return the spectral estimate, step sizes, iteration count, and residuals. 
+
+Algorithm A4: Independent Physical Validation of a Candidate Trajectory 
+
+Input: Problem data, final time, and the 31-node state and thrust sequences. 
+
+Output: Validity flag and maximum violations by category. 
+
+1. Check the solver status, finiteness of every array entry, and physical final-time bounds. 
+
+2. Evaluate ∥𝑻 𝑘 ∥2 at every node and record lower- and upper-thrust violations. 
+
+3. Evaluate cos 𝜃 max ∥𝑻 𝑘 ∥2 − 𝒆 T
+
+> 𝑦
+
+𝑻 𝑘 at every node to check the pointing cone. 
+
+4. Check 𝑚 𝑘 ≥ 𝑚 dry and nonincreasing mass at every node. 
+
+5. Integrate ∥𝑻 ∥2 /( 𝐼 𝑠 𝑝 𝑔 0) with trapezoidal weights and compare it with 𝑚 0 − 𝑚 𝑁 .
+
+6. Recompute every nonlinear trapezoidal defect using the final time to verify propagation consistency. 
+
+7. Scale terminal position by 500 m and velocity by 50 m s −1; require the six-dimensional infinity norm to be no greater than 10 −3.
+
+8. Offline, propagate FOH thrust with high-accuracy ode113 and report intersample violations; exclude this step from online timing. 
+
+9. Return a valid online plan only when all task-level checks pass; printing, CSV generation, and plotting cannot alter the flag. 
+
+Algorithm A5: Complete-Plan Timing, Cross-Check, and Figure Generation 
+
+31 1. Read the production C-PIPG and ECOS sources; write test copies, executables, and batch outputs only under test .
+
+2. Compile the benchmark executables with the archived Release options and record the floating-point mode and processor information. 
+
+3. Warm up xPIPG for 20 end-to-end solves and ECOS for five; restart every solve from identical data and initialization. 
+
+4. With printing and file output disabled, time initialization, outer approximation, inner solve, nonlinear propagation, and nodewise validation. 
+
+5. Repeat the nominal xPIPG solve 2000 times and the ECOS solve 200 times; store iteration counts, terminal states, checksums, and quantiles. 
+
+6. Read common Monte Carlo cases from the same CSV; count any Algorithm-A4 rejection as a failure without relaxing thresholds. 
+
+7. For grid experiments, hold the physical and stopping parameters fixed and report complete latency, inner work, and physical outputs. 
+
+8. Run offline proximal, exact-eigenvalue, interval-conditioning, and FOH continuous-time audits; exclude their time from the online result. 
+
+9. Generate figures only from stored results and rerun the entire experiment whenever any frozen condition changes. 
+
+# D. Mapping from Paper Operations to Source Files 
+
+The outer loop, 3 × 3 Schur condensation, the spectral estimate, the one-pass node map, and the xPIPG update are implemented in landing_solver.c in the C solver directory. Continuous dynamics, the semi-analytic Jacobian, implicit-trapezoidal propagation, and physical quantities are in landing_dynamics.c . The full-state reference uses 
+
+ecos_landing_solver.c in the ECOS directory. Common entry points, benchmarks, shared cases, and figure postprocessing reside under test . The file reviewer_audit.m in the English-paper directory records the offline proximal, spectral, interval-conditioning, and continuous-time audits. This mapping explains how the equations reach the implementation; it does not let source structure stand in for mathematical evidence. Block elimination establishes condensation equivalence. Offline audits quantify the proximal and spectral approximations. Task-level checks, independent of scaling and dual variables, determine whether a trajectory is accepted. 
+
+# References 
+
+[1] Açıkmeşe, B., and Ploen, S. R., “Convex Programming Approach to Powered Descent Guidance for Mars Landing,” Journal of Guidance, Control, and Dynamics , Vol. 30, No. 5, 2007, pp. 1353–1366. doi:10.2514/1.27553. [2] Blackmore, L., Açıkmeşe, B., and Scharf, D. P., “Minimum-Landing-Error Powered-Descent Guidance for Mars Landing Using Convex Optimization,” Journal of Guidance, Control, and Dynamics , Vol. 33, No. 4, 2010, pp. 1161–1171. doi:10.2514/1.47202. 
+
+32 [3] Scharf, D. P., Açıkmeşe, B., Dueri, D., Benito, J., and Casoliva, J., “Implementation and Experimental Demonstration of Onboard Powered-Descent Guidance,” Journal of Guidance, Control, and Dynamics , Vol. 40, No. 2, 2017, pp. 213–229. doi:10.2514/1.G000399. [4] Mao, Y., Szmuk, M., and Açıkmeşe, B., “Successive Convexification of Non-Convex Optimal Control Problems and Its Convergence Properties,” 2016 IEEE 55th Conference on Decision and Control (CDC) , 2016, pp. 3636–3641. doi: 10.1109/CDC.2016.7798816. [5] Szmuk, M., Reynolds, T. P., Açıkmeşe, B., Mesbahi, M., and Carson, J. M., “Successive Convexification for Real-Time Six-Degree-of-Freedom Powered Descent Guidance with State-Triggered Constraints,” Journal of Guidance, Control, and Dynamics , Vol. 43, No. 8, 2020, pp. 1399–1413. doi:10.2514/1.G004549. [6] Malyuta, D., Yu, Y., Elango, P., and Açıkmeşe, B., “Advances in Trajectory Optimization for Space Vehicle Control,” Annual Reviews in Control , Vol. 52, 2021, pp. 282–315. doi:10.1016/j.arcontrol.2021.04.001. [7] Mattingley, J., and Boyd, S., “CVXGEN: A Code Generator for Embedded Convex Optimization,” Optimization and Engineering ,Vol. 13, No. 1, 2012, pp. 1–27. doi:10.1007/s11081-011-9176-9. [8] Domahidi, A., Chu, E., and Boyd, S., “ECOS: An SOCP Solver for Embedded Systems,” 2013 European Control Conference ,2013, pp. 3071–3076. doi:10.23919/ECC.2013.6669541. [9] Dueri, D., Açıkmeşe, B., Scharf, D. P., and Harris, M. W., “Customized Real-Time Interior-Point Methods for Onboard Powered-Descent Guidance,” Journal of Guidance, Control, and Dynamics , Vol. 40, No. 2, 2017, pp. 197–212. doi:10.2514/1.G001480. [10] Yu, Y., Elango, P., Topcu, U., and Açıkmeşe, B., “Proportional-Integral Projected Gradient Method for Conic Optimization,” 
+
+Automatica , Vol. 142, 2022, p. 110359. doi:10.1016/j.automatica.2022.110359. [11] Yu, Y., Elango, P., Açıkmeşe, B., and Topcu, U., “Extrapolated Proportional-Integral Projected Gradient Method for Conic Optimization,” IEEE Control Systems Letters , Vol. 7, 2023, pp. 73–78. doi:10.1109/LCSYS.2022.3186647. [12] Elango, P., Kamath, A. G., Mesbahi, M., Açıkmeşe, B., Yu, Y., and Carson, J. M., “A Customized First-Order Solver for Real-Time Powered-Descent Guidance,” AIAA SCITECH 2022 Forum , 2022, pp. AIAA 2022–0951. doi:10.2514/6.2022-0951. [13] Kamath, A. G., Elango, P., Kim, T., Mceowen, S., Mesbahi, M., Açıkmeşe, B., Yu, Y., and Carson, J. M., “Customized Real-Time First-Order Methods for Onboard Dual Quaternion-Based 6-DoF Powered-Descent Guidance,” AIAA SCITECH 2023 Forum , 2023, pp. AIAA 2023–2003. doi:10.2514/6.2023-2003. [14] Kamath, A. G., Elango, P., Yu, Y., Mceowen, S., Chari, G. M., Carson, J. M., and Açıkmeşe, B., “Real-Time Sequential Conic Optimization for Multi-Phase Rocket Landing Guidance,” IFAC-PapersOnLine , Vol. 56, No. 2, 2023, pp. 3118–3125. doi:10.1016/j.ifacol.2023.10.1444. 
+
+33 [15] Chen, Y., Yang, G., Wang, L., Chen, H., Gan, Q., and Xu, Q., “A Fast Algorithm for Onboard Atmospheric Powered Descent Guidance,” IEEE Transactions on Aerospace and Electronic Systems , Vol. 59, No. 5, 2023, pp. 6112–6123. doi: 10.1109/TAES.2023.3271961. [16] Chari, G. M., Kamath, A. G., Elango, P., and Açıkmeşe, B., “Fast Monte Carlo Analysis for 6-DoF Powered-Descent Guidance via GPU-Accelerated Sequential Convex Programming,” arXiv preprint arXiv:2404.18034 , 2024. doi:10.48550/arXiv.2404.18034. [17] Dykstra, R. L., “An Algorithm for Restricted Least Squares Regression,” Journal of the American Statistical Association ,Vol. 78, No. 384, 1983, pp. 837–842. doi:10.1080/01621459.1983.10477029. 
+
+34

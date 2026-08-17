@@ -1,0 +1,1165 @@
+Title: Reinforcement Learning-Based Output Feedback LQR for Continuous-Time MIMO Systems
+
+URL Source: https://arxiv.org/pdf/2608.11750v1
+
+Published Time: Thu, 13 Aug 2026 00:36:08 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+# Reinforcement Learning-Based Output Feedback LQR for Continuous-Time MIMO Systems ∗†
+
+## Qihua Chen ‡ Mingxiang Liu ‡ Lili Wang ‡
+
+## Zhiyun Lin ‡ and Minyue Fu §
+
+## August 13, 2026 
+
+Abstract 
+
+This article studies model-free output feedback linear quadratic regulation (LQR) for continuous-time linear systems with an n-dimensional state, an m-dimensional input, and a 
+
+p-dimensional output, using filtered input–output data. Since the system state is unavail-able, existing methods rely on dynamic filters to parameterize the hidden state using mea-surable input–output signals. However, the intrinsic dimension of the resulting filter-based parametrization can be smaller than the dimension of the complete filtered vector, and this deterministic redundancy can make the Bellman regressions rank deficient. We character-ize this intrinsic dimension and show that the conventional filtered vector contains only 2 n
+
+independent components for single-input multi-output (SIMO) systems and n(m + 1) inde-pendent components for general multi-input multi-output (MIMO) systems. Based on this characterization, a reduced filtered vector is extracted directly from data and used to develop reduced model-free output feedback policy iteration and value iteration equations, eliminating the redundant directions and decreasing the number of unknown parameters while retaining a fully input–output data-based implementation. A numerical example illustrates the rank reduction and the effectiveness of the learned controller. 
+
+Keywords: LQR, reinforcement learning, dynamic output feedback, model-free control. 
+
+# 1 Introduction 
+
+Linear quadratic regulation (LQR) is one of the fundamental problems in optimal control. For continuous-time linear systems with known dynamics and measurable states, the optimal state-feedback controller can be obtained by solving an algebraic Riccati equation (ARE) [1]. However, this classical solution requires known system matrices, and its implementation usually relies on full-state feedback. In many practical applications, the system dynamics are unknown and the internal state is not directly measurable. These limitations have motivated the development of data-driven and reinforcement learning (RL)-based methods for optimal control [2, 3]. Adaptive dynamic programming (ADP) and RL provide an effective framework for solving optimal control problems without explicitly identifying the system model [4, 5]. For continuous-time systems, 
+
+> ∗
+
+This work was supported by Guangdong Basic and Applied Basic Research Foundation (2024A1515010193, 2025B1515120042), National Natural Science Foundation of China (62350710214, 62121004, 62273100, 62550003, U23A20325), Guangdong Science and Technology Program (2024B1212010002), and Shenzhen Science and Technology Program (KQTD20221101093557010). 
+
+> †
+
+This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. 
+
+> ‡
+
+Qihua Chen, Mingxiang Liu, Lili Wang, and Zhiyun Lin are with the Guangdong Provincial Key Laboratory of Fully Actuated System Control Theory and Technology, School of Automation and Intelligent Manufacturing, Southern Univer-sity of Science and Technology, Shenzhen 518055, P. R. China (e-mails: 12332648@mail.sustech.edu.cn; liumx@ieee.org; wangll@sustech.edu.cn; linzy@sustech.edu.cn). Corresponding author: Zhiyun Lin. 
+
+> §
+
+Minyue Fu is with the School of Automation, Guangdong University of Technology, Guangzhou 510006, China (e-mail: brianfu2106@outlook.com). 
+
+1arXiv:2608.11750v1 [eess.SY] 12 Aug 2026 integral reinforcement learning and related ADP methods avoid the direct use of the unknown system dynamics by integrating the Bellman equation over a finite time interval. Based on this idea, policy iteration (PI) and value iteration (VI) algorithms have been developed for continuous-time LQR prob-lems [6, 7, 8, 9, 10]. PI-based methods generally learn the optimal solution by solving a sequence of linear equations starting from an initially stabilizing feedback gain, whereas VI-based and modified iteration methods can relax this initialization requirement. Nevertheless, most of these methods are developed under state feedback and require the system state to be measured during learning. Output feedback learning is essential for practical LQR problems because the full system state is often unavailable. Several RL/ADP-based output feedback methods have been developed for unknown linear systems. Early approaches used measured input–output data or value-function approximation to construct learning equations [11], while off-policy output-feedback methods were later proposed for unknown continuous-time systems [12]. More recent studies have addressed optimal output tracking and regulation under unmeasurable states using dynamic output feedback and input–output data [13, 14, 15, 16]. However, for continuous-time systems, direct input-output parametrization may involve derivatives of input and output signals, which are difficult to obtain accurately in practice. Moreover, exploration signals may introduce estimation bias, leading to additional treatments such as discounted cost functions or bias compensation. A significant step toward continuous-time model-free output feedback LQR was made in [17], where dynamic filters driven by measurable input and output signals were introduced. The resulting filtered input–output vector z(t) can asymptotically parameterize the unmeasured state, so that both the state-feedback value function and the control law can be expressed as functions of z(t). The additional rank conditions required by such state parameterizations were subsequently analyzed in [18]. Based on this parametrization, model-free output feedback PI and VI Bellman equations were developed in [17]. This dynamic output feedback framework has also been extended to related problems, such as continuous-time zero-sum games [19]. Recent studies further refined this framework by introducing internal controller states and observer-error compensation to improve the learning equation and reduce computational re-quirements [20], and by addressing the transient optimality loss caused by observer errors through an input-output-driven internal model [21]. More recently, an output-feedback homotopy-based PI method was developed to alleviate the initial stabilizing-policy requirement while providing performance assur-ance [22]. Although the dynamic output feedback framework in [17] establishes that the filtered input–output vector z(t) contains sufficient information to parameterize the unmeasured state, it does not characterize the intrinsic dimension of this parametrization. State-parametrization sufficiency and intrinsic-dimension characterization are two different questions: the former concerns whether the state can be parameterized after the filter transient vanishes, whereas the latter determines how many independent directions are actually contained in the complete filtered vector and are available to the Bellman regression. If this intrinsic dimension is smaller than the ambient dimension of z(t), the full-vector regression contains deterministic dependencies and may be rank deficient even when the collected input–output data are persistently excited. Motivated by this observation, this article characterizes the intrinsic dimension of the filter-based state parametrization and develops a corresponding reduction approach for model-free output feedback LQR. The key technical idea is to convert the linear dependence among the filtered signals into a polynomial row-vector space problem. Considering a system with n-dimensional states, m-dimensional input, and p-dimensional output, we first analyze the special case of SIMO systems (where m = 1). This polynomial-space characterization shows that the complete filtered vector contains only 2 n independent degrees of freedom. For general MIMO systems, we separate the nm -dimensional subspace generated by the input-filtered variables from the additional directions contributed by the output-filtered variables, and prove that the latter contributes only n independent directions. Therefore, the intrinsic dimension of the conventional filtered vector is n(m + 1), rather than n(m + p). Based on this result, a reduced filtered vector zr (t) is selected directly from data by column-pivoted QR decomposition, and the model-free output feedback PI and VI equations are reformulated in terms of zr (t). The proposed reduction removes the deterministic rank deficiency caused by linearly dependent filtered variables, reduces the number of unknown regression parameters, and preserves the fully input-output data-based nature of the learning algorithm. The rest of this article is organized as follows. Section II reviews the continuous-time LQR problem 2and the filter-based dynamic output feedback parametrization used in model-free learning. Section III characterizes the intrinsic dimension of the filtered input–output parametrization for SIMO and MIMO systems. Section IV derives the reduced model-free output feedback PI and VI equations. Section V presents a numerical example based on a jet transport aircraft benchmark system to illustrate the rank reduction and closed-loop performance. Section VI concludes the article. The proofs of the polynomial representation lemmas are given in the appendices. 
+
+Notation: For a matrix X, X⊤ denotes its transpose, and rank( X) denotes its rank. In ∈ Rn×n
+
+is a unit matrix, and the zero vector or zero matrix with compatible dimension is denoted by 0. For a square matrix A, adj( A) denotes its adjugate matrix. The set Pn denotes the normed space of all 
+
+n-by-n real symmetric matrices, and Pn 
+
+> +
+
+≜ {P ∈ Pn : P ≥ 0}. The operator col( ·) denotes column-wise stacking. If A = [ a1, · · · , a s], then vec( A) = col( a1, · · · , a s). The symbol ⊗ denotes the Kronecker product. For x = [ x1, . . . , x n]⊤ ∈ Rn, define vecv( x) = [ x21, x 1x2, . . . , x 1xn, x 22, x 2x3, . . . , x n−1xn, x 2
+
+> n
+
+]⊤.
+
+For a symmetric matrix P ∈ Rn×n, define vecs( P ) = [ p11 , 2p12 , . . . , 2p1n, p 22 , 2p23 , . . . , 2pn−1,n , p nn ]⊤. For a polynomial f (s), deg f (s) denotes its degree. The notation gcd( f1(s), . . . , f q (s)) denotes the greatest common divisor of polynomials f1(s), . . . , f q (s). The set Rp×m[s] denotes the set of p × m polynomial matrices with real coefficients. For a set of vectors or polynomial vectors S, span S denotes its linear span and dim span S denotes the dimension of this span. For a linear subspace U ⊆ R1×m[s] and polynomial row vectors f (s), g (s) ∈ R1×m[s], the notation f (s) ≡ g(s) (mod U) means that f (s) − g(s) ∈ U ;equivalently, f (s) and g(s) represent the same coset in the quotient space R1×m[s]/U.
+
+# 2 Preliminaries 
+
+Consider the continuous-time linear time-invariant system 
+
+(
+
+˙x(t) = Ax (t) + Bu (t),y(t) = Cx (t), (1) where x(t) ∈ Rn is the system state, u(t) ∈ Rm is the control input, and y(t) ∈ Rp is the measured output. We impose the following standard assumptions: 
+
+Assumption 2.1. The pair (A, B ) is controllable. 
+
+Assumption 2.2. The pair (C, A ) is observable. 
+
+The LQR problem is to minimize the infinite-horizon quadratic cost 
+
+J =
+
+Z ∞
+
+> 0
+
+ y⊤(t)Qy y(t) + u⊤(t)Ru (t) dt, (2) where Qy = Q⊤ 
+
+> y
+
+> 0 and R = R⊤ > 0 are known, prescribed weighting matrices. Define Q = C⊤Qy C.The optimal state-feedback controller is given by 
+
+u∗(t) = K∗x(t), (3) where 
+
+K∗ = −R−1B⊤P ∗, (4) and P ∗ = ( P ∗)⊤ > 0 is the solution of ARE 
+
+A⊤P + P A + Q − P BR −1B⊤P = 0 . (5) 
+
+## 2.1 Model-Based and Model-Free LQR Using State Feedback 
+
+Since the ARE is nonlinear, iterative schemes are often used to compute its solution. A classical PI method starts from a stabilizing feedback gain K0 [23]. The procedures of policy evaluation and policy improvement are given by 0 = A⊤ 
+
+> k
+
+Pk + PkAk + Q + K⊤ 
+
+> k
+
+RK k, (6a) 3Kk+1 = −R−1B⊤Pk. (6b) where Ak = A + BK k. This iteration is known to converge to the optimal solution under a stabilizing initial policy. However, the update requires the system matrices A and B, as well as the state-weighting matrix Q.Besides PI, VI can also be used to solve the LQR problem [8]. Different from PI, which requires an initially stabilizing feedback gain, VI can start from any positive definite matrix ( P0 > 0). A model-based VI scheme first computes the tentative update 
+
+ePk+1 = Pk + ϵk
+
+ A⊤Pk + PkA + Q − PkBR −1B⊤Pk
+
+ , (7) where Pk is the estimate of the Riccati solution at the k-th iteration, and ϵk > 0 is a stepsize. The sequence {B q }∞ 
+
+> q=0
+
+consists of prescribed, norm-bounded truncation regions in Pn 
+
+> +
+
+with nonempty interiors. The sets and stepsizes satisfy 
+
+Bq ⊆ B q+1 , q ∈ N, lim  
+
+> q→∞
+
+Bq = Pn
+
+> +
+
+,ϵk > 0,
+
+> ∞
+
+X
+
+> k=0
+
+ϵk = ∞,
+
+> ∞
+
+X
+
+> k=0
+
+ϵ2 
+
+> k
+
+< ∞. (8) A typical choice is Bq = {P ∈ Pn 
+
+> +
+
+: ∥P ∥ ≤ bq }, where 0 < b 0 < b 1 < · · · and bq → ∞ . If ePk+1 ∈ B q , the tentative update is accepted; otherwise, the iterate is reset to P0 and the truncation index is increased. The boundedness of each Bq prevents excessively large transient iterates, while the limit condition ensures that the unknown Riccati solution is not permanently excluded. Since P ∗ ∈ Pn
+
+> +
+
+, there exists a finite q∗
+
+such that P ∗ lies in the interior of Bq∗ . Hence, for sufficiently large q, the truncation mechanism does not alter the local convergence of the VI sequence to P ∗; see [8] for details. We now recall the model-free state-feedback ADP schemes for solving the LQR problem without using the system matrices A and B. In this subsection, the full state x(t) is assumed to be measurable. The purpose is to show how the model-based PI and VI equations can be transformed into data-driven Bellman regression equations [7, 8]. For a sequence of time instants t0, t 1, . . . , t l, define the data stack operators, for compatible signals 
+
+a(t) and b(t), as 
+
+δaa = [vecv( a(t1)) − vecv( a(t0)) , . . . , vecv( a(tl)) − vecv( a(tl−1))] ⊤ ,
+
+Γab =
+
+"Z t1
+
+> t0
+
+a ⊗ b dτ, . . . , 
+
+Z tl
+
+> tl−1
+
+a ⊗ b dτ 
+
+#⊤
+
+,Iaa =
+
+"Z t1
+
+> t0
+
+vecv( a) dτ, . . . , 
+
+Z tl
+
+> tl−1
+
+vecv( a) dτ 
+
+#⊤
+
+,Iau =
+
+"Z t1
+
+> t0
+
+a ⊗ Ru dτ, . . . , 
+
+Z tl
+
+> tl−1
+
+a ⊗ Ru dτ 
+
+#⊤
+
+.
+
+In model-free PI, at the k-th iteration, rewrite the system (1) as ˙x = Akx + B(u − Kkx), Ak = A + BK k. (9) For a fixed policy Kk, combining the PI relations (6a) and (6b) with (9), and integrating the derivative of the value function Vk(x) = x⊤Pkx over [ t, t + ∆ t], gives 
+
+x⊤(t + ∆ t)Pkx(t + ∆ t) − x⊤(t)Pkx(t)=
+
+Z t+∆ tt
+
+ − x⊤(τ )( Q + K⊤ 
+
+> k
+
+RK k)x(τ )
+
+− 2 u(τ ) − Kkx(τ )⊤RK k+1 x(τ )dτ. 
+
+(10) It can be written in the regression form Ψk
+
+ vecs( Pk)vec( Kk+1 )
+
+
+
+= Φ k, (11) 4where Ψ k = δxx , −2Γ xx 
+
+ In ⊗ K⊤ 
+
+> k
+
+R + 2Γ xu 
+
+ and Φ k = −Γxx vecs  Q + K⊤ 
+
+> k
+
+RK k
+
+. Hence, Pk and Kk+1 
+
+can be obtained by least squares without explicitly using A and B. Repeating this procedure yields a sequence of feedback gains that converges to the optimal state-feedback gain under the standard rank condition and an initially stabilizing policy. The state-feedback PI method removes the need for system matrices, but it still requires a stabilizing initial gain K0. To avoid this requirement, model-free VI can be used. Starting from any positive definite matrix P0 > 0, define Hk = A⊤Pk + PkA and Kk = −R−1B⊤Pk, along the system trajectory, we obtain 
+
+x⊤(t + ∆ t)Pkx(t + ∆ t) − x⊤(t)Pkx(t)=
+
+Z t+∆ tt
+
+x⊤(τ )Hkx(τ ) − 2u⊤(τ )RK kx(τ ) dτ. (12) After stacking the data over all time intervals, one obtains Ω
+
+vecs( Hk)vec( Kk)
+
+
+
+= Θ k, (13) where Ω = Ixx −2Ixu 
+
+ and Θ k = δxx vecs( Pk). Solving this linear regression equation gives Hk and 
+
+Kk from state-input data. The value matrix is then updated by 
+
+Pk+1 = Pk + ϵk
+
+ Hk + Q − K⊤ 
+
+> k
+
+RK k
+
+ , (14) where the stepsize and bounded-set sequence satisfy the VI convergence conditions in (8). Therefore, model-free VI does not require the system matrices ( A, B ), nor does it require an initially stabilizing feedback gain. 
+
+## 2.2 Dynamic Output Feedback State Parametrization 
+
+The above model-free PI and VI schemes provide the basis for continuous-time LQR learning. However, they both rely on the availability of the full state x(t) in the data stack operators and in the Bellman regression equations. In many practical systems, the internal state is not measurable and only the input-output data u(t) and y(t) are available. To overcome this difficulty, the dynamic output feedback learning method in [17] introduces a fil-tered input–output vector to parameterize the unmeasured state. We recall this construction because it provides the notation and channelwise filtered-variable parametrization needed in the subsequent depen-dence analysis and reduced formulation. Let Λ( s) = sn + αn−1sn−1 + · · · + α1s + α0 (15) be a user-selected Hurwitz polynomial. Let Af ∈ Rn×n be the companion matrix associated with Λ( s), and let bf = 0 0 · · · 0 1⊤. For each input component ui(t), i = 1 , . . . , m , and each output component yj (t), j = 1 , . . . , p , define the filtered variables ˙ζui (t) = Af ζui (t) + bf ui(t), ζui (t) ∈ Rn, (16a) ˙ζyj (t) = Af ζyj (t) + bf yj (t), ζyj (t) ∈ Rn. (16b) Collect them as ζu(t) = col  ζu1 (t), . . . , ζ um (t) ∈ Rnm and ζy (t) = col  ζy1 (t), . . . , ζ yp (t) ∈ Rnp , and the full filtered input–output vector is defined by 
+
+z(t) = col  ζu(t), ζ y (t) ∈ Rn(m+p). (17) The following state-parametrization lemma and its observer-based proof are recalled from [17], rather than presented as a new contribution. The proof is retained for completeness and to make explicit the filtered variables and mapping matrices used in the subsequent proofs. 
+
+Lemma 2.3. Consider system (1) , under Assumption 2.2, there exist constant matrices Mu ∈ Rn×nm 
+
+and My ∈ Rn×np such that 
+
+x(t) = Muζu(t) + My ζy (t) + ε(t), (18) 5where ε(t) is a transient term satisfying lim t→∞ ε(t) = 0 . Equivalently, with M = Mu My
+
+, the state can be written in terms of the full filtered vector z(t). Therefore, after the filter transient vanishes, the state can be asymptotically parameterized by 
+
+x(t) ≈ M z (t). (19) 
+
+Proof. Following the observer-based construction in [17], under Assumption 2.2, there exists an observer gain L ∈ Rn×p such that AL = A − LC is Hurwitz and has the characteristic polynomial Λ( s). Consider the corresponding Luenberger observer dynamics ˙ˆx(t) = AL ˆx(t) + Bu (t) + Ly (t). (20) Taking the Laplace transform of (20) and setting the observer initial condition to zero, we have ˆx(t) = L−1
+
+(
+
+(sI − AL)−1BU (s) + ( sI − AL)−1LY (s)
+
+)
+
+= L−1
+
+( mX
+
+> i=1
+
+adj( sI − AL)BiUi(s)Λ( s) +
+
+> p
+
+X
+
+> j=1
+
+adj( sI − AL)Lj Yj (s)Λ( s)
+
+)
+
+,
+
+(21) where Bi and Lj denote the ith column of B and the jth column of L, respectively. Consider the input-channel term adj( sI − AL)Bi
+
+Λ( s) Ui(s) = 
+
+Pn−1 
+
+> k=0
+
+a1ik sk
+
+...
+
+Pn−1 
+
+> k=0
+
+ani k sk
+
+ Ui(s)Λ( s)=
+
+
+
+a1i 
+
+> 0
+
+· · · a1in−1
+
+... . . . ...
+
+ani  
+
+> 0
+
+· · · ani n−1
+
+
+
+1...
+
+sn−1
+
+ Ui(s)Λ( s)= Mui ζui (s).
+
+(22) Here ζui (s) = 1 · · · sn−1⊤ Ui(s)/Λ( s) is the Laplace-domain filtered signal generated by (16a). Similarly, for each output channel, there exists a constant matrix Myj ∈ Rn×n such that 
+
+L−1
+
+ adj( sI − AL)Lj
+
+Λ( s) Yj (s)
+
+
+
+= Myj ζyj (t). (23) Therefore, ˆx(t) = Muζu(t) + My ζy (t), (24) where Mu = Mu1 · · · Mum
+
+ and My = My1 · · · Myp
+
+. Since x(t) = ˆ x(t) + ε(t), where ε(t) is the observer error satisfying ε(t) → 0 because AL is Hurwitz, this proves (18) and completes the proof. 
+
+## 2.3 Model-Free LQR Using Output Feedback 
+
+Following the dynamic output feedback framework in [17], this subsection recalls how the state-feedback Bellman equations are converted into filtered input–output equations. Let nz = n(m + p) and define ¯Pk = M ⊤PkM , ¯Kk = KkM , and ¯Hk = M ⊤HkM . Substituting x(t) ≈ M z (t) into (10) gives the full filtered-vector PI equation 
+
+z⊤(t + ∆ t) ¯Pkz(t + ∆ t) − z⊤(t) ¯Pkz(t)= −
+
+Z t+∆ tt
+
+h
+
+y⊤(τ )Qy y(τ ) + z⊤(τ ) ¯K⊤ 
+
+> k
+
+R ¯Kkz(τ )
+
+i
+
+dτ 
+
+− 2
+
+Z t+∆ tt
+
+ u(τ ) − ¯Kkz(τ )⊤R ¯Kk+1 z(τ ) dτ. 
+
+(25) 6Here the state-cost term has been written as x⊤Qx = y⊤Qy y, so the equation only uses measured output data and the filtered vector z(t). Stacking (25) over all data intervals yields ¯Ψk
+
+ vecs( ¯Pk)vec( ¯Kk+1 )
+
+
+
+= ¯Φk, (26) where ¯Ψk = δzz , −2Γ zz 
+
+ Inz ⊗ ¯K⊤ 
+
+> k
+
+R + 2Γ zu 
+
+ and ¯Φk = −Iyy vecs( Qy ) − Γzz vecs   ¯K⊤ 
+
+> k
+
+R ¯Kk
+
+. Similarly, substituting x(t) ≈ M z (t) into (12) gives 
+
+z⊤(t + ∆ t) ¯Pkz(t + ∆ t) − z⊤(t) ¯Pkz(t)=
+
+Z t+∆ tt
+
+z⊤(τ ) ¯Hkz(τ ) − 2u⊤(τ )R ¯Kkz(τ ) dτ. (27) The corresponding full filtered-vector VI regression is ¯Ω
+
+vecs( ¯Hk)vec( ¯Kk)
+
+
+
+= ¯Θk, (28) where ¯Ω = Izz −2Izu 
+
+ and ¯Θk = δzz vecs( ¯Pk). Thus, the unmeasured state has been eliminated from both the PI and VI Bellman regressions. Existing filter-based output feedback learning therefore replaces the unknown state by the filtered vector z(t) and transforms the Bellman equations into input– output regressions. However, the full-vector formulation implicitly regards all components of z(t) as independent regressors. Since these filtered variables are generated through common system dynamics, this assumption is not obvious. The following section determines the intrinsic dimension of the filtered parametrization and shows that the complete filtered vector contains deterministic redundancy. 
+
+# 3 Intrinsic Dimension of Filtered Input–Output Signals 
+
+## 3.1 Problem Formulation 
+
+The full filtered-vector PI and VI regressions in (26) and (28) use the complete vector z(t) ∈ Rn(m+p)
+
+as the state parameterization and implicitly treat all its components as independent regression direc-tions. However, because the filtered input and output variables are generated through common system dynamics, the number of independent directions in z(t) need not equal its ambient dimension n(m + p). The objective of this section is therefore not merely to identify linear dependence among the filtered variables, but to determine the intrinsic dimension of the filter-based state parametrization, namely, the number of independent directions contained in the complete filtered vector. We first study the SIMO case and then extend the analysis to general MIMO systems. The main results show that the intrinsic dimension is 2 n for SIMO systems and n(m + 1) for general MIMO systems. 
+
+Problem 3.1 (Intrinsic Dimension of the Filtered Representation): Given the filtered input–output vector 
+
+z(t) ∈ Rn(m+p), characterize the dimension of the linear space spanned by its scalar components, and establish how this intrinsic dimension provides the theoretical basis for constructing a reduced Bellman regression. 
+
+## 3.2 SIMO Systems 
+
+We first consider the SIMO case, namely m = 1. In this case, the full filtered vector is 
+
+z(t) = col  ζu(t), ζ y1 (t), . . . , ζ yp (t) ∈ Rn(1+ p). (29) In the Laplace domain, the ith output can be written as 
+
+Yi(s) = Ci(sI − A)−1BU (s) = di(s)
+
+a(s) U (s), i = 1 , . . . , p, (30) 7where a(s) = det( sI − A) is the characteristic polynomial of A, and di(s) = Ci adj( sI − A)B, with Ci
+
+being the jth row of C. From the filter definition in (16a) and (16b) of the previous section, we obtain (sI − Af )−1bf = 1 s · · · sn−1 1Λ( s) , so the filtered vectors can be written in the Laplace domain as 
+
+ζu(s) = 1 s · · · sn−1⊤ U (s)Λ( s) , ζyi (s) = 1 s · · · sn−1⊤ Yi(s)Λ( s) . (31) For r = 0, . . . , n − 1, the components in (31) associated with the power sr are sr U (s)/Λ( s) and 
+
+sr Yi(s)/Λ( s), respectively. Although its dimension is n(1 + p), all output-filtered variables are generated by the same input and the same system dynamics. Therefore, they may contain deterministic linear dependence. We discuss two cases. 
+
+3.2.1 Case I: An Observable Pair (Ci, A ) Exists 
+
+Assume that there exists an index i ∈ { 1, . . . , p } such that the pair ( Ci, A ) is observable, so the SISO transfer function from u to yi has no pole-zero cancellation. Equivalently, gcd( a(s), d i(s)) = 1 . (32) 
+
+Lemma 3.2. Suppose that gcd( a(s), d i(s)) = 1 , where deg a(s) = n and deg di(s) ≤ n − 1. Then for any 
+
+j̸ = i and any r = 0 , . . . , n − 1, there exist polynomials αjr (s) and βjr (s) such that 
+
+αjr (s)a(s) + βjr (s)di(s) = sr dj (s), (33) 
+
+where deg αjr (s) < n and deg βjr (s) < n .
+
+The proof is given in Appendix A. 
+
+Proposition 3.3. If there exists an index i ∈ { 1, . . . , p } such that the pair (Ci, A ) is observable, then every component of ζyj (t), j̸ = i, belongs to the span of the components of ζu(t) and ζyi (t). Moreover, the 2n components of ζu(t) and ζyi (t) are linearly independent. Consequently, the space spanned by the components of the full SIMO filtered vector has dimension 2n.Proof. The proof consists of two steps. 
+
+Step 1: Representation of linearly dependent output-filtered components. Lemma 3.2 is used to show that each component of ζyj (t), j̸ = i, can be written as a linear combination of the compo-nents of ζu(t) and ζyi (t). Indeed, multiplying (33) by U (s)/(a(s)Λ( s)) and using Yℓ(s) = dℓ(s)U (s)/a (s), 
+
+ℓ = i, j , gives 
+
+sr Yj (s)Λ( s) = αjr (s)U (s)Λ( s) + βjr (s)Yi(s)Λ( s) . (34) Define 
+
+αjr (s) = αjr, 0 + αjr, 1s + · · · + αjr,n −1sn−1, βjr (s) = βjr, 0 + βjr, 1s + · · · + βjr,n −1sn−1,
+
+and let Ajr ≜ [αjr, 0 αjr, 1 · · · αjr,n −1] and Bjr ≜ [βjr, 0 βjr, 1 · · · βjr,n −1]. Combining (31) and (34) implies [ζyj (s)] r+1 = Ajr ζu(s) + Bjr ζyi (s).
+
+Equivalently, in the time domain, [ζyj (t)] r+1 = Ajr ζu(t) + Bjr ζyi (t). (35) Since (35) holds for every r = 0 , . . . , n − 1, each component of ζyj (t), j̸ = i, can be written as a linear combination of the components of ζu(t) and ζyi (t). 
+
+Step 2: Linear independence of the reduced components. We prove that ζu(t) and ζyi (t)together form 2 n linearly independent components. Equivalently, we need to show that the polynomials 8a(s), sa (s), . . . , s n−1a(s), d i(s), sd i(s), . . . , s n−1di(s) are linearly independent. Suppose, to the contrary, that there exists a nonzero pair of row vectors v ∈ R1×n and w ∈ R1×n such that 
+
+v
+
+
+
+a(s)
+
+sa (s)...
+
+sn−1a(s)
+
+ + w
+
+
+
+di(s)
+
+sd i(s)...
+
+sn−1di(s)
+
+ = 0 . (36) Define r(s) = v[1 s · · · sn−1]⊤ and q(s) = −w[1 s · · · sn−1]⊤. Then deg r(s) ≤ n − 1, deg q(s) ≤ n − 1, and (36) can be rewritten as 
+
+r(s)a(s) = q(s)di(s). (37) Since gcd( a(s), d i(s)) = 1, the polynomial a(s) must divide q(s). However, deg q(s) ≤ n − 1 and deg a(s) = n, which implies q(s) = 0. Substituting this into (37) gives r(s)a(s) = 0, and hence r(s) = 0. From the definitions of r(s) and q(s), it follows that v = 0 and w = 0, contradicting the assumption that (v, w ) is nonzero. Hence, the above 2 n polynomials are linearly independent, and therefore dim span {a(s), sa (s), . . . , s n−1a(s), d i(s), sd i(s), . . . , s n−1di(s)} = 2 n. (38) Consequently, ζu(t) and ζyi (t) contain 2 n linearly independent components. Proposition 3.3 shows that the full SIMO filtered vector need not be retained in Case I. A reduced vector may be chosen as 
+
+zr (t) = col  ζu(t), ζ yi (t) ∈ R2n. (39) 
+
+3.2.2 Case II: No Observable Pair (Ci, A ) Exists 
+
+For each i = 1 , . . . , p , the pair ( Ci, A ) is not observable. Hence, the transfer function di(s)/a (s) has pole-zero cancellation, that is, gcd( a(s), d i(s)) ̸ = 1 for all i = 1 , . . . , p . However, under Assumption 2.2, the output channels collectively contain all state information. This implies that the transfer function vector G(s) = 1
+
+> a(s)
+
+d1(s) d2(s) · · · dp(s)⊤ has no common pole-zero cancellation. Equivalently, gcd( a(s), d 1(s), d 2(s), . . . , d p(s)) = 1 . (40) 
+
+Proposition 3.4. For each output channel yi, let ρi(s) = gcd( a(s), d i(s)) , and define the coprime denominator and numerator as 
+
+¯ai(s) = a(s)
+
+ρi(s) , ¯di(s) = di(s)
+
+ρi(s) . (41) 
+
+Let νi = deg ¯ ai(s) < n , the following two types of deterministic linear dependence hold. First, within each output-filtered vector ζyi (t), the higher-order components [ζyi (t)] νi+1 , . . . , [ζyi (t)] n
+
+can be linearly dependent on ζu(t) and the first νi components of ζyi (t). Therefore, only the first νi
+
+components of ζyi (t) may contribute new independent directions beyond the input-filtered vector ζu(t).Second, different output-filtered vectors ζyi (t) and ζyj (t), (j̸ = i) are also linearly dependent. Thus, the independent output-filtered vector components in Case II are generally distributed among multiple output channels, rather than being contained in a single ζyi (t).Proof. The first statement follows from 
+
+Yi(s) = di(s)
+
+a(s) U (s) = ¯di(s)¯ai(s) U (s), (42) which gives ¯ai(s)Yi(s) = ¯di(s)U (s). (43) Choose ρi(s) to be monic, since deg ¯di(s) ≤ νi − 1, the polynomials ¯ ai(s) and ¯di(s) can be written as ¯ai(s) = sνi + γi,ν i−1sνi−1 + · · · + γi, 0, ¯di(s) = δi,ν i−1sνi−1 + · · · + δi, 0. (44) 9Dividing (43) by Λ( s) on the both sides gives [ζyi (s)] νi+1 = −γi,ν i−1[ζyi (s)] νi − · · · − γi, 0[ζyi (s)] 1 + δi,ν i−1[ζu(s)] νi + · · · + δi, 0[ζu(s)] 1. (45) Multiplying (43) by sk/Λ( s), k = 1 , . . . , n − νi − 1, gives the same type of relation for the remain-ing higher-order components. Recursively, [ ζyi (t)] νi+1 , . . . , [ζyi (t)] n can be represented by ζu(t) and [ζyi (t)] 1, . . . , [ζyi (t)] νi .For the second statement, since 
+
+Yi(s) = di(s)
+
+a(s) U (s), Yj (s) = dj (s)
+
+a(s) U (s), (46) we have 
+
+dj (s)Yi(s) = di(s)Yj (s). (47) Write 
+
+di(s) = di, 0 + di, 1s + · · · + di,n −1sn−1, dj (s) = dj, 0 + dj, 1s + · · · + dj,n −1sn−1,
+
+dividing (47) by Λ( s) and using the Laplace-domain filtered-output vectors components in (31), we obtain 
+
+> n−1
+
+X
+
+> ℓ=0
+
+dj,ℓ [ζyi (s)] ℓ+1 −
+
+> n−1
+
+X
+
+> ℓ=0
+
+di,ℓ [ζyj (s)] ℓ+1 = 0 . (48) Thus, the components of ζyi (s) and ζyj (s), and equivalently those of ζyi (t) and ζyj (t) in the time domain, satisfy a deterministic linear dependence. This completes the proof. Proposition 3.4 shows that, when no individual pair ( Ci, A ) is observable, the independent output-filtered components cannot generally be obtained by retaining one complete output-filtered vector. In-stead, they may be distributed among multiple output channels. Nevertheless, Assumptions 2.1 and 2.2 guarantee that an observable scalar virtual output can be formed as a linear combination of the measured outputs. 
+
+Lemma 3.5. Consider a SIMO system satisfying Assumptions 2.1 and 2.2. Then there exists a real vector v ∈ Rp such that (v⊤C, A ) is observable. Proof. Partition C by rows as C = col( C⊤ 
+
+> 1
+
+, . . . , C ⊤ 
+
+> p
+
+), where Ci ∈ Rn. Since the system is controllable and observable, ( A, B, C ) is a minimal realization. Its transfer-function vector is 
+
+G(s) = 1
+
+a(s)
+
+d1(s) d2(s) · · · dp(s)⊤ , (49) which has no common pole-zero cancellation. Let λ1, . . . , λ s be the distinct roots of a(s) and define 
+
+Ni = di(λ1) di(λ2) · · · di(λs)⊤ , i = 1 , . . . , p. (50) Because G(s) has no common pole-zero cancellation, for each j = 1, . . . , s , at least one of 
+
+d1(λj ), . . . , d p(λj ) is nonzero. Without loss of generality, after reordering the rows of C and the roots λj , assume that the first 
+
+κ1 > 0 entries of N1 are nonzero and its remaining entries are zero. If κ1 = s, then d1(s)/a (s) has no pole-zero cancellation, and we can simply choose 
+
+v = 1 0 · · · 0⊤ . (51) Suppose that κ1 < s . Then there exists some i > 1 such that the ( κ1 + 1)th entry of Ni is nonzero; otherwise, all the numerators would vanish at λκ1+1 . After reordering N2, . . . , N p if necessary, assume that this vector is N2. By further reordering the remaining roots, assume that N2 has nonzero entries from positions κ1 + 1 to κ2 and zero entries after position κ2. If κ2 < s , the same argument can be repeated. Since the numerator vectors have no common zero, this process eventually yields some ℓ ≤ p
+
+such that κℓ = s.10 It remains to choose the coefficients of the output combination. There are only finitely many real values of a2 for which N1 + a2N2 has a zero entry among its first κ2 entries. Choose a nonzero real a2
+
+avoiding these values. After a2 has been chosen, there are only finitely many real values of a3 for which 
+
+N1 + a2N2 + a3N3 has a zero entry among its first κ3 entries. Choose a nonzero real a3 avoiding these values. Continuing in this way, we obtain nonzero real numbers a2, . . . , a ℓ such that 
+
+N1 + a2N2 + · · · + aℓNℓ (52) has no zero entry. Therefore, choose 
+
+v = 1 a2 · · · aℓ 0 · · · 0⊤ , (53) with its entries returned to the original output order if the rows of C were reordered. Then 
+
+v⊤C = C1 + a2C2 + · · · + aℓCℓ, (54) and the corresponding scalar transfer function is 
+
+v⊤C(sI − A)−1B = d1(s) + a2d2(s) + · · · + aℓdℓ(s)
+
+a(s) . (55) Its numerator is nonzero at every root of a(s), so the transfer function has no pole-zero cancellation. Since ( A, B ) is controllable, it follows that ( v⊤C, A ) is observable. Let v be a vector whose existence is guaranteed by Lemma 3.5, and define the virtual scalar output 
+
+ey(t) = v⊤y(t) = v⊤Cx (t) (56) and its numerator polynomial 
+
+ed(s) = v⊤ d1(s) · · · dp(s)⊤ =
+
+> p
+
+X
+
+> i=1
+
+vidi(s). (57) The construction in the proof of Lemma 3.5 shows that the scalar transfer function ed(s)/a (s) has no pole-zero cancellation. Therefore, gcd  a(s), ed(s) = 1 . (58) Moreover, the linearity of the filter in (16b) gives 
+
+ζey (t) = 
+
+> p
+
+X
+
+> i=1
+
+viζyi (t). (59) 
+
+Theorem 3.6. Consider a SIMO system satisfying Assumptions 2.1 and 2.2. Define 
+
+SSIMO = {sr a(s) : r = 0 , . . . , n − 1} ∪ { sr di(s) : r = 0 , . . . , n − 1, i = 1 , . . . , p }. (60) 
+
+Then there exist a vector v ∈ Rp and the polynomial ed(s) in (57) such that 
+
+span SSIMO = span {sr a(s), s r ed(s) : r = 0 , . . . , n − 1}. (61) 
+
+Consequently, 
+
+dim span SSIMO = 2 n. (62) 
+
+Equivalently, the complete SIMO filtered vector z(t) ∈ Rn(1+ p) has exactly 2n linearly independent com-ponents. Proof. Choose v ∈ Rp as in Lemma 3.5 and define ed(s) by (57). Then (58) holds. For every i = 1 , . . . , p 
+
+and r = 0 , . . . , n −1, applying Lemma 3.2 with di(s) replaced by ed(s) gives polynomials αir (s) and βir (s), both of degree less than n, such that 
+
+αir (s)a(s) + βir (s) ed(s) = sr di(s). (63) 11 Therefore, span SSIMO ⊆ span {sr a(s), s r ed(s) : r = 0 , . . . , n − 1}. (64) Conversely, since sr ed(s) = Ppi=1 visr di(s), every polynomial generated by the virtual output belongs to span SSIMO . Hence, (61) holds. It remains to determine the dimension of this space. Suppose that polynomials q(s) and h(s) satisfy deg q(s) < n , deg h(s) < n , and 
+
+q(s)a(s) + h(s) ed(s) = 0 . (65) Since gcd( a(s), ed(s)) = 1, a(s) must divide h(s). However, deg h(s) < n = deg a(s), which implies 
+
+h(s) = 0 and consequently q(s) = 0. Therefore, the 2 n polynomials a(s), . . . , s n−1a(s), ed(s), . . . , s n−1 ed(s)are linearly independent, and (62) follows. 
+
+Remark 3.7. Lemma 3.5 does not imply that one of the original pairs (Ci, A ) must be observable. The observable scalar output ey = v⊤y may be a nontrivial linear combination of several measured outputs. Therefore, in Case II, although ζey (t) provides a convenient device for proving the total intrinsic dimen-sion, the independent components selected directly from the original filtered vector may still be distributed among multiple output-filtered vectors, as characterized in Proposition 3.4. The subsequent QR procedure selects these components from the original filtered vector z(t).
+
+This result completes the SIMO dimension analysis. The MIMO result below is established separately through polynomial row-vector subspaces. 
+
+## 3.3 MIMO Systems 
+
+We now consider the general MIMO case with m inputs and p outputs. In contrast to the SIMO case, each output channel is driven by all input channels. Therefore, the scalar numerator dj (s) becomes a polynomial row vector. Define D(s) = C adj( sI − A)B ∈ Rp×m[s], and let Dj (s) be the jth row of D(s), namely 
+
+Dj (s) = Cj adj( sI − A)B. (66) Thus, 
+
+Yj (s) = Dj (s)
+
+a(s) U (s), U (s) = U1(s) · · · Um(s)⊤ , (67) and the filtered input–output variables correspond to the polynomial row-vector set 
+
+SMIMO = {sr a(s)ei : r = 0 , . . . , n − 1, i = 1 , . . . , m } ∪ { sr Dj (s) : r = 0 , . . . , n − 1, j = 1 , . . . , p }, (68) where ei is the ith canonical row vector in R1×m. Thus, determining the number of independent com-ponents of z(t) is equivalent to determining dim span SMIMO .
+
+Lemma 3.8. Let U = span {sr a(s)ei : r = 0 , . . . , n − 1, i = 1 , . . . , m }. We have 
+
+dim U = nm. (69) 
+
+Proof. It suffices to show that the nm polynomial row vectors sr a(s)ei, i = 1 , . . . , m , r = 0 , . . . , n − 1, are linearly independent. Suppose that 
+
+> m
+
+X
+
+> i=1
+> n−1
+
+X
+
+> r=0
+
+cir sr a(s)ei = 0 . (70) Equivalently, 
+
+a(s) P n−1 
+
+> r=0
+
+c1r sr · · · Pn−1 
+
+> r=0
+
+cmr sr  = 0 . (71) Since a(s) is a nonzero polynomial, each scalar polynomial in the bracket must be zero. Therefore, 
+
+cir = 0 for all i = 1 , . . . , m and r = 0 , . . . , n − 1. Hence the nm generators of U are linearly independent, and thus dim U = nm . This completes the proof. 12 Lemma 3.9. Let M (s) = adj( sI − A)B, for each output channel j = 1 , . . . , p and r = 0 , . . . , n − 1, the polynomial row vector sr Dj (s) satisfies 
+
+sr Dj (s) ≡ Cj Ar M (s) (mod U). (72) 
+
+Proof. Recall that Dj (s) = Cj M (s), from (sI − A) adj( sI − A) = a(s)I, (73) we obtain 
+
+s adj( sI − A) = A adj( sI − A) + a(s)I. (74) Multiplying (74) by B gives 
+
+sM (s) = AM (s) + a(s)B. (75) Applying (75) repeatedly yields, for r = 1 , . . . , n − 1, 
+
+sr Dj (s) = Cj Ar M (s) + a(s)Cj
+
+ sr−1I + sr−2A + · · · + Ar−1B. (76) For r = 0, this identity reduces to Dj (s) = Cj M (s). The second term in (76) is of the form a(s)Qjr (s), where Qjr (s) ∈ R1×m[s] has degree no larger than r − 1 ≤ n − 2. Hence it belongs to U, because it can be represented by the generators sℓa(s)ei, ℓ = 0 , . . . , n − 1, i = 1 , . . . , m . Therefore, 
+
+sr Dj (s) ≡ Cj Ar M (s) (mod U). (77) This completes the proof. 
+
+Lemma 3.10. Define 
+
+M = R1×nM (s) := {v⊤M (s) : v ∈ Rn}. (78) 
+
+Under Assumption 2.1, we have 
+
+dim M = n. (79) 
+
+Proof. The key is to show that the mapping v 7 → v⊤M (s) is injective. If v⊤M (s) = 0, we can obtain 
+
+v⊤ adj( sI − A)B = 0 , (80) which implies 
+
+v⊤(sI − A)−1B = 0 . (81) Using the expansion ( sI − A)−1 = 1 
+
+> s
+
+I + 1 
+
+> s2
+
+A + 1 
+
+> s3
+
+A2 + · · · gives 
+
+v⊤B = 0 , v⊤AB = 0 , . . . , v⊤An−1B = 0 . (82) By Assumption 2.1, this gives v = 0. Hence dim M = n.
+
+Remark 3.11. By Assumption 2.2, the observability matrix O = [ C⊤ (CA )⊤ · · · (CA n−1)⊤]⊤ has full column rank n. Therefore, the row vectors Cj Ar , j = 1 , . . . , p , r = 0 , . . . , n − 1, span the whole row space 
+
+R1×n. It follows that span {Cj Ar M (s) : j = 1 , . . . , p, r = 0 , . . . , n − 1} = M. Thus, after removing the input-generated subspace U, the output-filtered polynomial vectors in Lemma 3.9 generate exactly the quotient directions described by M.
+
+Lemma 3.12. The input-generated subspace U and the output quotient space M satisfy 
+
+U ∩ M = {0}. (83) 13 Proof. Suppose that a polynomial row vector belongs to both spaces. Then there exist Q(s) and v such that 
+
+a(s)Q(s) = v⊤M (s). (84) The left-hand side has degree at least n if Q(s) is nonzero, while the right-hand side has degree at most 
+
+n − 1. Hence Q(s) = 0 and v = 0. Therefore, the intersection is trivial. 
+
+Theorem 3.13. For a MIMO system satisfying Assumptions 2.1 and 2.2, with state dimension n, input dimension m, and output dimension p, the complete filtered input–output vector 
+
+z(t) ∈ Rn(m+p) (85) 
+
+contains only n(m + 1) linearly independent components. Equivalently, 
+
+dim span SMIMO = n(m + 1) . (86) 
+
+Proof. By Lemma 3.8, the input-generated subspace has dimension nm . By Lemma 3.9, the output-filtered polynomial vectors, after removing the input-generated subspace, are represented by elements of M. By Lemma 3.10, this output quotient space has dimension n. By Lemma 3.12, the input-generated subspace and the output quotient space are independent. Hence, their dimensions add to 
+
+nm + n = n(m + 1), which proves the theorem. Theorem 3.13 gives the exact intrinsic dimension of the conventional MIMO filtered representation. Although z(t) lies in the ambient space Rn(m+p), its components span a subspace of dimension only 
+
+n(m + 1). Thus, when p > 1, the complete parametrization contains n(p − 1) redundant directions. Using the full z(t) in the Bellman regression therefore introduces deterministically dependent regressors and may cause rank deficiency. 
+
+Corollary 3.14. Under the conditions of Theorem 3.13, there exists a selection matrix S such that the 
+
+n(m + 1) components of 
+
+zr (t) = Sz (t) ∈ Rn(m+1) (87) 
+
+are linearly independent. Moreover, the state parametrization can be preserved in the reduced form 
+
+x(t) ≈ Mr zr (t) (88) 
+
+for some constant matrix Mr .
+
+The above result provides the theoretical basis for the reduced model-free output feedback formula-tion. In the next section, we show how to construct zr (t) directly from data and how to reformulate the PI and VI Bellman equations using zr (t) instead of the full vector z(t), whose components are linearly dependent. 
+
+# 4 Reduced Model-Free Output Feedback LQR 
+
+Corollary 3.14 translates the intrinsic-dimension characterization into a reduced state parametrization for model-free LQR learning. In the original dynamic output feedback formulation in [17], one directly uses z(t) ∈ Rn(m+p) to construct the Bellman equations. However, since the intrinsic dimension of z(t)is only n(m + 1), the regression matrix generated by vecs  z(t)z⊤(t), u (t) ⊗ z(t) in (26) and (28) is rank deficient. Therefore, even if the input–output data are sufficiently excited, the linear equations for solving the unknown matrices ¯Pk, ¯Kk, or ¯Hk in (26) and (28) fail to have a unique solution due to the deterministic linear dependence inside z(t). To avoid this problem, the model-free LQR Bellman equations should be written in terms of zr (t), rather than the original full vector z(t). By (88), the value function and control law can be represented as 
+
+V (t) = z⊤ 
+
+> r
+
+(t)Pr zr (t), u(t) = Kr zr (t), (89) 14 where Pr ∈ Rn(m+1) ×n(m+1) and Kr ∈ Rm×n(m+1) .In practice, the independent components of z(t) can be selected directly from data. Suppose the filtered data are collected at sampling instants t1, t 2, . . . , t N (N ≥ n(m + 1)). Define Z =
+
+z(t1) z(t2) · · · z(tN )⊤ ∈ RN ×n(m+p) and perform a QR decomposition with column pivoting, let r = n(m + 1). Then the first r pivot columns selected by the QR decomposition correspond to a linearly independent subset of the components of z(t). With the selected index set I = {i1, i 2, . . . , i r },the reduced filtered vector can be defined as 
+
+zr (t) = zi1 (t) zi2 (t) · · · zir (t)⊤ ∈ Rr . (90) 
+
+Remark 4.1. The step of QR decomposition is used only to determine which components of the linearly dependent filtered vector z(t) should be retained. The selected index set I is fixed and used in all subsequent learning iterations. 
+
+## 4.1 Reduced PI 
+
+Substituting the reduced state parametrization (88) into the PI equation (10) gives the reduced PI equation 
+
+z⊤ 
+
+> r
+
+(t)Pr,k zr (t) − z⊤ 
+
+> r
+
+(t − T )Pr,k zr (t − T )= −
+
+Z tt−T
+
+y⊤(τ )Qy y(τ )dτ −
+
+Z tt−T
+
+z⊤ 
+
+> r
+
+(τ )K⊤
+
+> r,k
+
+RK r,k zr (τ )dτ 
+
+− 2
+
+Z tt−T
+
+(u(τ ) − Kr,k zr (τ )) ⊤ RK r,k +1 zr (τ )dτ. (91) Stacking (91) over all data intervals gives the reduced PI regression Ψr,k 
+
+ vecs( Pr,k )vec( Kr,k +1 )
+
+
+
+= Φ r,k , (92) where Ψ r,k = δzr zr , −2Γ zr zr (Ir ⊗ K⊤
+
+> r,k
+
+R) + 2Γ zr u
+
+ and Φ r,k = −Iyy vecs( Qy ) − Γzr zr vecs( K⊤
+
+> r,k
+
+RK r,k ). Here, the number of unknowns is r(r+1) 2 + mr , where r = n(m + 1). Therefore, compared with the original output feedback formulation using z ∈ Rn(m+p), the reduced formulation decreases the number of unknowns from n(m+p)( n(m+p)+1) 2 + mn (m + p) to n(m+1)( n(m+1)+1) 2 + mn (m + 1). More importantly, the reduced formulation removes the linear dependence in z(t), thereby making the least-squares equation well posed under sufficient excitation. The complete reduced PI procedure is summarized in Algorithm 1, where the QR-based reduction step implements the data-driven construction of zr (t) and the policy evaluation/improvement step is based on (92). During data collection, the exploratory input is chosen as: 
+
+u0(t) = Kr, 0zr (t) + ν(t), (93) where Kr, 0 is stabilizing and ν(t) is the exploration signal. The resulting input–output data are used to generate z(t) and are reused in the subsequent policy evaluation and improvement steps. 
+
+Remark 4.2. It should be noted that PI requires an admissible initial policy. In the existing model-free LQR PI literature [17, 22, 24], this issue is handled either by considering open-loop stable systems or by introducing a homotopy-based initialization. For an open-loop stable system, the zero feedback gain is admissible, and hence the initial input becomes u0(t) = ν(t).
+
+Remark 4.3. The above reduction procedure is completely data-based. It only uses the sampled filtered data matrix Z and the data matrices generated from input–output data. Therefore, it does not require the knowledge of the system matrices A, B, or C.
+
+Remark 4.4. In implementation, the reduced data matrices such as δzr zr , Γzr zr , and Γzr u in (92) 
+
+are not directly reconstructed from the reduced vector zr (t) in (90) . Instead, the full matrices δzz , Γzz ,
+
+Γzu , Izz , and Izu are first constructed using the original full vector z(t). Then the reduced matrices are obtained by extracting the columns corresponding to the selected indices in I. This avoids additional numerical integration errors caused by recomputing the integral terms from the sampled reduced data. 
+
+15 Algorithm 1 Reduced Model-Free LQR PI Using Output Feedback  
+
+> 1:
+
+Initialize and Data Collection: Select a stabilizing policy u0(t) in (93), and set k ← 0. Apply 
+
+u0(t) and generate z(t), δzz , Γ zz , Γ zu , Izz , and Izu from (16) on [ t0, t l], where tl = t0 + lT . 
+
+> 2:
+
+QR-Based Reduction: Perform a QR decomposition with column pivoting on Z, generate zr (t)from the selected index set I, and fix this reduced vector for all learning iterations.  
+
+> 3:
+
+Data Matrix Reconstruction: Reconstruct the reduced data matrices, such as δzr zr , Γ zr zr , Γ zr u,
+
+Izr zr , and Izr u, from the full data matrices according to the index set I. 
+
+> 4:
+
+loop  
+
+> 5:
+
+Evaluate and Improve Policy: Solve (92) for Pr,k and Kr,k +1 by least squares.  
+
+> 6:
+
+if ∥Pr,k +1 − Pr,k ∥ < ε then  
+
+> 7:
+
+return Kr = Kr,k . 
+
+> 8:
+
+end if  
+
+> 9:
+
+k ← k + 1.  
+
+> 10:
+
+end loop 
+
+## 4.2 Reduced VI 
+
+PI requires an initial stabilizing policy. To remove this requirement, the same reduced formulation can be used to derive a reduced VI method. Substituting the reduced state parametrization (88) into the VI equation (12) gives the reduced VI equation 
+
+z⊤ 
+
+> r
+
+(t)Pr,k zr (t) − z⊤ 
+
+> r
+
+(t − T )Pr,k zr (t − T )= −
+
+Z tt−T
+
+y⊤(τ )Qy y(τ )dτ +
+
+Z tt−T
+
+z⊤ 
+
+> r
+
+(τ )Hr,k zr (τ )dτ 
+
+− 2
+
+Z tt−T
+
+(Ru (τ )) ⊤Kr,k zr (τ )dτ. (94) Stacking (94) over all data intervals gives the reduced VI regression Ωr
+
+vecs( Hr,k )vec( Kr,k )
+
+
+
+= Θ r,k , (95) where Ω r = Izr zr − 2Izr u
+
+ and Θ r,k = δzr zr vecs( Pr,k ) + Iyy vecs( Qy ). Here, the unknowns in this regression are Hr,k and Kr,k . Once they are obtained by least squares, the tentative value matrix is computed by 
+
+ePr,k +1 = Pr,k + ϵk(Hr,k − K⊤
+
+> r,k
+
+RK r,k ), (96) where the stepsize sequence {ϵk}∞ 
+
+> k=0
+
+satisfies the same stepsize conditions as in (8). For the reduced formulation, the same bounded-set construction is used in Pn(m+1) + :
+
+Bq ⊆ B q+1 , q ∈ N, lim  
+
+> q→∞
+
+Bq = Pn(m+1) + . (97) The tentative matrix is accepted or reset using the same truncation mechanism described above. Fol-lowing the VI strategy in [17], the complete reduced VI procedure is given in Algorithm 2. Compared with reduced PI, reduced VI does not require an initially stabilizing policy. Therefore, for the exploratory input in (93), the initial feedback gain Kr, 0 can be set to zero, so that one usually simply choose u0(t) = ν(t), as in the PI case. However, compared with PI, it usually needs more iterations to converge. 
+
+Remark 4.5. It should be emphasized that the linear independence of zr (t) is a requirement, while the persistent excitation of the collected data is still needed to guarantee that the regression matrix has full col-umn rank. The QR decomposition removes deterministic linear dependence among the filtered variables, and the exploration signal ν(t) provides sufficient excitation for solving the least-squares problem. 
+
+16 Algorithm 2 Reduced Model-Free LQR VI Using Output Feedback  
+
+> 1:
+
+Initialize and Data Collection: Select a control policy u0(t) in (93) and Pr, 0 > 0, and set k ← 0and q ← 0. Apply u0(t) and generate z(t), δzz , Γ zz , Γ zu , Izz , and Izu from (16) on [ t0, t l], where 
+
+tl = t0 + lT . 
+
+> 2:
+
+QR-Based Reduction: Perform a QR decomposition with column pivoting on Z, generate zr (t)from the selected index set I, and fix this reduced vector for all learning iterations.  
+
+> 3:
+
+Data Matrix Reconstruction: Reconstruct the reduced data matrices, such as δzr zr , Γ zr zr , Γ zr u,
+
+Izr zr , and Izr u, from the full data matrices according to the index set I. 
+
+> 4:
+
+loop  
+
+> 5:
+
+Loop: Solve (95) for Hr,k and Kr,k by least squares.  
+
+> 6:
+
+Update Value Matrix: Compute ePr,k +1 = Pr,k + ϵk
+
+
+
+Hr,k − K⊤
+
+> r,k
+
+RK r,k 
+
+
+
+. 
+
+> 7:
+
+if ePr,k +1 /∈ B q then  
+
+> 8:
+
+Pr,k +1 ← Pr, 0 and q ← q + 1.  
+
+> 9:
+
+else if ∥ ePr,k +1 − Pr,k ∥/ϵ k < ε then  
+
+> 10:
+
+return Kr = Kr,k . 
+
+> 11:
+
+else  
+
+> 12:
+
+Pr,k +1 ← ePr,k +1 . 
+
+> 13:
+
+end if  
+
+> 14:
+
+k ← k + 1.  
+
+> 15:
+
+end loop 
+
+# 5 Numerical Example 
+
+Consider the jet transport aircraft model, a classical 2 × 2 MIMO benchmark system taken from [25], in the form of (1), with the matrices A, B, and C given as follows: 
+
+A =
+
+
+
+−0.0558 −0.9968 0.0802 0.0415 0.5980 −0.1150 −0.0318 0
+
+−3.0500 0.3880 −0.4650 00 0.0805 1.0000 0
+
+ ,B =
+
+
+
+0.0073 0
+
+−0.4750 0.0077 0.1530 0.1430 0 0
+
+ , C =
+
+0 1 0 00 0 0 1
+
+
+
+.
+
+Here, n = 4, m = 2, and p = 2. It can be seen that Assumptions 2.1 and 2.2 hold for this example. The LQR weighting matrices are selected as Qy = I2 and R = I2. The Hurwitz filter polynomial is chosen as Λ( s) = ( s + 2) 4.To implement the proposed reduced model-free output feedback learning algorithm, the data are collected under the exploratory input u0(t) = Kr, 0zr (t) + ν(t) with Kr, 0 = 0, where ν(t) is a combination of sinusoidal signals with different frequencies as in [7]. Let tj = j∆t, j = 0 , 1, . . . , N , where ∆ t = 0 .02 s and N = 500. The data are collected over t ∈ [0 , 10] s to construct the filtered input–output vector z(t). For this example, the original filtered vector satisfies z(t) ∈ Rn(m+p) = R16 . However, after per-forming a column-pivoted QR decomposition on the filtered data matrix Z defined above, the numerical rank is obtained as rank( Z) = 12, which agrees with the theoretical result. The first 12 pivot columns are retained to form the reduced filtered vector zr (t) ∈ R12 . The proposed reduced model-free output feedback VI algorithm is then implemented using zr (t). To quantify the effect of the reduction on the Bellman regression, the full matrix ¯Ω in (28) and the reduced matrix Ω r in (95) are constructed from the same data. Table 1 shows that ¯Ω has 168 columns but rank 102, whereas Ω r has full column rank. Moreover, the condition number decreases from 3 .6 × 10 17 
+
+to 2 .4 × 10 6, indicating a substantial improvement in numerical conditioning. The control parameters are initialized to zero. Step size is selected as ϵk = ( k + 5) −1, k ∈ N and the bounded set Bq = {P ∈ P12 + : ∥P ∥ ≤ 10000( q + 1) }, q ∈ N. Thus, under the convergence criterion, the learned reduced output feedback gain is obtained as follows, together with the model-based optimal 17 Table 1: Comparison of the VI Regression Matrices in (28) and (95)                  
+
+> Regression matrix Unknowns Rank Columns Condition no. ¯Ω in (28) 168 102 168 3.6×10 17
+> Ωrin (95) 102 102 102 2.4×10 4
+
+Figure 1: Iteration curves of the full VI iterates ¯Pk and ¯Kk versus the iteration number. reduced gain K∗ 
+
+> r
+
+for comparison:                                        
+
+> Kr=K1
+> rK2
+> r
+> ,K∗
+> r=K∗,1
+> rK∗,2
+> r
+> ,K1
+> r=
+> 
+> −84 .7145 12 .3461
+> −61 .6217 7.8132
+> −16 .0778 1.6581
+> −1.8159 0.1708 4.0055 −0.5315
+> −2.8204 0.4777
+> 
+> ⊤
+> ,K2
+> r=
+> 
+> 1.3874 −0.3136 0.1708 −0.0373 15 .2226 −4.0348 28 .3082 −9.2522 33 .6469 −11 .0323 49 .0950 −10 .3153
+> 
+> ⊤
+> ,K∗,1
+> r=
+> 
+> −84 .7054 12 .3622
+> −61 .6154 7.8237
+> −16 .0763 1.6604
+> −1.8157 0.1710 4.0117 −0.5164
+> −2.8144 0.4914
+> 
+> ⊤
+> ,K∗,2
+> r=
+> 
+> 1.3892 −0.3096 0.1710 −0.0368 15 .2165 −4.0429 28 .3073 −9.2572 33 .6444 −11 .0460 49 .0895 −10 .3290
+> 
+> ⊤
+> .
+
+The relative Frobenius error between Kr and K∗ 
+
+> r
+
+is 3 .08 × 10 −4, indicating close agreement with the model-based optimum. Consistent with the regression-matrix comparison in Table 1, the full formulation exhibits repeated resets and fails to converge in Fig. 1, whereas the reduced formulation converges in Fig. 2. After learning, the exploration signal is removed, and the learned controller u(t) = Kr zr (t) is applied to the system. All state trajectories converge to zero in Fig. 3. Taken together, the improved regression rank and conditioning, the accurate learned gain, the convergence behavior, and the closed-loop response demonstrate the effectiveness of the proposed reduction method. 18 Figure 2: Convergence curves of the reduced VI iterates Pr,k and Kr,k versus the iteration number. 
+
+# 6 Conclusion 
+
+This article characterized the intrinsic dimension of the filter-based state parametrization used in model-free output feedback LQR learning. The linear-dependence analysis showed that the conventional filtered vector contains only 2 n independent components for SIMO systems and n(m+1) independent components for general MIMO systems, despite its larger ambient dimension. Based on this characterization, a QR-based reduction method was introduced to construct an independent reduced vector, and the model-free PI/VI equations were reformulated accordingly. The numerical example verified that the reduced formulation removes the rank deficiency of the Bellman regression equation and yields an effective output feedback LQR controller. Future work will consider the robustness of the proposed method under noisy and finite data, as well as its extension to online implementation and more general nonlinear systems. 
+
+# A Proof of Lemma 3.2 
+
+Since gcd( a(s), d i(s)) = 1 , (98) B´ ezout’s identity implies that, for any polynomial g(s), there exist polynomials ¯ α(s) and ¯β(s) satisfying ¯α(s)a(s) + ¯β(s)di(s) = g(s). (99) In Lemma 3.2, let g(s) = sr dj (s), r = 0 , . . . , n − 1. Since deg dj (s) ≤ n − 1, we have deg g(s) ≤ 2n − 2. Starting from one B´ ezout representation (99), divide ¯β(s) by a(s), there exist polynomials q(s) and β(s)such that ¯β(s) = q(s)a(s) + β(s), deg β(s) < n. (100) 19 Figure 3: Closed-loop response under the learned reduced output feedback controller: state trajectories. Substituting (100) into (99) gives ˜α(s)a(s) + β(s)di(s) = g(s), deg β(s) < n. (101) where ˜α(s) = ¯ α(s) + q(s)di(s).
+
+It remains to show that the coefficient ˜ α(s) in (101) can also be chosen with degree less than n. From (101), ˜α(s)a(s) = g(s) − β(s)di(s). (102) Since deg g(s) ≤ 2n − 2, and deg β(s) < n, deg di(s) ≤ n − 1, we have deg  g(s) − β(s)di(s) ≤ 2n − 2. Because deg a(s) = n, (102) implies that, if ˜ α(s)̸ = 0, we have deg ˜ α(s) ≤ n − 2 < n. (103) Thus, by taking 
+
+αjr (s) = ˜ α(s), βjr (s) = β(s), (104) we obtain 
+
+αjr (s)a(s) + βjr (s)di(s) = sr dj (s), (105) with deg αjr (s) < n, deg βjr (s) < n . This completes the proof. 
+
+# References 
+
+[1] F. L. Lewis, D. Vrabie, and V. L. Syrmos, Optimal Control , 3rd ed. Hoboken, NJ, USA: Wiley, 2012. [2] R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction , 2nd ed. Cambridge, MA, USA: MIT Press, 2018. [3] D. P. Bertsekas, Reinforcement Learning and Optimal Control . Belmont, MA, USA: Athena Scien-tific, 2019. [4] D. Liu, S. Xue, B. Zhao, B. Luo, and Q. Wei, “Adaptive dynamic programming for control: Asurvey and recent advances,” IEEE Trans. Syst., Man, Cybern., Syst. , vol. 51, no. 1, pp. 142–160, Jan. 2021. [5] D. Wang, N. Gao, D. Liu, J. Li, and F. L. Lewis, “Recent progress in reinforcement learning and adaptive dynamic programming for advanced control applications,” IEEE/CAA J. Autom. Sinica ,vol. 11, no. 1, pp. 18–36, Jan. 2024. 20 [6] D. Vrabie, O. Pastravanu, M. Abu-Khalaf, and F. L. Lewis, “Adaptive optimal control for continuous-time linear systems based on policy iteration,” Automatica , vol. 45, no. 2, pp. 477–484, 2009. [7] Y. Jiang and Z.-P. Jiang, “Computational adaptive optimal control for continuous-time linear sys-tems with completely unknown dynamics,” Automatica , vol. 48, no. 10, pp. 2699–2704, 2012. [8] T. Bian and Z.-P. Jiang, “Value iteration and adaptive dynamic programming for data-driven adap-tive optimal control design,” Automatica , vol. 71, pp. 348–360, 2016. [9] T. Bian and Z.-P. Jiang, “Reinforcement learning and adaptive optimal control for continuous-time nonlinear systems: A value iteration approach,” IEEE Trans. Neural Netw. Learn. Syst. , vol. 33, no. 7, pp. 2781–2790, Jul. 2022. [10] H. Jiang and B. Zhou, “Bias-policy iteration based adaptive dynamic programming for unknown continuous-time linear systems,” Automatica , vol. 136, Art. no. 110058, Feb. 2022. [11] F. L. Lewis and K. G. Vamvoudakis, “Reinforcement learning for partially observable dynamic processes: Adaptive dynamic programming using measured output data,” IEEE Transactions on Systems, Man, and Cybernetics, Part B: Cybernetics , vol. 41, no. 1, pp. 14–25, 2011. [12] H. Modares, F. L. Lewis, and Z.-P. Jiang, “Optimal output feedback control of unknown continuous-time linear systems using off-policy reinforcement learning,” IEEE Transactions on Cybernetics ,vol. 46, no. 11, pp. 2401–2410, 2016. [13] C. Chen, L. Xie, K. Xie, F. L. Lewis, and S. Xie, “Adaptive optimal output tracking of continuous-time systems via output-feedback-based reinforcement learning,” Automatica , vol. 146, Art. no. 110581, Dec. 2022, doi: 10.1016/j.automatica.2022.110581. [14] K. Xie, Y. Zheng, W. Lan, and X. Yu, “Adaptive optimal output regulation of unknown linear continuous-time systems by dynamic output feedback and value iteration,” Control Eng. Pract. ,vol. 141, Art. no. 105675, 2023, doi: 10.1016/j.conengprac.2023.105675. [15] J. Zhao, C. Yang, W. Gao, and J. H. Park, “Incremental reinforcement learning and optimal output regulation under unmeasurable disturbances,” Automatica , vol. 160, Art. no. 111468, 2024, doi: 10.1016/j.automatica.2023.111468. [16] Y. Jiang, T. Chai, and G. Chen, “Output feedback-based adaptive optimal output regulation for continuous-time strict-feedback nonlinear systems,” IEEE Trans. Autom. Control , vol. 70, no. 2, pp. 767–782, Feb. 2025, doi: 10.1109/TAC.2024.3441668. [17] S. A. A. Rizvi and Z. Lin, “Reinforcement learning-based linear quadratic regulation of continuous-time systems using dynamic output feedback,” IEEE Transactions on Cybernetics , vol. 50, no. 11, pp. 4670–4679, Nov. 2020. [18] S. A. A. Rizvi and Z. Lin, “A note on state parameterizations in output feedback reinforcement learning control of linear systems,” IEEE Trans. Autom. Control , vol. 68, no. 10, pp. 6200–6207, Oct. 2023, doi: 10.1109/TAC.2022.3228969. [19] S. A. A. Rizvi and Z. Lin, “Output feedback adaptive dynamic programming for linear differential zero-sum games,” Automatica , vol. 122, Art. no. 109272, 2020. [20] K. Xie, Y. Zheng, Y. Jiang, W. Lan, and X. Yu, “Optimal dynamic output feedback control of unknown linear continuous-time systems by adaptive dynamic programming,” Automatica , vol. 163, Art. no. 111601, 2024. [21] K. Xie, M. Guay, M. Lu, S. Wang, and F. Deng, “Optimal output feedback learning control for continuous-time linear quadratic regulation,” IEEE Transactions on Automatic Control , vol. 70, no. 6, pp. 4124–4131, 2025. 21 [22] Y. Chen, C. Chen, J. Kang, F. L. Lewis, and S. Xie, “Output-feedback homotopy-based policy iter-ation for performance assurance of unknown linear continuous-time systems,” IEEE Trans. Autom. Control , vol. 70, no. 12, pp. 8422–8429, Dec. 2025, doi: 10.1109/TAC.2025.3591441. [23] D. Kleinman, “On an iterative technique for Riccati equation computations,” IEEE Transactions on Automatic Control , vol. 13, no. 1, pp. 114–115, 1968. [24] L. Lin, H. Lin, and J. Huang, “A new approach to the data-driven output-based LQR problem of continuous-time linear systems,” IEEE Trans. Autom. Control , pp. 1–16, 2026. [25] The MathWorks, Inc., “MIMO State-Space Models,” https://www.mathworks.com/help/ control/ug/mimo-state-space-models.html , accessed Jun. 23, 2026. 22
