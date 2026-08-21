@@ -1,0 +1,678 @@
+Title: Safe whole-body backstepping control for quadcopter path-following
+
+URL Source: https://arxiv.org/pdf/2608.17259v1
+
+Published Time: Wed, 19 Aug 2026 00:25:08 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Safe whole-body backstepping control for quadcopter path-following 
+
+Arthur H. D. Nunes, Arthur Da C. Vangasse, Guilherme V. Raffo, Vinicius M. Gonc ¸alves, and Luciano C. A. Pimenta 
+
+Abstract —This paper presents a novel whole-body Backstep-ping control strategy for safe quadcopter path-following. The proposed approach introduces an integrated control scheme that combines a translational guidance controller with a rigid-body attitude controller. To guarantee asymptotic path convergence, the method utilizes a nominal Integrated Guidance and Control (IGC) based on Artificial Vector Fields (AVF). To ensure reactive safety and collision avoidance, the control law is modified using a smooth distance function within the High-Order Control Barrier Function (HOCBF) framework. The quadcopter dynamics are modeled using quaternion algebra to represent position, velocity, and attitude. By combining the Backstepping approach with HOCBF, the controller guarantees that the vehicle avoids obstacle sets while successfully converging to the target path when unobstructed. The proposed methodology is validated through software-in-the-loop simulations and real-world experimental results using the Crazyflie platform. 
+
+Index Terms —Path-following, Quadcopter, Robot navigation, Safe control, Integrated Guidance and Control. 
+
+I. I NTRODUCTION 
+
+# AUTONOMOUS navigation in dynamic environments rep-resents a timely and important challenge in robotics and control. In particular, Unmanned Aerial Vehicles (UAVs), such as quadcopters, have gained widespread adoption across a variety of applications, including surveillance, environmental monitoring, search and rescue, and autonomous delivery [1], [2], [3], [4]. For many of these tasks, path-following strategies are often preferred over strict trajectory-tracking approaches, as they generally yield smoother convergence to the target path while requiring less aggressive control efforts [5]. To address the path-following problem, Artificial Vector Fields (AVFs) have been widely adopted as a guidance strategy [6], [7]. Constructive AVF methods [8] successfully guide robots along dynamic, time-varying curves in n-dimensional spaces [8]. Furthermore, obstacle avoidance has been inte-grated into these methods by introducing reactive fields that circumnavigate the obstacle when a collision risk is detected [9]. Despite their effectiveness, a major limitation of many traditional reactive avoidance approaches is their reliance on standard Euclidean distance function. Because the function may not be differentiable everywhere, they are often non-smooth and result in discontinuous vector field control laws.                       
+
+> The authors are with the Graduate Program in Electrial Engineering (PPGEE) of the Universidade Federal de Minas Gerais (UFMG), Belo Horizonte, MG, 31270-901, Brazil (emails: arthurhdn@ufmg.br; vangasse@ufmg.br; raffo@ufmg.br; leotorres@ufmg.br; lucpim@cpdee.ufmg.br). The first author is affiliated with NUAR Systems LTDA, Contagem, MG, Brazil. This work was in part supported by the grants CNPq (Brazilian National Research Council) 309925/2023-1 and 301298/2025-4, and FAPEMIG (under grants APQ-02144-18 and APQ-0063023). This work was partially supported by Petrobras/ANP under grants 2023/00494-5 and 2023/00643-0.
+
+Such discontinuous guidance laws implicitly demand infinite acceleration, which cannot be achieved by actual rigid-body dynamics. To bridge this gap, recent methods have proposed smooth distance functions alongside Control Barrier Functions (CBFs) to guarantee reactive safety and collision avoidance within a continuous control framework [10], [11], [12], [13]. While high-level guidance algorithms dictate the desired kinematics, they must be coupled with low-level controllers to handle the underactuated rigid-body dynamics of the ve-hicle. Traditionally, this is accomplished using a cascaded architecture where the guidance layer is decoupled from the control layer [14], [15], [16]. Standard linear controllers, such as PID and LQR [17], [18], [19], are frequently employed in these schemes but struggle to maintain adequate performance during aggressive maneuvers. To overcome these limitations, nonlinear control techniques like Backstepping [20] have proven highly effective for quadcopters [21], [22], [23], [24], [25]. However, existing literature predominantly employees Backstepping within a trajectory-tracking context. In recent works [26], [27], Backstepping has been employed for path-following control by integrating the AVF [9]. While building upon a similar concept, our approach incorporates the vehicle’s whole-body dynamics, enabling formal proofs for both safety and full-system convergence. Furthermore, the proposed method leverages a smooth distance function [13] within the HOCBF framework [28]. To the best of the author’s knowledge, this is the first work to achieve safe path-following with obstacle avoidance by unifying whole-body Backstepping control, Artificial Vector Fields, and HOCBFs for quadcopters, backed by convergence and safety formal proofs under the complete dynamic model for time-varying paths. The main contributions of this work are summarized as follows:  
+
+> •
+
+A novel whole-body path-following control scheme that seamlessly integrates translational guidance with quad-copter rigid-body dynamics using a Backstepping ap-proach;  
+
+> •
+
+An extension of a smooth distance function into a High-Order Control Barrier Function framework to guarantee reactive safety and collision avoidance;  
+
+> •
+
+Formal mathematical proofs establishing closed-loop asymptotic path-following convergence and forward in-variance (safety) for the full non-linear dynamic model;  
+
+> •
+
+Experimental validation demonstrating the real-time per-formance and effectiveness of the proposed strategy through numerical simulations and real-world flight tests on a quadcopter platform. arXiv:2608.17259v1 [eess.SY] 18 Aug 2026 Notation 
+
+In this work, we use quaternion algebra to describe the quadcopter dynamics. Let H denote the set of quaternion, de-fined as H = {h = h0 +ˆ ih 1 +ˆ jh 2 +ˆkh 3 : h0, h 1, h 2, h 3 ∈ R},where ˆi2 = ˆ j2 = ˆk2 = ˆ iˆjˆk = −1 are imaginary identities. The real and imaginary operators for quaternions are defined by Re( h) = h0 and Im( h) = ˆ ih 1 + ˆ jh 2 + ˆkh 3, respectively, with the quaternion conjugate given by h∗ = Re( h) − Im( h).Let Hp = {h ∈ H : Re( h) = 0} represent the set of pure quaternions (i.e. quaternions with null real part). This set forms a 3-dimensional real vector subspace isomorphic to R3.We exploit this property to represent positions and velocities as pure quaternions, while reserving unit-norm quaternions to concisely represent attitude. Within this framework, the cross and dot products between two pure quaternions are defined as 
+
+u × v = uv −vu  
+
+> 2
+
+and u · v = − uv +vu  
+
+> 2
+
+, respectively. See [29], [30], [31] for more details. II. S YSTEM MODELING 
+
+The vehicle considered in this work is a quadcopter fea-turing four rotors symmetrically arranged in a single plane. Each rotor generates an individual force, and their combination yields the total thrust uT ∈ R and the 3D control torques 
+
+uτ ∈ Hp, which constitute the vehicle’s control inputs [14]. To formulate the system dynamics, let p ∈ Hp denote the position and v ∈ Hp the linear velocity in the inertial frame. Furthermore, let o ∈ H with ∥o∥ = 1 represent the unit quaternion attitude, and ω ∈ Hp be the angular velocity in the body frame. Given the states p, v, o, and ω, the nominal dynamic model of the vehicle is given by 
+
+˙p = v, (1) 
+
+˙v = −gˆk + m−1uT ˆkB , ˆkB = oˆko ∗, (2) 
+
+˙o = 12 oω , (3) 
+
+˙ω = −J−1(ω × Jω) + J−1uτ . (4) where m ∈ R denotes the total mass of the quadcopter, J ∈
+
+R3×3 is its inertia tensor, g is the gravitational acceleration, and ˆk represents the vertical unit vector. III. P ROBLEM STATEMENT 
+
+The primary objective considered in this work is to design a control law that drives the vehicle to follow a predefined target path, as formalized next. 
+
+Problem 1 (Path-following, adapted from [27]) . Consider the system (1) -(4) and a time-varying target path C(t)
+
+parametrized by c(s, t ). The control objective is to design a control law for uT and uτ such that the vehicle position p
+
+converges to and follows the target path C(t) in unobstructed environments. 
+
+When the target path is obstructed and a collision is at risk, the controller must prioritize safety over path-following. Consequently, the vehicle is allowed to deviate from the curve to accomplish obstacle avoidance, resuming the primary path-following objective once the obstacle is cleared. To formalize the safety requirement, let O(t) ⊂ Hp represent a time-varying obstacle set. We assume that this set is represented by a finite number of time-varying points oi(t) ∈ O(t), in which the total number of points N remains constant, and each function oi(t) is differentiable in t [13], [27]. Let the half-squared distance between the point p and the set O(t) be defined as 
+
+DO (p, t ) ≡ min 
+
+> i=1 ,...,N
+
+12 ∥p − oi(t)∥2. (5) Then, this problem is defined as follows. 
+
+Problem 2 (Safety, adapted from [13]) . The vehicle must keep at least a safe distance λ > 0 from the obstacle set, i.e. 
+
+p(t) ∈ S(t) ∀t ≥ 0, (6) 
+
+where S(t) is a safety set defined using barrier certificates [28] 
+
+S(t) = {p ∈ Hp | Bλ(p, t ) ≥ 0}, (7) 
+
+Bλ(p, t ) ≡ DO (p, t ) − λ2
+
+2 . (8) The core strategy is to prioritize Problem 2 at all times, addressing Problem 1 whenever the vehicle is in a safe state. IV. S AFE BACKSTEPPING CONTROL 
+
+A. Path-following 
+
+We first address path-following in obstacle-free scenarios. To this end, we adopt a Backstepping strategy that directly integrates the Artificial Vector Field guidance scheme from [8] into the control formulation. 
+
+1) Step 1 - Kinematic Guidance Law: In the first step, consider the translational kinematics ˙p = v, where v acts as a virtual control input. This virtual control law is designed according to the AVF methodology proposed in [8]. The vector field virtual control law for v, denoted as 
+
+Φ(p, t ), is computed by identifying the closest point on the path, its distance to the vehicle, and tangent vectors, as follows 
+
+s∗(p, t ) = arg min  
+
+> s
+
+∥p − c(s, t )∥, (9) 
+
+c∗(p, t ) = c(s∗(p, t ), t ), (10) 
+
+DC (p, t ) = p − c∗(p, t ), (11) 
+
+T C (p, t ) = ∂c(s, t )
+
+∂s s=s∗
+
+. (12) Two vectors representing the convergence and circula-tion behaviors of the field are weighted by scalar gains 
+
+G(∥DC ∥) = 2 
+
+> π
+
+tan −1(kG∥DC ∥), k G > 0, and H(∥DC ∥) = 
+
+±
+
+q
+
+1 − [G(∥DC ∥)] 2, respectively. Then, we compute a static unit field and a feed-forward component, which are given by 
+
+ΦS = −G DC
+
+∥DC ∥ + H T C
+
+∥T C ∥ , ΦT = −ΠT
+
+∂DC
+
+∂t , (13) with ΠT being the null space projector of T C .To weight the sum of the components defined above, an additional scalar gain η(p, t ) ∈ [0 , v r ] is introduced to ensure that ∥Φ(p, t )∥ = vr , which is a specified reference speed. This gain is given by 
+
+η = −ΦS · ΦT + p(ΦS · ΦT )2 + v2 
+
+> r
+
+− ∥ ΦT ∥2. (14) As established in [8], η is well-defined for paths whose speed is slower than the vehicle’s velocity, i.e. ∥ΦT ∥ < v r .Finally, the field Φ(p, t ) is given by 
+
+Φ(p, t ) = η(p, t )ΦS (p, t ) + ΦT (p, t ). (15) 
+
+Lemma 1 (Adapted from Proposition 2 of [8]) . For the nominal system (1) , if v = Φ(p, t ), the trajectories of p
+
+converge to and follow the target curve C(t).Proof. Let Vp : Hp → R be a candidate Lyapunov function, given by 
+
+Vp(DC ) = 12 DC · DC , (16) with DC defined in (11). According to Proposition 2 of [8], when v = Φ(p, t ), the following result holds: 
+
+˙Vp(DC ) = −ηG ∥DC ∥. (17) Since ˙Vp(DC ) is negative definite, then DC → 0 as t →∞, ensuring that the system trajectories converge toward the path. As DC → 0, the circulation component in (13) becomes dominant, causing the vehicle to follow the path. 
+
+2) Step 2 - Acceleration Control Law: In the second step, define the velocity tracking error as zv ≡ v − Φ, and consider a virtual acceleration control input a such that ˙v = −gˆk + a.The resulting augmented translational error dynamics are 
+
+˙DC = Φ − ˙c∗ + zv , (18) 
+
+˙zv = −gˆk + a − ˙Φ. (19) To stabilize the velocity error and track the guidance vector field, we propose the following virtual acceleration control law: 
+
+aΦ = gˆk − kpDC − kv zv + ˙Φ, kp, k v > 0. (20) 
+
+Lemma 2. Consider the translational dynamics (1) -(2) . If the virtual control law uT 
+
+> m
+
+ˆkB ≡ a = aΦ from (20) is applied, then the system trajectories asymptotically converge to and follow the target curve C(t).Proof. Let Vp,v : Hp × Hp → R be a candidate Lyapunov function defined as 
+
+Vp,v (DC , zv ) = kpVp + 12 zv · zv , kp > 0, (21) with Vp defined in (16). Taking the time derivative of Vp,v yields 
+
+˙Vp,v = −kpηG ∥DC ∥ + kpDC · zv + zv ·
+
+
+
+−gˆk + a − ˙Φ
+
+
+
+.
+
+(22) Substituting the nominal control law a = aΦ from (20) gives 
+
+˙Vp,v = −kpηG ∥DC ∥ − kv ∥zv ∥2. (23) Since ˙Vp,v is negative definite with respect to the states 
+
+(DC , zv ), this implies that DC → 0 and zv → 0 as t → ∞ .Consequently, system trajectories asymptotically converge to and follow the target path according to Lemma 1. This step yielded a virtual acceleration control law a.Within the translational dynamic model (2), the vehicle’s actual acceleration component is given by m−1uT ˆkB . At this stage, one could define the thrust control law T0 as 
+
+T0 = m(aΦ · ˆkB ). (24) While this choice is suitable when addressing only the nominal path-following Problem 1, directly setting uT = T0 is insuffi-cient when incorporating safety guarantees. To simultaneously ensure collision avoidance, our strategy does not control uT
+
+directly. Instead, we initialize uT (t0) = T0(t0) and design a control law for its second time derivative ¨uT .
+
+3) Step 3 - Attitude Kinematic Control Law: In the third step, define the acceleration error as zo ≡ uT 
+
+> m
+
+ˆkB − aΦ. Next, consider the angular velocity ω and the thrust-rate ˙uT as virtual control inputs. Then, the augmented system can be written as 
+
+˙DC = Φ − ˙c∗ + zv , (25) 
+
+˙zv = −kpDC − kv zv + zo, (26) 
+
+˙zo = o
+
+
+
+ω × ˆk
+
+
+
+o∗ uT
+
+m + ˆkB
+
+˙uT
+
+m − ˙aΦ. (27) To stabilize the acceleration error zo, we propose the following virtual control law φ for the angular velocity ω:
+
+φ = ˆk × o∗
+
+
+
+φL
+
+muT
+
+
+
+o + ˆkωyaw , (28) 
+
+φL = ˙ aΦ − kozo − kp,v zv , ko, k p,v > 0, (29) where ωyaw ∈ R is an auxiliary control law available to independently specify the yaw rate, as discussed later. 
+
+Assumption 1. To ensure that the virtual angular velocity control law remains well-defined and singularity-free, the total thrust generated by the vehicle must remain strictly positive throughout operation, i.e., uT > 0 for all t ≥ 0.
+
+Remark 1. This assumption is physically reasonable, as quad-copters must continuously generate upward thrust to counter-act the gravitational acceleration and maintain altitude. Under nominal path-following and collision avoidance scenarios, the vehicle operates near hover or performs forward flight, where the thrust uT inherently fluctuates around the vehicle’s weight (mg ). A scenario in which uT = 0 corresponds to unpowered free-fall, under which the quadcopter completely loses control authority over its translational dynamics. 
+
+The virtual thrust-rate control law is defined as 
+
+T1 = m(φL · ˆkB ). (30) 
+
+Lemma 3. Consider the dynamic system (1) -(3) . If the virtual control laws ω = φ from (28) and ˙uT = T1 from (30) are applied, then the system trajectories asymptotically converge to and follow the target curve C(t).Proof. Let Vp,v,o : Hp × Hp × Hp → R be a candidate Lyapunov function defined as 
+
+Vp,v,o (DC , zv , zo) = kp,v Vp,v + 12 zo · zo, kp,v > 0, (31) where Vp,v is given in (21). Its time derivative along the system trajectories is 
+
+˙Vp,v,o = kp,v 
+
+ −kpηG ∥DC ∥ − kv ∥zv ∥2 + zv · zo
+
+ + zo · ˙zo.
+
+(32) Expanding the term zo · ˙zo yields 
+
+zo · ˙zo = zo ·
+
+
+
+(o
+
+
+
+ω × ˆk
+
+
+
+o∗) uT
+
+m + ˆkB
+
+˙uT
+
+m − ˙aΦ
+
+
+
+. (33) Applying the angular velocity control law φ from (28) for 
+
+ω, we obtain 
+
+zo ·
+
+ 
+
+ˆkB × φLuT
+
+> m
+
++ ˆkB ωyaw 
+
+
+
+× ˆkB
+
+ uT
+
+m
+
++ zo · ˆkB
+
+˙uT
+
+m − zo · ˙aΦ. (34) Since ˆkB ωyaw × ˆkB is null, the yaw control input ωyaw van-ishes, demonstrating that ωyaw can be selected independently. Using vector identities, (34) simplifies to 
+
+zo · ˙zo = −ko∥zo∥2 − kp,v zv · zo
+
++ ( zo · ˆkB )
+
+ ˙uT
+
+m − φL · ˆkB
+
+
+
+. (35) Notice that if uT was controlled directly as uT = T0, then 
+
+zo·ˆkB = 0 and the final term would vanish. In the dynamically extended case, setting ˙uT = T1 likewise cancels this remaining term. Substituting this result back into (32) yields 
+
+˙Vp,v,o = −kp,v kpηG ∥DC ∥ − kp,v kv ∥zv ∥2 − ko∥zo∥2. (36) This confirms that ˙Vp,v,o is negative definite, implying that 
+
+DC → 0, zv → 0, and zo → 0 as t → ∞ . Consequently, the system trajectories asymptotically converge to and track the desired path. 
+
+4) Step 4 - Torque Control Law: In the fourth and final step, define the angular velocity tracking error as zω ≡ ω − φ and the thrust-rate error as zT = ˙ uT −T1. The complete augmented error dynamics are given by 
+
+˙DC = Φ − ˙c∗ + zv , (37) 
+
+˙zv = −kpDC − kv zv + zo, (38) 
+
+˙zo = o(( φ + zω ) × ˆk)o∗ uT
+
+m + ˆkB
+
+T1 + zT
+
+m − ˙aΦ, (39) 
+
+˙zω = −J−1(ω × Jω) + J−1uτ − ˙φ, (40) 
+
+˙zT = ¨ uT − ˙T1. (41) The torque control law uτ is designed as 
+
+τ Φ = ω × Jω + J ˙φ − kω zω − kp,v,o 
+
+uT
+
+m (ˆk × o∗zoo),
+
+(42) where kω > 0 is a positive gain matrix (or scalar). Similarly, the virtual control law for the second derivative of thrust, ¨uT , is given by 
+
+T2,Φ = ˙T1 − kT zT − (zo · ˆkB ) kp,v,o 
+
+m , kT > 0. (43) 
+
+Theorem 1 (Path following) . Consider the nominal quadrotor system dynamics (1) -(4) . If Assumption 1 holds and the feed-back control laws uτ = τ Φ from (42) and ¨uT = T2,Φ from 
+
+(43) are applied, then the system trajectories asymptotically converge to and follow the target curve C(t).Proof. Consider the candidate Lyapunov function V : Hp ×
+
+Hp × Hp × Hp × R → R defined as 
+
+V (DC , zv , zo, zω , z T ) = kp,v,o Vp,v,o + 12 zω · Jzω + 12 z2 
+
+> T
+
+,
+
+(44) with kp,v,o > 0 and Vp,v,o being defined in (31). Taking the time derivative of V along the system trajectories yields 
+
+˙V = −kp,v,o kp,v kpηG ∥DC ∥ − kp,v,o kp,v kv ∥zv ∥2
+
+− kp,v,o ko∥zo∥2 + kp,v,o 
+
+uT
+
+m zo · o
+
+
+
+zω × ˆk
+
+
+
+o∗ + zω · J ˙zω
+
++ kp,v,o (zo · ˆkB ) zT
+
+m + zT ˙zT . (45) Substituting (42) into (40) gives 
+
+˙zω = −kω J−1zω − kp,v,o J−1 uT
+
+m (ˆk × o∗zoo). (46) Similarly, substituting (43) into (41) results in 
+
+˙zT = −kT zT − (zo · ˆkB ) kp,v,o 
+
+m . (47) Substituting these error dynamics back into (45) leads to cross-term cancellations, simplifying the time derivative to 
+
+˙V = − kp,v,o kp,v kpηG ∥DC ∥ − kp,v,o kp,v kv ∥zv ∥2
+
+− kp,v,o ko∥zo∥2 − kω ∥zω ∥2 − kT z2 
+
+> T
+
+. (48) Since ˙V is negative definite with respect to the states 
+
+(DC , zv , zo, zω , z T ), this guarantees that DC → 0, zv → 0,
+
+zo → 0, zω → 0, and zT → 0 as t → ∞ . Consequently, the system trajectories asymptotically converge to and follow the target curve C(t).
+
+B. Collision avoidance 
+
+In the next phase of our methodology, we incorporate obsta-cle avoidance capabilities into the nominal quadrotor system (1)-(4). To synthesize the safety control law, we use the smooth half-squared distance function Dh 
+
+> O
+
+(p, t ), parameterized by a smoothing parameter h > 0, as proposed by [13], 
+
+Dh 
+
+> O
+
+(p, t ) ≡
+
+> N
+
+X
+
+> i=1
+
+ ∥p − oi(t)∥2
+
+2
+
+− 1
+
+> h
+
+!−h
+
+. (49) As demonstrated in [13], this smooth function lower-bounds the Euclidean half-squared distance: Dh 
+
+> O
+
+(p, t ) ≤ DO (p, t ).
+
+Assumption 2. As discussed in [13], let p(t) ∈ D(t), where 
+
+D(t) = {p ∈ R3| ∂D h 
+
+> O(p,t )
+> ∂p
+
+̸ = 0} defines the region in the workspace where the gradient of the smoothed distance vector is nonzero at time t.
+
+Remark 2. The set of points where the gradient vanishes represents isolated equilibrium states and has zero measure. Consequently, this condition does not restrict the practical operation of the controller [13]. Let Bh,λ (p, t ) = Dh 
+
+> O
+
+(p, t ) − λ2 
+
+> 2
+
+, which extends Bλ(p, t )
+
+in (8) by employing the smooth distance function (49). The objective of our collision avoidance strategy is to design con-trol inputs that render the safe set forward invariant, ensuring 
+
+Bh,λ (p, t ) ≥ 0, ∀t ≥ 0.To guarantee forward invariance of the safe set and ensure that the barrier condition is satisfied, the control laws uτ and 
+
+¨uT must be designed accordingly. Because these control inputs first appear in the fourth time derivative of the barrier function, we resort to the HOCBF framework. Let ψ0 = Bh,λ (p, t ) and ψi = ˙ψi−1 +αi(ψi−1), where αi is a K-class function. To ensure safety while preserving nominal performance, we seek control inputs uτ and ¨uT that remain as close as possible to the nominal path-following control laws τ Φ and T2,Φ, while satisfying the fourth-order barrier constraint ψ4(p, v, o, ω, uτ , u T , ˙uT , ¨uT ) ≥ 0 [28]. This leads to the following point-wise quadratic optimization problem: 
+
+uτ, ∗, ¨uT, ∗ ∈ arg min   
+
+> τ,T
+
+∥τ Φ − τ ∥2 + ∥T2,Φ − T ∥2, s.t. ψ 4 ≥ 0.
+
+(50) To determine whether the nominal control inputs are safe, let F denote the fourth-order barrier function ψ4 evaluated at the nominal path-following control laws τ Φ and T2,Φ
+
+F = ψ4(p, v, o, ω, τ Φ, u T , ˙uT , T 2,Φ). (51) If F ≥ 0, the nominal control inputs already satisfy the safety constraint and are directly applied. Conversely, if F < 0, the nominal control laws are modified by additive safe corrections 
+
+τ Ψ and T2,Ψ designed to enforce the HOCBF is greater than zero. This can be guaranteed by 
+
+τ Ψ = −FA2 
+
+> T
+
++ ∥Aτ ∥2 Aτ , T2,Ψ = −FA2 
+
+> T
+
++ ∥Aτ ∥2 AT , (52) where AT = 1 
+
+> m∂B h,λ
+> ∂p
+
+· ˆkB and Aτ = 
+
+> uT
+> m
+
+J−1
+
+ˆk × o∗ ∂B h,λ  
+
+> ∂p
+
+o
+
+
+
+.Notice that under Assumptions 1 and 2, the terms AT and 
+
+Aτ are well-defined. However, pure barrier enforcement may lead to a trivial equilibrium where v = 0 , causing the vehicle to stop to avoid collision [32]. To overcome this deadlock, a circulation component must be introduced when F < 0,following [13], [27]. To design the circulation constraint, we construct an auxiliary HOCBF sequence. Let ϕ1(p, v, t ) = 
+
+M ∂B h,λ  
+
+> ∂p
+
+· v − b1, with b1 > 0, and ϕi = ˙ϕi−1 + βi(ϕi−1),where M is a skew-symetric matrix chosen according to [13], [27], and each βi is a K-class function. To ensure active obstacle circulation during evasive maneuvers, we enforce 
+
+ϕ4(p, v, o, ω, uτ , u T , ˙uT , ¨uT ) ≥ 0 whenever F < 0.Let E = ϕ4(p, v, o, ω, τ Φ, u T , ˙uT , T 2,Φ) denote the circu-lation HOCBF evaluated at the nominal path-following control inputs τ Φ and T2,Φ, and let EΨ = T2,ΨBT + τ Ψ · Bτ
+
+represent the contribution resulting from the safety correction inputs τ Ψ and T2,Ψ, where BT = 1 
+
+> m
+
+M ∂B h,λ  
+
+> ∂p
+
+· ˆkB and 
+
+Bτ = uT 
+
+> m
+
+J−1
+
+ˆk × o∗M ∂B h,λ  
+
+> ∂p
+
+o
+
+
+
+.If E + EΨ ≥ 0, the safety-corrected control inputs si-multaneously preserve safety and maintain forward motion. Conversely, if E + EΨ < 0, the control laws must be updated to jointly satisfy both the barrier constraint ( ψ4 ≥ 0) and the circulation constraint ( ϕ4 ≥ 0). The joint control corrections 
+
+(τ Θ, T 2,Θ) are obtained as 
+
+T2,Θ = aA T + bB T , τ Θ = aAτ + bBτ , (53) where the Gram matrix elements gij associated with the control mapping directions are defined by g11 = A2 
+
+> T
+
++∥Aτ ∥2,
+
+g22 = B2 
+
+> T
+
++ ∥Bτ ∥2, and g12 = AT BT + Aτ · Bτ , while the dual multipliers a and b are given explicitly by 
+
+a = −F g 22 + Eg 12 
+
+g11 g22 − g212 
+
+, b = −Eg 11 + F g 12 
+
+g11 g22 − g212 
+
+. (54) Finally, the complete closed-loop torque and thrust-rate control laws are obtained via piecewise projection 
+
+uτ = τ Φ +
+
+
+
+0 F ≥ 0
+
+τ Ψ F < 0 and E + EΨ ≥ 0,
+
+τ Θ otherwise ,
+
+(55) 
+
+¨uT = T2,Φ +
+
+
+
+0 F ≥ 0,T2,Ψ F < 0 and E + EΨ ≥ 0,T2,Θ otherwise .
+
+(56) 
+
+Lemma 4 (Safety) . Consider the nominal system dynamics 
+
+(1) -(4) in initial states such that ψi(x0, 0) ≥ 0 for i ∈
+
+[1 , 2, 3, 4] . If Assumptions 1 and 2 hold and the control laws 
+
+uτ from (55) and ¨uT from (56) are applied, then the safety set S(t) is forward invariant. Proof. When applying the control laws uτ from (55) and 
+
+¨uT from (56), we evaluate the fourth-order barrier function 
+
+ψ4(p, v, o, ω, uτ , u T , ˙uT , ¨uT ) across three cases. For the first case, when F ≥ 0, ψ4 ≥ 0 by the definition of F (51). When 
+
+F < 0 and E + EΨ ≥ 0, ψ4 = F + T2,ΨAT + τ Ψ · Aτ .Substituting (52), yields ψ4 = F − F = 0 . In the last case, using (53), ψ4 takes the form ψ4 = F +T2,ΘAT +τ Θ ·Aτ = 0 .Thus, ψ4 ≥ 0 holds for all conditions. This result means that ψ0 = Bh,λ (p, t ) ≥ 0. Finally, applying [13, Lemma 2], 
+
+Bh,λ (p, t ) ≥ 0 = ⇒ Bλ(p, t ) ≥ 0, which guarantees that the system trajectories remain inside S(t).
+
+Theorem 2. Consider the nominal quadrotor dynamics (1) -
+
+(4) under Assumptions 1 and 2. If the control laws uτ from 
+
+(55) and ¨uT from (56) are applied, then the safety set S(t)
+
+is forward invariant, solving Problem 2. Furthermore, when unconstrained by the barrier condition (i.e., when F ≥ 0), the system trajectories asymptotically converge to and follow the target path C(t), solving Problem 1. Proof. Problem 2 is solved as a result of Lemma 4. When 
+
+F ≥ 0, Problem 1 is solved as a result of Theorem 1. 
+
+C. Vehicle yaw angle control 
+
+As noted in Section IV-A, ωyaw acts as a free parameter in the control law (28) and does not affect the convergence guarantees of Theorem 2. This degree of freedom allows for secondary control objectives, such as controlling the vehicle yaw angle independently. A common requirement is to align the vehicle yaw angle with a specified direction x ≜ xiˆi + xj ˆj in the horizontal plane, where ∥x∥ > 0, with time derivative ˙x. Let ψ(¯ o) ∈ S1
+
+denote the current yaw angle extracted from the quaternion ¯o.A proportional-plus-feedforward yaw rate control law ωyaw is given by 
+
+zyaw = − atan2(cos( ψ)xj − sin( ψ)xi,
+
+cos( ψ)xi + sin( ψ)xj ) (57) 
+
+ff = xi ˙xj − xj ˙xi
+
+∥x∥ (58) 
+
+ωyaw = − kyaw zyaw + ff , kyaw > 0. (59) V. R ESULTS 
+
+To provide a realistic validation, we implemented the pro-posed controller directly into the firmware of the Crazyflie nano-quadcopter platform 1 and conducted SITL simulations using Crazysim [33], Gazebo, and Crazyswarm 2 [34]. Using the same firmware implementation evaluated in the SITL, the controller code was also compiled and flashed onto a physical Crazyflie 2.1 nano-quadcopter to conduct real-world flight experiments. Detailed visualizations and animated videos of the simulated and experimented trajectories are available at youtu.be/kcnU7gSoNiE. The implementation code for this project is available at github.com/ArthurHDN/crazyflie-control-workspace. 
+
+A. Crazysim SITL 
+
+First, we evaluated our controller against four baseline con-trollers available in the Crazyflie firmware: a PID controller, the Mellinger controller [35] (MELL), the Brescianini con-troller [36] (BRES), and the Incremental Nonlinear Dynamic Inversion (INDI) controller [37]. To enable a fair comparison, all controllers were subjected to position regulation tasks comprising a sequence of step position references. In our controller, position regulation is achieved simply by setting the tangent vector T C = 0 in (12), effectively disabling path progress. Fig. 1 illustrates the position step responses for each con-troller. The INDI controller became unstable and crashed early during the simulation. The MELL controller exhibited aggressive behavior and successfully followed initial setpoints, but suffered instability near t = 45s . The PID controller completed the sequence but exhibited significant overshoot, momentarily losing altitude during rapid descents before re-covering to the setpoint. The BRES controller fulfilled all regulation tasks with little overshoot. Finally, our controller successfully completed all tasks with a smooth, well-damped response and a prescribed convergence speed parameterized by vr .These results indicate that our controller maintains sta-ble and damped behavior even when performing relatively fast position changes. In contrast to the PID and Mellinger controllers, which exhibited noticeable overshoot or instabil-ity during the sequence, ours achieved smooth convergence without significant transient oscillations. This is particularly 
+
+> 1https://www.bitcraze.io/
+
+relevant to the safe path-following application, since aggres-sive transients during path maneuvers could otherwise produce unnecessarily large tracking errors and increase the likelihood of approaching obstacles. Note that path-following and obstacle avoidance maneuvers were not evaluated in this comparison, as our controller is the only one among those tested that explicitly accounts for them.  
+
+> Fig. 1. Comparison of our controller (OURS) with PID, Mellinger [35] (MELL), Brescianini [36] (BRES), and INDI [37] for sequence of position regulation.
+
+In the second SITL simulation scenario, the quadcopter was commanded to follow a 3D parametric curve defined by 
+
+c(s) = 
+
+
+
+(0 .25 + 0 .1 cos(3 s)) cos(2 s)(0 .25 + 0 .1 cos(3 s)) sin(2 s)0.8 + 0 .15 sin(3 s)
+
+ . (60) As shown in Fig. 2, the proposed controller successfully guides the vehicle to converge to and follow the target trajectory with high accuracy. This result illustrates the expected be-havior of the AVF guidance. The vehicle initially approaches the path from a initial error and progressively reduces it before transitioning to a circulating motion along the path. The smooth decay of the distance to path metric indicates that the translational guidance and whole-body Backstepping controller remain consistent during this transition, without introducing significant oscillations around the desired path. Finally, we evaluated the combined path-following and safe control framework in an obstacle avoidance scenario. The quadrotor was commanded to follow a 3D lemniscate curve 
+
+c(s) = 0.35 sin( s) 0.25 sin(2 s) 0.8 + 0 .1 cos( s)⊤ ,
+
+(61) while avoiding a virtual obstacle represented by a point cloud. This demonstrate the interaction between the nominal path-following and the safety layer. As shown in Fig. 3, the pro-posed controller successfully maintains safety by steering the vehicle away from the obstacle when necessary and seamlessly returning it to the target path once the obstacle is cleared. 
+
+B. Experimental Results with the Crazyflie Nano-Quadcopter 
+
+The vehicle was commanded to follow the 3D lemniscate path defined in (61) under two distinct operational conditions: Fig. 2. System trajectory and distance to the path of the Crazysim path-following task.  
+
+> Fig. 3. System trajectory and distance to the path of the Crazysim path-following with obstacle avoidance task.
+
+unconstrained nominal path following, and path following in the presence of an obstacle. Figs. 4 and 5 present the experimental 3D flight trajectories alongside the corresponding distance metrics for the obstacle-free and obstacle-avoidance scenarios, respectively. Despite the considerably more chal-lenging real-world conditions, including measurement noise, disturbances, and modeling discrepancies, the vehicle remains capable of following the prescribed path. The similarity be-tween the simulated and experimental trajectories suggests that the controller retains its qualitative behavior when im-plemented on the physical platform.   
+
+> Fig. 4. System trajectory and distance to the path of the Crazyflie path-following task experiment.
+> Fig. 5. System trajectory and distance to the path of the Crazyflie path-following with obstacle avoidance task.
+
+VI. C ONCLUSION 
+
+This paper presented an integrated safety-critical control framework for quadcopter path following in the presence of obstacles. By unifying a vector-field navigation law with a whole-body backstepping controller and High-Order Control Barrier Functions (HOCBFs), the proposed scheme ensures high-accuracy tracking of time-varying 3D target curves while guaranteeing safety with respect to the full relative-degree-four nonlinear quadcopter dynamics. To overcome potential stagnation at singular barrier equilibria, an explicit closed-form dual-HOCBF circulation mechanism was incorporated to seamlessly detour around obstacles without bringing the vehicle to a stop. Rigorous theoretical analyses established the asymptotic convergence to the target path when unconstrained and the forward invariance of the safe set under all operating conditions. Finally, the controller was implemented directly in the Crazyflie firmware and validated through both SITL simulations and real-world flight experiments, demonstrating robust obstacle avoidance and damped tracking performance. REFERENCES [1] A. Williams and O. Yakimenko, “Persistent mobile aerial surveillance platform using intelligent battery health management and drone swap-ping,” in 2018 4th International Conference on Control, Automation and Robotics (ICCAR) , pp. 237–246, 2018. [2] V. Duggal, M. Sukhwani, K. Bipin, G. S. Reddy, and K. M. Krishna, “Plantation monitoring and yield estimation using autonomous quad-copter for precision agriculture,” in 2016 IEEE International Conference on Robotics and Automation (ICRA) , pp. 5121–5127, 2016. [3] S. E. Eid and S. Sham Dol, “Design and development of lightweight-high endurance unmanned aerial vehicle for offshore search and rescue operation,” in 2019 Advances in Science and Engineering Technology International Conferences (ASET) , pp. 1–5, 2019. [4] V. R. Miranda, A. Rezende, T. L. Rocha, H. Azp´ urua, L. C. Pimenta, and G. M. Freitas, “Autonomous navigation system for a delivery drone,” 
+
+Journal of Control, Automation and Electrical Systems , vol. 33, no. 1, pp. 141–155, 2022. [5] B. Rub´ ı, R. P´ erez, and B. Morcego, “A survey of path following control strategies for UAVs focused on quadrotors,” Journal of Intelligent & Robotic Systems , vol. 98, no. 2, pp. 241–265, 2020. [6] W. Yao, B. Lin, B. D. O. Anderson, and M. Cao, “Guiding vector fields for following occluded paths,” IEEE Transactions on Automatic Control ,vol. 67, no. 8, pp. 4091–4106, 2022. [7] W. Yao, H. G. de Marina, B. Lin, and M. Cao, “Singularity-Free Guiding Vector Field for Robot Navigation,” IEEE Transactions on Robotics ,vol. 37, pp. 1206–1221, Aug. 2021. [8] A. M. C. Rezende, V. M. Goncalves, and L. C. A. Pimenta, “Constructive time-varying vector fields for robot navigation,” IEEE Transactions on Robotics , vol. 38, no. 2, pp. 852–867, 2021. [9] A. H. D. Nunes, A. M. C. Rezende, G. P. Cruz, G. M. Freitas, V. M. Gonc ¸alves, and L. C. A. Pimenta, “Vector field for curve tracking with obstacle avoidance,” in 2022 IEEE 61st Conference on Decision and Control (CDC) , pp. 2031–2038, 2022. [10] B. G. Ferreira, V. M. Gonc ¸alves, M. A. Santos, and G. V. Raffo, “Point-to-cloud nmpc with smooth avoidance constraints,” in 2026 European Control Conference (ECC) , pp. 3346–3351, 2026. [11] V. M. Gonc ¸alves, S. Wei, E. M. S. de Souza, P. Krishnamurthy, A. Tzes, and F. Khorrami, “A differentiable distance metric for robotics through generalized alternating projection,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 2889–2896, 2026. [12] V. M. Gonc ¸alves, A. Tzes, F. Khorrami, and P. Fraisse, “Smooth distances for second-order kinematic robot control,” IEEE Transactions on Robotics , vol. 40, pp. 2950–2966, 2024. [13] A. H. D. Nunes, V. M. Gonc ¸alves, and L. C. A. Pimenta, “Safe vector field for robot navigation in n-dimensions,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 3071–3078, 2026. [14] G. V. Raffo, M. G. Ortega, and F. R. Rubio, “An integral predic-tive/nonlinear h ∞ control structure for a quadrotor helicopter,” Auto-matica , vol. 46, no. 1, pp. 29–39, 2010. [15] A. M. Rezende, V. M. Gonc ¸alves, A. H. Nunes, and L. C. Pimenta, “Ro-bust quadcopter control with artificial vector fields,” in 2020 IEEE In-ternational Conference on Robotics and Automation (ICRA) , pp. 6381– 6387, IEEE, 2020. [16] L. A. Pereira, A. H. Nunes, A. M. Rezende, V. M. Gonc ¸alves, G. V. Raffo, and L. C. Pimenta, “Collision-free vector field guidance and MPC for a fixed-wing UAV,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) , pp. 176–182, IEEE, 2021. [17] N. S. ¨ Ozbek, M. ¨ Onkol, and M. ¨ Onder Efe, “Feedback control strategies for quadrotor-type aerial robots: a survey,” Transactions of the Institute of Measurement and Control , vol. 38, no. 5, pp. 529–554, 2016. [18] S. Bouabdallah, A. Noth, and R. Siegwart, “PID vs LQ control techniques applied to an indoor micro quadrotor,” in 2004 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) (IEEE Cat. No.04CH37566) , vol. 3, pp. 2451–2456 vol.3, 2004. [19] I. D. Cowling, O. A. Yakimenko, J. F. Whidborne, and A. K. Cooke, “A prototype of an autonomous controller for a quadrotor UAV,” in 2007 European Control Conference (ECC) , pp. 4001–4008, 2007. [20] H. K. Khalil, “Nonlinear systems,” Patience Hall , vol. 115, 2002. [21] G. V. Raffo, M. G. Ortega, and F. R. Rubio, “Robust nonlinear control for path tracking of a quad-rotor helicopter,” Asian Journal of Control ,vol. 17, no. 1, pp. 142–156, 2015. [22] G. F. Salierno, “Whole-body backstepping control of a quadrotor UAV for trajectory tracking,” Master’s thesis, Universidade Federal de Minas Gerais, 2018. [23] C. K. Tan, J. Wang, Y. C. Paw, and T. Y. Ng, “Tracking of a moving ground target by a quadrotor using a backstepping approach based on a full state cascaded dynamics,” Applied Soft Computing , vol. 47, pp. 47– 62, 2016. [24] I. A. Raptis, K. P. Valavanis, and W. A. Moreno, “A novel nonlinear backstepping controller design for helicopters using the rotation matrix,” 
+
+IEEE Transactions on Control Systems Technology , vol. 19, no. 2, pp. 465–473, 2011. [25] M. Huang, B. Xian, C. Diao, K. Yang, and Y. Feng, “Adaptive tracking control of underactuated quadrotor unmanned aerial vehicles via back-stepping,” in Proceedings of the 2010 American Control Conference ,pp. 2076–2081, 2010. [26] A. H. D. Nunes, G. V. Raffo, and L. C. A. Pimenta, “Integrated vector field and backstepping control for quadcopters,” in 2023 IEEE Interna-tional Conference on Robotics and Automation (ICRA) , pp. 1256–1262, 2023. [27] A. H. D. Nunes, V. M. Gonc ¸alves, G. V. Raffo, L. A. B. Torres, and L. C. A. Pimenta, “Safe and robust tube-based path-following for robot navigation,” 2026. [28] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: Theory and applications,” in 2019 18th European Control Conference (ECC) , pp. 3420–3431, 2019. [29] F. F. Afonso Silva, J. Jos´ e Quiroz-Oma˜ na, and B. Vilhena Adorno, “Dynamics of mobile manipulators using dual quaternion algebra,” 
+
+Journal of Mechanisms and Robotics , vol. 14, no. 6, p. 061005, 2022. [30] B. Vilhena Adorno, “Robot Kinematic Modeling and Control Based on Dual Quaternion Algebra — Part I: Fundamentals..” Feb. 2017. [31] H. Abaunza, P. Castillo, A. Victorino, and R. Lozano, “Dual quaternion modeling and control of a quad-rotor aerial manipulator,” Journal of Intelligent & Robotic Systems , vol. 88, no. 2, pp. 267–283, 2017. [32] V. M. Gonc ¸alves, P. Krishnamurthy, A. Tzes, and F. Khorrami, “Control barrier functions with circulation inequalities,” IEEE Transactions on Control Systems Technology , vol. 32, no. 4, pp. 1426–1441, 2024. [33] C. Llanes, Z. Kakish, K. Williams, and S. Coogan, “Crazysim: A software-in-the-loop simulator for the crazyflie nano quadrotor,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) ,pp. 12248–12254, 2024. [34] J. A. Preiss*, W. H¨ onig*, G. S. Sukhatme, and N. Ayanian, “Crazyswarm: A large nano-quadcopter swarm,” in IEEE International Conference on Robotics and Automation (ICRA) , pp. 3299–3304, IEEE, 2017. [35] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in 2011 IEEE International Conference on Robotics and Automation , pp. 2520–2525, May 2011. [36] D. Brescianini, M. Hehn, and R. D’Andrea, “Nonlinear quadrocopter attitude control,” 2013. [37] E. J. J. Smeur, Q. Chu, and G. C. H. E. de Croon, “Adaptive incremental nonlinear dynamic inversion for attitude control of micro air vehicles,” 
+
+Journal of Guidance, Control, and Dynamics , vol. 39, p. 450–461, Mar. 2016.

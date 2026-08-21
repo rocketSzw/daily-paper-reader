@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-17</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-21</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 15 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-17 20:59:12 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-21 21:04:11 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共处理15篇论文，精读5篇、速读10篇，重点关注模块化机器人控制与无人机自主规划两大方向。</p>
-<p>最值得精读的是两篇9.0分论文：一篇面向模块化机器人运动控制的双边控制器，一篇基于特权模仿学习的无人机端到端运动规划。</p>
-<p>建议后续优先跟进自主无人机在部分可观测环境下的决策方法，并留意机器人控制与安全滤波的结合应用。</p>
+<p>今日精选19篇论文，聚焦无人机控制与自主导航，其中7篇精读、12篇速读。最值得关注的是满分10分的四旋翼全身反步控制，以及9分的端到端规划器改进，均直击路径跟随与规划痛点。下一步可优先尝试把死端预测（DPNet）与LLM路径查找结合，提升复杂环境下的避障效率。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Communication in modular robotic motor control: Bilateral controllers under realistic constraints">Communication in modular robotic motor control: Bilateral controllers under realistic constraints</span></li><li><span class="dpr-home-dashboard-paper-title" title="PILOT: Privileged Imitation Learning for End-to-End Motion Planning of Autonomous UAVs under Partial Observability">PILOT: Privileged Imitation Learning for End-to-End Motion Planning of Autonomous UAVs under Partial Observability</span></li><li><span class="dpr-home-dashboard-paper-title" title="AgilePE: Autonomous UAV Pursuit-Evasion via Self-Play Reinforcement Learning">AgilePE: Autonomous UAV Pursuit-Evasion via Self-Play Reinforcement Learning</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Safe whole-body backstepping control for quadcopter path-following">Safe whole-body backstepping control for quadcopter path-following</span></li><li><span class="dpr-home-dashboard-paper-title" title="Some Modifications to Our End-to-End UAV Planner">Some Modifications to Our End-to-End UAV Planner</span></li><li><span class="dpr-home-dashboard-paper-title" title="Stable Multi-Step Rollouts via Uncertainty-Guided Hybrid Dynamics">Stable Multi-Step Rollouts via Uncertainty-Guided Hybrid Dynamics</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Robust Safety Filtering for Input-Constrained Underactuated Linear Systems">Robust Safety Filtering for Input-Constrained Underactuated Linear Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning Loco-Manipulation From SMPC Demonstrations With Sparse Offline-to-Online RL">Learning Loco-Manipulation From SMPC Demonstrations With Sparse Offline-to-Online RL</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent Semantic State Estimation for Reliable Swarming of UAVs under Intermittent Connectivity">Latent Semantic State Estimation for Reliable Swarming of UAVs under Intermittent Connectivity</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset">LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset</span></li><li><span class="dpr-home-dashboard-paper-title" title="SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments">SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="DPNet: Efficient Dead-End Prediction and Avoidance for Vision-Based UAV Navigation">DPNet: Efficient Dead-End Prediction and Avoidance for Vision-Based UAV Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>7</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
 </section>
 </div>
 

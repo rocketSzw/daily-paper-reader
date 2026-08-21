@@ -1,0 +1,237 @@
+Title: SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments
+
+URL Source: https://arxiv.org/pdf/2608.15289v1
+
+Published Time: Tue, 18 Aug 2026 00:42:35 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments 
+
+## Eric Minwoo Kim, Jong-Kook Kim 
+
+School of Electrical Engineering, Korea University, Seoul, Republic of Korea eric2022@korea.ac.kr, jongkook@korea.ac.kr 
+
+Abstract 
+
+Autonomous UAVs enter enclosed environments such as caves and collapsed structures that confine the vehicle and degrade perception. Conformal prediction provides a distribution-free guarantee by calibrating how far an obstacle keep-out must expand to absorb perception error at a target coverage level. However, existing keep-out regions use convex primitives whose bulges consume narrow passages and grow as per-ception degrades. Our main contribution defines the noncon-formity score on a signed distance field (SDF). This produces a non-convex keep-out that tightly follows obstacle geome-try and avoids the unnecessary bulging of equal-margin con-vex regions. Two supporting components keep this geometry usable as perception degrades. First, a voxelwise union of complementary sensor observations certifies voxels that any single sensor misses. Second, the margin around the obstacle adapts to measured visibility without weather labels or the online ground-truth feedback that single-pass flight cannot provide. Results on real subterranean data show that the re-sulting distribution-free, shape-conforming keep-out retains more usable free space than convex baselines at the same certified coverage, and produces safer closed-loop flight. 
+
+## 1 Introduction 
+
+Autonomous UAVs are increasingly the only vehicles able to explore enclosed environments such as caves, mines, and col-lapsed structures that people cannot safely enter (Tranzatto et al. 2022; Zhao et al. 2024). These environments degrade perception, as collapse raises dust, fire produces smoke, and caves hold water vapor and darkness (Zhao et al. 2024; Bijelic et al. 2020). Confinement compounds the difficulty, because a narrow passage offers no wider berth to divert into, and an overly conservative plan sacrifices the mission rather than a little efficiency. Safe flight in this regime hinges on how perceptual uncertainty becomes a planning margin. An autonomy stack plans against a perceived estimate of obstacle geometry, and that estimate is never exact. The resid-ual gap to ground truth widens as perception degrades (Bi-jelic et al. 2020; Dixit et al. 2024). A safe margin must therefore be calibrated rather than merely generous, because too large a margin seals the passage while too small a margin strikes the wall. Conformal prediction (CP) supplies such a margin, a distribution-free guarantee that the true obstacle lies within the certified keep-out, and prior work applies it to planning (Vovk, Gammerman, and Shafer 2005; Angelopou-los and Bates 2023; Lindemann et al. 2023; Cleaveland et al. 2024). Existing keep-outs inflate convexly (Lindemann et al. 2023; Tumu et al. 2024; Shin, Ra, and Yang 2026), and in an enclosed space the obstacle boundary wraps the free space, and the convex bulge fills the very pocket the vehicle must fly. As degradation forces the margin to grow and enclosure removes the room to absorb it, the passage seals and the plan-ner freezes (Trautman and Krause 2010). The open problem is therefore not whether to certify, which CP already does, but the shape of the certified region. This paper makes the shape of the conformal keep-out its central variable. The proposed keep-out is the level set of a per-voxel signed distance field (SDF) (Oleynikova et al. 2017; Zhou et al. 2021), a non-convex region that hugs con-cave obstacle geometry rather than bulging past it, and it is provably contained in every equal-margin convex region (Proposition 1) (Wang et al. 2023). Two further components make this geometry usable as multi-sensor perception de-grades. The per-sensor distance fields are fused per voxel by a union that certifies cells no single sensor can bound, and the margin is conditioned on measured visibility without weather labels. This paper makes three contributions. 1. A non-convex SDF-shell conformal keep-out, provably 
+
+⊆-tighter than any convex region at equal margin, and empirically freeing 1.10 × the usable space of the convex hull at matched 0.90 coverage. 2. A per-voxel conformal fusion rule whose value is cov-erage rather than tightening, because the union certifies cells any single sensor misses and no per-cell alternative meaningfully tightens it. 3. A label-free severity conditioning that sizes the margin from measured visibility, matching label-needing adap-tive conformal prediction. Section 2 reviews related work and Section 3 the problem formulation. Section 4 develops the method, and Section 5 reports the offline and closed-loop evaluation. 
+
+## 2 Related Work 
+
+Conformal prediction for planning wraps obstacles or pre-dicted agent states in coverage-guaranteed regions (Linde-mann et al. 2023; Cleaveland et al. 2024). Existing construc-arXiv:2608.15289v1 [cs.RO] 15 Aug 2026 tions typically use convex primitives or templates (Tumu et al. 2024), which waste free space around non-convex ob-stacles and do not condition their margins on degraded multi-sensor perception. Concurrent field-level work conformal-izes a residual distance field for dynamic-obstacle prediction (Shin, Ra, and Yang 2026), but assumes a ball robot footprint expressly to sidestep the generally non-convex obstacle ge-ometry that is our subject, and addresses neither multi-sensor fusion nor degradation. A second line adapts margin size rather than region shape. Adaptive conformal inference and its planning and control extensions (Gibbs and Candès 2021; Dixit et al. 2023; Huang, He, and Miao 2025) update conformal thresholds from per-step feedback, which requires realized errors unavailable during single-pass flight. Related methods certify learned perception (Dixit et al. 2024) or learn context-aware noncon-formity scores (Kumar et al. 2025), but do not isolate shape-conforming keep-out geometry for degraded multi-sensor sensing. Our margin is instead conditioned feed-forward on an observed covariate, without weather labels at deployment, and the headline contribution remains the region shape. The controlled geometry baselines are therefore an axis-aligned box, an oriented box, and a convex-hull instantiation of the convex-template class (Tumu et al. 2024). Each is cal-ibrated by the same protocol to the same target coverage, and the comparison therefore isolates region shape. Methods ad-dressing dynamic-obstacle prediction or learned-perception uncertainty are positioned conceptually rather than bench-marked head-to-head. 
+
+## 3 Preliminaries and Problem Formulation 
+
+Split conformal prediction. Given exchangeable noncon-formity scores R(1) , . . . , R (k) and a test score R(0) , the 
+
+⌈(k+1)(1 − α)⌉-th smallest calibration score C satisfies 
+
+Pr( R(0) ≤ C) ≥ 1 − α (Vovk, Gammerman, and Shafer 2005). In planning, R is the signed clearance error, defined as predicted minus true clearance, and the keep-out inflates the obstacle by C.
+
+Exchangeability and the observed band. The guarantee is marginal over calibration and test and requires exchange-ability. Two scoping choices make it honest here. Coverage is claimed only on the observed band (A3), meaning within field of view, unoccluded, and in range, because CP cannot certify unperceived obstacles, which is a property of the the-orem rather than a fixable gap. Exchangeability is obtained by calibrating on held-out static scenes that are disjoint by map, and error histograms are checked by condition. 
+
+Problem formulation. A UAV flies a static, cluttered envi-ronment. Perception produces per-sensor clearance fields ˆφs
+
+against the true field φ, and the dangerous error is the one-sided As = max(0 , ˆφs − φ), because estimating clearance too high is the unsafe direction. Degradation is indexed by a measured severity β = 2 .996 /MOR that non-stationarily scales the As distribution and can blind a sensor on part of the scene. A blinded sensor cannot certify coverage there at any finite margin, which makes multi-sensor fusion a ne-cessity for validity rather than an optimization for tightness.          
+
+> Degraded multi-sensor perception (LiDAR + thermal, fog)
+> Per-Voxel Fusion
+> union across sensors, covers cells one sensor misses
+> Severity Conditioning
+> visibility →margin δ,widens as visibility drops
+> SDF Shell keep-out (headline)
+> {φ≤rsafe +δ}
+> non-convex, hugs the wall
+> MPC planner →
+> safe trajectory
+> fused field margin  δ
+
+Figure 1: The proposed pipeline. Degraded multi-sensor per-ception feeds a per-voxel conformal fusion and a label-free severity conditioning, and the resulting field defines the non-convex SDF shell keep-out that a sampling-based MPC plan-ner threads. The goal is a keep-out that is valid at level 1 − α on the ob-served band and as navigable as possible given that validity, spending the certified margin without sealing corridors. The per-voxel union that fuses the sensor fields supplies coverage that no single sensor can. 
+
+## 4 Proposed Method 
+
+4.1 Overview 
+
+The keep-out is the region around each obstacle that the planner must avoid, sized to keep the true obstacle inside it. The method builds it in three parts (Figure 1). The first sets its shape, reading the region from the perceived distance to the nearest surface rather than a convex box or ball that bulges into free space, which lets it hug the obstacle and leave narrow passages open. The other two keep it reliable as perception weakens. One fuses several sensors, covering any cell a single sensor misses. The other sets how far it extends, widening as visibility drops and reading that visibility from an observable signal rather than weather labels or feedback a single flight cannot supply. Each part is developed in turn below. 
+
+4.2 SDF Shell Geometry 
+
+The geometry of a conformal region is not chosen directly. It is induced by the nonconformity score, because for a score 
+
+s and calibrated quantile q the region is the level set {y :
+
+s(y) ≤ q}. The convex keep-outs in common use are exactly the level sets of convex scores, an ℓ∞, Mahalanobis, or norm score inducing a box, ellipsoid, or ball. Region geometry is therefore a score-design question, and the conservatism of convex keep-outs is a property of the scores that induce them. The score here is defined on the distance field rather than on a scalar per-obstacle margin. Let ˆφ(x) be the predicted clearance, that is the distance to the nearest obstacle surface at a world point x, and let δ be the calibrated margin from severity conditioning. The induced region, termed the shell ,is 
+
+S = { x : ˆ φ(x) ≤ rsafe + δ },Figure 2: Conformal keep-out geometry on a cave passage, a conceptual illustration. The non-convex shell hugs the wall and leaves the widest corridor, the convex hull bulges inward at the bends, and the axis-aligned box collapses the corridor to a small rectangle. the sublevel set of the distance field thickened by rsafe + δ.Because the score is evaluated against the obstacle field it-self, its level set conforms to concave and elongated geom-etry instead of bulging past it. The shape is derived from measured structure rather than learned or assumed, which is what makes the ordering below deterministic rather than empirical. The choice of a spatial score is deliberate. A rule reading a single cell’s own per-sensor outputs is capped at the sensor overlap, and escaping that cap requires a score that reads beyond the cell, which the distance field supplies because 
+
+ˆφ(x) is determined by obstacle structure around x rather than by one cell’s measurement. 
+
+Proposition 1 (Equal-margin ⊆-dominance) . Fix a com-mon obstacle set O and a common margin t = rsafe + δ.The shell keep-out is the sublevel set S(t) = {x : ˆ φ(x) ≤
+
+t} = O ⊕ B(t), and every convex keep-out is a convex outer approximation of O dilated by the same t. Then 
+
+S(t) ⊆ hull( t), S(t) ⊆ obb( t), S(t) ⊆ box( t),
+
+and at equal margin the shell therefore leaves at least as much free space as any convex keep-out (Figure 2). Proof. Each convex keep-out is C(O) ⊕ B(t) for a convex outer approximation C(O) ⊇ O with C ∈ { hull , obb , box }.Minkowski dilation preserves inclusion, that is A ⊆ A′ im-plies A⊕B(t) ⊆ A′ ⊕B(t), and the shell is exactly O⊕B(t);dilating O ⊆ C(O) by the common B(t) gives S(t) ⊆ C(t)
+
+for each such C. Taking complements reverses the inclusions, hence the shell bounds no more free space than any convex keep-out. The guarantee is deterministic, holds at any convex decomposition of the obstacle, and needs no distributional assumption. 
+
+Remark. At a matched coverage target each region is cal-ibrated to its own margin. The shell hugs the obstacle and carries the least built-in slack, and generally needs a larger margin than a convex outer approximation to reach the same coverage, hence set inclusion need not hold there. The free-space magnitude at matched coverage is therefore empirical (Section 5), where concave savings dominate. The non-convex shell enters a sampling-based model pre-dictive control (MPC) planner as the keep-out constraint. Each sampled rollout is penalized by its penetration of the conformal level set, and the non-convex constraint is handled by sequential convex programming that places soft slack on the level set. Because the margin varies at the voxel level and is severity-conditioned, the keep-out tightens and loosens ac-cording to local geometry and visibility, and the planner can thread the concave free pocket that convex regions seal. The closed-loop behaviour is reported in Section 5. 
+
+4.3 Per-Voxel Fusion 
+
+The distance field is fused at the voxel level. For a sensor m
+
+returning cell c, split conformal prediction gives the tightest valid single-sensor keep-out um(c) = ˆ φm(c) + δm from that sensor alone, and a sensor that goes blind in degradation does not return the cell, which makes abstention automatic. The fused field combines the returned single-sensor keep-outs by the union , U (xc) = max {um(c) : c ∈ Rm}, and abstains on cells no sensor returns. The role of fusion is availability, meaning the bounding of cells that no single sensor can bound, rather than error averaging. Because a cell returned by a single sensor offers no second value to combine, a per-cell rule can improve on the union only where two or more sensors return the same cell, and that overlap is empirically narrow (Section 5). The overlap of two or more returns spans only 0.5 to 5% of the band, and therefore any per-cell reduction rule can beat the union by at most a few percent. The value of fusion is therefore availability. Certifying the remaining 95% or more of the band that no sensor returns requires leaving the per-cell frame for a spatial information set, which the shell geometry supplies. 
+
+4.4 Severity Conditioning 
+
+The margin δ controls the size of the shell. Rather than a single global quantile, the margin scale is calibrated as a continuous function of measured degradation, using a nor-malized conformal score A/ ˆσ(β), and the shell then widens smoothly as visibility drops without any discrete severity bins. The severity covariate is not read from an oracle. It is estimated from an observable sensor statistic, the lidar return count, by an isotonic regression, a monotone non-parametric fit encoding the physical prior that the margin may only grow as returns are lost, which removes the need for weather la-bels at deployment. Conditioning therefore sets how large the margin is, whereas the shell construction sets how that margin is spent. Conditioning and the per-voxel union change only the non-conformity score, and validity is obtained from the split-CP quantile on held-out scores per condition. This is a rigor backbone, namely standard split conformal applied to a new geometric construction, rather than a new coverage theorem. The contribution is the non-convex construction, the frame-optimality result, and the problem they solve. 5 Experiments 
+
+5.1 Overview 
+
+The evaluation proceeds in two stages. The first stage is of-fline and planner-independent, establishing on real and sim-ulator data that the shell certifies a tighter region at matched coverage. The second stage is closed-loop, testing whether that tighter region produces safer flight in a validated sim-ulation harness. The harness is treated as apparatus, and its fidelity is established before it is used. 
+
+5.2 Experimental Setup 
+
+Common Setup Apparatus, datasets, and protocol. Multi-sensor logs and rollouts come from the layered simulation harness described below. The data are STF (Bijelic et al. 2020), comprising real adverse weather, n = 8 ,970 , in five modes, simulator per-cell clearance fields from two sensors (lidar and thermal) at seven MOR levels, and SubT real subterranean LiDAR for geometry (an accumulated 14-scan local map, a 5 m BEV band at 0.10 m, rsafe =0 .30 m, and each region inflated to its own reach). Folds are scene-disjoint. Every arm is calibrated per voxel by split conformal to exactly 0.90 realized cover-age, and per-mode validity is reported as the coverage gap 
+
+∆cov = cov − (1 − α), where 0 is calibrated and a negative value falls below nominal. 
+
+Modality choice. The second modality is thermal (LWIR), chosen because long-wave IR penetrates fog and obscu-rants roughly 2× better than visible or near-IR (Nebuloni 2005), an advantage that narrows in dense fog, giving a fail-ure mode decorrelated from LiDAR’s obscurant scattering. The method does not rely on a fixed spectral ratio, however. Each modality’s degradation is anchored to real degraded-condition data (STF, FIReStereo), and therefore the fusion benefit rests on empirically grounded per-modality coverage rather than an assumed extinction magnitude. 
+
+Offline Evaluation Regime caveat. Rows at MOR ≤ 2 are backscatter-artifact-dominated, because MOR 1–8 is 10 –75 × denser than real fog. Physical claims are therefore capped at MOR-8, and heavier rows are labeled stress tests. 
+
+Tightness comparison protocol. Comparing keep-out tightness between sensor arms is delicate, because a margin swept to a global target α cannot realize the same coverage in every arm, which leaves per-frame δ comparisons coverage-confounded. The comparison is therefore made per cell, using split conformal calibrated to exact 1 − α coverage in each arm by construction, and aggregated throughout the scene, charging the blind cap to unobservable cells. All tightness numbers use this matched-coverage-by-construction proto-col, and the reported quantities are the per-cell margin, the fraction of the scene an arm can bound, and the whole-scene keep-out. 
+
+Simulation Harness Because no real corpus carries depth, LiDAR, correlated degradation, and a ground-truth map si-multaneously, the multi-sensor and closed-loop evidence is   
+
+> L1 – FlightBench Core
+> base sim, rendering + dynamics + planner
+> L2 – Sensor Augmentation
+> adds LiDAR, thermal, depth + noise physics
+> L3 – Degradation Layer
+> fog, smoke, low-light; severity = MOR synthetic degraded sensor data
+> Simulation Test Harness
+> L4 – Real De-graded Data
+> real corpora: STF (LiDAR), FIReStereo (thermal) realism match KS+EMD fit free params θ
+> →tune sim to real
+
+Figure 3: The layered simulation harness. A base simula-tor gains sensor modalities and a physics-based degradation layer, and the free parameters are tuned to match real adverse-weather corpora in distribution. produced on a layered harness. A simulation-based safety result depends on whether the degradation is real, whether the ground truth is independent of the sensor, and whether the guarantee holds on the data, and the harness is validated against all three before any number from it is used. 
+
+• Construction. The harness has four layers (Figure 3). L1 is the closed-loop core, namely FlightBench (Yu et al. 2025) providing Flightmare and Unity rendering, Gazebo dynamics, and ROS on a headless GPU. L2 synthesizes the sensor fields that a game renderer never computes. L3 injects degradation on the raw per-modality streams before map-ping, governed by the master knob β. L4 anchors the free parameters of L3 to real degraded data, as described below. 
+
+• Measurement model and ground truth. At each replan step the logger degrades all modalities and records, on a shared world-frame voxel grid ( 60 × 60 × 30 at 0.15 m, that is 9×9×4.5 m), the per-modality predicted clearance ˆφs, the ground-truth clearance φgt , the per-cell confidence ˆσs, and an observed mask. The calibrated quantity is the dangerous error As from the problem formulation, evaluated against φgt 
+
+on the near band ( φgt < 0.6 m). The ground truth φgt is an exact Euclidean distance transform computed from the scene mesh, and the render and degradation path never touches it, which makes sensor and truth independent. Geometry align-ment is validated to roughly one voxel (back-projected depth 
+
+2.8 cm, LiDAR 2.3 cm median), and the injected degrada-tion matches the Beer–Lambert law τ = e−βz to 98 .9% at MOR3. 
+
+• Fidelity validation. The degradation physics is inher-ited from established models, namely Koschmieder and Beer–Lambert extinction (Koschmieder 1924; Middleton 1952) and Hahner-style LiDAR fog (Hahner et al. 2021), and only the free parameters θ∗ are tuned to real cor-pora, using STF (Bijelic et al. 2020) for LiDAR fog and FIReStereo (Dhrafani et al. 2025) for thermal, and the dis-tributional distance is reported alongside invariant controls. The invariant-control row, on which non-target modalities Anchor Real corpus Result LiDAR fog STF KS 0.138 , EMD 0.066           
+
+> thermal FIReStereo KS 0.150 ,A↓40%
+> invariant —non-target KS ≤0.024
+
+Table 1: L4 realism anchoring, where the L3 free parameters are tuned to real degraded data and the invariant row isolates the tuning. move by KS ≤ 0.024 (p ≥ 0.82 ), proves the tuning is iso-lated rather than a global adjustment (Table 1). Four readiness checks support calibration, detailed in the technical appendix. Separability holds, the dangerous error A
+
+differing by severity strongly enough to justify per-severity conditioning rather than assuming it. The exchangeability budget is set by measured intra-trajectory autocorrelation, handled by multi-seed varied-trajectory sweeps, and sparse-severity bins are flagged provisional. Calibration and test are split by map, leaving no scene shared, and a leave-one-severity-out check finds held-out coverage conservative but valid at the 0.90 target on the available rows, reported as an instrument-consistency check because physical claims are capped at MOR-8. 
+
+• Scope and reproducibility. The scope of the claim is deliberate. The claim covers per-failure-mode, finite-sample coverage on the observed local band, conditional on β, and includes the construction and its safety consequence. It does not cover global or full-mission safety, because coverage is band-local. Only the depth camera is a live sensor, whereas LiDAR and thermal are geometry-synthesized and carry real-anchored degradation physics, which makes the multi-sensor result a forward-looking simulation-only probe, the only set-ting containing all four required ingredients. Reproducibility rests on the method, hyperparameters, and evaluation protocol specified in the paper and the technical appendix. 
+
+Closed-Loop Evaluation The closed-loop stage isolates the headline region-shape contribution, whereas the fusion and conditioning supports rest on the planner-independent offline evaluation. The shell is flown against the box and convex-hull keep-outs (Tumu et al. 2024), using an identi-cal Fast-Planner (Zhou et al. 2019) on one real cave (SubT cave01 (Zhao et al. 2024)) in FlightBench (Yu et al. 2025). The intermediate oriented box appears only in the offline ge-ometry ladder. The planner, controller, map, and start–goal query are held fixed, and every arm is a conformal keep-out matched to a common certified coverage (approximately 
+
+0.93 , per-arm ≥ 0.90 ) before flight, and outcome differences therefore isolate region shape at equal safety. An uncalibrated baseline is not compared, because matched-coverage com-parison needs a coverage guarantee it lacks, and improve-ment on uncalibrated planning is already established (Lin-demann et al. 2023; Dixit et al. 2024). Perception is stressed by one fog model along a ladder (MOR 4/12 /20 /30 /40 m), and the reported metric is safe-reach, namely a reached goal (minimum distance below 1.0 m) and a non-negative swept wall-clearance. The world goal is a single fixed point for                           
+
+> point-cloud GT mesh GT Region free area ↑(m 2) shell/ · ↑ free area ↑shell/ · ↑ ∆reach (m)
+> shell (ours) 37.57 —38.44 —−0.028 hull (Tumu-class) 34.26 1.096 ×34.60 1.111 ×−0.017 OBB 33.73 1.114 ×34.06 1.129 ×−0.014 AABB (box) 27.87 1.348 ×27.99 1.373 ×−0.006
+
+Table 2: Keep-out region geometry on real subterranean Li-DAR (SubT cave01). Best in bold, second-best underlined. Correction provenance and audit in the technical appendix. every arm, placed beyond every keep-out margin, and only the reachability check differs by margin. The full protocol, thresholds, and configuration provenance are in the technical appendix. 
+
+5.3 Results 
+
+Offline Evaluation The results in this section are distribution-free and planner-independent, computed offline on real data (SubT and STF) and simulator-synthesized multi-sensor data. They are the foundation the paper rests on and hold regardless of the closed-loop harness. The ex-periments obey one design law, namely that no two effects share a condition. Fusion has two benefits that need opposite regimes, coverage in degraded conditions where sensors go blind and tightening in the clear where co-visible sensors decorrelate, and each is therefore tested in its own regime by the metric that matches the claim, reported per branch alongside the branch’s cell fraction. The headline geometry claim needs neither regime and is tested on its own. 
+
+Shell geometry. The deterministic ⊆-dominance of the shell is measured here as the gain in usable observed free space on real subterranean geometry at per-region matched 
+
+0.90 coverage. The shell recovers 1.10 × the free space of the convex hull (Tumu-class), 1.11 × the oriented box, and 
+
+1.35 × the axis-aligned box (Table 2, n = 80 held-out poses). The headline is computed against the point-cloud ground truth, which is the conservative choice, because swapping to the reconstructed mesh ground truth moves every ratio in the shell’s favour ( 1.11 ×, 1.13 ×, 1.37 ×, gains of +0 .015 
+
+to +0 .025 ), as double-wall reconstruction phantoms tax the shell 4.7× more than the box, a reach relief of −0.028 against 
+
+−0.006 m. Reporting therefore uses the ground truth biased against the method, and the full evaluation-audit trail, includ-ing the corrections that reduced the reported numbers, is in the technical appendix. 
+
+Per-voxel fusion. Two properties of the union, coverage (availability) and tightness, are tested here in their own regimes. On the fair per-cell grid, where blind cells are charged the cap, the certified fraction (CERT) of the union exceeds that of the best single sensor in every condition and is CI-separated, rising from 0.441 to 0.620 in the clear and from 
+
+0.265 to 0.373 at MOR-8 (Table 3). The worst column of that table is the minimum CERT of the physical fog conditions, and the κ legs are a thermal-crossover stress test beyond the measured κreal =0 .81 . The worst-case separation between the fog (physical) thermal crossover κ                                               
+
+> Arm worst ↑clear MOR-8 MOR-6 MOR-4 0.60 0.35 0.15 0.05 single-sensor lidar 0.086 0.211 0.121 0.106 0.086 0.298 0.297 0.294 0.289 thermal 0.017 0.441 0.265 0.207 0.150 0.194 0.119 0.051 0.017 fusion
+> union 0.186 0.620 0.373 0.303 0.231 0.460 0.396 0.336 0.303 naive-worst 0.180 0.626 0.375 0.307 0.230 0.472 0.396 0.335 0.302 naive-Bonferroni a0.187 0.651 0.392 0.320 0.240 0.499 0.426 0.366 0.332
+> aNaive-Bonferroni’s higher CERT comes from coverage above nominal (cov ≥
+> 0.976 against nominal 0.90 ) and looser margins, and is therefore not a fair win at matched coverage.
+
+Table 3: Fusion coverage necessity, the certified fraction (CERT ↑) of the near-obstacle band. Best in bold, second-best underlined. Full grid in the technical appendix. union and the best single sensor strengthens from +0 .03 to 
+
++0 .10 to +0 .17 as artifact rows are dropped. Whether fusion also tightens on co-visible cells was tested by sweeping the cross-sensor error correlation ρ. The pre-dicted direction holds, the union tightening at low ρ, but net system tightening is approximately zero, because tightening needs cells that are both co-seen and decorrelated and that intersection is only 0.4% of the band ( ρ ≈ 0.37 to 0.40 even in the clear). The honest conclusion is that fusion contributes coverage while tightness comes from geometry. The full ρ-sweep, the alternative fusion rules, and their pre-registered verdicts are in the technical appendix. An earlier per-frame comparison at unmatched coverage is coverage-confounded and not used. 
+
+Severity conditioning. On real STF the label-free severity conditioning matches the per-mode labeled-Mondrian ceil-ing within CI on every mode, at a maximum coverage deficit of 0.013 (Table 4), and dense fog rises from a global-margin coverage of 0.762 to 0.926 against the 0.941 labeled ceiling. This is a parity result relative to adaptive conformal predic-tion, which attains the same coverage only given an online per-frame feedback signal unavailable in single-shot flight, a structural distinction rather than a validity win. Conditioning the margin on predicted clearance ˆφ tightens the mean margin by 20 to 40% at matched 0.90 coverage, and it repairs the far-range conditional-coverage floor that the un-conditioned margin lets collapse, raising it from 0.53 to 0.95 
+
+at MOR-4 (Table 4b). The worst bin is the minimum con-ditional coverage of the ˆφ-sextiles, and these gains survive oracle coverage-matching, where all arms are rescaled to ex-actly 0.90 realized (global 0.209 /0.213 /0.255 against Mon-drian 0.186 /0.166 /0.192 ) on 1.01 M/0.40 M/0.30 M cells. The smooth continuous form is not deployed, because a calibration-only transfer certificate refused it after it under-covered a clutter bin on held-out maps, and the deployed variant is therefore the gate-certified Mondrian-on- ˆφ. Every smooth variant that was tested, and its pre-registered accept rules and verdicts, appears in the technical appendix. 
+
+Figure 4: Closed-loop flight on the real cave at seed F02 and MOR 4. Only the shell reaches the goal safely, the hull hovers then diverges, and the box emergency-stops at the start. 
+
+Closed-Loop Evaluation All four axes are scored on the reconstructed cloud rather than an arm’s own keep-out, namely safety as collision, reachability as safe-reach (goal reached and no collision), efficiency as detour, and smooth-ness as a jerk proxy. Raw reach is reported only to motivate the correction, namely that the simulator odometry does not halt at walls and a convex keep-out can otherwise reach the goal after penetrating an obstacle. The wall-phasing correc-tion removes 7 raw hull reaches ( 42 → 35 ) and none for the shell ( 49 → 49 ) or the box ( 27 → 27 ). The controlled contrast is the shell against the box (Fig-ure 4), two stable region operators on the shared base occupancy, and the separation is decisive, namely safe-reach 49 /50 = 0 .98 (CI [0 .90 , 1.00] ) for the shell against 
+
+27 /50 = 0 .54 (CI [0 .40 , 0.67] ) for the box (two-proportion 
+
+z = 5 .15 , p < 10 −4, Table 5). The convex hull sits between at 35 /50 = 0 .70 (CI [0 .56 , 0.81] ), separated from the shell (z = 3 .82 , p = 10 −4) and not from the box ( z = 1 .65 ,
+
+p = 0 .10 ). The shell-against-hull margin has its distribution-free home in the static geometry ladder, where the shell frees more maneuverable area at matched coverage, and the closed-loop run corroborates rather than establishes it. Safe-reach is monotone shell ≥hull ≥box at every fog severity (Table 6). On this pipeline the shell is uniquely collision-free ( 0 colli-sions, 0 divergences) and its minimum swept clearance never goes negative ( 0.285 ± 0.021 m). The box records 2 colli-sions and the hull 14 wall-contacts, and both loose regions diverge, the hull on 8 flights and the box on 2. These ten diver-gences share one deterministic signature. The inflated convex geometry constricts the exit corridor about 1.5 m from the start, and sustained infeasible replanning there drives Fast-Planner’s stock optimizer to a non-physical trajectory, all ten within a narrow 1.4 to 1.6 m band. The 219 m runaway at up (a) Severity conditioning (b) Range conditioning                                                                                                 
+
+> global Mondrian (lab.) cont. σ( ˆβ), l-free Mode n∆cov ¯δ∆cov ¯δ∆cov ¯δcont −Mond. [2.5, 97.5] clear 624 +0 .007 2.40 −0.003 2.39 +0 .001 2.48 +0 .003 [-0.026, +0.026] light fog 354 −0.120 2.40 −0.069 2.50 −0.075 2.67 −0.007 [-0.037, +0.022] dense fog 202 −0.138 2.40 +0 .041 3.64 +0 .026 3.24 −0.013 [-0.026, 0.000] snow 530 −0.017 2.40 −0.015 2.41 −0.008 2.49 +0 .006 [-0.031, +0.032] rain 308 −0.004 2.40 −0.069 2.31 −0.069 2.35 +0 .001 [-0.061, +0.079] global δMondrian-ˆφ
+> Condition ¯δworst ↑¯δworst ↑tighten [2.5, 97.5] clear 0.232 0.84 0.186 0.84 +0 .046 [+0.038, +0.055] MOR-8 0.232 0.81 0.167 0.80 +0 .066 [+0.059, +0.074] MOR-4 0.322 0.53 0.192 0.95 +0 .130 [+0.123, +0.137]
+> ¯δis the mean calibrated one-sided safety margin (m), the conformal buffer on the dangerous clearance error A= max(0 ,ˆφ−φ)at level 1−α. Lower is tighter at equal validity. Bracketed quantities are bootstrap 95% confidence intervals. Panels (a) and (b) attach the guarantee to different units, scene-level worst-case in (a) and per-voxel in (b), on different datasets, and therefore ¯δis not comparable across panels.
+
+Table 4: Conditioning the conformal margin, on severity for validity in panel (a) and on range for tightness in panel (b). Full detail in the technical appendix.                                 
+
+> Region safe-reach aclearance (m) bcollisions ce-stops dcompute e
+> shell (ours) 49/50 (0.98) 0.285 ±0.021 00.12 0.34 ms
+> convex hull 35/50 (0.70) 0.208 ±0.165 14 0.26 4.01 ms AABB (box) 27/50 (0.54) 0.280 ±0.046 21.84 0.39 ms
+> aReached goal and non-negative swept wall-clearance.
+> bMean and sd of per-flight minimum clearance of reached flights.
+> cFlights recording any negative swept clearance, namely wall contact.
+> dMean emergency-stop recoveries per flight, cap K=3 .
+> eMean per-map-update region-realization time.
+
+Table 5: Closed-loop region-geometry sweep on SubT cave01 at matched 0.90 coverage. Best in bold. Full pro-tocol in the technical appendix. to 66 m/s, a path far longer than the roughly 40 m cave, is the simulator’s ground-truth odometry failing to halt at walls rather than a physical flight. Shell keeps the corridor open and departs cleanly, never entering this regime. The shell is also the cheapest region to realize ( 0.34 ms per map update and flat as fog thickens, 12 × below the hull’s 4.01 ms, which climbs from 2.97 to 4.88 ms as fog reveals more geometry and reaches 34 .6 ms at worst, breaching a 30 Hz budget) and calls the fewest emergency stops ( 0.12 per flight against the box’s 1.84 ). The box’s 0.54 and hull’s 0.70 against the shell’s 
+
+0.98 hold at a configuration identical for every arm, evidence the outcome tracks region shape rather than tuning. The run is a controlled evaluation at documented configuration (tech-nical appendix), not a pre-registered confirmatory test, and it differs from the retired preliminary run. The closed-loop or-dering reproduces the static geometry ladder in autonomous flight. 
+
+## 6 Limitations 
+
+Coverage is scoped to the observed band, and global-mission safety requires conservative unknown-space handling. Multi-sensor evidence is semi-synthetic (one live sensor) and, for the fusion-necessity result, currently a Tier-A corruption model pending a Tier-B render. The closed-loop result rests on one real cave (SubT cave01) and one planner (Fast-Planner topological replanning). The hull divergences are geometry-caused rather than an implementation artifact (Section 5), though the exact optimizer internal that fails during sustained                         
+
+> Region MOR4 MOR12 MOR20 MOR30 MOR40 total
+> shell (ours) 910 10 10 10 49/50
+> convex hull 8777635/50 AABB (box) 6655527/50
+
+Table 6: Safe-reach by fog severity, out of 10 seeds each. Best in bold. infeasibility is stock and undocumented, and the corridor-constriction trigger is therefore claimed confidently while the internal numerics are not. A remaining caveat is that the box and hull keep-outs share a tile operator that the shell realizes instead by the native signed-distance path, a possi-ble realization confound. In-loop coverage sits mildly below nominal ( ≈ 0.87 –0.92 ). 
+
+## 7 Conclusion 
+
+Convex conformal keep-outs waste maneuverable space in non-convex clutter, and the waste compounds as percep-tion degrades and the certified margin grows. This paper contributes a non-convex signed-distance-field (SDF) shell keep-out, provably ⊆-tighter than any convex region at equal margin (Proposition 1) and tractable for model predictive control (MPC), and the margin is spent along obstacle ge-ometry rather than into the corridor. The margin is fused by a per-voxel union and sized by label-free severity condition-ing. On real subterranean and adverse-weather data the shell tightens the keep-out around obstacles, freeing about 10% 
+
+more maneuverable space than the convex hull, the tightest convex baseline, and 35% more than the box. In closed-loop flight it reaches goals more safely than either. References 
+
+Angelopoulos, A. N.; and Bates, S. 2023. A Gentle Introduc-tion to Conformal Prediction and Distribution-Free Uncer-tainty Quantification. Foundations and Trends in Machine Learning .Bijelic, M.; Gruber, T.; Mannan, F.; Kraus, F.; Ritter, W.; Di-etmayer, K.; and Heide, F. 2020. Seeing Through Fog With-out Seeing Fog: Deep Multimodal Sensor Fusion in Unseen Adverse Weather. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 11682–11692. Cleaveland, M.; et al. 2024. Conformal Prediction Regions for Time Series using Linear Complementarity Program-ming. In AAAI Conference on Artificial Intelligence .Dhrafani, D.; Liu, Y.; Jong, A.; Shin, U.; He, Y.; Harp, T.; Hu, Y.; Oh, J.; and Scherer, S. 2025. FIReStereo: Forest In-fraRed Stereo Dataset for UAS Depth Perception in Visually Degraded Environments. IEEE Robotics and Automation Letters , 10(4): 3302–3309. Dixit, A.; Lindemann, L.; Wei, S.; Cleaveland, M.; Pappas, G. J.; and Burdick, J. W. 2023. Adaptive Conformal Pre-diction for Motion Planning among Dynamic Agents. In 
+
+Learning for Dynamics and Control (L4DC) .Dixit, A.; Mei, Z.; Booker, M.; Storey-Matsutani, M.; Ren, A. Z.; and Majumdar, A. 2024. Perceive With Confidence: Statistical Safety Assurances for Navigation with Learning-Based Perception. arXiv preprint arXiv:2403.08185 .Gibbs, I.; and Candès, E. 2021. Adaptive Conformal In-ference Under Distribution Shift. In Advances in Neural Information Processing Systems (NeurIPS) .Hahner, M.; Sakaridis, C.; Dai, D.; and Van Gool, L. 2021. Fog Simulation on Real LiDAR Point Clouds for 3D Object Detection in Adverse Weather. In IEEE/CVF International Conference on Computer Vision (ICCV) , 15283–15292. Huang, H.; He, S.; and Miao, F. 2025. CUQDS: Confor-mal Uncertainty Quantification under Distribution Shift for Trajectory Prediction. In AAAI Conference on Artificial In-telligence .Koschmieder, H. 1924. Theorie der horizontalen Sichtweite. 
+
+Beiträge zur Physik der freien Atmosphäre , 12: 33–53. Kumar, D.; Tayebati, S.; Migliarba, F.; Krishnan, R.; and Trivedi, A. R. 2025. Learnable Conformal Prediction with Context-Aware Nonconformity Functions for Robotic Plan-ning and Perception. arXiv preprint arXiv:2509.21955 .Lindemann, L.; Cleaveland, M.; Shim, G.; and Pappas, G. J. 2023. Safe Planning in Dynamic Environments Using Con-formal Prediction. IEEE Robotics and Automation Letters ,8(8): 5116–5123. Middleton, W. E. K. 1952. Vision Through the Atmosphere .Toronto: University of Toronto Press. Nebuloni, R. 2005. Empirical relationships between extinc-tion coefficient and visibility in fog. Applied Optics , 44(18): 3795–3804. Oleynikova, H.; Taylor, Z.; Fehr, M.; Siegwart, R.; and Ni-eto, J. 2017. Voxblox: Incremental 3D Euclidean Signed Distance Fields for On-board MAV Planning. In IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) .Shin, J.; Ra, Y.; and Yang, I. 2026. From Prediction Un-certainty to Conformalized Distance Fields for Safe Motion Planning. arXiv preprint arXiv:2607.00776 .Tranzatto, M.; et al. 2022. CERBERUS in the DARPA Sub-terranean Challenge. Science Robotics , 7(66): eabp9742. Trautman, P.; and Krause, A. 2010. Unfreezing the Robot: Navigation in Dense, Interacting Crowds. In IEEE/RSJ In-ternational Conference on Intelligent Robots and Systems (IROS) , 797–803. Tumu, R.; Cleaveland, M.; Mangharam, R.; Pappas, G. J.; and Lindemann, L. 2024. Multi-Modal Conformal Predic-tion Regions with Simple Structures by Optimizing Convex Shape Templates. In Learning for Dynamics and Control (L4DC) , volume 242 of Proceedings of Machine Learning Research .Vovk, V.; Gammerman, A.; and Shafer, G. 2005. Algorithmic Learning in a Random World . Springer. Wang, Z.; Gao, R.; Yin, M.; Zhou, M.; and Blei, D. 2023. Probabilistic Conformal Prediction Using Conditional Ran-dom Samples. In International Conference on Artificial In-telligence and Statistics (AISTATS) .Yu, S.-A.; Yu, C.; Gao, F.; Wu, Y.; and Wang, Y. 2025. FlightBench: Benchmarking Learning-based Methods for Ego-vision-based Quadrotor Navigation. IEEE Robotics and Automation Letters .Zhao, S.; Gao, Y.; Wu, T.; Singh, D.; Jiang, R.; Sun, H.; Sarawata, M.; Qiu, Y.; Whittaker, W.; Higgins, I.; Du, Y.; Su, S.; Xu, C.; Keller, J.; Karhade, J.; Nogueira, L.; Saha, S.; Zhang, J.; Wang, W.; Wang, C.; and Scherer, S. 2024. SubT-MRS Dataset: Pushing SLAM Towards All-weather Environments. In IEEE/CVF Conference on Computer Vi-sion and Pattern Recognition (CVPR) , 22647–22657. Zhou, B.; Gao, F.; Wang, L.; Liu, C.; and Shen, S. 2019. Robust and Efficient Quadrotor Trajectory Generation for Fast Autonomous Flight. IEEE Robotics and Automation Letters , 4(4): 3529–3536. Zhou, X.; Wang, Z.; Ye, H.; Xu, C.; and Gao, F. 2021. EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors. IEEE Robotics and Automation Letters , 6(2): 478–485.
