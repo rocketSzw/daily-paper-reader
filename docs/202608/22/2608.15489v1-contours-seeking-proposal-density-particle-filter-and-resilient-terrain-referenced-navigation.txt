@@ -1,0 +1,1435 @@
+Title: Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation
+
+URL Source: https://arxiv.org/pdf/2608.15489v1
+
+Published Time: Tue, 18 Aug 2026 00:54:37 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Contours-seeking Proposal Density Particle Filter and Resilient Terrain-referenced Navigation 
+
+Junwoo Park 
+
+Korea Advanced Institute of Science and Technology, Daejeon, South Korea 
+
+Hyochoong Bang , Member, IEEE Korea Advanced Institute of Science and Technology, Daejeon, South Korea 
+
+Abstract— Auxiliary navigation systems are essential for the robust operation of aerial vehicles, particularly in self-contained frameworks like terrain-referenced navigation. However, challenges such as multimodal likelihoods, highly nonlinear terrain elevations, and unknown prediction biases result in highly multimodal and less predictable posterior distributions, leading to particle filter degeneration. This study addresses the numerical instability and degeneration of the particle filter approach by proposing a sam-pling strategy tailored to this problem. The approach introduces a Gaussian mixture random forcing mechanism, which nudges particles along terrain slopes and against biases towards the most probable terrain contours. Each mixture is associated with a mode of likelihood, enhancing adaptability to unmodeled terrain features. To further improve effectiveness, auxiliary sampling selectively applies this mixture sampling to probable particles, yielding a less degenerate and evenly weighted particle set. Numerical experiments demonstrate the effectiveness of the proposed method in reducing weight variance, improving effective sample size. In addition, the approach exhibits strong resilience under deteriorating scenarios, such as severe unknown prediction bias and multimodal measure-ment noise, ensuring long-term reliable particle filtering. 
+
+Index Terms— Evenly weighted particle filter, mixture random forcing, particle degeneration, resilient terrain-referenced naviga-tion. 
+
+(Corresponding author: Hyochoong Bang). Junwoo Park is now with Nearthlab, Inc., Seoul, South Korea (e-mail: vividlibra@gmail.com). Hyochoong Bang is with the Aerospace Engineering Department, Korea Advanced Institute of Science and Technology, Daejeon, South Korea (e-mail: hcbang@kaist.ac.kr). 0018-9251 © 2025 IEEE 
+
+© 2025 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works. This is the author’s accepted manuscript of “Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation,” 
+
+IEEE Trans. Aerosp. Electron. Syst. , vol. 61, no. 6, pp. 15627–15641, Dec. 2025, doi: 10.1109/TAES.2025.3588823. 
+
+I. Introduction 
+
+GLOBAL navigation satellite systems (GNSS) miti-gate drifts of inertial navigation systems (INS) with its bounded estimates, while INS compensates for sparse updates of GNSS with its short term robustness. Although GNSS is considered a standard fusion source for INS, its dependence upon remote signals often makes the integrated GNSS/INS vulnerable to signal reception is-sues, such as multipath, spoofing, jamming or ionospheric scintillation. Despite advances in robust signal processing [1], [2], self-contained operation is difficult to secure when the GNSS is the sole aiding source. Database-referenced navigation (DBRN) emerges as a robust alternative by leveraging self-contained sensors and onboard databases instead of external signals. Geophys-ical information such as gravity [3], magnetic field [4], terrain elevation [5], [6], or visual imagery of the ground [7], [8], [9]; can be rendered as databases for navigation. Sensors including accelerometers, magnetometers, radar altimeters (RA), and cameras enable DBRN systems to operate independently of external infrastructure. Among DBRN approaches, terrain-referenced naviga-tion (TRN) [10], also known as terrain-aided position-ing (TAP) [11], stands out for GNSS-denied or GNSS-challenging scenarios. Real-world implementations like terrain contour matching (TERCOM) [12] and Sandia in-ertial terrain-aided navigation (SITAN) [13] demonstrate TRN’s practicality. The TRN problem involves estimating a vehicle’s position, xk, using a series of terrain elevation measurements, y0: k. Under the Bayesian framework [5], [14], the task becomes estimating the posterior distribu-tion p(xk|y0: k). Figure 1 illustrates the simplest form of the TRN problem with aids from a radar altimeter and a barometric altimeter, each responsible for terrain clearance and vehicle altitude. Despite its simplicity, TRN presents significant chal-lenges due to inherently nonlinear and ambiguous charac-teristics of terrain elevation. Traditional approaches like the extended Kalman filter (EKF) may not capture local terrain deviations within estimated error variance, leading to filter divergence. Figure 2 highlights these issues. 
+
+Fig. 1: Principle of terrain-referenced navigation problem illustrated in 1-dimensional state space. Particle filters (PF) [15] and point mass filters (PMF) [16] are commonly used for TRN due to their flexibility with nonlinearity and multimodality. While PMFs suffer from the curse of dimensionality, PFs utilize stochastic samples to approximate the state space, offering better 
+
+IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025 1arXiv:2608.15489v1 [eess.SP] 16 Aug 2026 Fig. 2: Nonlinear and ambiguous characteristics of terrain elevation captured within the estimated uncertainty. scalability. This study focuses on PF-based approaches, which are more compatible with flexible INS integration due to their dimension-independent convergence prop-erties. However, PFs still face challenges with particle degeneration, especially with multimodal measurement noise and biased odometry. In a particle filter, the pos-terior distribution over the state space X is approximated by a weighted sum of stochastic samples: 
+
+p(x|y) ≈
+
+> N
+
+X
+
+> i=1
+
+wiδ(x − xi), (1) where y denotes the measurement, xi and wi denote 
+
+ith particle and its importance weight with the support of the Dirac-delta function, δ(·). When the particle was sampled from an alternative proposal distribution, q(x),that is (preferably) easier to sample from, the weight is proportional to: 
+
+wi ∝ p(y|xi)p(xi)
+
+q(xi) , (2) It is worth mentioning that ideally, if q(·) matches the true posterior, resultant weights play no role as all particles are equally valid. Both theoretical analyses [17], [18], [19]; and em-pirical evidence showed that sequential multiplication of likelihoods increases the variance of importance weights over time, eventually causing filter collapse. The situa-tions where the drawn particles are located at the thin tail of likelihood or where the particles do not fully occupy the high-likelihood regions are the typical journey to full degeneration. This becomes particularly severe with highly informative measurements or when the proposal distribution significantly deviates from the posterior. Three characteristics of TRN exacerbate this vulnera-bility: radar altimeter measurements corrupted by multi-modal noise [20], highly nonlinear measurement equation, and INS’s drift from deduced reckoning principle. As a combination of the former two, the true posterior exhibits pronounced multiple modes distributed across a broad area, making both the design of effective proposal distri-butions and the maintenance of filter stability extremely challenging. The incorrect prediction then deforms the estimated distribution in a less predictable way due to terrain’s high nonlinearity, potentially leading the filter to degenerate. Figure 3 demonstrates how these effects collectively distort the estimated posterior distribution from its desired form.                         
+
+> (a) A linear measurement update example with yk=xk+ek.
+> (b) A nonlinear measurement update example with yk=|xk|+ek.
+> (c) Highly nonlinear terrain measurement yk=
+> hDTED (xk) + ekwith prediction bias β.
+
+Fig. 3: Illustration of the effect of combined highly nonlinear measurement equation, multimodal likelihood, and prediction bias on the posterior distribution. The unknown prediction bias is denoted as β, and the mea-surement likelihood is bimodal Gaussian: one zero-mean and another centered at μ > 0.While intermittent resampling [21] can mitigate de-generacy, its stochastic nature offers limited theoretical guarantees. A more effective approach is preventing par-ticle and weight degeneracy from the outset. Our approach is based on the two basic observations: O1 the modes of the posterior distribution align with 
+
+terrain contours ,O2 PF’s performance and stability gradually deteriorate without proper support from particles.    
+
+> 2IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025
+
+The O1 also aligns with the TERCOM’s [12] emphasis on contour matching. After all, the TRN problem is to find an inverse map from the sequential superposition of overlapping contours , as described in [22]. The strategy this study takes is straightforward: to consecutively locate particles around those contours so as not to largely deviate from the true posterior modes. We implement a local approach that nudges particles toward probable contours using terrain gradients taking deviated multimodality into account. The objectives of this study are accurate approximation of multimodal empirical filtering density and mitigation of sample de-generacy through maintenance of even-weight particles, by designing a proposal distribution with solid support for the posterior under the challenging scenario outlined previously. Thereby, the numerical instability of the PF in TRN problem is resolved or significantly delayed. The particle flow-based approach [23] is ruled out due to the stiffness and multimodality of the TRN problem.  
+
+> A. Related Works And Contributions
+
+Various approaches have been proposed to address particle filter degeneracy in TRN applications. Merlinge et al. [24], [25]; introduced box-regularized particle filter (BRPF), which employed set membership formalism to represent particles as interval boxes rather than Dirac points. By maintaining pessimistic kernels in box form, BRPF accommodated a wider range of measurements across multiple particles. The approach achieved lower divergence rate even under the large initial error and effectively delayed degeneracy problem. Teixeira et al. [26], [27] proposed an alternative ap-proach combining prior and non-informative (uniform) distributions. However, the uniform distribution sampling suffered from determining interval size and exhibited poor scalability. Although a Fisher information-based criterion [28] was suggested, the approach was inefficient due to indiscriminate particle coverage expansion. The general regularization scheme [29] achieves similar objectives more systematically. The mixture-regularized particle filter, introduced by Murangira et al. [30], [31], operated multiple PF in-stances, with each instance handling a distinct posterior mode to preserve the overall multimodal characteristics. The approach employed a set of maximum a posteriori (MAP)-based Gaussian proposal distributions assuming single modality of each PF instance via additional clus-tering methods. However, it required numerous heuristic parameters, such as clustering bandwidth, not revealed by the authors, and thus the results were hardly reproducible. Moreover, calculating MAP is computationally intensive and numerically instable at stiff problems, hence an error state design was necessitated. Meanwhile, The MAP is also leveraged in [32] via Laplace PF. These approaches revealed the importance of main-taining robust support for the posterior to minimize ineffective samples. Despite their original ideas, these methods have several limitations. They primarily ad-dressed nonlinear and ambiguous terrain characteristics while overlooking the challenges posed by multimodal likelihood of RA and prediction biases. Furthermore, modifications to canonical particle filtering principles— whether through set membership [24], prior correction [27], or regularization [29]—introduced additional tuning parameters that compromise practicality and scalability. Moreover, most existing work focused predominantly on estimation performance metrics. In contrast, our study examines both particle weight evenness and filter numer-ical stability to provide a more comprehensive evaluation framework. Again, this study aims to develop a proposal dis-tribution capable of handling the multimodality of RA and prediction biases compounded via highly nonlinear terrain. Based on (2), a proposal distribution that closely approximates the true posterior produces more evenly weighted particles. The proposed method would thereby increase the number of effective samples, maximize and maintain them over extended periods. The key contribu-tions of this study are: C1 Development of a mode-associated mixture pro-posal accommodating the combination of RA’s multimodality and highly nonlinear terrain. C2 An exact Bayesian recursion-based approach where heuristics or tuning are unnecessary. C3 Resilience against unknown time-varying INS bi-ases, maintaining filter stability and accuracy through adaptive mechanism of particle sampling, without explicit bias estimation or compensation. These are achieved by a superposition of stochastic nudges guiding particles toward one of the probable ter-rain contours, that is further reinforced by the principle of the auxiliary variable sampling. We validate our approach through comprehensive analysis of weight variance, effec-tive sample size, and weight entropy, demonstrating robust performance against typical causes of PF-TRN degener-ation. Our parameter study advocates the exploitation of modality parameter for mode (contour)-associated random forcing. Additionally, we demonstrate convergence under challenging scenarios involving time-varying unknown biases, establishing the method’s practical viability for real-world TRN applications.  
+
+> B. Outline
+
+Section II presents the mathematical foundations of TRN focusing on multimodal characteristics of RA aris-ing from unmodeled terrain. Section III reviews the prin-ciple of PF and several related topics, especially in terms of the proposal distribution and optimality. Section IV highlights the proposed approach addressing practical PF-TRN challenges. Section V presents extensive numerical validation under diverse conditions, parameter studies and useful derived features of the proposed approach. Section VI summarizes key findings and implications.  
+
+> PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 3
+
+II. Terrain-referenced Navigation and Digital Terrain Elevation Database A. System Model 
+
+The TRN problem is posed to estimate the state variable: 
+
+xk = Lk λk hk
+
+T , (3) where L, λ, and h represent latitude, longitude and altitude, respectively. While a full INS mechanization model can be exploited [11], we focus on the simplified position kinematics augmented with unknown bias term to capture drifting characteristics of INS. The simplified INS-aided incremental can be modeled as [5], [33] 
+
+xk = f (xk−1) + vk
+
+= xk−1 + ∆ xINS  
+
+> k
+
++ vk, (4) where vk represents additive zero-mean Gaussian noise with E[vkvT 
+
+> k′
+
+] = δ(k − k′)Q, and ∆xINS  
+
+> k
+
+denotes the INS position increment: 
+
+∆xINS  
+
+> k
+
+= xtrue  
+
+> k
+
+− xtrue  
+
+> k−1
+
++ bk. (5) The bias bk is uninformed to the filter. An uncorrected estimator based on (5) will diverge following the charac-teristics of bk; even a corrected PF would continuously shift from the true distribution in the sequel. For concise and regularized numerical validation of proposed approach under various conditions, we model 
+
+bk as unknown and time-varying as 
+
+bk = bv + ( k − s(k)) baUs(k)(k), (6) with fixed unknown biases of velocity bv and acceleration 
+
+ba. Here, Uτ (x) denotes a step function, i.e., 1 when 
+
+x ≥ τ and 0 otherwise, representing unknown fault of IMU sensors [34]. s(k) represents unknown schedules, where any finite constant value k1 during an interval k ∈
+
+[k1, k 2], k 1 < k 2 will induce linear increments. Note that the position deviation is linear with respect to bv and quadratic with respect to the second term. REMARK 1 This study focuses on how sampling affects the position estimates of PF TRN. The simplified model 
+
+(4) , (5) , and (6) is considered passive assuming the posi-tional increment is simply provided, and neither velocities nor biases are estimated. High fidelity INS model and tight fusion with TRN can be found in [11]. 
+
+The vertical clearance becomes TRN’s measurement and is modeled as 
+
+yk = h(xk) + ek
+
+= hk − hDTED (Lk, λ k) + ek, (7) where ek exhibits collective error characteristics of RA, digital terrain elevation data (DTED), and barometer measurements if present. hDTED denotes terrain database lookup operations. Even if we assume Gaussianity on ek, i.e., E[ekeT 
+
+> k′
+
+] = 
+
+δ(k − k′)R, the TRN inherently exhibits multimodal-ity due to terrain ambiguity. This characteristic renders Gaussian estimators unsuitable. Moreover, multimodality of RA measurement highlighted in the following section makes the numerically stable estimation more challeng-ing. We address these challenges, that is even worsened in conjunction with unknown bk, in Section IV. 
+
+B. Multimodality of Radar Altimeter 
+
+RA used in TRN applications typically operate in the C-band frequency range [35]. Since their wavelengths are on the order of a few centimeters, these signals rarely penetrate vegetation, instead scattering from canopies and treetops [36]. Consequently, terrain clearance reading from RA and terrain elevation at the estimated position do not sum to the vehicle altitude. Therefore stochastically, an additional mode is developed in RA measurement noise. This phenomenon was also observed in field exper-iments and documented in [20]. The following Gaussian mixture model (GMM) should better describe the multi-modal characteristics of ek:
+
+eRA ,k ∼
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+μ(n) 
+
+> k
+
+,
+
+
+
+σ(n)
+
+> k
+
+2
+
+, (8) where Nm denotes the number of modes, which is typi-cally 2. μ(1)  
+
+> k
+
+equals zero and μ(2)  
+
+> k
+
+is a distinctive negative value corresponding to the average (negative) height of local natural obstacles. The parameters σ(n) 
+
+> k
+
+denote the standard deviations of respective modes. This model also effectively captures real-world scenarios where the DTED was built in the past, and the time lag from which to the operation time is significant. Figure 4 illustrates RA noise multimodality under varying parameters of (8). Three solid lines use the identical parameters: π(1) = 0 .5, μ (2) =
+
+−7.5, σ (1) = 2 , σ (1) = 3 .5.These latent parameters depend on terrain classifica-tion, e.g., bare land or dense forest. Factors such as leaf area index (LAI) [37], weather conditions, and humidity influence these parameters [36], [38]. This study assumes prior knowledge of these values with GMM parameter estimation, as addressed in [36]. Then, deriving a pro-posal density that can preserve effective samples by fully exploiting the model knowledge is addressed. Note that when barometer aiding is assumed and the altitude is stabilized, the problem is narrowed down to estimating [Lk, λ k]T with a slightly modified measurement model: yk = hDTED (Lk, λ k) + ek. Then, ek exhibits negated modes and incorporates barometer noise σBA ,k :
+
+pek (·) = 
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+· ; −μ(n) 
+
+> k
+
+,
+
+
+
+σ(n)
+
+> k
+
+2
+
++ σ2
+
+> BA ,k
+
+
+
+. (9) The positive modes then represent the local canopy’s average height and variance.             
+
+> 4IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025 -20 -10 010 00.02 0.04 0.06 0.08 0.1 0.12 0.14 0.16 -20 -10 010 00.02 0.04 0.06 0.08 0.1 0.12 0.14 0.16 -20 -10 010 00.02 0.04 0.06 0.08 0.1 0.12 0.14 0.16
+
+Fig. 4: Multimodality of RA measurement noise introduced by unmodeled terrain. 
+
+C. Digital Terrain Elevation Database Interpolation 
+
+Let Lij , λ ij for i, j ∈ { 0, 1} denote four corner points that envelop the query point using the floor operator ⌊·⌋ 
+
+as 
+
+
+
+L00 
+
+L11 
+
+λ00 
+
+λ11 
+
+ := 
+
+
+
+L(⌊(L(0) − Lk)/∆L⌋)
+
+L(⌊(L(0) − Lk)/∆L⌋ + 1) 
+
+λ(⌊(λk − λ(0)) /∆λ⌋)
+
+λ(⌊(λk − λ(0)) /∆λ⌋ + 1) 
+
+ , (10) where ∆ values are resolutions of DTED, and L(j) (or 
+
+λ(j)) represent the j-th grid element. Based on the principle of bilinear interpolation, terrain elevation at arbitrary position is approximated as 
+
+hDTED (Lk, λ k) := hxy xy + hxx + hy y + h00 , (11) where x, y ∈ [0 , 1] are non-dimensional scalars parame-terizing Lk, λ k:
+
+Lk = L00 − ∆Lx, λk = λ00 + ∆ λy. (12) The sign convention is intentional due to the indexing mismatch between matrix-like data structure and latitude. The coefficients of (11) are defined as 
+
+hxy := h00 − h10 − h01 + h11 ,hx := h10 − h00 , h y := h01 − h00 , (13) given hij = hDTED (Lii , λ jj ). While advanced techniques such as cubic-spline or inverse distance weighting (IDW) [39] offer smoother elevation mapping, (11) suffices for the purpose of this study that is to develop a proposal distribution which pushes or pull particles towards prob-able contours according to the local terrain slope. It also provides fair computational efficiency. REMARK 2 For a given fixed elevation, (11) represents a contour analogous to a parabolic curve [22]. The 2D TRN is then to find an inverse map from time-varying parabolic curves to overlapping positions. 
+
+III. Particle Filtering and Proposal Distribution A. Principle of Particle Filter 
+
+When it comes to the recursive formalism of the PF, particles and their weights approximate the filtering density: 
+
+p(xk|y0: k) ≈
+
+> N
+
+X
+
+> i=1
+
+wikδ(xk − xik), (14) where wik represents the importance weight when sam-pling from a distribution other than the true posterior. The expectation of any function of interest g(·) over the posterior, p(xk|y0: k), can be approximated using Monte Carlo integration: 
+
+Z
+
+> Xk
+
+g(xk)p(xk|y0: k)dxk ≈
+
+> N
+
+X
+
+> i=1
+
+wikg(xik), (15) with the minimum mean square error (MMSE) estimate as a notable example: 
+
+xMMSE  
+
+> k
+
+=
+
+Z
+
+> Xk
+
+xkp(xk|y0: k)dxk ≈
+
+> N
+
+X
+
+> i=1
+
+wikxik. (16) The Bayesian recursion based on the Chapman-Kolmogorov equations, 
+
+p(xk|y0: k−1) = 
+
+Z
+
+> Xk−1
+
+p(xk|xk−1)p(xk−1|y0: k−1)dxk−1,p(xk|y0: k) = p(yk|xk)p(xk|y0: k−1)
+
+R 
+
+> Xk
+
+p(yk|xk)p(xk|y0: k−1)dxk
+
+,
+
+(17) becomes tractable by transforming the state space inte-gration into a weighted summation of discrete elements. Since direct sampling from the exact posterior is generally impossible [17], consider now drawing par-ticles from a proposal distribution of a general form, 
+
+q(xk|x0: k−1, y0: k), sequentially, so that its temporal stack amounts to the full posterior:  
+
+> PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 5
+
+q (x0: k|y0: k) = q (x0|y0)
+
+> k
+
+Y
+
+> t=1
+
+q(xk|x0: t−1, y0: t). (18) Then, for each measurement yk and drawn sample xik ∼
+
+q(·), the weight recursion follows: 
+
+wik ∝ wik−1
+
+p  yk|xik
+
+ p  xik|xik−1
+
+
+
+q  xik|xi
+
+> 0: k−1
+
+, y0: k
+
+ . (19) As noted in (2), sampling directly from the filtering distribution would result in equally valid weights given 
+
+w1: N 
+
+> 0
+
+= 1 /N .The prediction step of the PF is to occupy the state space by drawing samples {xik}Ni=1 according to some proposal distributions of our choosing and compensate for the mismatch using the importance weight for the drawn sample, xik, as 
+
+wik|k−1 = wik−1
+
+p  xik|xik−1
+
+
+
+q  xik|xi
+
+> 0: k−1
+
+, y0: k
+
+ , (20) followed by the measurement update according to the Bayes’ rule: 
+
+wik = wik|k−1p  yk|xik
+
+PNj=1 wjk|k−1p
+
+
+
+yk|xjk
+
+ , (21) whose combination with (20) is analogous to (2) or (19). A common choice for q is the prior, 
+
+q(xk|xi
+
+> 0: k−1
+
+, y0: k) = p(xk|xik−1) = N (f (xik−1), Qk) that nullifies (20). Since weight recursion directly depends on drawn samples, certain proposal distributions may be more advantageous for the property of derived weights. This study focuses on tailoring q for the TRN problem described previously. 
+
+B. Optimal Proposal Distribution using Locally Linearized Measurement Model 
+
+Research has established that importance weight vari-ance inevitably increases over time [17]. This creates a fundamental trade-off between proposal weight (20) and likelihood weight (21); a proposal distribution in strong favor of only the prior would gain much proposal weight while losing likelihood weight and vice versa, yielding high-variance of weights. Given that the signal-to-noise ratio (SNR) is approximately proportional to ∥Q∥/∥R∥
+
+[40], there exists an optimal proposal distribution that minimizes weight variance: a balance similar to what the EKF achieves in linear Gaussian systems. Previous researches [17], [19] have shown that the optimal proposal distribution in the PF framework, mini-mizing weight variance, takes the form: 
+
+q∗(xk|xik−1, yk) = p(xk|xik−1, yk), (22) which exhibits the convenient property: 
+
+p(xk|xik−1, yk) = p(yk|xk, xik−1)p(xk|xik−1)
+
+p  yk|xik−1
+
+
+
+= p(yk|xk)p(xk|xik−1)
+
+p  yk|xik−1
+
+ .
+
+(23) Direct substitution into (19) yields wik ∝
+
+wik−1p(yk|xik−1), indicating that weight variance becomes independent of sampling. Nevertheless, both the evaluation of p(yk|xik−1) = R 
+
+> Xk
+
+p(yk|xk)p(xk|xik−1)dxk
+
+and sampling from q∗ are generally intractable for nonlinear non-Gaussian problems [41], [19]. The key idea of incorporating the latest available information when sampling particles remains valid. Following [18], we consider steering particles via: 
+
+xk = f (xk−1) + Kk(yk − h (f (xk−1))) + ˆ vk, (24) where ˆvk is an additive noise term (distinct from vk), and 
+
+K denotes a gain multiplied to the innovation to nudge each particle toward the given measurement. This approx-imation of (22) reduces to determining appropriate gain and noise distributions. Once we constrain the candidates for the proposal distribution into parametric a distribution that is easy to sample from, a simple Gaussian model should be favored: 
+
+xik ∼ N  f  xik−1
+
+ + Kik
+
+ yk − ˆyik
+
+ ,  I − KikHik
+
+ Qk−1
+
+ ,
+
+(25) with ˆyik = h(f (xik−1)) and locally linearized measure-ment model: 
+
+Hik = ∂h (xk)
+
+∂xk xk =f (xik−1)
+
+. (26) This formulation derives from standard EKF equa-tions: 
+
+ˆxik−1|k−1 := xik−1,
+
+ˆxik|k−1 ∼ N 
+
+
+
+f (ˆ xik−1|k−1), Pk|k−1
+
+
+
+, Pk|k−1 = Qk−1,
+
+Kik = Pk|k−1Hi, T
+
+> k
+
+
+
+HikPk|k−1Hi, T 
+
+> k
+
++ Rk
+
+−1
+
+,
+
+(27) assuming uni-Gaussian measurement noise ek ∼N (0, Rk). This approach drives particles toward mea-surements via innovation, while the amount of random forcing is determined by Kalman correction, treating each Dirac point (particle) of the prior as a zero-variance Gaussian. Note that what the EKF assists in this context is the amount of random forcing, whereas the entire estimation is still carried out via particle filtering. This approximation is indeed the optimal proposal distribution [18], i.e., least varianced, for the linear Gaussian problem. However, the measurement equation of TRN is severely nonlinear with non-Gaussian additive noise as given in (9). This study proposes a remedy for it in Section C.    
+
+> 6IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025
+
+C. Particle Filtering using Auxiliary Variable 
+
+The auxiliary particle filter (APF) [42] offers an alter-native approximation to q∗ by introducing sampling from a joint density q(xk, j |y0: k). Rather than directly sampling particles {xik}Ni=1 , APF samples pairs {xik, j i}Ni=1 , where 
+
+ji represents the index of the previous timestep particle from which xik is generated. This auxiliary index ji is discarded after sampling. The mathematical foundation of APF can be derived from Bayes’ rule [43]: 
+
+p(xk, j |y0: k) ∝ p(yk|xk)p(xk, j |y0: k−1)= p(yk|xk)p(xk|j, y0: k−1)p (j|y0: k−1)= p(yk|xk)p(xk|xjk−1)wjk−1,
+
+(28) where discarding j from the pair (xk, j ) yields the desired particle set {xik}Ni=1 . APF implements a proposal density satisfying: 
+
+q(xk, j |y0: k) ∝ p(yk|φjk)p(xk|xjk−1)wjk−1, (29) where φjk characterizes p(xk) given xjk−1, typically through either the mean φik = E xk|xik−1
+
+ or a sample, i.e., φik ∼ p(xk|xik−1). Given this, the weight recursion shown in (19) simplifies to: 
+
+wik ∝ wji
+
+> k−1
+
+p(yk|xik)p(xik|xji
+
+> k−1
+
+)
+
+q(xik, j i|y0: k) = p(yk|xik)
+
+p(yk|φji 
+
+> k
+
+) , (30) with many terms canceling out. The APF sampling process can be understood as generating {xik}Ni=1 from {xik−1}Ni=1 by taking the relative importance of j-th particle in (k − 1) -th timestep propor-tional to the right-hand side of (29). Specifically, indices are drawn from a categorical distribution with probability mass function: 
+
+p(J = j) = p(yk|φjk)wjk−1, (31) and draws a particle from the distribution p(xk|xjk−1) of the designated index. Basically, the APF simulates only the most probable particles in terms of generating yk by sampling from the entire mixture given in (29). 
+
+IV. Even-Weights Particle Filter for Terrain-referenced Navigation 
+
+The proposed approach of this study is straightfor-ward: to associate a stochastic forcing given in Section B with each mode of (9) and to apply the association to the likely particles based on the principle of the auxiliary sampling given in Section III.C. 
+
+A. Linearization of Terrain Elevation 
+
+Before developing the mode-associated version of (25), we must address the calculation of the Jacobian for the Kalman correction. Let θ = [ x, y ]T represent the parametrization variables for xhor  
+
+> k
+
+= [ Lk, λ k]T. Applying the chain rule to (11) yields: 
+
+Hhor  
+
+> k
+
+= ∇θ h∇xhor  
+
+> k
+
+θ
+
+= hxy y + hx hxy x + hy
+
+ −∆L 00 ∆λ
+
+−1
+
+= hxy 
+
+ xhor 
+
+> k
+
+T ˜∆−1 +
+
+hx − hxy λ00 
+
+> ∆λ
+
+hy + hxy L00 
+
+> ∆L
+
+T!
+
+∆−1,
+
+(32) where ∆ = diag (−∆L, ∆λ) and ˜∆ is its anti-diagonal version ( ˜∆1,2 = −∆L, ˜∆2,1 = ∆ λ). The second equality follows from the inverse relationship of (12). The third equation emphasizes that xk is the only ingredient in calculating the Jacobian and a single DTED lookup is required. Substituting this into (26) yields: 
+
+Hi, hor  
+
+> k
+
+= hxy f (xik−1)T,hor ˜∆−1 +
+
+hx − hxy λ00 
+
+> ∆λ
+
+hy + hxy L00 
+
+> ∆L
+
+T!
+
+∆−1.
+
+(33) Taking the linear relationship between (7) and hk into account, the full Hik becomes: 
+
+Hik = Hi, hor  
+
+> k
+
+, 1 . (34) Based on this gradient, each particle is stochasti-cally guided toward the given terrain elevation yk. The numerical calculation of Hik is also possible, i.e., via finite excitation method. This study, however, advocates the analytic derivation since it requires only one DTED lookup, whereas the numerical one requires at least four. Since the Jacobian needs to be calculated per particle, this saves much computational burden especially when the lookup becomes expensive as the database gets larger or the resolution gets finer. 
+
+B. Gaussian Mixture-based Proposal Distribution 
+
+By extending the idea of (25) to accommodate mul-tiple separate modes from (9), we propose sampling particles from a mixture proposal distribution [33]: 
+
+xik ∼ q(xk|xik−1, yk)=
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+xk; f (xik−1) + Ki, (n) 
+
+> k
+
+˜yi, (n) 
+
+> k
+
+, Pi, (n)
+
+> k|k
+
+
+
+,
+
+(35) where for each mode n ∈ 1, 2:
+
+Ki, (n) 
+
+> k
+
+= Qk−1Hi, T
+
+> k
+
+
+
+HikQk−1Hi, T 
+
+> k
+
++
+
+
+
+σ(n)
+
+> k
+
+2−1
+
+,
+
+Pi, (n) 
+
+> k|k
+
+=
+
+
+
+I − Ki, (n) 
+
+> k
+
+Hik
+
+
+
+Qk−1,
+
+˜yi, (n) 
+
+> k
+
+= yk −
+
+
+
+ˆyik + μ(n)
+
+> k
+
+
+
+.
+
+(36) with mixing weights π(n) from (8). Here, (35) should be considered as a superposition of a couple of EKF-based  
+
+> PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 7
+
+random forcing terms, given in (25), where mode selec-tion follows a Bernoulli (binomial) trial with probabilities analogous to those of RA measurement likelihood modes, i.e., π(1) and π(2) = 1 − π(1) . Each mixture component stochastically aligns with a measurement noise mode from (9) based on the binary outcome. This design provides more comprehensive support for the posterior distribution. The severe ambiguity in terrain elevation, compounded by multimodal RA characteris-tics and biases, creates scattered posterior modes. Our mode-specific random forcing approach offers balanced coverage of these modes, unlike simple prior sampling. The method achieves statistical robustness by leveraging the exact RA noise parameters and terrain gradients. Furthermore, the GMM structure generally spreads wider than single Gaussian distributions, providing more stable support for the target distribution. After a xik is sampled from (35), the weight update follows the exact recursion formula from (19): 
+
+wik ∝ pe(yk − h(xik)) pv(xik − f (xik−1)) wik−1
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+xik; f (xik−1) + Ki, (n) 
+
+> k
+
+˜yi, (n) 
+
+> k
+
+, Pi, (n)
+
+> k|k
+
+ .
+
+(37) 
+
+C. Augmentation upon Auxiliary Sampling 
+
+We then extend the GMM approach from the previous subsection by incorporating it into the auxiliary variable sampling framework, applying (35) selectively to particles probable to generate the current measurement yk. Follow-ing (28), let us consider jointly sampling both the particle and the index from a proposal density, which satisfies 
+
+q(xk, j |y0: k) = q(xk|j, y0: k)q(j|y0: k), (38) where the first term is our GMM proposal, i.e., (35): 
+
+q(xk|j, y0: k) = 
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+xk; f (xjk−1) + Kj, (n) 
+
+> k
+
+˜yj, (n) 
+
+> k
+
+, Pj, (n)
+
+> k|k
+
+
+
+.
+
+(39) The proposed sampling method of this study is to combine the above stochastic nudging with the likelihood approximation of p(yk|xk) using p(yk|φk), just as (28), yielding: 
+
+q(xk, j |y0: k) = wjk−1p(yk|φjk)×
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+xk; f (xjk−1) + Kj, (n) 
+
+> k
+
+˜yj, (n) 
+
+> k
+
+, Pj, (n)
+
+> k|k
+
+
+
+,
+
+(40) where we use the expectation φik = E xk|xik−1
+
+ and discard j as in Section C. The difference of our approach is that, instead of simulating xik from xji 
+
+> k−1
+
+using system motion model (4), the particle is pushed further stochastically towards the measurement using the principle given in Section B. This creates a nested mixture structure; outer mixture weights (not particles’) follow (31), inner mixture weights are π(n), and the innermost probability distributions are mode-specific random forcing terms from (25). Then, the weight recursion similar to (37) applies using the exact relationship (19), but the difference is the auxiliary index; see (41). In (41), ji is drawn from a categorical trial whose probability mass function is given by (31). Note that in the general APF setup, the last terms of the numerator and denominator cancel out each other in addition to the nullification of the weight of previous time step, wji
+
+> k−1
+
+,as they are both p(xik|xji
+
+> k−1
+
+).This study aims to push only the probable particles to-ward the latest available information, while the stochastic nudging has taken the multimodal noise characteristics of yk into account. The proposed sampling method first votes for the probable particles that are more likely to end up around candidate contours, designated by the current RA measurement, and stochastically guides those particles toward the candidate contours. The particles are driven along the direction of terrain gradient, i.e., slope, and the amount of random forcing is determined from (27). Algorithm 1 provides the complete implementation details, and Fig. 5 highlights the mechanism of the proposed approach. In physical sense, the resultant particles gather around at and form a couple of terrain contours , each responsible for each modality of RA based on local terrain slope. The auxiliary sampling approach reinforces this effect. We argue that this improves the numerical stability of the derived PF, particularly regarding the weight variance and the effective sample size (ESS) [43], [40], based on the motivations and rationales given in the previous sections. 
+
+V. Numerical Experiments 
+
+We evaluate several PF implementations: standard SIR [43], auxiliary PF (APF) [42], regularized PF (RPF) [29], mixture regularized PF (MRPF) [31], mode-associated GMM proposal (GMM-A) [33], and the proposed aug-mented GMM (GMM-Aux) using (40). In order to validate our claim of improved weight distribution and numerical stability, our analysis focuses on numerical stability indicators. Moreover, the estima-tor’s behavioral trait, such as resilience against unknown time-varying biases, is investigated. These are presented in RMSE form along with the posterior Cram´ er-Rao bound (PCRB) [44]. Note, however, that (7) is in a non-trivial form and thus is approximated numerically via simultaneous perturbation stochastic approximation (SPSA) [45] method. 
+
+A. Simulation Setup 
+
+Note that xhor is curvilinear position, i.e., angles, to comply with a lookup of DTED. In this study, xk is    
+
+> 8IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025
+
+wik ∝ p(yk|xik)p(xik|xji
+
+> k−1
+
+)
+
+p(yk|φji 
+
+> k
+
+)
+
+> Nm
+
+X
+
+> n=1
+
+π(n)N
+
+
+
+xik; f (xji
+
+> k−1
+
+) + Kji,(n) 
+
+> k
+
+˜yji,(n) 
+
+> k
+
+, Pji,(n)
+
+> k|k
+
+ (41) 
+
+Fig. 5: Illustration of sampling process using the proposed proposal distribution. treated equivalently with its metric counterpart, xnk , based on WGS84 model as 
+
+xn = Rne (T el (x) − T el (xr )) , (42) given the reference position xr = xtrue  
+
+> 0
+
+. The symbols 
+
+e, n, and l represent the ECEF, NED, and curvilinear coordinate, respectively, while R and T are coordinate transformations [46], respectively as 
+
+Rne =
+
+−SLr Cλr −SLr Sλr CLr
+
+−Sλr Cλr 0
+
+−CLr Cλr −CLr Sλr −SLr
+
+ ,
+
+T el (x) = 
+
+ (RE (L) + h) CLCλ
+
+(RE (L) + h) CLSλ (1 − ϵ2)RE (L) + h SL
+
+ ,
+
+(43) given the eccentricity of Earth ϵ, the transverse radius of curvature RE (L) = a/ (1 − ϵ2 sin 2(L)) 0.5 with a the Earth’s equatorial radius. Given the initial drift dn represented in NED frame, 
+
+x0 ∼ N (T le (T el (xr ) + Rendn), P0), with P0 being the equivalent covariance matrix, i.e., diag (dn)2 in curvilinear coordinates. Qk can also be treated analogously from its NED equivalent Qnk .Three measures are used for examining PF instances’ internal weight statistics: (1) weight variance, (2) effective sample size (ESS), and (3) Kullback-Leibler divergence [47] estimator. The ESS is a widely accepted indicator for particle degeneration, given as ESS = 1
+
+PNi=1 
+
+ wik
+
+2 , (44) and the resampling is triggered adaptively when the ESS is below a certain threshold, e.g., ESS < ηN , with the design parameter η ∈ (0 , 1] . It is worth mentioning that ESS ∈ [1 , N ], and the smallest extreme happens when all but one particle has zero weight, while the other end denotes the exact uniformness of the weights, i.e., 1/N :an equal-weight PF. As an alternative indicator for the degeneration, con-sider the entropy of a discrete probability measure w1: Nk :
+
+H  w1: Nk
+
+ = −
+
+> N
+
+X
+
+> i=1
+
+wik log  wik
+
+. (45) At the same time, PNi=1 wi log( N w i) has been proven [48] to be a consistent estimator of 
+
+DKL (p(xk|yk)∥q(xk)) := 
+
+Z
+
+> Xk
+
+log 
+
+ p(xk|yk)
+
+q(xk)
+
+
+
+p(xk|yk)dxk, (46) which should be the Kullback-Leibler divergence of the proposal distribution relative to the posterior. Therefore, a set of weights with higher entropy, which can be rewritten as 
+
+H(w1: N ) = log( N ) −
+
+> N
+
+X
+
+> i=1
+
+wi log( N w i), (47) should represent a less divergent measure from the poste-rior, given that log( N ) is a constant. The larger values of the entropy and the ESS indicate less degenerated situations, while the weight variance should get smaller for the equivalent indication. Then, let Req denote the equivalent variance: 
+
+Req =
+
+> Nm
+
+X
+
+> n
+
+π(n)
+
+
+
+(μ(n))2 + ( σ(n))2
+
+
+
+= π(1) (σ(1) )2 + π(2) 
+
+
+
+(μ(2) )2 + ( σ(2) )2
+
+
+
+,
+
+(48) so that N (0, Req ) can approximate (8). We can apply this parameter to interesting analyses, for instance, to the MRPF and to the examination of effectiveness of mode association. In its original version [30], a Gaussian is assumed on ek during the calculation of MAP per mixture. We can then examine two instances of MRPF: (1) MRPF-1 leveraging negative log likelihood of N (0, Req )
+
+and (2) MRPF-2 using that of (8) when calculating MAP via numerical optimization. Note that the Rao-Blackwellization, i.e., marginalization, is not applied here  
+
+> PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 9
+
+to isolate the effect of sampling, which aligns with the purpose of this study. Thus, they are named MRPF(-MAP), not MRBPF-MAP as used in [31]. Two trajectories are tested: rough (R) and smooth (S). They are characterized by roughness σZ [49]: 
+
+σZ =
+
+vuut 1
+
+Nz − 1
+
+> Nz
+
+X
+
+> i=1
+
+(Di − D)2, (49) given the number of samples in local area Nz , elevation differences Di = hi − hi+1 , and the empirical mean D = 
+
+> 1
+> Nz−1
+
+PNz −1 
+
+> i=1
+
+Di. Figure 6 shows these trajectories and elevation profiles. 
+
+> (a) Rough and smooth trajectories.
+> (b) Terrain elevation and roughness profiles along the path.
+
+Fig. 6: Simulated trajectories and measurement profiles along trajectories. The acceleration bias profile s(k) (of (6)) is set to: 
+
+s(k) = 
+
+
+
+50 , k ∈ [50 , 75] ,
+
+105 , k ∈ [105 , 130] ,
+
+160 , k ∈ [160 , 185] ,
+
+∞, otherwise .
+
+(50) Aerial vehicles are often subjected to unknown cyber and/or physical jamming, leading to significant degra-dation in positioning accuracy. Moreover, IMU faults even deviate the INS incremental whose occurrence is commonly modeled as a step-like function [34], which validates the model (6). This examines the effect of proper sampling that solidly supports the posterior under deteriorating scenarios. These intervals are highlighted wherever needed. A DTED derived from the shuttle radar topography mission (SRTM) [50] with 1 arcsecond resolution, i.e., 
+
+∆L = ∆ λ = 1 ′′ is used, and the remaining simulation parameters are provided in Table I. Note that the initial position error of 250m represents the operational range of the proposed sampling approach. TABLE I: Parameters used in the simulation.                             
+
+> Parameters Values Remarks
+> π(1) , π (2) 0.5, 0.5 (9)
+> μ(1) , μ (2) 0, -7.5 (9)
+> σ(1) , σ (2) 2, 3.5 (9)
+> Qnkdiag (7 .5,7.5,1.0) 2(4)
+> bnv[1 .0,1.0,0.2] T(6)
+> bna[0 .5,0.5,0.1] T(6)
+> dn[250 cos ψ, 250 sin ψ, 25] Tψ∼ U (0 ,2π)
+
+B. Simulation Results 
+
+1. Particle Degeneracy 
+
+First, M = 100 Monte Carlo simulations are sum-marized. Particularly, the time averages of the weight variance, entropy of weight, and the ESS are highlighted. The time averages are calculated according to 
+
+1
+
+kfkf
+
+X
+
+> k=1
+
+var (Wk), 1
+
+kfkf
+
+X
+
+> k=1
+
+H (Wk), 1
+
+kfkf
+
+X
+
+> k=1
+
+ESS (Wk),
+
+(51) respectively, where kf = 250 is the final time step. Taking the ESS as an example, the barred component is the Monte Carlo mean calculated as ESS (Wk) = 1
+
+M
+
+> M
+
+X
+
+> m=1
+
+ESS (m) (Wk) (52) with superscript (m) denoting the result of m-th run. The equivalent rule applies to the other two indicators. Tables II, III, and IV show performance metrics as percentages with respect to their theoretical maxima: 1/N ,
+
+N and log( N ) for weight variance, ESS, and weight entropy, respectively. In each row, the best result is denoted in boldface. Note that lower values are better for weight variance, while higher values indicate more evenly weighted situations for ESS and weight entropy. The proposed GMM-Aux approach consistently out-performs other methods across all metrics. These results indicate that the proposed method results in more evenly weighted particles, and thus in a more numerically stable filter. This highlights its robustness in TRN with mul-timodal measurements and biased odometry. Its perfor-mance is most pronounced in challenging scenarios (small particle counts and low resampling rates), indicating su-perior resilience to weight degeneration. One highlight from the results is that the GMM-Aux case shows 0.23%    
+
+> 10 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025
+
+TABLE II: The time average of variance of weights expressed as percentages with respect to the maximum value: 1 
+
+> N
+
+.                                                                                                  
+
+> Traj. ηNSIR APF RPF MRPF GMM -1 -2 -A -Aux R0.2 250 24.33 12.01 24.10 5.94 26.12 22.23 1.18
+> 500 18.16 9.09 19.89 4.53 20.17 18.80 0.69
+> 1000 14.13 6.78 14.18 2.98 14.26 12.59 0.67
+> R0.7 250 23.81 12.98 22.02 6.12 27.53 26.80 1.21
+> 500 18.73 8.88 16.15 3.82 18.65 18.81 0.82
+> 1000 11.15 6.93 11.18 2.95 12.97 13.01 0.73
+> S0.2 250 15.65 9.06 14.98 6.13 15.96 15.47 0.64
+> 500 13.24 7.23 12.01 4.42 12.62 13.34 0.32
+> 1000 9.11 4.19 9.73 3.24 10.69 9.08 0.23
+> S0.7 250 14.92 9.77 14.81 5.48 14.14 14.37 0.69
+> 500 10.13 6.37 10.86 3.38 12.52 12.85 0.40
+> 1000 9.30 4.46 9.14 2.44 8.98 8.99 0.26
+
+TABLE III: The time average of ESS expressed as per-centages with respect to the maximum value: N .                                                                                                  
+
+> Traj. ηNSIR APF RPF MRPF GMM -1 -2 -A -Aux R0.2 250 25.77 46.71 25.46 32.31 24.85 26.37 58.08
+> 500 28.32 50.79 27.52 32.30 26.31 26.25 59.02
+> 1000 29.02 51.87 28.83 32.54 27.86 29.59 58.08
+> R0.7 250 32.01 45.94 34.45 42.76 32.33 30.46 58.32
+> 500 35.20 50.20 38.07 44.71 33.62 32.42 57.76
+> 1000 41.49 52.67 41.19 45.78 38.00 38.62 56.77
+> S0.2 250 30.40 56.08 30.86 34.37 30.00 30.19 69.41
+> 500 31.12 57.59 32.00 33.77 31.31 30.31 70.70
+> 1000 32.71 64.66 32.56 33.97 30.97 32.75 70.27
+> S0.7 250 39.71 53.76 40.00 46.62 40.36 40.51 68.77
+> 500 43.93 61.11 42.70 48.40 38.97 39.11 69.77
+> 1000 43.48 64.10 43.82 47.99 44.78 44.12 70.26
+
+TABLE IV: The time average of entropy of weights expressed as percentages with respect to the maximum value: log( N ).                                                                                                  
+
+> Traj. ηNSIR APF RPF MRPF GMM -1 -2 -A -Aux R0.2 250 57.37 77.00 57.56 76.10 55.70 58.66 91.56
+> 500 63.63 81.40 61.89 78.06 60.87 61.30 92.92
+> 1000 67.58 84.26 67.54 80.70 66.55 68.73 93.34
+> R0.7 250 59.89 75.79 62.49 79.41 56.91 56.20 91.64
+> 500 65.22 81.25 68.47 82.83 64.26 63.22 92.58
+> 1000 74.12 84.22 74.04 84.78 71.13 70.51 92.96
+> S0.2 250 66.60 81.08 66.92 77.04 65.60 66.08 93.81
+> 500 68.75 83.19 70.16 78.84 69.61 68.06 94.95
+> 1000 73.39 88.77 72.73 80.96 71.21 73.06 95.37
+> S0.7 250 69.99 79.60 70.08 81.24 70.44 70.19 93.65
+> 500 75.53 85.35 74.27 84.13 71.09 70.48 94.64
+> 1000 76.18 88.51 76.36 85.39 77.26 76.10 95.40
+
+of weight variance with respect to the maximum possible (worst) value, which should be almost negligible, while the others show around 2-10% values. Increasing particle count N (from 250 to 1000) shows better measures across all methods, reflecting better posterior coverage and reduced weight dominance by individual particles. This trend aligns with the theoretical expectations of PF that larger number of particles provide better coverage of the posterior distribution, reducing the likelihood that few particles dominate very high weights and ensuring higher diversity. More frequent resampling ( η = 0 .7) generally im-proves performance metrics compared to η = 0 .2, since it mitigates weight collapse by redistributing particles based on weights. Yet, it is well known that excessive resampling can lead to particle impoverishment. The GMM-Aux effectively balances this tradeoff. It maintains robust performance across both rates, exhibiting the littlest gap among different resampling thresholds. Although the auxiliary sampling is often viewed as an implicit resampling at the previous timestep [40], the proposed method’s effectiveness also stems from controlled ran-domness that perturbs particles toward probable contours, that might otherwise be under-sampled in APF, ensuring better posterior representation especially in non-analytic terrains corrupted by unknown biases. Meanwhile, high ESS (and small weight variance) does not always guarantee a healthy condition of a PF. For instance, consider that all particles are sampled identically and resultant weights are equally extremely small, which will be normalized to 1/N anyway. We claim via Fig. 7 that best indicators for GMM-Aux did not result from particle impoverishment. The figure highlights an example of resultant particles sampled via GMM-Aux (red square) and SIR (black cross) along with terrain elevation map. The particles are sampled along contours while main-taining diversity, evidence of effective modality-seeking behavior. The Gaussian mixture formulation prevents excessive particle contraction through wider and better support of the posterior. 
+
+Fig. 7: An example of N = 250 particles sampled by the SIR and GMM-Aux approaches.  
+
+> PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 11
+
+2. Influence of Multimodal Parameters 
+
+Then, we introduce a parameter modulation via a factor α ∈ [−1, 1] such that 
+
+μ(2) ′
+
+= μ(2) + αμ (2) ,σ(2) ′
+
+= 2 ασ(2) , (53) in order to demonstrate the influence of misinformation about the additional mode: N (μ(2) ′
+
+, (σ(2) ′
+
+)2). A positive 
+
+α indicates overestimation of the mode (either more shifted or more varying), while negative values represent the opposite cases. Figure 8 summarizes the resultant time-averaged measures under the parameter deviation. The values are relative, i.e., normalized, with respect to the perfect information case: GMM-Aux. Generally speaking, as the difference between what the additional mode really is and what the filter knows about it grows, the numerical stability gets degraded. Nevertheless, the effect is admissible when α is between 
+
+[−0.2, 0.2] yielding nearly 1 to all indicators. When the deviation is larger than 40%, the deterioration becomes noticeable. For instance, when the variance is identified 40% smaller ( 2−0.8 ≈ 0.6) than the true value, the average weight variance almost triples and the average ESS shrinks by 10%. It is also interesting to note that overestimation of the variance of the additional mode (dotted lines, α > 0) exhibits relatively more stable behavior than the opposite cases, which aligns with our understanding of the PF that too informative likelihood often leads to particle degeneration. -1 -0.8 -0.6 -0.4 -0.2 0 0.2 0.4 0.6 0.8 111.5 22.5 33.5 44.5 5
+
+> weight variance
+> 0.7 0.75 0.8 0.85 0.9 0.95 1
+> weight entropy & ESS
+
+Fig. 8: Deviation of PF degeneration measures with respect to the degree of misinformation on the additional mode. 
+
+3. Resilience Against Unknown Biases 
+
+Then, we investigate the estimation accuracy and the derived features of the proposed approach. Particularly, the restoring property of the GMM-Aux approach under the severely deteriorating scenario is reported. Figure 9 and 10 present the RMSE of |xhor  
+
+> k
+
+| in NED frame and that of hk under rough trajectory. Prior to the occurrence of ramp biases (shaded area, 
+
+ba), all PF instances converge to the true track, hitting the PCRB. Since bv is always present in the scenario this study assumes, this highlights stochastically adapting feature of general particle filtering. As ba accumulates the PF instances gets differentiated, particularly in terms of how they react to the unknown biases. The pro-posed GMM-Aux approach exhibits the most robust track against this model mismatch. The GMM-A and APF has similar but weaker resiliency, while the regularized PFs (RPF, MRPF) demonstrate even slower recovery. The most plain SIR does not exhibit a converging trend within simulation bound. This phenomenon is observed both on the horizontal plane and the vertical direction. It is interesting that the recovering feature is strength-ened when the multimodality of RA is explicitly consid-ered, either via auxiliary sampling ( p(yk|φjk)), or explicit mode-associated proposal, i.e., GMM. Note that MRPF-2’s sampling is still carried out via single Gaussian with modified covariance, even though the bimodal likelihood is leveraged when calculating MAP. This swift recovery can be attributed to the method’s effective particle redistribution strategy that maintains diversity while tracking probable terrain contours. The intermediate performance of GMM-A without auxiliary sampling suggests that both the mixture model and aux-iliary mechanism contribute to the enhanced resilience. Then, in order to investigate whether this derived feature is driven by the random forcing itself (or not), and to examine the effectiveness of mode association, a set of random forcing families are compared: a Gaussian random forcing (GRF) with N  0, Req 
+
+, GMM-Aux, and GMM-Aux with misinformed parameters. Figure 11 and 12 highlight the RMSE of them under the same deterio-rating scenario. All GMM-Aux instances with admissible parameter deviation, i.e., α ∈ [−0.3, −0.3] , exhibit negligible dif-ference in terms of restoring behavior against severe unknown time-varying biases. Only slight deviation on the initial converging course is observed. However, the GRF approach exhibits noticeable lagging of the restoring feature. Although not as severe as SIR nor RPF, it takes longer time to recover the healthy track. The superposition of random forcing (40) allowed for dynamic adaptation to the latest multimodal measurement yk.
+
+VI. Conclusion 
+
+This study presented a particle filtering approach for TRN that effectively addressed three critical challenges: multimodal radar altimeter measurements, unknown se-vere time-varying INS bias, and terrain ambiguity. The proposed method continuously located particles around probable contours, preserving higher effective sample sizes and lower weight variance consistently compared to existing approaches. Through nested mixture distributions, GMM-Aux im-proved the effectiveness of individual particles and exhib-ited notable resilience against unknown time-varying bi-ases through an adaptive forcing mechanism. The demon-               
+
+> 12 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025 025 50 75 100 125 150 175 200 225 250
+> Time Step
+> 050 100 150 200 250
+> RMSE (m)
+> biased biased biased
+
+Fig. 9: RMSE of horizontal position estimate, comparing multiple PF instances: SIR, APF, RPF, MRPF-1, MRPF-2, GMM-A, and GMM-Aux. 0 25 50 75 100 125 150 175 200 225 250   
+
+> Time Step
+> 0510 15 20 25 30 35 40
+> RMSE (m)
+> biased biased biased
+
+Fig. 10: RMSE of vertical position estimate, comparing multiple PF instances: SIR, APF, RPF, MRPF-1, MRPF-2, GMM-A, and GMM-Aux. 0 25 50 75 100 125 150 175 200 225 250 
+
+> Time Step
+> 050 100 150 200 250
+> RMSE (m)
+> biased biased biased
+
+Fig. 11: RMSE of horizontal position estimate, comparing GMM-Aux, GMM-Aux parameter deviation, and GRF. 
+
+PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 13 0 25 50 75 100 125 150 175 200 225 250   
+
+> Time Step
+> 0510 15 20 25 30 35
+> RMSE (m)
+> biased biased biased
+
+Fig. 12: RMSE of vertical position estimate, comparing GMM-Aux, GMM-Aux parameter deviation, and GRF. strated resilience suggests broader applicability to scenar-ios with unexpected external disturbances, such as wind gusts, or likelihood with more than two modes. The key insight of exploiting measurement noise structure through mode-associated stochastic forcing, combined with local terrain gradient information, provides a robust framework that could be extended to other navigation problems where measurement ambiguity and state uncertainty pose significant challenges. While a unimodal forcing was also effective at miti-gating biases, fully leveraging multimodal characteristics of radar altimeter measurements is preferable as long as the uncertainty in the modality parameter remains below 30%. Moreover, The proposed algorithm has been verified for initial position errors of 250 m; batch initialization [12] or a conservative filtering—such as the BRPF [25]— is recommended before deploying the present method. Immediate follow-up research should include a mix-ture operation of GMM-Aux analogous to [31], as the proposed approach shares a common spirit with the literature’s MAP-based importance sampling in drawing particles around measurements. It may be possible to derive an efficient mixture management strategy based on the distinctive traits of the GMM-Aux approach. 
+
+REFERENCES 
+
+[1] D. Borio Robust signal processing for GNSS In 2017 European Navigation Conference (ENC) . IEEE, 2017, pp. 150–158. [2] J. Vil` a-Valls, N. Linty, P. Closas, F. Dovis, and J. T. Curran Survey on signal processing for GNSS under ionospheric scin-tillation: Detection, monitoring, and mitigation 
+
+NAVIGATION: Journal of the Institute of Navigation , vol. 67, no. 3, pp. 511–535, 2020. [3] J. Lee, J. H. Kwon, and M. Yu Performance evaluation and requirements assessment for gravity gradient referenced navigation 
+
+Sensors , vol. 15, no. 7, pp. 16 833–16 847, 2015. [4] D. Kim, H. Bang, and J. C. Lee Approach to geomagnetic matching for navigation based on a convolutional neural network and normalised cross-correlation 
+
+IET Radar, Sonar & Navigation , vol. 13, no. 8, pp. 1323–1332, 2019. [5] N. Bergman, L. Ljung, and F. Gustafsson Terrain navigation using Bayesian statistics 
+
+IEEE Control Systems Magazine , vol. 19, no. 3, pp. 33–40, 1999. [6] C. Musso and N. Oudjane Recent particle filter applied to terrain navigation In Proceedings of the Third International Conference on Infor-mation Fusion . Paris, France: IEEE, 2000, pp. 26–33. [7] A. Koch, H. Wittig, and F. Thielecke A vision-based navigation algorithm for a VTOL-UAV In AIAA Guidance, Navigation, and Control Conference and Exhibit , 2006, p. 6546. [8] K. Hong, S. Kim, J. Park, and H. Bang Particle Filter Approach to Vision-Based Navigation with Aerial Image Segmentation 
+
+Journal of Aerospace Information Systems , vol. 18, no. 12, pp. 964–972, 2021. [9] J. Park, S. Kim, K. Hong, and H. Bang Visual Semantic Context and Efficient Map-Based Rotation-Invariant Estimation of Position and Heading 
+
+NAVIGATION: Journal of the Institute of Navigation , vol. 71, no. 1, p. navi.634, 2024. [10] J. Park, Y. Kim, and H. Bang A new measurement model of interferometric radar altimeter for terrain referenced navigation using particle filter In 2017 European Navigation Conference (ENC) , May 2017, pp. 57–64. [11] P.-J. Nordlund and F. Gustafsson Marginalized Particle Filter for Accurate and Reliable Terrain-Aided Navigation 
+
+IEEE Transactions on Aerospace and Electronic Systems ,vol. 45, no. 4, pp. 1385–1399, Oct. 2009. [12] J. P. Golden Terrain contour matching (TERCOM): A cruise missile guid-ance aid In Image Processing for Missile Guidance , vol. 238. SPIE, 1980, pp. 10–18. [13] J. Hollowell Heli/SITAN: A terrain referenced navigation algorithm for helicopters Sandia National Lab.(SNL-NM), Albuquerque, NM (United States), Tech. Rep., 1990. [14] N. Bergman A Bayesian Approach to Terrain-Aided Navigation 
+
+IFAC Proceedings Volumes , vol. 30, no. 11, pp. 1457–1462, Jul. 1997. 
+
+14 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025 [15] N. Gordon, D. Salmond, and A. Smith Novel approach to nonlinear/non-Gaussian Bayesian state esti-mation 
+
+IEE Proceedings F Radar and Signal Processing , vol. 140, no. 2, p. 107, 1993. [16] N. Bergman and L. Ljung Point-mass filter and Cramer-Rao bound for terrain-aided nav-igation In Proceedings of the 36th IEEE Conference on Decision and Control , vol. 1. IEEE, 1997, pp. 565–570. [17] A. Doucet, S. Godsill, and C. Andrieu On sequential Monte Carlo sampling methods for Bayesian filtering 
+
+Statistics and computing , vol. 10, pp. 197–208, 2000. [18] P. J. Van Leeuwen, H. R. K¨ unsch, L. Nerger, R. Potthast, and S. Reich Particle filters for high-dimensional geoscience applications: A review 
+
+Quarterly Journal of the Royal Meteorological Society , vol. 145, no. 723, pp. 2335–2365, 2019. [19] C. Snyder, T. Bengtsson, and M. Morzfeld Performance Bounds for Particle Filters Using the Optimal Proposal 
+
+Monthly Weather Review , vol. 143, no. 11, pp. 4750–4761, Nov. 2015. [20] T. B. Schon, F. Gustafsson, and P.-J. Nordlund Marginalized particle filters for mixed linear/nonlinear state-space models 
+
+IEEE Transactions on Signal Processing , vol. 53, no. 7, pp. 2279–2289, Jul. 2005. [21] T. Li, M. Bolic, and P. M. Djuric Resampling Methods for Particle Filtering: Classification, im-plementation, and strategies 
+
+IEEE Signal Processing Magazine , vol. 32, no. 3, pp. 70–86, May 2015. [22] S. Jang and H. Bang Acquisition method for terrain referenced navigation using terrain contour intersections 
+
+IET Radar, Sonar & Navigation , vol. 11, no. 9, pp. 1444–1450, Sep. 2017. [23] Y. Li and M. Coates Particle filtering with invertible particle flow 
+
+IEEE Transactions on Signal Processing , vol. 65, no. 15, pp. 4102–4116, 2017. [24] N. Merlinge, K. Dahia, and H. Piet-Lahanier A Box Regularized Particle Filter for terrain navigation with highly non-linear measurements 
+
+IFAC-PapersOnLine , vol. 49, no. 17, pp. 361–366, 2016. [25] N. Merlinge, K. Dahia, H. Piet-Lahanier, J. Brusey, and N. Horri A box regularized particle filter for state estimation with severely ambiguous and non-linear measurements 
+
+Automatica , vol. 104, pp. 102–110, 2019. [26] F. C. Teixeira, A. Pascoal, and P. Maurya A Novel Particle Filter Formulation with Application to Terrain-Aided Navigation 
+
+IFAC Proceedings Volumes , vol. 45, no. 5, pp. 132–139, 2012. [27] F. C. Teixeira, J. Quintas, P. Maurya, and A. Pascoal Robust particle filter formulations with application to terrain-aided navigation 
+
+International Journal of Adaptive Control and Signal Process-ing , vol. 31, no. 4, pp. 608–651, Apr. 2017. [28] A. Ly, M. Marsman, J. Verhagen, R. P. P. P. Grasman, and E.-J. Wagenmakers A Tutorial on Fisher information 
+
+Journal of Mathematical Psychology , vol. 80, pp. 40–55, Oct. 2017. [29] C. Musso, N. Oudjane, and F. Le Gland Improving regularised particle filters 
+
+Sequential Monte Carlo methods in practice , pp. 247–271, 2001. [30] A. Murangira, C. Musso, K. Dahia, and J.-M. Allard Robust regularized particle filter for terrain navigation In 14th International Conference on Information Fusion . IEEE, 2011, pp. 1–8. [31] A. Murangira, C. Musso, and K. Dahia A mixture regularized rao-blackwellized particle filter for ter-rain positioning 
+
+IEEE Transactions on Aerospace and Electronic Systems ,vol. 52, no. 4, pp. 1967–1985, Aug. 2016. [32] C. Musso et al. 
+
+Terrain-aided navigation with an atomic gravimeter In 2019 22th International Conference on Information Fusion (FUSION) . IEEE, 2019, pp. 1–8. [33] J. Park and H. Bang Evenly Weighted Particle Filter for Terrain-referenced Naviga-tion using Gaussian Mixture Proposal Distribution In 2022 International Conference on Unmanned Aircraft Sys-tems (ICUAS) , Jun. 2022, pp. 177–183. [34] R. C. Avram, X. Zhang, and J. Muse Quadrotor sensor fault diagnosis with experimental results 
+
+Journal of Intelligent & Robotic Systems , vol. 86, pp. 115–137, 2017. [35] J. L. Campbell Application of airborne laser scanner - aerial navigation Ph.D. dissertation, Ohio University, United States – Ohio, 2006. [36] J. Park, Y.-g. Park, and C. G. Park Parameter Estimation of Radar Noise Model for Terrain Refer-enced Navigation Using a New EM Initialization Method 
+
+IEEE Transactions on Aerospace and Electronic Systems ,vol. 56, no. 1, pp. 107–112, Feb. 2020. [37] P. A. Rosen, S. Hensley, H. A. Zebker, F. H. Webb, and E. J. Fielding Surface deformation and coherence measurements of Kilauea Volcano, Hawaii, from SIR-C radar interferometry 
+
+Journal of Geophysical Research: Planets , vol. 101, no. E10, pp. 23 109–23 125, 1996. [38] L. Pr´ evot, I. Champion, and G. Guyot Estimating surface soil moisture and leaf area index of a wheat canopy using a dual-frequency (C and X bands) scatterometer 
+
+Remote Sensing of Environment , vol. 46, no. 3, pp. 331–339, Dec. 1993. [39] A. Setianto and T. Triandini Comparison of Kriging and Inverse Distance Weighted (IDW) Interpolation Methods in Lineament Extraction and Analysis 
+
+Journal of Applied Geology , vol. 5, no. 1, Sep. 2015. [40] F. Gustafsson Particle filter theory and practice with positioning applications 
+
+IEEE Aerospace and Electronic Systems Magazine , vol. 25, no. 7, pp. 53–82, Jul. 2010. [41] A. Doucet, N. Freitas, and N. Gordon, Eds. 
+
+Sequential Monte Carlo Methods in Practice . New York, NY: Springer New York, 2001. [42] M. K. Pitt and N. Shephard Filtering via Simulation: Auxiliary Particle Filters 
+
+Journal of the American Statistical Association , vol. 94, no. 446, pp. 590–599, Jun. 1999. [43] M. S. Arulampalam, S. Maskell, N. Gordon, and T. Clapp A tutorial on particle filters for online nonlinear/non-Gaussian Bayesian tracking 
+
+IEEE Transactions on Signal Processing , vol. 50, no. 2, pp. 174–188, Feb./2002. [44] P. Tichavsky, C. Muravchik, and A. Nehorai Posterior Cramer-Rao bounds for discrete-time nonlinear filter-ing 
+
+IEEE Transactions on Signal Processing , vol. 46, no. 5, pp. 1386–1396, May 1998. [45] J. C. Spall 
+
+PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 15 Monte Carlo Computation of the Fisher Information Matrix in Nonstandard Settings 
+
+Journal of Computational and Graphical Statistics , vol. 14, no. 4, pp. 889–909, Dec. 2005. [46] P. Groves 
+
+Principles of GNSS, Inertial, and Multi-sensor Integrated Nav-igation Systems (2nd) . Artech House, 2013. [47] S. Kullback and R. A. Leibler On Information and Sufficiency 
+
+The Annals of Mathematical Statistics , vol. 22, no. 1, pp. 79–86, Mar. 1951. [48] N. Chopin and O. Papaspiliopoulos 
+
+An Introduction to Sequential Monte Carlo , ser. Springer Series in Statistics. Cham: Springer International Publishing, 2020. [49] G. M. Siouris 
+
+Missile Guidance and Control Systems . New York: Springer, 2004. [50] B. Rabus, M. Eineder, A. Roth, and R. Bamler The shuttle radar topography mission—a new class of digital elevation models acquired by spaceborne radar 
+
+ISPRS Journal of Photogrammetry and Remote Sensing , vol. 57, no. 4, pp. 241–262, Feb. 2003. 
+
+Junwoo Park received his B.S., M.S., and Ph.D. degrees in aerospace engineering from Korea Advanced Institute of Science and Technology, Daejeon, South Korea, in 2016, 2018, and 2024, respectively. He is cur-rently an aerospace engineer in Nearthlab, Inc., Seoul, South Korea. His research in-terests include database-referenced navigation, unmanned aerial vehicle navigation, nonlinear state estimation, and particle filtering. 
+
+Hyochoong Bang (Member, IEEE), received the B.S. and M.S. degrees in aeronautical engi-neering from Seoul National University, Seoul, South Korea, in 1985 and 1987, respectively, and the Ph.D. degree from Texas A&M Uni-versity, College Station, in 1992. From 1992 to 1994, he was a Research Assistant Professor with the U.S. Naval Post-graduate School, Monterey, CA, where he conducted spacecraft attitude control research. From 1995 to 1999, he was with Korea Aerospace Research Institute, Daejeon, South Korea. Since 2001, he has been a Professor with Korea Advanced Institute of Science and Technology, Daejeon. His current research interests include spacecraft guidance and attitude control, and unmanned aircraft guidance and flight control systems design. 
+
+Appendix A. Pseudo code of the proposed approach (GMM-Aux) 
+
+16 IEEE TRANSACTIONS ON AEROSPACE AND ELECTRONIC SYSTEMS VOL. 61, No. 6 December 2025 Algorithm 1 Proposed Particle Filter (GMM Proposal with Auxiliary Sampling) 
+
+Require: xik−1, w ik−1 
+
+> Ni=1
+
+, yk
+
+for i = 1 : N do 
+
+Calculate φik = E xk|xik−1
+
+ and λik = p(yk|φik)wik−1
+
+end for 
+
+Initialize an index set, I ← ∅ , and normalize first-stage weights: {λik}Ni=1 
+
+for i = 1 : N do 
+
+λik ← λik
+
+.PNi′=1 λi′
+
+> k
+
+end for for i = 1 : N do 
+
+Draw ji ∼ p (J ), where p (J = j) = λjk
+
+I ← I ∪ { ji}
+
+end for for j ∈ I do 
+
+Calculate Hjk = ∂h (xk)/ ∂xk |xk =f (xjk−1) {recall: (26) }
+
+for n ∈ { 1, 2} do 
+
+Calculate Kj, (n) 
+
+> k
+
+= Qk−1Hj, T
+
+> k
+
+
+
+HjkQk−1Hj, T 
+
+> k
+
++ ( σ(n) 
+
+> k
+
+)2
+
+−1
+
+Calculate Pj, (n) 
+
+> k|k
+
+=
+
+
+
+I − Kj, (n) 
+
+> k
+
+Hjk
+
+
+
+Qk−1 and ˜yj, (n) 
+
+> k
+
+= yk − ˆyjk + μ(n) 
+
+> k
+
+{recall: (36) }
+
+end for end for for i = 1 : N do 
+
+Draw xik ∼ q  xk|ji, y0: k
+
+ = PNm 
+
+> n=1
+
+π(n)N
+
+
+
+xk; f (xji
+
+> k−1
+
+) + Kji,(n) 
+
+> k
+
+˜yji,(n) 
+
+> k
+
+, Pji,(n)
+
+> k|k
+
+
+
+{recall: (40) }
+
+Assign weight wik = pe(yk −h(xik )) pv (xik −f (xjik−1))    
+
+> pe(yk−h(φjik))
+
+PNm n=1 π(n)N
+
+    
+
+> xik;f(xjik−1)+ Kji,(n)
+> k˜yji,(n)
+> k,Pji,(n)
+> k|k
+
+ {recall: (41) }
+
+end for for i = 1 : N do 
+
+wik ← wik
+
+.PNi′=1 wi′
+
+> k
+
+end for return xik, w ik 
+
+> Ni=1
+
+= Resampling 
+
+xik, w ik 
+
+> Ni=1
+
+, η 
+
+
+
+PARK ET AL.: CONTOURS-SEEKING PROPOSAL DENSITY PF AND RESILIENT TRN 17

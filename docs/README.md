@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-21</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-22</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-21 21:04:11 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-22 19:50:52 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精选19篇论文，聚焦无人机控制与自主导航，其中7篇精读、12篇速读。最值得关注的是满分10分的四旋翼全身反步控制，以及9分的端到端规划器改进，均直击路径跟随与规划痛点。下一步可优先尝试把死端预测（DPNet）与LLM路径查找结合，提升复杂环境下的避障效率。</p>
+<p>今日精读7篇、速读10篇共17篇，重点聚焦无人机空中操作与自主导航前沿。</p>
+<p>最值得关注倾斜多旋翼无偏移操作与无参数负载摆动抑制两项9.0分研究，显著提升吊挂飞行稳定性。</p>
+<p>建议普通读者可延伸速读中的神经图运动规划与嵌入式导航方法，理解多旋翼与具身智能的交叉趋势。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,7 +76,7 @@
     <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Safe whole-body backstepping control for quadcopter path-following">Safe whole-body backstepping control for quadcopter path-following</span></li><li><span class="dpr-home-dashboard-paper-title" title="Some Modifications to Our End-to-End UAV Planner">Some Modifications to Our End-to-End UAV Planner</span></li><li><span class="dpr-home-dashboard-paper-title" title="Stable Multi-Step Rollouts via Uncertainty-Guided Hybrid Dynamics">Stable Multi-Step Rollouts via Uncertainty-Guided Hybrid Dynamics</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Effector-Centric NMPC of Tiltable-Multirotors for Offset-Free Omnidirectional Aerial Manipulation">Effector-Centric NMPC of Tiltable-Multirotors for Offset-Free Omnidirectional Aerial Manipulation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs">Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Hydra-0: Action Flow for Generalist World Modeling and Control">Hydra-0: Action Flow for Generalist World Modeling and Control</span></li></ul>
   </div>
   <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">10 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset">LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset</span></li><li><span class="dpr-home-dashboard-paper-title" title="SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments">SCORE: Shape-Conforming Regions for Flight in Enclosed, Degraded Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="DPNet: Efficient Dead-End Prediction and Avoidance for Vision-Based UAV Navigation">DPNet: Efficient Dead-End Prediction and Avoidance for Vision-Based UAV Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Accelerating Mixed Discrete-Continuous Motion Planning via Neural Graphs of Convex Sets">Accelerating Mixed Discrete-Continuous Motion Planning via Neural Graphs of Convex Sets</span></li><li><span class="dpr-home-dashboard-paper-title" title="Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation">Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation">Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
 </section>
 </div>
 

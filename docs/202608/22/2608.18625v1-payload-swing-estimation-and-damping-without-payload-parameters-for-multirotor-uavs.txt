@@ -1,0 +1,532 @@
+Title: Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs
+
+URL Source: https://arxiv.org/pdf/2608.18625v1
+
+Published Time: Thu, 20 Aug 2026 00:34:29 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs 
+
+## K. Taki a, K. Umemoto a,∗
+
+> a
+
+Mechanical Design Engineering, Division of System and Infrastructure Engineering for Safe and Sustainable Society, Graduate School of Engineering, University of Fukui, 3-9-1 Bunkyo, Fukui, 910-8507, Fukui, Japan 
+
+A R T I C L E I N F O 
+
+Keywords :Multirotor UAV Slung load Swing estimation Extended Kalman filter Active damping control 
+
+A B S T R A C T 
+
+Cable-suspended payload transport by multirotor UAVs is flexible but generates periodic swing disturbance that degrades tracking and risks instability. Existing anti-swing methods require additional sensors or precise identification of cable length and payload mass, limiting field deployment. We propose a swing-estimation and damping method using only the onboard IMU and throttle command, requiring no payload parameters. An extended Kalman filter extracts the periodic disturbance with the unknown pendulum frequency as an estimated state, and an active damping controller adds a correction angle to the attitude loop to dissipate pendulum energy. Flight experiments confirm robust damping across a tested range of cable-length and mass variations. 
+
+## 1. Introduction 
+
+1.1. Background and Remaining Challenges 
+
+Multirotor UAVs (Unmanned Aerial Vehicles) are rapidly proliferating in logistics, construction, and disaster response. Slung-load transport—suspending a payload via a cable beneath the airframe—offers superior flexibility, including the carriage of irregularly shaped cargo, load/unload operations while hovering, and improved mission throughput by eliminating landing cycles. However, a cable-suspended payload behaves as a pendulum, generating periodic disturbances. Oscillations are readily excited by vehicle acceleration and wind, and because the drone is an underactuated system, these oscillations degrade tracking performance and can lead to instability. Effective swing suppression is therefore indispensable for safe slung-load transport. Existing research on UAV payload swing suppression can be classified into the following four categories. 
+
+Model-Based Methods: Sreenath et al.[1] proposed geometric control on SE(3) ×S2, achieving near-global expo-nential stability, but requiring complete identification of inertial parameters. Guerrero-Sánchez et al.[2] adopted IDA-PBC (Interconnection and Damping Assignment Passivity-Based Control) for energy shaping, and Jiroušek et al.[3] combined an LKF (Linear Kalman Filter) with MPC (Model Predictive Control) on a 13-dimensional augmented model, yet both require known inertia tensors and cable lengths. These methods demand parameters that are difficult to measure in field operations. 
+
+External-Sensor-Dependent Methods: Downward-facing cameras and encoders directly measure payload swing angles, but they consume payload capacity and suffer from degraded accuracy due to outdoor illumination changes, encoder wear, and calibration overhead. For example, TDC (Time Delay Control)-based methods[4] require payload swing angle/angular velocity sensors. 
+
+Learning-Based Methods: Serrano et al.[5] employed a 238,906-parameter PINN (Physics-Informed Neural Network) for system identification, but relied on MOCAP (Motion Capture) training data and is infeasible for embedded real-time execution. Zhang & Shen[6] proposed a Residual EKF (Extended Kalman Filter) combining the 
+
+> ∗
+
+Corresponding author 
+
+ms250163@g.u-fukui.ac.jp (K. Taki); umemoto@g.u-fukui.ac.jp (K. Umemoto) 
+
+https://umemotoctrl.github.io/ (K. Umemoto) 
+
+> ORCID
+
+(s): 0000-0002-1148-4114 (K. Umemoto) 
+
+K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 1 of 12 arXiv:2608.18625v1 [eess.SY] 19 Aug 2026 Payload Swing Estimation and Damping for Multirotor UAVs 
+
+7-dimensional Euler–Lagrange spherical pendulum with LSTM (Long Short-Term Memory) residual learning, but it assumes known physical parameters and cable length. 
+
+Sensorless / Disturbance-Observer Methods: Nascimento et al.[7] combined Udwadia-Kalaba constraints with NMPC (Nonlinear Model Predictive Control) and EKF-based estimation, but require prior parameter identification. Cai et al.[8] proposed a one-parameter ESO (Extended State Observer) as a lumped-disturbance estimator with RBF (Radial Basis Function) NN adaptive control; however, the swing dynamics are not explicitly modeled, and swing suppression for safe transport is not considered. When applied to real-world operational scenarios—such as construction sites, disaster response, and ad-hoc logistics operations—these approaches face critical limitations. First, precise identification of the vehicle moment of inertia, cable length, and payload mass is practically impossible in operational settings where loading conditions vary from site to site and vehicle configurations are frequently changed. Second, additional hardware such as payload angle sensors or downward-facing cameras incurs high cost in terms of payload weight and reliability, and outdoors presents calibration problems arising from lighting conditions, vibration, and contamination. Third, many existing methods assume modification of the vehicle’s internal control loops, impeding rapid deployment on commercial airframes with certified flight stacks. These factors create a demand among field engineers for a method that “achieves safe swing suppression while minimizing both sensor additions and identification effort.” 
+
+1.2. Approach to Problem Solving and Contributions 
+
+This paper proposes an onboard-sensor-based swing suppression method that uses only the IMU (Inertial Measurement Unit) and throttle command already present on typical UAVs, requires no additional hardware, and demands only the vehicle mass and thrust curve as prior knowledge. The method consists of: (1) an EKF disturbance observer that extracts the periodic swing component from the total disturbance force computed solely from IMU output and motor throttle command, treating the unknown pendulum frequency as an estimated state variable; and (2) an active damping controller that injects a feedforward correction angle into the existing ArduPilot attitude control cascade to dissipate pendulum energy. Table 1 presents a detailed comparison. To the best of the authors’ knowledge, no existing method simultaneously satisfies all of the following: 1. Automatic adaptation to unknown cable length 2. Applicability to unknown payload mass 3. Swing suppression using only vehicle mass and thrust curve as prior knowledge, with no additional sensors 4. Plug-and-play integration with existing control systems without modifying internal loops The proposed swing-suppression mechanism, which fulfills all of the above, can serve as a foundational technology for improving operational safety and mission efficiency in logistics and disaster-response scenarios where on-site parameter identification and installation of additional sensors are impractical. The remainder of this paper is organized as follows. Section II describes the details of the proposed method, comprising external force estimation, EKF observer design, and active damping control. Section III validates the method through five categories of flight experiments. Section IV discusses cross-cutting insights and limitations, and Section V summarizes the main results and future challenges. 
+
+## 2. Active Damping Control Based on Periodic Disturbance Estimation 
+
+2.1. External Force Estimation from Onboard Sensors 
+
+The translational forces acting on the UAV center of gravity consist of the rotor thrust vector 𝐓 ∈ ℝ3, gravity 𝑚 𝐠 ,aerodynamic drag 𝐅 𝑎𝑒𝑟𝑜 , and the disturbance force 𝐅 𝑝𝑎𝑦𝑙𝑜𝑎𝑑 originating from the cable tension of the suspended payload. The Newton–Euler equation in the body-fixed frame is expressed as: 
+
+𝑚 𝐚 𝑏 = 𝐓 + 𝑚 𝐠 𝑏 + 𝐅 𝑝𝑎𝑦𝑙𝑜𝑎𝑑 + 𝐅 𝑎𝑒𝑟𝑜 (1) where 𝑚 is the vehicle mass, 𝐚 𝑏 is the body-frame acceleration, and 𝐠 𝑏 is the gravity vector expressed in the body frame. Substituting the IMU-measured acceleration including gravity 𝐟 𝐼𝑀𝑈 ∶= 𝐚 𝑏 − 𝐠 𝑏 into (1) cancels the gravity term: 
+
+𝑚 𝐟 𝐼𝑀𝑈 = 𝐓 + 𝐅 𝑝𝑎𝑦𝑙𝑜𝑎𝑑 + 𝐅 𝑎𝑒𝑟𝑜 (2)   
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 2 of 12
+
+Payload Swing Estimation and Damping for Multirotor UAVs 
+
+Table 1 
+
+Detailed comparison with representative prior studies. Comparison of oscillation model, need for additional sensors, and required prior knowledge of vehicle parameters, payload mass, and cable length. 
+
+Study Oscillation Model Additional Sensors Prior Knowledge of Vehicle Params. Prior Knowledge of Payload Mass Prior Knowledge of Cable Length 
+
+Sreenath et al. 2013[1] Spherical pendulum (rigid body on S 2)Swing angle/ang. vel. Moment of inertia, vehicle mass, thrust curve (designed as generalized forces) Fixed, known Fixed, known Guerrero-Sánchez et al. 2017[2] Spherical pendulum (rigid body on S 2)Swing angle/ang. vel. (MoCap in experiments) Moment of inertia, vehicle mass (designed as generalized forces) Fixed, known Fixed, known Sreenath et al. 2019[9] Spherical pendulum (variable-length cable) Swing angle/ang. vel. (required full state) Moment of inertia, vehicle mass, pulley inertia/radius (designed as generalized forces) Fixed, known Variable, known Jiroušek et al. 2025[3] Point-mass pendulum (2-DOF planar swing) None Moment of inertia, vehicle mass, FCU parameters 1
+
+Fixed, known (robust to a bounded range) Fixed, known Bai et al. 2025[10] Point-mass pendulum (2-DOF planar swing) Swing angle/ang. vel. Moment of inertia, vehicle mass (designed as generalized forces) Fixed, known Fixed, known Nascimento et al. 2026[7] Spherical pendulum (constrained dynamics) None Moment of inertia, vehicle mass, thrust constant 𝑐 𝑡 
+
+Fixed, known Fixed, known Dantu et al. 2025[4] Point-mass pendulum (2-DOF planar swing) Swing angle/ang. vel. Moment of inertia, vehicle mass (designed as generalized forces) Not required (adaptive control) Fixed, known 
+
+Proposed Method Harmonic oscillator None Vehicle mass, thrust curve Not required (robust to a bounded range) Automatically estimated by EKF  
+
+> 1
+
+Flight Controller Unit (FCU) is modeled as a first-order lag. Thrust-direction gain and lag time must be identified. 
+
+Rearranging yields the total disturbance force :
+
+𝐅 𝑑𝑖𝑠𝑡 = 𝐅 𝑝𝑎𝑦𝑙𝑜𝑎𝑑 + 𝐅 𝑎𝑒𝑟𝑜 = 𝑚 𝐟 𝐼𝑀𝑈 − 𝐓 (3) 
+
+𝐅 𝑑𝑖𝑠𝑡 contains the aerodynamic drag 𝐅 𝑎𝑒𝑟𝑜 ; the constant component of aerodynamic drag acts as a DC bias, while the periodic drag induced by vehicle motion oscillates at the payload frequency. Since the proposed EKF periodic-disturbance observer models the disturbance as the sum of a DC offset and a harmonic oscillator, complex aerodynamic modeling is not required. Although the IMU sensor contains noise, we use the low-pass-filtered value 𝐟 𝐼𝑀𝑈 obtained by applying the flight controller’s low-pass filter (ArduPilot, default 20 Hz). The residual noise is absorbed by the EKF observer’s measurement noise covariance 𝑅 .
+
+2.2. Thrust Modeling 
+
+Rather than relying on RPM telemetry, which is susceptible to noise and delay, we directly use the flight controller’s 
+
+throttle command value . Motor dynamics possess a first-order lag time constant of several tens of milliseconds, but because the pendulum motion of interest ( 0.5–1.5 Hz) is sufficiently slow, the resulting phase lag is negligible. Static load-cell tests confirmed high linearity between the normalized thrust command 𝑢 ∈ [0 , 1] (linearized via ArduPilot’s Thrust Expo[11]) and steady-state thrust, yielding: 
+
+𝐓 = ( 𝐾 𝑠𝑐𝑎𝑙𝑒 ⋅ 𝑢 + 𝐾 𝑜𝑓 𝑓 𝑠𝑒𝑡 ) ⋅ 𝑔 (4) 
+
+K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 3 of 12 Payload Swing Estimation and Damping for Multirotor UAVs 
+
+where 𝐾 𝑠𝑐𝑎𝑙𝑒 and 𝐾 𝑜𝑓 𝑓 𝑠𝑒𝑡 are obtained via least-squares fitting, and 𝑔 is the gravitational acceleration (included to follow the convention by which ArduPilot manages thrust in acceleration units [m/s 2]). Note that the load-cell test is optional; nominal thrust estimated from the hovering throttle and vehicle mass is sufficient for practical swing suppression performance. The 𝑋 -axis and 𝑌 -axis components of 𝐅 𝑑𝑖𝑠𝑡 obtained from (3) serve as the observation input 𝑧 (𝑡 ) for the EKF observer described below. 
+
+2.3. EKF Periodic-Disturbance Observer 
+
+The disturbance force 𝐅 𝑑𝑖𝑠𝑡 (denoted hereafter as 𝑧 𝑘 , where 𝑘 is the time index) contains sensor noise and oscillations. In this section, we design an EKF that extracts the oscillatory and constant components of the external force. The unknown pendulum frequency 𝜔 is treated as an estimated state variable, yielding an estimator that requires no prior knowledge of the cable length 𝐿 .Independently for each horizontal axis (𝑋, 𝑌 ), the state vector is 𝐱 = [ 𝑑,̇ 𝑑, 𝑐, 𝜔 ]𝑇 , where 𝑑 is the periodic disturbance, ̇ 𝑑 is its derivative, 𝑐 is the constant bias, and 𝜔 is the unknown angular frequency. 
+
+2.3.1. State Transition and Symplectic Integration 
+
+The continuous-time harmonic oscillator ̈ 𝑑 = − 𝜔 2𝑑 is discretized with sampling interval Δ𝑡 . Because the forward Euler method induces spurious energy divergence, we adopt the symplectic Euler method [12], which approximately preserves the energy-conservation property of Hamiltonian systems. The state transition function 𝐟 (𝐱 𝑘 −1 ) is: 
+
+⎧⎪⎪⎨⎪⎪⎩̇𝑑 𝑘 =̇ 𝑑 𝑘 −1 − Δ 𝑡 ⋅ 𝜔 2
+
+> 𝑘 −1
+
+𝑑 𝑘 −1 
+
+𝑑 𝑘 = 𝑑 𝑘 −1 + Δ 𝑡 ⋅̇ 𝑑 𝑘 
+
+𝑐 𝑘 = 𝑐 𝑘 −1 
+
+𝜔 𝑘 = 𝜔 𝑘 −1 
+
+(5) The observation model is 𝑧 𝑘 = 𝑑 𝑘 + 𝑐 𝑘 , with the linear observation matrix 𝐇 = [1 , 0, 1, 0] .
+
+2.3.2. Observability Analysis 
+
+The Jacobian of the state transition function is: 
+
+𝐅 =
+
+⎡⎢⎢⎢⎣
+
+1 − Δ 𝑡 2𝜔 2 Δ𝑡 0 −2Δ 𝑡 2𝜔𝑑 
+
+−Δ 𝑡𝜔 2 1 0 −2Δ 𝑡𝜔𝑑 
+
+0 0 1 00 0 0 1
+
+⎤⎥⎥⎥⎦
+
+(6) Constructing the observability matrix  = [ 𝐇 𝑇 , (𝐇𝐅 )𝑇 , (𝐇𝐅 2)𝑇 , (𝐇𝐅 3)𝑇 ]𝑇 , we obtain det( ) ≠ 0 under the conditions 𝜔 ≠ 0 and 𝑑 ≠ 0 (i.e., while the payload is oscillating), where 𝐇 ∶= [1 , 0, 1, 0] is the observation matrix. This confirms local observability: given sufficient excitation, the EKF can estimate all states including the unknown frequency. When oscillation has ceased ( 𝑑 ≈ 0 ), estimation of 𝜔 is impossible; in this case, the estimator stability can be maintained by freezing the state update. 
+
+2.3.3. Innovation Clipping 
+
+Impulsive disturbances induce large spikes in the observation 𝑧 , creating a risk of divergence in the EKF estimates (especially 𝜔 ). To prevent this, the innovation 𝑟 𝑘 = 𝑧 𝑘 − ( 𝑑 𝑘 |𝑘 −1 + 𝑐 𝑘 |𝑘 −1 ) is saturated at a preset threshold 𝑟 𝑚𝑎𝑥 :
+
+𝑟 𝑢𝑠𝑒𝑑 = clip( 𝑟 𝑘 , −𝑟 𝑚𝑎𝑥 , 𝑟 𝑚𝑎𝑥 ) (7) 
+
+clip( 𝑥, 𝑥 𝑚𝑖𝑛 , 𝑥 𝑚𝑎𝑥 ) ∶= 
+
+⎧⎪⎨⎪⎩
+
+𝑥 𝑚𝑖𝑛 𝑥 < 𝑥 𝑚𝑖𝑛 
+
+𝑥 𝑥 𝑚𝑖𝑛 ≤ 𝑥 ≤ 𝑥 𝑚𝑎𝑥 
+
+𝑥 𝑚𝑎𝑥 𝑥 > 𝑥 𝑚𝑎𝑥 
+
+Updating the state using 𝑟 𝑢𝑠𝑒𝑑 achieves robust estimation under non-Gaussian disturbances. This simple saturation serves as a practical alternative to Huber M-estimation[13] in embedded implementations.   
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 4 of 12 Payload Swing Estimation and Damping for Multirotor UAVs
+
+2.4. Active Damping Control and ArduPilot Integration 
+
+The objective is not high-precision position control via disturbance rejection, but rather to dissipate the energy of the payload pendulum motion (active damping). Based on passivity-based control[14, 15], this is accomplished by accelerating the vehicle in the swing direction to inject artificial damping. We realize this by adding a feedforward correction angle to the desired attitude of ArduPilot’s existing cascade PID controller. This enables plug-and-play implementation regardless of the attitude controller configuration. The EKF-estimated external force is denoted as ̂ 𝐅 𝑒𝑥𝑡 = [ ̂𝐹 𝑥 ,̂ 𝐹 𝑦 , 0] 𝑇 . The correction Euler angles (Δ 𝜙, Δ𝜃 ) are: 
+
+Δ𝜙 = clip 
+
+(̂ 𝐹 𝑦 ⋅ 𝑘 𝑐 
+
+𝑚 𝑄 
+
+, −𝜃 𝑚𝑎𝑥 , 𝜃 𝑚𝑎𝑥 
+
+)
+
+(8) 
+
+Δ𝜃 = clip 
+
+( −̂𝐹 𝑥 ⋅ 𝑘 𝑐 
+
+𝑚 𝑄 
+
+, −𝜃 𝑚𝑎𝑥 , 𝜃 𝑚𝑎𝑥 
+
+)
+
+(9) where 𝑘 𝑐 is the control gain, 𝑚 𝑄 is the vehicle mass, and 𝜃 𝑚𝑎𝑥 is the saturation limit. When the payload swings forward relative to the vehicle ( ̂ 𝐹 𝑥 > 0), Δ𝜃 < 0 (nose-down) is produced, accelerating the vehicle forward to follow the swing and dissipate pendulum energy. Similarly, a rightward swing ( ̂ 𝐹 𝑦 > 0) produces Δ𝜙 > 0 (right roll). For integration with ArduPilot, a correction quaternion 𝐪 𝑐 is generated from the computed correction Euler angles 
+
+(Δ 𝜙, Δ𝜃, 0) and multiplied with the desired attitude within ArduPilot’s attitude control loop. As shown in Fig. 1, the correction angle is added at the most upstream point (desired attitude) of ArduPilot’s attitude control cascade. This architecture offers the following advantages: 1. No modification of existing controllers required: The angle P / angular-rate PID / motor mixer remain completely unchanged; 2. Moment of inertia not required: No dependence on the internal model of the attitude controller; 3. Easy fail-safe: The observer can be completely disabled by setting the correction angle to zero. 
+
+## 3. Experimental Validation 
+
+In this section, the proposed method is validated through five categories of flight experiments using a Pixhawk 6C-based quadrotor. Each experiment is defined as follows: • EKF Frequency Estimation §3.2: Evaluation of convergence characteristics of frequency estimation by the EKF periodic-disturbance observer • Gain–Damping Characteristics §3.3: Evaluation of swing suppression performance via gain sweep • Online Frequency Estimation + Active Damping Integration §3.4: Evaluation of autonomous swing suppression under unknown cable length • Payload Mass Robustness §3.5: Evaluation of swing suppression robustness under mass variation • Triangular-Wave Trajectory Tracking §3.6: Evaluation of swing suppression performance on triangular-wave paths 
+
+3.1. Experimental Setup 
+
+3.1.1. Vehicle Configuration 
+
+The vehicle configuration common to all experiments is shown in Table 2. The quadrotor used has a vehicle mass of approximately 1.4 kg and a payload mass of 0.378 kg. The Pixhawk 6C serves as the flight controller, with the proposed observer implemented as an add-on to ArduPilot’s existing attitude control loop. An OptiTrack Motive motion capture system (MoCap) independently tracks the 3D positions of the vehicle and payload, providing ground-truth attitude and position measurements. All experiments were conducted in an indoor MoCap environment. MoCap is not used in the data flow of the proposed algorithm (EKF observer + active damping control); it is used for evaluation ground truth (relative displacement, FFT reference frequency, relative displacement RMS) and as indoor positioning in place of GPS (input to ArduPilot’s position controller). The MoCap system can be replaced by GPS/GNSS outdoors.                                       
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 5 of 12 Payload Swing Estimation and Damping for Multirotor UAVs
+> Table 2
+> Common vehicle and experimental conditions.
+> Item Value
+> Vehicle mass 1.4 kg Payload mass 0.378 kg Nominal cable length 𝐿
+> (Gain–Damping /On-line 𝜔 Estimation +Damping /Mass Robustness / Zigzag Tracking)
+> 𝐿 = 1 .04 m equivalent (FFT frequency approx. 0.64 Hz) Flight control ArduPilot + Pixhawk 6C Observer parameters 𝑄 𝑊 =0.0005 ,𝑅 𝑀𝐸𝐴𝑆 =46 .0,frequency estimation fixed/online (per experiment) Attitude ground truth Motive motion capture Evaluation window 20 s after control ON (Online 𝜔 Estimation +Damping) Correction angle saturation 𝜃 max 0.5rad Yaw correction Δ𝜓 = 0
+
+3.1.2. Evaluation Metrics 
+
+All damping evaluations in this paper employ the following unified methodology: 1. The instantaneous envelope of the relative displacement 𝑑 𝑟𝑒𝑙,𝑥 is extracted via Hilbert transform, 2. The median of the final 20% interval of the envelope is regarded as the residual offset 𝐶 , and the decay time constant 𝜏 of the exponential decay model 𝑒𝑛𝑣 (𝑡 ) = 𝐴𝑒 −𝑡 ∕𝜏 +𝐶 is determined by linear regression on a logarithmic scale ( ln( 𝑒𝑛𝑣 clean ) vs. 𝑡 ) after subtracting the residual, 𝑒𝑛𝑣 clean = 𝑒𝑛𝑣 − 𝐶 ,3. 𝜏 [s] is computed as the primary damping metric. The following metrics are used throughout the experiments: • Relative displacement : Horizontal-plane relative displacement between vehicle and payload measured by MoCap; • Damping time constant 𝜏 [s]: Decay time constant obtained from 𝑒𝑛𝑣 (𝑡 ) = 𝐴𝑒 −𝑡 ∕𝜏 + 𝐶 via logarithmic-scale linear regression after subtracting the residual offset 𝐶 estimated from the terminal envelope interval; • EKF–FFT difference [Hz]: Difference between EKF-estimated frequency and FFT (Fast Fourier Transform) peak frequency of MoCap data; 
+
+3.2. EKF Frequency Convergence 
+
+3.2.1. Purpose and Conditions 
+
+To verify autonomous convergence to the true pendulum frequency without prior knowledge of cable length 𝐿 ,and to characterize the 𝑄 𝑊 sensitivity trade-off. Two sub-experiments were conducted: (i) 𝑄 𝑊 sweep —fixed cable length 𝐿 = 1 .04 m, 10 levels 𝑄 𝑊 ∈ {0 .0005 , … , 0.10} , initial frequency offset 𝑊 𝐼𝑁𝐼𝑇 = 0 .600 Hz, control OFF; (ii) 
+
+Variable cable length —fixed 𝑄 𝑊 = 0 .0005 , 4 levels 𝐿 ∈ {1 .04 , 0.74 , 0.40 , 0.28} m. 
+
+3.2.2. Results Part 1: 𝑄 𝑊 Sweep 
+
+Table 3 presents the 𝑄 𝑊 sweep results. 𝑄 𝑊 = 0 .0005 achieves the best estimation accuracy with an EKF–FFT difference of 0.0019 Hz (0.40 %). Meanwhile, 𝑄 𝑊 = 0 .001 (×2 ) achieves a convergence time of 3.2 s ( 2.6× faster than 
+
+×1 ) and 2.79 % accuracy, representing the optimal balance point between speed and accuracy. For 𝑄 𝑊 ≥ 0.005 , an overshoot-and-settle phenomenon (drifting toward lower frequencies after passing the FFT peak) occurs, degrading final accuracy to 10–15 %. These results show that 𝑄 𝑊 significantly affects noise sensitivity rather than convergence speed, and 𝑄 𝑊 = 0 .001 (×2 ) gives the optimal balance of 3.2 s convergence and 2.79 % accuracy.   
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 6 of 12
+
+Payload Swing Estimation and Damping for Multirotor UAVs 
+
+Table 3 
+
+𝑄 𝑊 sweep results for EKF frequency convergence. FFT 𝑑 𝑟𝑒𝑙,𝑥 : FFT peak frequency of relative displacement 𝑋 component measured by Motive motion capture. EKF FreqX: EKF-estimated pendulum frequency along 𝑋 axis. EKF–FFT diff.: absolute difference between EKF and FFT frequencies [%]. Convergence time: time for EKF frequency to stay within ±5% 
+
+of FFT peak for 200 consecutive samples (2.0 s). 𝑄 𝑊 = 0 .0005 baseline, cable length 𝐿 = 1 .04 m, initial frequency offset 
+
+𝑊 𝐼𝑁𝐼𝑇 = 0 .600 Hz, control OFF. Bold : best two values in each column. 
+
+𝑄 𝑊 FFT 𝑑 𝑟𝑒𝑙,𝑥 [Hz] EKF FreqX [Hz] EKF–FFT diff. [%] Convergence time [s] 
+
+0.0005 ( ×1 ) 0.4734 0.4715 0.40% 8.2 0.0008 ( ×1 .6) 0.4943 0.4563 7.69% 3.9 
+
+0.001 ( ×2 ) 0.4964 0.4826 2.79% 3.2 
+
+0.005 ( ×10 ) 0.4520 0.4049 10.4% 12.3 0.10 ( ×200 ) 0.4712 0.4048 14.1% 64.8 
+
+Table 4 
+
+Variable cable length experiment results ( 𝑄 𝑊 = 0 .0005 fixed). Conv.: convergence. 
+
+𝐿 [m] [Hz] FFT 𝑑 𝑟𝑒𝑙,𝑥 [Hz] EKF FreqX [Hz] EKF–FFT diff. [Hz] Conv. time [s] 
+
+1.04 0.4734 0.4715 0.0019 8.24 0.74 0.5755 0.5617 0.0138 6.57 0.40 0.7024 0.7174 0.0150 2.16 0.28 0.7905* 0.8367 — Not converged * At 𝐿 = 0 .28 m, the FFT 𝑑 𝑟𝑒𝑙,𝑥 peak was judged as a noise component against the theoretical value √𝑔 ∕𝐿 ∕2 𝜋 ≈ 0 .94 Hz; hence the FFT 𝑑 𝑟𝑒𝑙,𝑧 peak (0.7905 Hz) was used as the reference. 
+
+3.2.3. Results Part 2: Variable Cable Length 
+
+As shown in Fig. 2 and Table 4, convergence time shortened with decreasing cable length, while estimation error increased monotonically with frequency. These results demonstrate that, under an appropriate 𝑄 𝑊 setting, the proposed EKF autonomously converges to the pendulum frequency across different cable lengths. The cable-length dependence of convergence time can be explained from the EKF operating principle: higher frequencies (shorter cables) provide more oscillation cycles per unit time, increasing innovation update opportunities and thereby improving information acquisition efficiency. On the other hand, the innovation bias |𝑓 pred  
+
+> 𝑥
+
+−̂ 𝑓 𝑥 | also increases in proportion to frequency; at 𝐿 = 0 .28 m, the update rate of 𝑄 𝑊 = 0 .0005 could not keep pace, resulting in non-convergence. That is, the rule “higher frequency = faster convergence” holds only within the range where the bias does not exceed a threshold. The mechanism of non-convergence at 𝐿 = 0 .28 m is examined from two complementary hypotheses. Burial of the pendulum signal by vehicle vibration: Analysis of FFT component ratios reveals that, as the string becomes shorter, the pendulum component of the relative displacement decreases relative to the vehicle vibration. At 𝐿 = 0 .28 m, the pendulum signal is only 1.5 times the vehicle vibration, so the signal that the EKF must track is buried in noise. Absolute reduction of pseudo-oscillation energy: The pseudo-oscillation energy 𝑑 2 
+
+> 𝑟𝑒𝑙,𝑥
+
++ 𝑑 2 
+
+> 𝑟𝑒𝑙,𝑧
+
+(time-averaged over the first 20 s after EKF reset) decreases roughly proportionally to the string length 𝐿 , and the mean value at 𝐿 = 0 .28 mis only 4.0% of that at 𝐿 = 1 .04 m (0.008 vs. 0.198 m 2). The innovation that drives EKF updates is absolutely small, and tracking becomes difficult at the fixed update rate of 𝑄 𝑊 = 0 .0005 .
+
+3.3. Gain–Damping Characteristic Evaluation 
+
+3.3.1. Purpose and Conditions 
+
+To quantify the relationship between control gain 𝑘 𝑐 and swing suppression performance. Frequency estimation was frozen ( 𝑊 𝐼𝑁𝐼𝑇 = 0 .46987 Hz) to isolate the pure gain effect. Seven levels 𝑘 𝑐 ∈ {0 .0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6} × 
+
+K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 7 of 12 Payload Swing Estimation and Damping for Multirotor UAVs                                                     
+
+> Table 5
+> Decay time constant 𝜏 statistics across all gain conditions. Hilbert envelope + log-linear regression with residual C. Values are mean ±1 𝜎 with min/max range over 𝑛 = 3 trials. 𝑅 2is the coefficient of determination of the exponential fit.
+> Gain 𝑘 𝑐 𝜏 mean [s] ±1 𝜎 [s] Min [s] Max [s] 𝑅 2
+> 0.0 6.43 0.01 6.41 6.43 0.78 0.1 5.41 1.22 4.16 6.59 0.66 0.2 2.28 0.83 1.48 3.14 0.72 0.3 2.23 0.24 2.08 2.51 0.55 0.4 4.90 1.73 3.12 6.57 0.16 0.5 8.17 4.52 4.57 13.24 0.40 0.6 7.06 0.83 6.48 8.01 0.37
+
+3 trials = 21 experiments. After takeoff, manual 𝑋 -axis excitation was applied, and the amplitude decay after control ON was observed. 
+
+3.3.2. Results 
+
+Fig. 3 and Table 5 present the results of the gain-sweep damping evaluation. Gain 0.3 is optimal, achieving 
+
+𝜏 = 2 .23 s (65.3 % reduction relative to the passive baseline of 6.43 s, corresponding to 99 % decay at 10 s). For gain ≥ 0.5, 𝜏 exceeds the passive baseline, confirming that excessive gain degrades swing suppression performance. Fig. 3 compares the raw relative displacement waveforms and exponential decay fits for gain 0.0, gain 0.3, and gain 0.6. Solid lines represent relative displacement; dashed lines represent exponential decay model fits. The passive baseline (gain 0.0, blue) exhibits slow natural decay, whereas gain 0.3 (optimal, red) shows rapid decay, visually confirming the effectiveness of the control. Gain 0.6 (green) shows increased initial transient response due to excessive correction, with 𝜏 = 8 .01 s exceeding the passive baseline. Table 5 summarizes the 𝜏 statistics for all gain levels. The minimum mean 𝜏 of 2.23 s at gain 0.3 confirms the optimal operating point. For gain ≥ 0.5, 𝜏 exceeds the passive baseline, and damping performance degrades. The standard deviation 𝜎 (𝜏 ) is smallest at gain 0.3 (0.24 s), indicating good repeatability. A clear damping effect is obtained near gain 0.3, but excessive gain disrupts the initial behavior and degrades effective damping performance. 
+
+3.4. EKF Periodic-Disturbance Estimation + Active Damping Integrated Experiment 
+
+3.4.1. Purpose and Conditions 
+
+To evaluate swing suppression performance under realistic operating conditions (unknown cable length) by simultaneously operating the EKF periodic-disturbance estimation validated in the EKF frequency convergence experiment and the active damping control validated in the gain–damping characteristic evaluation. The objective is to demonstrate fully autonomous swing suppression requiring absolutely no prior cable-length measurement. The EKF estimates 𝜔 online; 2 gain levels × 3 trials = 6 experiments are conducted with gain 0.0 (control OFF) and 0.3 (control ON). Manual 𝑋 -axis excitation was applied during hovering, and the amplitude decay after control ON was observed. Evaluation window: 20 s after control ON; reference frequency: FFT average of 3 trials at gain 0.0 (0.640 Hz). 
+
+3.4.2. Results 
+
+Fig. 4 and Table 6 present the integrated experiment results. Gain 0.3 is effective, achieving 𝜏 = 1 .63 s (74.7 % reduction relative to the passive baseline of 6.45 s, corresponding to 99 % decay at 10 s per the exponential model). Under online estimation, 𝜏 = 1 .63 s is better than 𝜏 = 2 .23 s under constant frequency (3.3), confirming that dynamic estimation does not impair damping. Fig. 4 compares the raw relative displacement waveforms and exponential decay fits for gain 0.0 (passive baseline, blue) and gain 0.3 (active damping, red). The passive baseline exhibits slow natural decay ( 𝜏 = 6 .45 s), whereas gain 0.3 shows rapid decay ( 𝜏 = 1 .63 s), visually confirming the effectiveness of active damping under online frequency estimation.                                                         
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 8 of 12 Payload Swing Estimation and Damping for Multirotor UAVs
+> Table 6
+> Decay time constant 𝜏 statistics for the integrated online frequency estimation + active damping experiment. Hilbert envelope +log-linear regression with residual 𝐶 . Values are mean ±1 𝜎 with min/max over 𝑛 = 3 trials.
+> Gain 𝑘 𝑐 𝜏 mean [s] ±1 𝜎 [s] Min [s] Max [s] 𝑅 2
+> 0.0 6.45 0.75 5.95 7.31 0.78 0.3 1.63 0.23 1.36 1.80 0.80
+> Table 7
+> Decay time constant 𝜏 vs. payload mass with active damping (gain 0.3) and passive baseline (gain 0.0). 𝜏 obtained from Hilbert envelope log-linear fit of exponential decay model 𝑒𝑛𝑣 (𝑡 ) = 𝐴𝑒 −𝑡 ∕𝜏 +𝐶 with residual offset 𝐶 correction. Values are mean ±1 𝜎 (𝑛 = 3 ).
+> Payload mass [kg] 𝜏 gain 0.0 [s] 𝜏 gain 0.3 [s]
+> 0.134 2.88 ± 0 .92 1.74 ± 0 .83
+> 0.378 3.92 ± 0 .81 0.79 ± 0 .20
+> 0.421 3.82 ± 0 .68 2.23 ± 0 .61
+> 0.471 4.00 ± 0 .48 6.47 ± 0 .57
+
+Table 6 summarizes the 𝜏 statistics for both gain conditions. The mean 𝜏 = 1 .63 s at gain 0.3 confirms the damping effect under online estimation. The standard deviation 𝜎 (𝜏 ) is small (0.23 s) at gain 0.3, indicating good repeatability. 
+
+𝑅 2 = 0 .80 for gain 0.3 indicates good goodness-of-fit of the exponential model. This experiment verified that the integration of EKF periodic-disturbance estimation and active damping operates successfully on a real system. Achieving 99 % decay at 10 s with fully autonomous swing suppression requiring absolutely no prior cable-length measurement is one of the most important practical values of the proposed method. 
+
+3.5. Payload Mass Robustness 
+
+3.5.1. Purpose and Conditions 
+
+The proposed external force estimation model does not explicitly contain the payload mass 𝑚 𝐿 , and the correction formula is normalized only by the vehicle mass 𝑚 𝑄 . Furthermore, the pendulum frequency 𝜔 0 = √𝑔 ∕𝐿 is theoretically independent of mass. This experiment evaluates swing suppression performance across four payload mass levels, separating the “mass independence of the estimation model” from the “mass dependence at the control level.” Payload masses 𝑚 𝐿 ∈ {0 .134 , 0.378 , 0.421 , 0.471} kg, 4 levels × gain 0.0/0.3 × 3 trials = 24 experiments. Frequency estimation online, analysis window 23 s after control ON. No software parameter changes; only the physical payload was swapped. 
+
+3.5.2. Results 
+
+As shown in Table 7, under fixed gain 𝑘 𝑐 = 0 .3, the 0.378 kg payload exhibits the shortest decay time constant (𝜏 = 0 .79 s), while the 0.134 kg and 0.421 kg payloads ( 𝜏 = 1 .74 s and 2.23 s) also achieve effective damping, each improving upon its respective natural decay time constant (gain 0.0). The natural decay time constants (gain 0.0) were 2.88 s at 0.134 kg, 3.92 s at 0.378 kg, 3.82 s at 0.421 kg, and 4.00 sat 0.471 kg, indicating a trend of passive damping slowing with increasing payload mass. Under gain 𝑘 𝑐 = 0 .3, the 0.134 kg payload achieved +39 .6 % improvement, the 0.378 kg payload (the gain-tuning target) exhibited the strongest damping effect ( +79 .8 %), and the 0.421 kg payload achieved +41 .8 % improvement; active damping improved the decay characteristics for these masses. In contrast, at 0.471 kg, 𝜏 on = 6 .47 s exceeded 𝜏 off = 4 .00 s. This is attributed to the fixed gain 0.3 being excessive for this mass. That is, the fixed gain exhibits robustness and remains effective over mass variation near the tuning value (0.134–0.421 kg in this experiment), but the same gain becomes counterproductive for an excessively heavy payload (0.471 kg). These results indicate that while the estimation model itself is mass-independent, the control performance with fixed gain exhibits mass dependence, requiring gain adjustment according to payload mass in practical operations.                                     
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 9 of 12 Payload Swing Estimation and Damping for Multirotor UAVs
+> Table 8
+> Vehicle-to-payload relative displacement during flight with triangular-wave path (mean ±1 𝜎 ,𝑛 =3). ‖𝑑 𝑟𝑒𝑙 ‖=
+> √
+> (𝑝 𝑏 1,𝑥 −𝑝 𝑏 2,𝑥 )2+ ( 𝑝 𝑏 1,𝑧 −𝑝 𝑏 2,𝑧 )2denotes the horizontal deviation between vehicle and payload.
+> Metric Gain 0.0 Gain 0.3 Reduction
+> ‖𝑑 𝑟𝑒𝑙 ‖𝑅𝑀𝑆 [m] 0.3157 ± 0 .0195 0.2262 ± 0 .0138 28.3 %
+> ‖𝑑 𝑟𝑒𝑙 ‖𝑚𝑎𝑥 [m] 0.5561 ± 0 .0124 0.4082 ± 0 .0088 26.6 %
+
+The EKF-estimated pendulum frequency showed a CV = 1.5 % (Coefficient of Variation) across the four mass levels, consistent with the mass invariance of 𝜔 0 = √𝑔 ∕𝐿 . The external force estimation model itself does not contain a payload mass term, and the same EKF parameters functioned correctly after payload swaps. 
+
+3.6. Triangular-Wave Path Flight Experiment 
+
+3.6.1. Purpose and Conditions 
+
+To evaluate swing suppression performance during jumped waypoint tracking. In particular, to verify the suppres-sion effect of observer correction against payload inertia overshoot during abrupt direction changes. A triangular-wave path (North amplitude ±0 .4 m, East step 0.1 m, 6 reversals, vertex dwell 0.8 s, target altitude 1.0 m) was flown with gain 0.0 (correction OFF) and 0.3 (correction ON), 3 trials each. Frequency estimation online, evaluation window 8.0 s during the zigzag maneuver. The evaluation metric is vehicle-to-payload relative displacement (magnitude of swing), not the vehicle’s waypoint tracking accuracy. 
+
+3.6.2. Results 
+
+Fig. 6 shows the trajectories of the vehicle (body1) and payload (body2) during triangular-wave path tracking. At gain 0.0 (top), the payload swing is large, and trajectory disturbances are visually apparent especially at the reversal points; in contrast, at gain 0.3 (bottom), the payload swing is visibly suppressed. Table 8 summarizes the quantitative evaluation results. Observer correction (gain 0.3) achieved statistically sig-nificant improvements: ‖𝑑 𝑟𝑒𝑙 ‖𝑅𝑀𝑆 decreased from 0.3157 m to 0.2262 m (28.3 % reduction), and ‖𝑑 𝑟𝑒𝑙 ‖𝑚𝑎𝑥 decreased from 0.5561 m to 0.4082 m (26.6 % reduction). Within-condition 𝜎 is less than 6 % of the RMS, confirming good repeatability. The improvement is pronounced in the North amplitude direction ( 𝑑 𝑟𝑒𝑙,𝑥 ), where path tracking excites oscillations, indicating that observer correction mitigates payload inertial overshoot at zigzag reversal points. Note that at gain 0.3, the vehicle (body1) trajectory deviates from the waypoint path, but this is the intended consequence of the observer tilting the vehicle in the damping direction and is consistent with the control strategy. The abrupt turns at zigzag reversals excite payload swing, but the active damping of the proposed method suppresses this. The 28.3 % reduction in RMS relative displacement highlights the practical advantage of this method, which uses only the UAV’s standard IMU and throttle command and requires absolutely no additional sensors. 
+
+## 4. Discussion and Limitations 
+
+4.1. Significance of the Minimum-Parameter Design 
+
+The greatest contribution of this work is achieving swing suppression without requiring precise identification of the moment of inertia, cable length, or payload mass. Furthermore, the swing suppression control is implemented as a plug-and-play setpoint correction to the drone’s attitude controller. This characteristic yields three practical advantages: 1. Retrofittable to Commercial Off-The-Shelf (COTS) drones: The disturbance computation via IMU force output (3) and the feedforward correction to ArduPilot can be implemented as a single add-on script running at 100 Hz on a Pixhawk 6C. 2. No pre-flight calibration required: By estimating 𝜔 as an EKF state, the prior identification of cable length 
+
+𝐿 and payload mass 𝑚 𝐿 required by existing Euler–Lagrange-based observers becomes unnecessary (Section I, Table 1). The EKF functioned correctly with the same parameters across different payload masses. 3. Deployable across different platforms: The sole tuning parameter, the control gain 𝑘 𝑐 , has a wide effective range (0.1–0.3). Because the proposed method uses only sensors mounted on standard UAVs, deployment to different UAV platforms is straightforward.   
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 10 of 12 Payload Swing Estimation and Damping for Multirotor UAVs
+
+As shown in the detailed comparison in Table 1, the proposed method is the only approach that simultaneously satisfies: zero required known physical parameters, cable length unknown (estimated by EKF), and payload mass not required. The essential contributions are: (i) model simplification—the harmonic oscillator separates the fast vehicle attitude dynamics (delegated to ArduPilot) from the slow pendulum dynamics, estimating disturbance forces rather than swing angles; (ii) a 4-dimensional state per axis versus 7–13 dimensions in prior work, enabling embedded operation at 100 Hz; (iii) freedom from the known-cable-length constraint—autonomous convergence to within 0.0019–0.0150 Hz is achieved for three cable lengths. 
+
+4.2. Limitations 
+
+Five limitations define the scope of applicability: 1. Linear oscillation model —The harmonic oscillator model assumes sin 𝜃 ≈ 𝜃 within the nonlinear pendulum model. During the experiments, swing angles remained below 15 ◦ (approximation error < 5 % ); however, for swing angles exceeding 30 ◦, a discrepancy between the linear EKF model and the actual pendulum dynamics may emerge. 2. Cable slack/tension transitions —In the slack state, the observation model (3) becomes invalid, and acrobatic flight is outside the scope of applicability. 3. Convergence at high frequencies —At 𝐿 = 0 .28 m ( 𝑓 th = 0 .942 Hz), convergence failed due to low SNR (Signal-to-Noise Ratio); adaptive parameter adjustment may be an effective countermeasure. 4. Mass dependence of the control gain —With a fixed gain, control performance degrades monotonically with increasing mass; for heavier payloads, a lower gain is appropriate. Adaptive gain scheduling via mass estimation represents a practical solution. 5. Indoor validation only —All experiments were conducted in a windless indoor motion capture environment. Practical deployment requires outdoor flight experiments in GPS/GNSS environments to verify robustness against real-world factors such as wind disturbances, barometric altitude errors, and magnetic interference. 
+
+## 5. Conclusion 
+
+This paper proposed, implemented, and validated an onboard-sensor-based swing suppression method for quadrotor slung-load transport. The method uses only standard onboard sensors, requires no additional sensors, and demands no prior knowledge of physical parameters other than the vehicle mass and thrust curve. The method consists of an EKF (Extended Kalman Filter) disturbance observer that extracts the periodic swing component from IMU (Inertial Measurement Unit) output and the throttle command, treating the unknown pendulum frequency as an estimated state variable, together with an active damping controller that injects a feedforward correction angle into the existing ArduPilot attitude cascade. Flight experiments using a Pixhawk 6C-based quadrotor confirmed that the EKF autonomously converges to the pendulum frequency of an unknown cable length. Active damping control based on online frequency estimation achieved a reduction in the damping time constant. The external force estimation model exhibited little dependence on payload mass under the conditions investigated and was confirmed to be robust to changes in cable length. The proposed method requires no prior measurement of payload mass or cable length, offering high practicality for field deployment. The proposed method can be introduced to COTS drone platforms as a software-only, plug-and-play add-on feature (implementable as a single add-on script on ArduPilot without modifying internal attitude control loops), requiring neither sensor installation nor pre-flight calibration. Future challenges include adaptive gain scheduling via hovering-thrust mass estimation, variable-length cable (winch) systems, and validation in outdoor wind environments (all experiments in this paper were conducted indoors). 
+
+## CRediT authorship contribution statement 
+
+K. Taki: Software, Methodology, Validation, Investigation, Visualization, Writing - original draft. K. Umemoto: 
+
+Conceptualization, Writing - review & editing, Supervision, Project administration,Funding acquisition.   
+
+> K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 11 of 12
+
+Payload Swing Estimation and Damping for Multirotor UAVs 
+
+## Declaration of generative AI and AI-assisted technologies in the manuscript preparation process 
+
+During the preparation of this work the author(s) used GitHub Copilot and DeepSeek (an AI-powered large language model accessed via its API) in order to assist with manuscript drafting, language editing, and LaTeX formatting. After using this tool/service, the author(s) reviewed and edited the content as needed and take full responsibility for the content of the published article. 
+
+## References 
+
+[1] K. Sreenath, T. Lee, V. Kumar, Geometric control and differential flatness of a quadrotor UAV with a cable-suspended load, in: Proceedings of the 52nd IEEE Conference on Decision and Control (CDC), 2013. [2] M. E. Guerrero-Sánchez, D. A. Mercado-Ravell, R. Lozano, C. D. García-Beltrán, Swing-attenuation for a quadrotor transporting a cable-suspended payload, ISA Transactions 68 (2017) 433–449. doi:10.1016/j.isatra.2017.01.027 .[3] M. Jiroušek, T. Báča, M. Saska, Towards fully onboard state estimation and trajectory tracking for UAVs with suspended payload, in: Proceedings of the 22nd International Conference on Informatics in Control, Automation and Robotics (ICINCO), Vol. 2, SciTePress, 2025, pp. 128–138. doi:10.5220/0013789200003982 .[4] S. Dantu, R. D. Yadav, A. Rachakonda, S. Roy, S. Baldi, Adaptive tracking and anti-swing control of quadrotors carrying suspended payload under state-dependent uncertainty, IEEE/ASME Transactions on Mechatronics 30 (6) (2025) 4568–4580. doi:10.1109/TMECH.2024. 3492957 .[5] G. Serrano, M. Jacinto, J. Ribeiro-Gomes, J. Pinto, B. J. Guerreiro, A. Bernardino, R. Cunha, Physics-informed neural network for multirotor slung load systems modeling, in: Proceedings of the 2024 IEEE International Conference on Robotics and Automation (ICRA), 2024. [6] Y. Zhang, J. Shen, H. Qiu, M. Sha, Residual-learning-enhanced extended Kalman filter for real-time swing angle estimation in quadrotor-suspended-payload systems, Scientific Reports 16 (1) (2026) 18318. doi:10.1038/s41598-026-49015-y .[7] A. M. Nascimento, A. Sales, A. M. Lima, T. Nascimento, Sensorless state estimation and control for agile cable-suspended payload transport by quadrotors, arXiv preprint arXiv:2605.03666 .[8] X. Cai, J. Dai, F. Liu, P. Ye, ESO based adaptive neural network control for a quadrotor against wind and payload disturbances, Scientific Reports 16 (1) (2026) 7758. doi:10.1038/s41598-026-38931-8 .[9] J. Zeng, P. Kotaru, K. Sreenath, Geometric control and differential flatness of a quadrotor uav with load suspended from a pulley, in: 2019 American Control Conference (ACC), 2019, pp. 2420–2427. doi:10.23919/ACC.2019.8815173 .[10] H. Bai, S. Qi, R. Hu, Y. Zhang, Q. Zeng, Y. Zhu, Trajectory tracking and load anti-swing control for quadrotor-slung-load system under time-varying disturbances: A dual time-varying uncertainty and disturbance estimator-based approach, Control Engineering Practice 165 (2025) 106518. doi:10.1016/j.conengprac.2025.106518 .[11] ArduPilot Development Team, Motor thrust scaling — Copter documentation, https://ardupilot.org/copter/docs/ motor-thrust-scaling.html (2025). [12] E. Hairer, C. Lubich, G. Wanner, Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations, 2nd Edition, Springer, 2006. [13] P. J. Huber, Robust estimation of a location parameter, The Annals of Mathematical Statistics 35 (1) (1964) 73–101. [14] R. Lozano, I. Fantoni, Passivity-based control for quadrotor with suspended payload, in: Proceedings of the IEEE Conference on Decision and Control (CDC), 2015. [15] I. Fantoni, R. Lozano, Non-linear Control for Underactuated Mechanical Systems, Springer, 2002. 
+
+K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 12 of 12 Payload Swing Estimation and Damping for Multirotor UAVs 
+
+Figure 1: Control architecture: EKF observer integrated with ArduPilot cascade. 1.04 0.74 0.40 0.28 Cable length L [m] 2345678Convergence time [s] 
+
+Convergence time [s] |fpred  
+
+> x
+
+fx| [Hz] 
+
+0.60 0.65 0.70 0.75 0.80 0.85 0.90 |fpred 
+
+> x fx| [Hz]
+
+Figure 2: Convergence time and predicted–estimated frequency difference |𝑓 pred  
+
+> 𝑥
+
+−̂ 𝑓 𝑥 | versus cable length 𝐿 for EKF frequency convergence (variable cable length). |𝑓 pred  
+
+> 𝑥
+
+−̂ 𝑓 𝑥 | is the absolute difference between the EKF-predicted frequency 
+
+𝑓 pred  
+
+> 𝑥
+
+and the EKF-estimated frequency ̂ 𝑓 𝑥 , representing the innovation bias that drives EKF frequency updates. 𝑄 𝑊 =0.0005 fixed, 𝑛 = 1 trial per cable length, control OFF. K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 13 of 12 Payload Swing Estimation and Damping for Multirotor UAVs 0 5 10 15 20 25 30 35 40 
+
+Time from control ON [s]    
+
+> 0.6
+> 0.4
+> 0.2
+> 0.0 0.2 0.4 0.6
+> Relative displacement [m]
+> Gain=0.0 Gain=0.0 ( =6.41s)
+> Gain=0.3 Gain=0.3 ( =2.10s)
+> Gain=0.6 Gain=0.6 ( =8.01s)
+
+Figure 3: Relative displacement 𝑑 𝑟𝑒𝑙,𝑥 (solid lines) and exponential decay fits (dashed lines) for representative trials. Passive baseline (gain 0.0, blue; 𝜏 = 6 .41 s) exhibits slow natural decay, while gain 0.3 (optimal, red; 𝜏 = 2 .10 s) achieves rapid damping. Gain 0.6 (green; 𝜏 = 8 .01 s) exhibits initial behavioral instability. 0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 
+
+Time from control ON [s]   
+
+> 0.6
+> 0.4
+> 0.2
+> 0.0 0.2 0.4 0.6
+> Relative displacement [m]
+> Gain=0.0 Gain=0.0 ( =4.22s)
+> Gain=0.3 Gain=0.3 ( =1.72s)
+
+Figure 4: Relative displacement 𝑑 𝑟𝑒𝑙,𝑥 (solid lines) and exponential decay fits (dashed lines) for the first 20 s after control ON in the integrated online frequency estimation + active damping experiment (representative trials). Gain 0.0 (passive, blue; 𝜏 = 6 .45 s) shows slow natural decay, while gain 0.3 (active, red; 𝜏 = 1 .63 s) achieves rapid damping. Online frequency estimation enabled for both conditions. K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 14 of 12 Payload Swing Estimation and Damping for Multirotor UAVs 0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 0.50 
+
+0.25 
+
+0.00 0.25 0.50 0.75 1.00 1.25 
+
+> Relative displacement [m]
+
+0.134kg   
+
+> g0.0 ( =3.13s)
+> g0.3 ( =2.04s)
+
+0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 0.50 
+
+0.25 
+
+0.00 0.25 0.50 0.75 1.00 1.25 
+
+> Relative displacement [m]
+
+0.378kg   
+
+> g0.0 ( =3.60s)
+> g0.3 ( =0.70s)
+
+0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 0.50 
+
+0.25 
+
+0.00 0.25 0.50 0.75 1.00 1.25 
+
+> Relative displacement [m]
+
+0.421kg   
+
+> g0.0 ( =3.69s)
+> g0.3 ( =1.93s)
+
+0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 
+
+Time from control ON [s] 
+
+0.50 
+
+0.25 
+
+0.00 0.25 0.50 0.75 1.00 1.25 
+
+> Relative displacement [m]
+
+0.471kg   
+
+> g0.0 ( =3.84s)
+> g0.3 ( =6.54s)
+
+Figure 5: Relative displacement 𝑑 𝑟𝑒𝑙,𝑥 (solid lines) and exponential decay fits (dashed lines) for gain 0.0 (blue) and gain 0.3 (orange) across payload masses for representative trials. Panels: 0.134, 0.378, 0.421, and 0.471 kg. 𝜏 values shown in legends. K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 15 of 12 Payload Swing Estimation and Damping for Multirotor UAVs 1.25 1.00 0.75 0.50 0.25 0.00 0.25 North [m] 0.6 
+
+0.4 
+
+0.2 
+
+0.0 0.2 0.4 0.6 East [m] 
+
+start 
+
+gain 0.0 (correction OFF) 
+
+1.25 1.00 0.75 0.50 0.25 0.00 0.25 North [m] 0.6 
+
+0.4 
+
+0.2 
+
+0.0 0.2 0.4 0.6 East [m] 
+
+start 
+
+gain 0.3 (correction ON) 
+
+WP path body1 (drone) body2 (slung load) 
+
+Figure 6: Trajectories in the XZ (North–East) plane for zigzag waypoint tracking (representative trials). Blue: quadrotor body (body1). Orange: slung load (body2). Red dashed: reference path. Top: gain 0.0 (correction OFF); Bottom: gain 0.3 (correction ON). Online frequency estimation enabled. K. Taki and K. Umemoto: Preprint submitted to Elsevier Page 16 of 12
