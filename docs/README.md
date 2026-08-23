@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-22</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-22 19:50:52 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-23 20:31:09 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读7篇、速读10篇共17篇，重点聚焦无人机空中操作与自主导航前沿。</p>
-<p>最值得关注倾斜多旋翼无偏移操作与无参数负载摆动抑制两项9.0分研究，显著提升吊挂飞行稳定性。</p>
-<p>建议普通读者可延伸速读中的神经图运动规划与嵌入式导航方法，理解多旋翼与具身智能的交叉趋势。</p>
+<p>今日精读2篇、速读5篇，聚焦神经符号世界模型与机器人控制前沿。</p>
+<p>最值得看零样本任务迁移的神经符号世界模型，及不确定遥操作系统的自适应鲁棒控制。</p>
+<p>建议后续关注世界模型在具身智能与多智能体协作中的落地潜力。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Effector-Centric NMPC of Tiltable-Multirotors for Offset-Free Omnidirectional Aerial Manipulation">Effector-Centric NMPC of Tiltable-Multirotors for Offset-Free Omnidirectional Aerial Manipulation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs">Payload Swing Estimation and Damping Without Payload Parameters for Multirotor UAVs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Hydra-0: Action Flow for Generalist World Modeling and Control">Hydra-0: Action Flow for Generalist World Modeling and Control</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Towards Zero-Shot Task Transfer with Neurosymbolic World Models">Towards Zero-Shot Task Transfer with Neurosymbolic World Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions">Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Accelerating Mixed Discrete-Continuous Motion Planning via Neural Graphs of Convex Sets">Accelerating Mixed Discrete-Continuous Motion Planning via Neural Graphs of Convex Sets</span></li><li><span class="dpr-home-dashboard-paper-title" title="Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation">Contours-Seeking Proposal Density Particle Filter and Resilient Terrain-Referenced Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation">Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WONDER: A Radio World Model-based Negotiation Framework for Multi-Agent UAV Coverage Optimization">WONDER: A Radio World Model-based Negotiation Framework for Multi-Agent UAV Coverage Optimization</span></li><li><span class="dpr-home-dashboard-paper-title" title="DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation">DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation</span></li><li><span class="dpr-home-dashboard-paper-title" title="GigaBrain-WBC-0.5: A Behavior World Model for Robust Whole-Body Control with Environment Interaction">GigaBrain-WBC-0.5: A Behavior World Model for Robust Whole-Body Control with Environment Interaction</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 

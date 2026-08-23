@@ -1,0 +1,1443 @@
+Title: Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions
+
+URL Source: https://arxiv.org/pdf/2608.20182v1
+
+Published Time: Fri, 21 Aug 2026 01:03:36 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+## Mohammadali Ghaemifar a,∗, Arshia Goshtasbi a, Arian Hajizadeh a, Armin Attarzadeh a and Erfan Riazati a
+
+> a
+
+Department of Electrical Engineering, Iran University of Science and Technology (IUST) , Tehran, Iran 
+
+A R T I C L E I N F O 
+
+Keywords :Bilateral teleoperation adaptive RBFNN control model uncertainty communication delay Lyapunov–Krasovskii functional linear matrix inequality 
+
+A B S T R A C T 
+
+Bilateral teleoperation requires stability despite uncertain master and slave dynamics and delayed communication channels. Existing radial basis function neural network (RBFNN) controllers mainly differ in uncertainty decomposition, while online adaptive parameters often increase with network size. This paper proposes a compact two-sided adaptive controller for a nonlinear bilateral teleoperator with constant forward and backward delays. Operator and environment impedances are incorporated into the manipulator dynamics, and each side uses only two scalar adaptive estimates: one for the ideal RBF weight norm and another for the combined effects of friction, approximation error, and disturbances. Both estimates are updated through 
+
+𝜎 -modification, resulting in only two adaptive parameters regardless of the number of RBF nodes. A Lyapunov–Krasovskii functional integrating sliding-variable energy, estimation errors, and delay-dependent integral terms is developed. Free-weighting matrices based on sliding-surface identities provide delay-dependent matrix conditions that guarantee uniform ultimate boundedness of synchronization errors, sliding variables, and adaptive estimates. Simulations on two 2-degree-of-freedom (2-DOF) revolute manipulators with friction, external disturbance, and stepwise operator inputs demonstrate synchronization within approximately 2 s and reveal the trade-off between accuracy and control chattering. 
+
+## 1. Introduction 
+
+Bilateral teleoperation extends human manipulation capability to locations where direct intervention is difficult, unsafe, or impractical. Manipulator-based teleoperation has consequently been employed in applications ranging from remote maintenance in hazardous facilities to robot-assisted minimally invasive surgery [1, 2]. In these systems, commands generated at the master side are transmitted to a remote slave manipulator, and satisfactory operation requires stable and accurate synchronization between the two robots. The continuing development of such systems has made reliable control under realistic communication and modeling conditions an important problem in telerobotics. Two difficulties are particularly important in this regard. First, communication between the master and slave introduces delay, which may degrade tracking performance and can adversely affect closed-loop stability. The practical influence of communication latency has also been observed experimentally in recent telerobotic systems [3]. Second, an accurate dynamic model is rarely available in practice. Manipulator parameters may be uncertain, while joint friction, approximation errors, external disturbances, and interaction with the operator and environment introduce additional nonlinear effects. A controller intended for practical bilateral operation must therefore provide robustness to both delayed information exchange and uncertain nonlinear dynamics. This paper considers a nonlinear bilateral teleoperation system with constant communication delays and uncertain master and slave dynamics. The passive components of the operator and environment are represented through mass– spring–damper impedances and incorporated into the corresponding manipulator dynamics, while the remaining nonlinear uncertainty is approximated using radial basis function neural networks (RBFNNs). Rather than adapting every neural-network weight online, each side updates a scalar estimate associated with the norm of the ideal RBFNN weights. A second adaptive quantity estimates a lumped bound containing joint friction, neural approximation residual, and external disturbance. This construction keeps the number of online adaptive parameters independent of the number of RBF nodes while retaining nonlinear approximation capability. 
+
+> ∗
+
+Corresponding author. 
+
+m_ghaemifar@elec.iust.ac.ir (M. Ghaemifar); arshia_goshtasbi98@elec.iust.ac.ir (A. Goshtasbi); 
+
+arian_hajizadeh@elec.iust.ac.ir (A. Hajizadeh); armin_attarzadeh@elec.iust.ac.ir (A. Attarzadeh); 
+
+erfan_riazati@elec.iust.ac.ir (E. Riazati) 
+
+Ghaemifar et al.: Preprint Version Page 1 of 20 arXiv:2608.20182v1 [eess.SY] 20 Aug 2026 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+The main objective is to establish the adaptive compensation and the effect of communication delay within the same stability analysis. To this end, a Lyapunov–Krasovskii functional is constructed by combining the sliding-variable energy, adaptive-estimation errors, and delay-dependent integral terms. Free-weighting terms derived from the sliding-variable identities are introduced to obtain feasible delay-dependent stability conditions. The resulting conditions are expressed as linear matrix inequalities (LMIs), whose feasibility can be tested for a prescribed communication delay. Under these conditions, uniform ultimate boundedness of the synchronization errors, sliding variables, and adaptive estimates is established. The remainder of this paper is organized as follows. Section 2 reviews the related literature. Section 3 introduces the required preliminaries, including the bilateral teleoperator dynamics, operator/environment models, and RBFNN approximation properties. Section 4 develops the proposed controller and adaptive laws. The Lyapunov–Krasovskii stability analysis, the resulting LMI conditions, and the investigation of admissible communication delays are presented in Section 5. Section 6 presents the simulation results. Finally, Section 7 concludes the paper. 
+
+## 2. Related Work 
+
+Recent manipulator teleoperation research has considered applications such as robot-assisted minimally invasive surgery [2], immersive bimanual manipulation [4], and force-sensitive robot programming [5]. From a control perspective, the main developments can be broadly distinguished by how communication delay and uncertain robot dynamics are treated. Early approaches concentrated primarily on preserving stability of the delayed bilateral loop, whereas subsequent adaptive and approximation-based methods placed increasing emphasis on reducing dependence on an accurate dynamic model. Model uncertainty in a teleoperator is not limited to errors in a few nominal parameters. Inertia, Coriolis and centrifugal terms, gravity, payload, and geometric quantities may vary or be imperfectly known, while joint friction and external disturbances add effects that are difficult to represent accurately in advance. Communication delay creates a second source of difficulty and can further deteriorate tracking. Early work on delayed bilateral teleoperation mainly relied on passivity-based ideas, including scattering and wave-variable formulations [6, 7]. Lyapunov-based proportional-derivative (PD) [8], sliding-mode [9], and robust 𝐻 ∞ designs [10] provided alternative ways of maintaining stability and tracking performance. These methods remain important baselines, but model-based designs usually rely on nominal dynamics or known uncertainty descriptions, whereas passivity-based designs may trade tracking quality for delay robustness. More importantly, none of these classical approaches is intended to learn the uncertain nonlinear dynamics online. This motivated the use of adaptive control in teleoperation. Adaptive control first addressed uncertainty by exploiting the known structure of robot dynamics. When the uncertain dynamics can be written in a linearly parameterized form, a known regressor can be combined with online estimates of the unknown parameters, as in classical nonlinear adaptive teleoperation [11]. This idea has also been used in position-error-based bilateral control with constant delay [12] and extended to cooperative single-master/multiple-slave systems with time-varying formation and communication delay [13]. Related robust adaptive and terminal-sliding formulations have been developed for uncertain manipulators with bounded disturbances and time-varying delays [14]. Such methods are effective when the uncertain part of the model is described by a known regressor. Their limitation is equally clear: the structure of the model must still be specified in advance, and unmodeled nonlinearities or effects outside that parameterization must be handled through additional bounds or robust terms. This becomes restrictive when model uncertainty, friction, and external disturbances have to be treated together. For this reason, fuzzy systems and neural networks have increasingly been used as online approximators. Fuzzy logic systems and neural networks relax the need for an explicit linear parameterization by approximating unknown nonlinear mappings directly. Adaptive fuzzy synchronization has been studied for teleoperation with stochastic time-varying delays [15], while neural controllers have been combined with prescribed-performance constraints [16] and compensation of backlash-like hysteresis [17]. Fuzzy-neural backstepping has also been used to learn uncertain robot and environment dynamics under asymmetric delays [18]. A different branch uses wavelet neural networks: the hybrid neuro-PID scheme in [19], for example, employs a self-recurrent wavelet identifier and an adaptive proportional processing network to improve delayed tracking when the slave parameters vary. These approaches differ considerably in implementation, but most share a Lyapunov-based adaptation mechanism in which the approximation parameters are updated together with the controller. Their main practical cost is the number of online parameters: richer fuzzy rule bases or larger neural representations generally improve approximation capability at the expense of computation and tuning. In addition, friction and disturbance effects are often included in a lumped learned function or   
+
+> Ghaemifar et al.: Preprint Version Page 2 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions
+
+handled by auxiliary robust terms. The RBF neural network is particularly convenient in this setting because it retains nonlinear approximation capability while remaining linear in the adjustable weights. RBFNN-based controllers have therefore received considerable attention in teleoperation. The single-hidden-layer structure and localized basis functions allow the unknown nonlinear term to be approximated with a relatively simple adaptive law. Early RBF position controllers for constant-delay bilateral manipulators included both acceleration-dependent and acceleration-free realizations [20]. RBF approximation was later combined with stochastic-delay and LMI analysis [21], and with wave-variable/passivity mechanisms for time-varying communication channels [22]. Other designs used RBF models together with adaptive robust control and learned environment representations [23]. A closely related model-approximation approach considered constant delay, uncertain combined robot/operator/environment dynamics, internal friction, and external disturbance while reducing the number of online adaptive quantities [24]. Finite-time RBFNN controllers have also been developed for delayed teleoperation with uncertain robot and interaction dynamics [25]. Taken together, these studies show that RBFNNs provide a useful compromise between nonlinear approximation and implementable adaptation. At the same time, the way in which the different uncertainty sources are represented remains quite different from one design to another. Several issues are still apparent in the RBFNN literature. The first is the familiar trade-off between approximation accuracy and online complexity. A larger set of basis functions can improve approximation over the operating region, but it also increases the number of parameters that must be updated. The second issue is how the uncertain terms are grouped before adaptation. Lumped approximation is common and is not, by itself, a distinguishing feature. In particular, [24] is the closest work to the present problem setting because it also forms a combined joint-space model and uses an RBF representation for its uncertain nonlinear dynamics. Its compact adaptive structure then uses an aggregate robust bound that collects friction, external disturbance, and approximation-residual effects. In the present formulation, the nonlinear model uncertainty is likewise treated as a lumped RBF approximation, whereas the unknown friction and disturbance bounds are retained as separate adaptive quantities. The relevant distinction is therefore not “lumped versus non-lumped” modeling, but which physical terms are collected in the neural model and which remain explicit in the adaptive robust part of the controller. A further issue is the use of acceleration or delayed derivative information in some RBF designs, although acceleration-free alternatives have been reported [20]. Finally, only a limited part of this literature first combines the robot and interaction dynamics in joint space and then applies the neural approximation to the resulting uncertain model. These differences make the treatment of uncertainty difficult to compare across existing schemes. Nevertheless, several issues remain insufficiently addressed in the existing literature. First, the reviewed RBFNN controllers differ substantially in what they place inside the lumped neural term and what they leave to robust or adaptive compensation. This point is especially important for [24]: like the present approach, it uses lumped model approximation under constant delay and explicitly includes friction and external disturbance. The main comparison therefore concerns the uncertainty partition. In [24], friction, disturbance, and approximation-residual effects enter an aggregate bound, whereas the present structure uses the RBFNN for the lumped nonlinear model uncertainty and retains dedicated adaptive bounds for friction and external disturbance. Second, the balance between RBF approximation accuracy and the number of online adaptive parameters is usually fixed through the chosen network structure rather than addressed explicitly in the control architecture. Third, unified joint-space modeling of the master/operator and slave/environment sides before neural approximation is still uncommon, particularly when the communication delay is included in the stability analysis. These observations suggest that the remaining problem is not simply whether uncertainty can be compensated, but how the lumped model approximation and the remaining uncertainty bounds are organized within one coherent delayed bilateral control framework. The above studies show that adaptive neural approximation and delay compensation have both been extensively investigated in bilateral teleoperation. However, they are commonly introduced through separate elements of the controller and stability analysis. In the present work, the RBFNN approximation, the adaptive compensation of the remaining lumped uncertainty, and the delay-dependent stability conditions are developed within the same closed-loop framework. Based on the preceding discussion, the main contributions of this paper are summarized as follows. • A compact two-sided RBFNN adaptive controller is developed for uncertain bilateral teleoperation. For each manipulator, the RBFNN is used to approximate the lumped nonlinear model uncertainty, while only a scalar estimate related to the squared norm of the ideal network weights is updated online. An additional scalar adaptive quantity estimates a bound containing joint friction, the neural approximation residual, and the external   
+
+> Ghaemifar et al.: Preprint Version Page 3 of 20
+
+Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Table 1 
+
+Comparison of representative adaptive uncertainty-handling methods for bilateral teleoperation. 
+
+Ref. Method Model uncertainty Friction / disturbance Online adaptation Delay Stability proof 
+
+[12] PEB adaptive (2022) Known linear regressor Not included in core model Physical parameter vector Const. Lyapunov [26] Robust adaptive (2020) Nominal model + unc. bounds Aggregate F/D bounds Uncertainty magnitudes TV asym. Lyapunov / ISS [14] Adaptive TSM (2021) Known dynamic regressor Bounded disturbance Param. + robust bounds TV asym. Lyapunov / FT [27] IT2-FNN adaptive (2020) Aggregate fuzzy–NN approx. Embedded in aggregate unc. FNN params. + learning rate TV asym. LKF / Lyapunov [20] Adaptive RBFNN (2013) RBF residual approx. Friction in residual; D not central RBF weights + bound terms Const. Lyapunov [21] Stochastic RBFNN (2014) RBF model-mismatch approx. F/D in residual compensation RBF adaptive params. Stoch. asym. MJ-LKF / LMI [25] Finite-time RBFNN (2022) Composite RBF approx. F/D + residual bounds Full RBF weights + scalars TV asym. LKF / FT-UUB [24] RBFNN uncertainty estimation (2021) Reduced-order RBF model approx. F + D + NN residual grouped in one bound Scalar weight-energy surrogate + aggregate uncertainty estimate Const. UUB 
+
+Ours Adaptive RBFNN estimation Joint-space lumped RBF model approx. F + D + NN residual handled by adaptive robust bound Norm-based RBF adaptation + online residual-bound estimation Const. LKF / LMI; UUB  
+
+> Abbreviations: PEB = position-error-based; TSM = terminal sliding mode; IT2-FNN = interval type-2 fuzzy neural network; F/D = friction/disturbance; TV = time-varying; Const. = constant; Stoch. = stochastic; MJ = Markov jump; LKF = Lyapunov–Krasovskii functional; ISS = input-to-state stability; FT = finite-time; UUB = uniform ultimate boundedness. The proposed method and [24] employ the same compact uncertainty-estimation structure: one scalar estimate associated with the ideal RBF weight norm and one scalar adaptive bound encompassing friction, external disturbance, and the RBF approximation residual.
+
+disturbance. Consequently, the number of online adaptive parameters does not increase with the number of RBF nodes. • Neural adaptation and communication-delay effects are treated within a single Lyapunov–Krasovskii analysis. The proposed functional simultaneously contains the sliding-variable energy, the adaptive-estimation errors, and delay-dependent single- and double-integral terms associated with the communication channels. Thus, the RBFNN compensation and the delay-dependent dissipation are certified in one stability argument rather than assigning the communication delay to an independent passivity transformation, predictor, or delay observer. • A free-weighting construction is introduced to obtain feasible delay-dependent stability conditions. A direct bounding procedure leads to an incompatible matrix condition because the delayed boundary terms cannot dominate the resulting current-state terms with positive Krasovskii weighting matrices. To overcome this difficulty, identically zero terms generated from the sliding-variable relations are introduced into the Lyapunov derivative. The resulting free matrices provide additional degrees of freedom and lead to a pair of tractable delay-dependent LMIs. • The stability conditions provide a computable admissible-delay criterion. For a prescribed set of controller and adaptation parameters, feasibility of the resulting LMIs can be tested directly as a function of the communication delay. In addition, the closed-loop analysis establishes uniform ultimate boundedness of the sliding variables, synchronization errors, and adaptive estimates. The theoretical results are evaluated through simulations of two nonlinear revolute manipulators subject to model uncertainty, joint friction, external disturbance, and operator excitation. 
+
+## 3. Preliminaries 
+
+3.1. Mathematical Preliminaries 
+
+Throughout the paper, ‖⋅‖ denotes the Euclidean vector norm and the induced spectral matrix norm, and ‖⋅‖𝐹 the Frobenius norm. For a symmetric matrix 𝑋 , 𝑋 ≻ 0 (𝑋 ⪰ 0 ) means that 𝑋 is positive definite (positive semidefinite), 
+
+Ghaemifar et al.: Preprint Version Page 4 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+𝜆 min {𝑋 } and 𝜆 max {𝑋 } denote its smallest and largest eigenvalues. The index 𝑖 ∈ { 𝑚, 𝑠 } refers to the master and the slave robot. The operator and environment damping matrices in the master/slave dynamic model are constant and positive definite, 𝐵 ℎ ≻ 0 and 𝐵 𝑒 ≻ 0; for brevity we set 
+
+𝐵 𝑚 ∶= 𝐵 ℎ, 𝐵 𝑠 ∶= 𝐵 𝑒 . (1) The master and slave manipulators satisfy the following properties. 
+
+Property 1. For each 𝑖 ∈ { 𝑚, 𝑠 } the inertia matrix 𝑀 𝑖 (𝑞 𝑖 ) is symmetric positive definite and uniformly bounded, 
+
+0 < 𝜆 min {𝑀 𝑖 (𝑞 𝑖 )} 𝐼 ⪯ 𝑀 𝑖 (𝑞 𝑖 ) ⪯ 𝜆 max {𝑀 𝑖 (𝑞 𝑖 )} 𝐼 < ∞. (2) 
+
+Property 2. Each manipulator model absorbs the constant viscous damping 𝐵 𝑖 into its velocity-dependent matrix, so that 𝐶 𝑖 = 𝐶 0 
+
+> 𝑖
+
++ 𝐵 𝑖 , where 𝐶 0 
+
+> 𝑖
+
+(𝑞 𝑖 ,̇𝑞 𝑖 ) is the standard Christoffel matrix for which ̇ 𝑀 𝑖 − 2 𝐶 0 
+
+> 𝑖
+
+is skew-symmetric. Consequently, for every 𝜉 ∈ ℝ𝑛 ,
+
+𝜉 𝑇 (̇ 𝑀 𝑖 (𝑞 𝑖 ) − 2 𝐶 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 )) 𝜉 = −2 𝜉 𝑇 𝐵 𝑖 𝜉, 𝑖 ∈ { 𝑚, 𝑠 }, (3) with 𝐵 𝑖 defined in (1). 
+
+Property 3. There exists a known regressor matrix 𝑌 𝑧 (𝑞 𝑖 ,̇𝑞 𝑖 ,̈𝑞 𝑖 ) ∈ ℝ𝑛 ×𝑟 and a constant unknown parameter vector 
+
+𝜃 𝑧 ∈ ℝ𝑟 such that 
+
+𝑀 𝑖 (𝑞 𝑖 )̈𝑞 𝑖 + 𝐶 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 )̇ 𝑞 𝑖 + 𝐺 𝑖 (𝑞 𝑖 ) = 𝑌 𝑧 (𝑞 𝑖 ,̇𝑞 𝑖 ,̈𝑞 𝑖 ) 𝜃 𝑧 . (4) The control design and the subsequent analysis rely on the following assumptions. 
+
+Assumption 1. For each 𝑖 ∈ { 𝑚, 𝑠 } there exists an unknown positive constant 𝑑 𝑖 such that 
+
+‖‖𝛿 𝑖 (𝑋 𝑖 )‖‖ + ‖‖𝑓 𝑐𝑖 (̇𝑞 𝑖 )‖‖ + ‖‖𝑓 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 )‖‖ ≤ 𝑑 𝑖 , (5) where 𝑓 𝑖 and 𝑓 𝑐𝑖 denote the internal and external friction terms. 
+
+Assumption 2. The forward channel (master to slave) and the backward channel (slave to master) introduce constant transmission delays, ̇𝑇 𝑚 =̇ 𝑇 𝑠 = 0 , 0 ≤ 𝑇 𝑚 ≤̄ 𝑇 𝑚 , 0 ≤ 𝑇 𝑠 ≤̄ 𝑇 𝑠 , (6) where ̄ 𝑇 𝑚 and ̄ 𝑇 𝑠 are known bounds. 
+
+Definition 1 ([28]) . The solution 𝑥 (𝑡 ) is uniformly ultimately bounded with ultimate bound 𝑏 if there exist positive constants 𝑏 and 𝑐 , independent of the initial time 𝑡 0, and, for every 𝑎 ∈ (0 , 𝑐 ), a time 𝑇 = 𝑇 (𝑎, 𝑏 ) ≥ 0 independent of 
+
+𝑡 0, such that 
+
+‖‖𝑥 (𝑡 0)‖‖ ≤ 𝑎 ⟹ ‖𝑥 (𝑡 )‖ ≤ 𝑏, ∀ 𝑡 ≥ 𝑡 0 + 𝑇 . (7) 
+
+Lemma 1 (Jensen’s inequality [29]) . For any constant ℎ > 0, any 𝑅 = 𝑅 𝑇 ≻ 0, and any integrable 𝜔 ∶ [ 𝑡 −ℎ, 𝑡 ] → ℝ𝑛 ,
+
+∫
+
+> 𝑡 𝑡 −ℎ
+
+𝜔 (𝜎 )𝑇 𝑅 𝜔 (𝜎 ) 𝑑𝜎 ≥ 1
+
+ℎ
+
+(
+
+∫
+
+> 𝑡 𝑡 −ℎ
+
+𝜔 (𝜎 ) 𝑑𝜎 
+
+)𝑇 
+
+𝑅 
+
+(
+
+∫
+
+> 𝑡 𝑡 −ℎ
+
+𝜔 (𝜎 ) 𝑑𝜎 
+
+)
+
+. (8) 
+
+Lemma 2 (Schur complement [30]) . Let 𝑆 11 = 𝑆 𝑇 
+
+> 11
+
+, 𝑆 22 = 𝑆 𝑇 
+
+> 22
+
+, and 𝑆 12 be real matrices of compatible dimensions. Then 
+
+[𝑆 11 𝑆 12 
+
+𝑆 𝑇  
+
+> 12
+
+𝑆 22 
+
+]
+
+≺ 0 ⟺ 𝑆 22 ≺ 0 and 𝑆 11 − 𝑆 12 𝑆 −1 22 𝑆 𝑇  
+
+> 12
+
+≺ 0. (9) 
+
+Lemma 3 (Young’s inequality) . For any 𝑎, 𝑏 ∈ ℝ𝑛 and any scalar 𝜖 > 0,
+
+𝑎 𝑇 𝑏 ≤ 𝜖 
+
+2 𝑎 𝑇 𝑎 + 12𝜖 𝑏 𝑇 𝑏. (10) 
+
+Ghaemifar et al.: Preprint Version Page 5 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+3.2. Radial Basis Function Neural Networks 
+
+RBFNNs are known to be approximators for unknown nonlinear functions due to their simple structure and generalization capability. An RBFNN consists of two layers: a hidden layer that maps the input into a high-dimensional space using basis (usually Gaussian) functions, and an output layer that produces a linear combination of the hidden layer outputs with adjustable weights. The structure of an RBFNN can be seen in Figure 1. Σ   
+
+> 𝜎 1∙
+> 𝜎 2∙
+> 𝜎 𝑙 ∙
+> 𝓌 2
+
+𝑋 
+
+> 𝑥 1
+> 𝑥 2
+> 𝑥 𝑝
+> 𝒇 𝒏𝒏 (𝑿)
+
+Figure 1: Structure of an RBFNN For an unknown continuous function 𝑓 (𝑋 ) ∶ ℝ𝑝 → ℝ, the RBFNN approximation is given by 
+
+𝑓 𝑛𝑛 (𝑋 ) = 𝑊 𝑇 𝜎 (𝑋 ), (11) where 𝑋 ∈ Ω𝑋 ⊂ ℝ𝑝 is the input vector, 𝑊 = [𝑤 1, 𝑤 2, … , 𝑤 𝑙 ]𝑇 ∈ ℝ𝑙 is the weight vector, and 𝜎 (𝑋 ) =[𝜎 1(𝑋 ), 𝜎 2(𝑋 ), … , 𝜎 𝑙 (𝑋 )] 𝑇 is the vector of Gaussian basis functions. Each Gaussian function is defined as 
+
+𝜎 𝑗 (𝑋 ) = exp 
+
+[
+
+− (𝑋 − 𝑣 𝑗 )𝑇 (𝑋 − 𝑣 𝑗 )
+
+𝜂 2
+
+> 𝑗
+
+]
+
+, 𝑗 = 1 , 2, … , 𝑙, (12) where 𝑣 𝑗 and 𝜂 𝑗 > 0 are the center and width of the 𝑗 -th Gaussian function, respectively. It has been shown that for a sufficiently large number of nodes 𝑙 , RBFNNs can approximate any continuous function over a compact set Ω𝑋 ⊂ ℝ𝑝 with arbitrary accuracy [31, 32]. Specifically, there exists an ideal weight vector 𝑊 ∗ such that 
+
+𝑓 (𝑋 ) = 𝑊 ∗𝑇 𝜎 (𝑋 ) + 𝜀 (𝑋 ), (13) where 𝜀 (𝑋 ) is the approximation error satisfying |𝜀 (𝑋 )| ≤̄ 𝜀 , with ̄𝜀 being an unknown positive constant. The ideal weight vector 𝑊 ∗ is defined as 
+
+𝑊 ∗ ∶= arg min  
+
+> 𝑊 ∈ℝ𝑙
+
+{
+
+sup 
+
+> 𝑋 ∈Ω 𝑋
+
+|||𝐹 (𝑋 ) − 𝑊 𝑇 𝜎 (𝑋 )|||}
+
+. (14) In the teleoperation system, the network input vectors for the master and slave controllers are selected as 
+
+𝑋 𝑚 = [̈𝑞 𝑠 (𝑡 − 𝑇 𝑠 )̇ 𝑞 𝑠 (𝑡 − 𝑇 𝑠 ) 𝑞 𝑠 (𝑡 − 𝑇 𝑠 )̇ 𝑞 𝑚 (𝑡 ) 𝑞 𝑚 (𝑡 )]𝑇 , (15) 
+
+𝑋 𝑠 = [̈𝑞 𝑚 (𝑡 − 𝑇 𝑚 )̇ 𝑞 𝑚 (𝑡 − 𝑇 𝑚 ) 𝑞 𝑚 (𝑡 − 𝑇 𝑚 )̇ 𝑞 𝑠 (𝑡 ) 𝑞 𝑠 (𝑡 )]𝑇 . (16) These inputs are chosen to capture the delayed dynamics of the teleoperation system, enabling the RBFNN to approximate the uncertainties and consequently enabling the controller to compensate them. 
+
+Ghaemifar et al.: Preprint Version Page 6 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+3.3. Teleoperation System Dynamics 
+
+The dynamics of the master–slave robotic system are described by the following Euler–Lagrange equations: 
+
+{
+
+𝑀 𝑞 𝑚 (𝑞 𝑚 )̈𝑞 𝑚 + 𝐶 𝑞 𝑚 (𝑞 𝑚 ,̇𝑞 𝑚 )̇𝑞 𝑚 + 𝐺 𝑞 𝑚 (𝑞 𝑚 ) = 𝜏 𝑚 + 𝐽 𝑇 𝑚 (𝑞 𝑚 )𝐹 ℎ,𝑀 𝑞 𝑠 (𝑞 𝑠 )̈𝑞 𝑠 + 𝐶 𝑞 𝑠 (𝑞 𝑠 ,̇𝑞 𝑠 )̇𝑞 𝑠 + 𝐺 𝑞 𝑠 (𝑞 𝑠 ) = 𝜏 𝑠 − 𝐽 𝑇 𝑠 (𝑞 𝑠 )𝐹 𝑒 . (17) For simplicity in this text, 𝑖 = 𝑚, 𝑠 describes either the master or the slave configuration. 𝑞 𝑖 ∈ ℝ𝑛 represents the joint angular position, and consequently ̇ 𝑞 𝑖 ∈ ℝ𝑛 and ̈ 𝑞 𝑖 ∈ ℝ𝑛 describe the joint angular velocity and acceleration. 
+
+𝑀 𝑞 𝑖 (𝑞 𝑖 ) ∈ ℝ𝑛 ×𝑛 is the inertia matrix, which, as stated in Property 1, is symmetric positive definite and uniformly bounded. 𝐶 𝑞 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) ∈ ℝ𝑛 ×𝑛 denotes the Coriolis and centripetal matrix; by Property 2, this matrix incorporates the constant viscous damping 𝐵 𝑖 so that ̇ 𝑀 𝑞 𝑖 − 2 𝐶 𝑞 𝑖 satisfies the skew-symmetry relation given in (3). 𝐺 𝑞 𝑖 (𝑞 𝑖 ) ∈ ℝ𝑛 
+
+represents the generalized gravity vector. 𝜏 𝑖 ∈ ℝ𝑛 is the actuator torque, selected as the control input. 𝐽 𝑖 ∈ ℝ𝑛 ×𝑝 
+
+denotes the Jacobian matrix that maps the human operator or environmental forces applied to the end-effector ( 𝐹 𝑘 ∈ ℝ𝑝 ,
+
+𝑘 = ℎ, 𝑒 ) to the robot joint torque, and 𝑝 is the dimension of the task space. The operator and environment dynamics are described by the following linear time-invariant (LTI) models: 
+
+{
+
+𝐹 ℎ = 𝑓 ∗ 
+
+> ℎ
+
+− 𝑀 ℎ̈𝑥 𝑚 − 𝐵 ℎ̇𝑥 𝑚 − 𝐾 ℎ𝑥 𝑚 
+
+𝐹 𝑒 = 𝑓 ∗ 
+
+> 𝑒
+
++ 𝑀 𝑒 ̈𝑥 𝑠 + 𝐵 𝑒 ̇𝑥 𝑠 + 𝐾 𝑒 𝑥 𝑠 
+
+(18) The matrices 𝑀 𝑘 , 𝐵 𝑘 , and 𝐾 𝑘 are positive-definite, representing the mass, damping, and stiffness coefficients of the human operator and environment, respectively. The vectors 𝑥 𝑖 ,̇ 𝑥 𝑖 , and ̈𝑥 𝑖 ∈ ℝ𝑛 denote the end-effector position, velocity, and acceleration in task space. The nonhomogeneous terms 𝑓 ∗ 
+
+> 𝑘
+
+are assumed to be bounded. Substituting the force models and kinematic relationships into the original robot dynamics (17), the combined system dynamics become: 
+
+{
+
+𝑀 𝑚 (𝑞 𝑚 )̈𝑞 𝑚 + 𝐶 𝑚 (𝑞 𝑚 ,̇𝑞 𝑚 )̇𝑞 𝑚 + 𝐺 𝑚 (𝑞 𝑚 ) = 𝜏 𝑚 + 𝜏 ℎ
+
+𝑀 𝑠 (𝑞 𝑠 )̈𝑞 𝑠 + 𝐶 𝑠 (𝑞 𝑠 ,̇𝑞 𝑠 )̇𝑞 𝑠 + 𝐺 𝑠 (𝑞 𝑠 ) = 𝜏 𝑠 + 𝜏 𝑒 
+
+(19) where the combined inertia, Coriolis, and gravity matrices are defined as: 
+
+⎧⎪⎨⎪⎩
+
+𝑀 𝑖 (𝑞 𝑖 ) = 𝑀 𝑞𝑖 (𝑞 𝑖 ) + 𝐽 𝑇 𝑖 𝑀 𝑘 𝐽 𝑖 
+
+𝐶 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) = 𝐶 𝑞𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) + 𝐽 𝑇 𝑖 𝑀 𝑘 ̇ 𝐽 𝑖 + 𝐽 𝑇 𝑖 𝐵 𝑘 𝐽 𝑖 
+
+𝐺 𝑖 (𝑞 𝑖 ) = 𝐺 𝑞𝑖 (𝑞 𝑖 ) + 𝐽 𝑇 𝑖 𝐾 𝑘 𝐻 𝑖 (𝑞 𝑖 )
+
+(20) The equivalent joint-space torque contributions from the human and environment are given by: 
+
+𝜏 ℎ = 𝐽 𝑇 𝑚 𝑓 ∗ 
+
+> ℎ
+
+, 𝜏 𝑒 = − 𝐽 𝑇 𝑠 𝑓 ∗ 
+
+> 𝑒
+
+. (21) With the addition of external forces and joint friction, the dynamic equation takes the following form: 
+
+𝑀 𝑖 (𝑞 𝑖 )̈𝑞 𝑖 + 𝐶 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 )̇𝑞 𝑖 + 𝐺 𝑖 (𝑞 𝑖 ) + 𝑓 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) + 𝑓 𝑐𝑖 (̇𝑞 𝑖 ) = 𝜏 𝑖 + 𝜏 𝑘 (22) 
+
+## 4. Controller Design 
+
+The teleoperation system is organized around a position-error control structure, in which the position measurements exchanged between the two sites are transmitted with constant delays, namely 𝑇 𝑚 in the forward (master-to-slave) communication channel and 𝑇 𝑠 in the reverse (slave-to-master) channel. Using the delayed positions, the position tracking errors at the master and slave sides are defined as 
+
+𝑒 𝑚 (𝑡 ) = 𝑞 𝑠 (𝑡 − 𝑇 𝑠 ) − 𝑞 𝑚 (𝑡 ), (23) 
+
+𝑒 𝑠 (𝑡 ) = 𝑞 𝑚 (𝑡 − 𝑇 𝑚 ) − 𝑞 𝑠 (𝑡 ), (24) 
+
+Ghaemifar et al.: Preprint Version Page 7 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions Communication  Channel 
+
+> Master Robot
+> (19)
+> Sliding Mode
+> Function
+> (25)
+> -
+> +
+> RBFNN Model
+> Approximator
+> (11)
+> Human Operator
+> Master Adaptive Control Law
+> (26)
+> NN Adaptive
+> Controller
+> Nominal Gain
+> Controller
+> ++
+> Slave Robot
+> (19)
+> Sliding Mode
+> Function
+> (25)
+> -
+> +
+> RBFNN Model
+> Approximator
+> (11)
+> Slave Adaptive Control Law
+> (26)
+> NN Adaptive
+> Controller
+> Nominal Gain
+> Controller
+> ++
+> Environment
+> Master Robot and Human Operator
+> Slave Robot and Remote Environment
+
+Figure 2: Block diagram of the teleoperation system with the proposed adaptive neural-network controller. where 𝑞 𝑚 and 𝑞 𝑠 denote the master and slave joint positions, respectively. The control objective is to keep the torques applied to both manipulators bounded while driving the position tracking error of the master–slave system to zero, thereby ensuring stability of the closed-loop system. Toward this end, for 
+
+𝑖 ∈ { 𝑚, 𝑠 }, the sliding-mode functions are chosen as 
+
+𝑟 𝑖 =̇ 𝑒 𝑖 + Λ 𝑖 𝑒 𝑖 , (25) where Λ𝑖 = Λ 𝑇 𝑖 > 0 is a constant positive diagonal matrix. An adaptive neural-network controller is designed for each side of the teleoperation system so that the sliding variables 𝑟 𝑖 and the estimation errors remain bounded. The overall control architecture is shown in Fig. 2. For 
+
+𝑖 ∈ { 𝑚, 𝑠 }, the control torque is chosen as 
+
+𝜏 𝑖 (𝑡 ) = 𝑘 𝑖 𝑟 𝑖 (𝑡 ) + 𝑟 𝑖 (𝑡 )2𝑎 2
+
+𝑖 ̂𝜃 𝑖 (𝑡 ) 𝜎 𝑖 (𝑋 𝑖 )𝑇 𝜎 𝑖 (𝑋 𝑖 ) + 𝑟 𝑖 (𝑡 )
+
+‖‖𝑟 𝑖 (𝑡 )‖‖ + 𝑒 −𝑎 𝑖 𝑡 ̂ 𝑑 𝑖 (𝑡 ), (26) where 𝑘 𝑖 > 0 is the feedback gain, 𝑎 𝑖 > 0 is a design constant, and ̂ 𝜃 𝑖 (𝑡 ) and ̂ 𝑑 𝑖 (𝑡 ) are the on-line estimates of the neural-network weight norm 𝜃 𝑖 = ‖‖𝑊 𝑖 ‖‖2
+
+𝐹 and of the uncertainty bound 𝑑 𝑖 , respectively. The first term is a proportional feedback on the sliding variable 𝑟 𝑖 . The second term compensates the neural-network-approximated model uncertainty; adapting only the scalar ̂ 𝜃 𝑖 rather than the full weight matrix 𝑊 𝑖 keeps the number of on-line parameters minimal. The third term is a robust term that rejects the lumped friction and disturbance bounded by 𝑑 𝑖 .The estimates are generated by the adaptive update laws ̇̂ 𝜃 𝑖 (𝑡 ) = 𝜆 𝑖 
+
+2𝑎 2
+
+𝑖 
+
+𝑟 𝑖 (𝑡 )𝑇 𝑟 𝑖 (𝑡 ) 𝜎 𝑖 (𝑋 𝑖 )𝑇 𝜎 𝑖 (𝑋 𝑖 ) − 𝜓 𝑖 ̂ 𝜃 𝑖 (𝑡 ), (27) ̇̂ 𝑑 𝑖 (𝑡 ) = 𝛾 𝑖 𝑟 𝑖 (𝑡 )𝑇 𝑟 𝑖 (𝑡 )
+
+‖‖𝑟 𝑖 (𝑡 )‖‖ + 𝑒 −𝑎 𝑖 𝑡 − 𝜐 𝑖 ̂ 𝑑 𝑖 (𝑡 ), (28) where 𝜆 𝑖 > 0 and 𝛾 𝑖 > 0 are adaptation gains, and 𝜓 𝑖 > 0 and 𝜐 𝑖 > 0 are leakage coefficients ( 𝜎 -modification) that guarantee boundedness of the estimates. 
+
+## 5. Stability Analysis 
+
+Uniform ultimate boundedness (UUB) of the closed-loop teleoperation system is established by means of a Lyapunov–Krasovskii functional. Throughout the analysis the indices 𝑖 and 𝑗 range over the two sides of the system and always denote counterparts: 
+
+𝑖, 𝑗 ∈ { 𝑚, 𝑠 } with 𝑗 ≠ 𝑖 , so that (𝑖, 𝑗 ) ∈ {( 𝑚, 𝑠 ), (𝑠, 𝑚 )} .
+
+Ghaemifar et al.: Preprint Version Page 8 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Consider the Lyapunov–Krasovskii functional 
+
+𝑉 (𝑡 ) = ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[ 12 𝑟 𝑇 𝑖 𝑀 𝑖 (𝑞 𝑖 ) 𝑟 𝑖 + 12𝜆 𝑖 ̃ 𝜃 2 
+
+> 𝑖
+
++ 12𝛾 𝑖 ̃ 𝑑 2 
+
+> 𝑖
+
++ 𝑉 𝑄𝑖 (𝑡 ) + 𝑉 𝑅𝑖 (𝑡 )
+
+]
+
+, (29) where the delay-dependent terms are, for each side 𝑖 and its counterpart 𝑗 ,
+
+𝑉 𝑄𝑖 (𝑡 ) = ∫
+
+> 𝑡 𝑡 −𝑇 𝑗
+
+̇𝑞 𝑗 (𝜌 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝜌 ) 𝑑𝜌, (30) 
+
+𝑉 𝑅𝑖 (𝑡 ) = ∫ 
+
+> 0−𝑇 𝑗
+
+∫
+
+> 𝑡 𝑡 +𝛽
+
+̇ 𝑞 𝑗 (𝜌 )𝑇 𝑅 𝑖 ̇ 𝑞 𝑗 (𝜌 ) 𝑑𝜌 𝑑𝛽, (31) and 𝑄 𝑖 = 𝑄 𝑇 𝑖 ≻ 0, 𝑅 𝑖 = 𝑅 𝑇 𝑖 ≻ 0 are weighting matrices to be determined. 
+
+𝜂 𝑖 (𝑡 ) = ∫
+
+> 𝑡 𝑡 −𝑇 𝑗
+
+̇𝑞 𝑗 (𝜌 ) 𝑑𝜌 = 𝑞 𝑗 (𝑡 ) − 𝑞 𝑗 (𝑡 − 𝑇 𝑗 ), (32) Differentiating the functional (29) along the closed-loop trajectories and using the symmetry of 𝑀 𝑖 (𝑞 𝑖 ), so that ̇𝑟 𝑇 𝑖 𝑀 𝑖 𝑟 𝑖 = 𝑟 𝑇 𝑖 𝑀 𝑖 ̇𝑟 𝑖 , gives ̇𝑉 (𝑡 ) = ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+( 12 𝑟 𝑇 𝑖 ̇ 𝑀 𝑖 𝑟 𝑖 + 𝑟 𝑇 𝑖 𝑀 𝑖 ̇ 𝑟 𝑖 + 1
+
+> 𝜆 𝑖
+
+̃ 𝜃 𝑖 ̇̃ 𝜃 𝑖 + 1
+
+> 𝛾 𝑖
+
+̃ 𝑑 𝑖 ̇̃ 𝑑 𝑖 
+
+)
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇ 𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 
+
+). (33) Substituting the closed-loop dynamics of the sliding variable, 
+
+𝑀 𝑖 (𝑞 𝑖 )̇ 𝑟 𝑖 =̃ 𝑓 𝑖 (𝑋 𝑖 ) − 𝜏 𝑖 + 𝑓 𝑖 + 𝑓 𝑐𝑖 − 𝐶 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) 𝑟 𝑖 , 𝑖 ∈ { 𝑚, 𝑠 }, (34) and grouping the inertia and Coriolis contributions, each kinetic term reduces, by the Property 2, to  
+
+> 12
+
+𝑟 𝑇 𝑖 ̇ 𝑀 𝑖 𝑟 𝑖 + 𝑟 𝑇 𝑖 𝑀 𝑖 ̇𝑟 𝑖 = 𝑟 𝑇 𝑖 
+
+(̃𝑓 𝑖 (𝑋 𝑖 ) − 𝜏 𝑖 + 𝑓 𝑖 + 𝑓 𝑐𝑖 
+
+) + 12 𝑟 𝑇 𝑖 
+
+(̇𝑀 𝑖 − 2 𝐶 𝑖 
+
+)𝑟 𝑖 = 𝑟 𝑇 𝑖 
+
+(̃𝑓 𝑖 (𝑋 𝑖 ) − 𝜏 𝑖 + 𝑓 𝑖 + 𝑓 𝑐𝑖 
+
+) − 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 . (35) Together with ̇̃ 𝜃 𝑖 = − ̇̂ 𝜃 𝑖 and ̇̃ 𝑑 𝑖 = − ̇̂ 𝑑 𝑖 , the derivative (33) becomes ̇𝑉 (𝑡 ) = ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[
+
+𝑟 𝑇 𝑖 
+
+(̃𝑓 𝑖 (𝑋 𝑖 ) − 𝜏 𝑖 + 𝑓 𝑖 + 𝑓 𝑐𝑖 
+
+) − 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 − 1
+
+> 𝜆 𝑖
+
+̃ 𝜃 𝑖 ̇̂ 𝜃 𝑖 − 1
+
+> 𝛾 𝑖
+
+̃ 𝑑 𝑖 ̇̂ 𝑑 𝑖 
+
+]
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇ 𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 
+
+). (36) Since the delays are constant (Assumption 2), the Leibniz rule applied to (30) and (31) yields, for each side 𝑖 with counterpart 𝑗 ,̇𝑉 𝑄𝑖 =̇ 𝑞 𝑗 (𝑡 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝑡 ) − ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 ), (37) ̇𝑉 𝑅𝑖 = 𝑇 𝑗 ̇ 𝑞 𝑗 (𝑡 )𝑇 𝑅 𝑖 ̇ 𝑞 𝑗 (𝑡 ) − ∫
+
+> 𝑡 𝑡 −𝑇 𝑗
+
+̇𝑞 𝑗 (𝜌 )𝑇 𝑅 𝑖 ̇ 𝑞 𝑗 (𝜌 ) 𝑑𝜌. (38) Writing 𝜎 𝑖 ≡ 𝜎 𝑖 (𝑋 𝑖 ) for brevity and inserting the neural-network decomposition ( ?? ), ̃ 𝑓 𝑖 = 𝑊 𝑇 𝑖 𝜎 𝑖 + 𝛿 𝑖 , into (36) gives ̇𝑉 (𝑡 ) = ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[
+
+𝑟 𝑇 𝑖 
+
+(𝑊 𝑇 𝑖 𝜎 𝑖 + 𝛿 𝑖 − 𝜏 𝑖 + 𝑓 𝑖 + 𝑓 𝑐𝑖 
+
+) − 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 − 1
+
+> 𝜆 𝑖
+
+̃ 𝜃 𝑖 ̇̂ 𝜃 𝑖 − 1
+
+> 𝛾 𝑖
+
+̃ 𝑑 𝑖 ̇̂ 𝑑 𝑖 
+
+]
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 
+
+). (39) By the Cauchy–Schwarz and Young inequalities (Lemma 3), with 𝜃 𝑖 = ‖‖𝑊 𝑖 ‖‖2 
+
+> 𝐹
+
+,
+
+𝑟 𝑇 𝑖 𝑊 𝑇 𝑖 𝜎 𝑖 ≤ ‖‖𝑟 𝑖 ‖‖ ‖‖𝑊 𝑖 ‖‖𝐹 ‖‖𝜎 𝑖 ‖‖ ≤ 12𝑎 2
+
+> 𝑖
+
+𝑟 𝑇 𝑖 𝑟 𝑖 𝜃 𝑖 𝜎 𝑇 𝑖 𝜎 𝑖 + 12 𝑎 2 
+
+> 𝑖
+
+, (40) 
+
+Ghaemifar et al.: Preprint Version Page 9 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+𝑟 𝑇 𝑖 
+
+(𝛿 𝑖 + 𝑓 𝑐𝑖 + 𝑓 𝑖 
+
+) ≤ ‖‖𝑟 𝑖 ‖‖ 𝑑 𝑖 , (41) where (41) follows from Assumption 1. Substituting (40)–(41) into (39) yields ̇𝑉 (𝑡 ) ≤ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[
+
+12𝑎 2
+
+> 𝑖
+
+𝑟 𝑇 𝑖 𝑟 𝑖 𝜃 𝑖 𝜎 𝑇 𝑖 𝜎 𝑖 − 𝑟 𝑇 𝑖 𝜏 𝑖 + ‖‖𝑟 𝑖 ‖‖ 𝑑 𝑖 + 12 𝑎 2 
+
+> 𝑖
+
+− 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 − 1
+
+> 𝜆 𝑖
+
+̃ 𝜃 𝑖 ̇̂ 𝜃 𝑖 − 1
+
+> 𝛾 𝑖
+
+̃ 𝑑 𝑖 ̇̂ 𝑑 𝑖 
+
+]
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 
+
+). (42) Left-multiplying the control law (26) by −𝑟 𝑇 𝑖 and substituting into (42), the neural-network terms combine through ̃𝜃 𝑖 = 𝜃 𝑖 −̂ 𝜃 𝑖 and the robust term splits through ̂ 𝑑 𝑖 = 𝑑 𝑖 −̃ 𝑑 𝑖 , which gives ̇𝑉 (𝑡 ) ≤ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[
+
+− 𝑘 𝑖 𝑟 𝑇 𝑖 𝑟 𝑖 + 12 𝑎 2 
+
+> 𝑖
+
+− 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 + 1
+
+𝜆 𝑖 ̃ 𝜃 𝑖 
+
+( 𝜆 𝑖 
+
+2𝑎 2
+
+> 𝑖
+
+𝑟 𝑇 𝑖 𝑟 𝑖 𝜎 𝑇 𝑖 𝜎 𝑖 −̇̂ 𝜃 𝑖 
+
+)
+
++ 1
+
+𝛾 𝑖 ̃ 𝑑 𝑖 
+
+( 𝛾 𝑖 𝑟 𝑇 𝑖 𝑟 𝑖 
+
+‖‖𝑟 𝑖 ‖‖ + 𝑒 −𝑎 𝑖 𝑡 −̇̂ 𝑑 𝑖 
+
+)
+
++ ‖‖𝑟 𝑖 ‖‖ 𝑑 𝑖 − 𝑟 𝑇 𝑖 𝑟 𝑖 
+
+‖‖𝑟 𝑖 ‖‖ + 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 
+
+]
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇ 𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 
+
+).
+
+(43) The adaptive laws (27)–(28) are selected such that the two parenthesized terms in (43) reduce to the leakage contributions −𝜓 𝑖 ̂ 𝜃 𝑖 and −𝜐 𝑖 ̂ 𝑑 𝑖 , which yield the 𝜎 -modification terms in the Lyapunov derivative. Bounding the residual integral in (38) by Jensen’s inequality (Lemma 1), 
+
+∫
+
+> 𝑡 𝑡 −𝑇 𝑗
+
+̇𝑞 𝑗 (𝜌 )𝑇 𝑅 𝑖 ̇ 𝑞 𝑗 (𝜌 ) 𝑑𝜌 ≥ 1
+
+𝑇 𝑗 
+
+𝜂 𝑇 𝑖 𝑅 𝑖 𝜂 𝑖 , (44) and recalling the delay-loaded weight 𝑆 𝑖 = 𝑄 𝑖 + 𝑇 𝑗 𝑅 𝑖 , the single- and double-integral terms of side 𝑖 combine into ̇𝑉 𝑄𝑖 +̇ 𝑉 𝑅𝑖 ≤̇ 𝑞 𝑗 (𝑡 )𝑇 𝑆 𝑖 ̇ 𝑞 𝑗 (𝑡 ) − ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 ) − 1
+
+𝑇 𝑗 
+
+𝜂 𝑇 𝑖 𝑅 𝑖 𝜂 𝑖 . (45) Substituting the leakage identities (27),(28) and (45) into (43) yields ̇𝑉 (𝑡 ) ≤ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[
+
+−𝑘 𝑖 𝑟 𝑇 𝑖 𝑟 𝑖 − 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 + 𝜓 𝑖 
+
+𝜆 𝑖 ̃ 𝜃 𝑖 ̂ 𝜃 𝑖 + 𝜐 𝑖 
+
+𝛾 𝑖 ̃ 𝑑 𝑖 ̂ 𝑑 𝑖 + ‖‖𝑟 𝑖 ‖‖ 𝑑 𝑖 − 𝑟 𝑇 𝑖 𝑟 𝑖 
+
+‖‖𝑟 𝑖 ‖‖ + 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 + 12 𝑎 2
+
+> 𝑖
+
+]
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+[̇𝑞 𝑗 (𝑡 )𝑇 𝑆 𝑖 ̇ 𝑞 𝑗 (𝑡 ) − ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 ) − 1
+
+𝑇 𝑗 
+
+𝜂 𝑇 𝑖 𝑅 𝑖 𝜂 𝑖 
+
+]
+
+.
+
+(46) Writing ̂ 𝜃 𝑖 = 𝜃 𝑖 −̃ 𝜃 𝑖 and applying Young’s inequality (Lemma 3) in the form ̃ 𝜃 𝑖 𝜃 𝑖 ≤ 12 𝜃 2 
+
+> 𝑖
+
++ 12̃ 𝜃 2 
+
+> 𝑖
+
+,
+
+𝜓 𝑖 
+
+𝜆 𝑖 ̃ 𝜃 𝑖 ̂ 𝜃 𝑖 = 𝜓 𝑖 
+
+𝜆 𝑖 ̃ 𝜃 𝑖 
+
+(𝜃 𝑖 −̃ 𝜃 𝑖 
+
+) ≤ 𝜓 𝑖 
+
+2𝜆 𝑖 
+
+𝜃 2 
+
+> 𝑖
+
+− 𝜓 𝑖 
+
+2𝜆 𝑖 ̃ 𝜃 2 
+
+> 𝑖
+
+, (47) and, identically, with ̂ 𝑑 𝑖 = 𝑑 𝑖 −̃ 𝑑 𝑖 ,
+
+𝜐 𝑖 
+
+𝛾 𝑖 ̃ 𝑑 𝑖 ̂ 𝑑 𝑖 ≤ 𝜐 𝑖 
+
+2𝛾 𝑖 
+
+𝑑 2 
+
+> 𝑖
+
+− 𝜐 𝑖 
+
+2𝛾 𝑖 ̃ 𝑑 2 
+
+> 𝑖
+
+. (48) The robust residual is collapsed by combining its two terms over a common denominator, 
+
+‖‖𝑟 𝑖 ‖‖ 𝑑 𝑖 − 𝑟 𝑇 𝑖 𝑟 𝑖 
+
+‖‖𝑟 𝑖 ‖‖ + 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 =
+
+‖‖𝑟 𝑖 ‖‖ 𝑒 −𝑎 𝑖 𝑡 
+
+‖‖𝑟 𝑖 ‖‖ + 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 ≤ 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 , (49) where the last step uses ‖𝑟 𝑖 ‖‖𝑟 𝑖 ‖+𝑒 −𝑎 𝑖 𝑡 ≤ 1.
+
+Ghaemifar et al.: Preprint Version Page 10 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Substituting (47)–(49) into (46) and grouping terms gives ̇𝑉 (𝑡 ) ≤ − ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(
+
+𝑘 𝑖 𝑟 𝑇 𝑖 𝑟 𝑖 + 𝑟 𝑇 𝑖 𝐵 𝑖 𝑟 𝑖 + 𝜓 𝑖 
+
+2𝜆 𝑖 ̃ 𝜃 2 
+
+> 𝑖
+
++ 𝜐 𝑖 
+
+2𝛾 𝑖 ̃ 𝑑 2
+
+> 𝑖
+
+)
+
++ ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+(̇𝑞 𝑗 (𝑡 )𝑇 𝑆 𝑖 ̇ 𝑞 𝑗 (𝑡 ) − ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 )𝑇 𝑄 𝑖 ̇ 𝑞 𝑗 (𝑡 − 𝑇 𝑗 ) − 1
+
+𝑇 𝑗 
+
+𝜂 𝑇 𝑖 𝑅 𝑖 𝜂 𝑖 
+
+)
+
++ 𝑏 0(𝑡 ),
+
+(50) where the residual collects the constant and exponentially decaying terms, 
+
+𝑏 0(𝑡 ) ∶= ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+( 𝜓 𝑖 
+
+2𝜆 𝑖 
+
+𝜃 2 
+
+> 𝑖
+
++ 𝜐 𝑖 
+
+2𝛾 𝑖 
+
+𝑑 2 
+
+> 𝑖
+
++ 𝑒 −𝑎 𝑖 𝑡 𝑑 𝑖 + 12 𝑎 2
+
+> 𝑖
+
+)
+
+≤̄ 𝑏 0, (51) and ̄ 𝑏 0 = ∑𝑖 ∈{ 𝑚,𝑠 }
+
+( 𝜓 𝑖 
+
+> 2𝜆 𝑖
+
+𝜃 2 
+
+> 𝑖
+
++ 𝜐 𝑖 
+
+> 2𝛾 𝑖
+
+𝑑 2 
+
+> 𝑖
+
++ 𝑑 𝑖 + 12 𝑎 2
+
+> 𝑖
+
+).With He( 𝑋 ) ∶= 𝑋 + 𝑋 𝑇 and the abbreviations 𝑣 𝑚 =̇ 𝑞 𝑚 (𝑡 ), 𝑤 =̇ 𝑞 𝑠 (𝑡 − 𝑇 𝑠 ), 𝑣 𝑠 =̇ 𝑞 𝑠 (𝑡 ), 𝑢 =̇ 𝑞 𝑚 (𝑡 − 𝑇 𝑚 ), the sliding-surface definitions 𝑟 𝑖 =̇ 𝑒 𝑖 + Λ 𝑖 𝑒 𝑖 give, on the trajectories, 
+
+Π𝑚 ∶= 𝑤 − 𝑣 𝑚 + Λ 𝑚 𝑒 𝑚 − 𝑟 𝑚 ≡ 0, Π𝑠 ∶= 𝑢 − 𝑣 𝑠 + Λ 𝑠 𝑒 𝑠 − 𝑟 𝑠 ≡ 0. (52) Since Π𝑚 ≡ 0 and Π𝑠 ≡ 0, for any free-weighting matrices 𝑁 1, 𝑁 2, 𝑁 3 and 𝐿 1, 𝐿 2, 𝐿 3 ∈ ℝ𝑛 ×𝑛 the quantities 
+
+𝐽 𝑚 = 2 (𝑣 𝑇 𝑚 𝑁 𝑇  
+
+> 1
+
++ 𝑟 𝑇 𝑚 𝑁 𝑇  
+
+> 2
+
++ 𝑒 𝑇 𝑚 𝑁 𝑇 
+
+> 3
+
+)Π𝑚 = 0 , 𝐽 𝑠 = 2 (𝑣 𝑇 𝑠 𝐿 𝑇  
+
+> 1
+
++ 𝑟 𝑇 𝑠 𝐿 𝑇  
+
+> 2
+
++ 𝑒 𝑇 𝑠 𝐿 𝑇 
+
+> 3
+
+)Π𝑠 = 0 . (53) Collect the variables appearing in each residual into 
+
+𝜒 𝑚 =
+
+⎡⎢⎢⎢⎣
+
+𝑟 𝑚 
+
+𝑣 𝑚 
+
+𝑤 𝑒 𝑚 
+
+⎤⎥⎥⎥⎦
+
+, 𝜒 𝑠 =
+
+⎡⎢⎢⎢⎣
+
+𝑟 𝑠 
+
+𝑣 𝑠 
+
+𝑢 𝑒 𝑠 
+
+⎤⎥⎥⎥⎦
+
+. (54) Adding 𝐽 𝑚 + 𝐽 𝑠 to (50) and collecting the quadratic and bilinear terms into 𝜒 𝑇 𝑚 Θ𝑚 𝜒 𝑚 + 𝜒 𝑇 𝑠 Θ𝑠 𝜒 𝑠 yields 
+
+Θ𝑚 =
+
+⎡⎢⎢⎢⎢⎣
+
+−( 𝑘 𝑚 𝐼 + 𝐵 ℎ) − He( 𝑁 2) −𝑁 1 − 𝑁 𝑇  
+
+> 2
+
+𝑁 𝑇  
+
+> 2
+
+𝑁 𝑇  
+
+> 2
+
+Λ𝑚 − 𝑁 3
+
+⋆ 𝑆 𝑠 − He( 𝑁 1) 𝑁 𝑇  
+
+> 1
+
+𝑁 𝑇  
+
+> 1
+
+Λ𝑚 − 𝑁 3
+
+⋆ ⋆ −𝑄 𝑚 𝑁 3
+
+⋆ ⋆ ⋆ He( 𝑁 𝑇  
+
+> 3
+
+Λ𝑚 )
+
+⎤⎥⎥⎥⎥⎦
+
+, 𝑆 𝑠 = 𝑄 𝑠 + 𝑇 𝑚 𝑅 𝑠 , (55) 
+
+Θ𝑠 =
+
+⎡⎢⎢⎢⎢⎣
+
+−( 𝑘 𝑠 𝐼 + 𝐵 𝑒 ) − He( 𝐿 2) −𝐿 1 − 𝐿 𝑇  
+
+> 2
+
+𝐿 𝑇  
+
+> 2
+
+𝐿 𝑇  
+
+> 2
+
+Λ𝑠 − 𝐿 3
+
+⋆ 𝑆 𝑚 − He( 𝐿 1) 𝐿 𝑇  
+
+> 1
+
+𝐿 𝑇  
+
+> 1
+
+Λ𝑠 − 𝐿 3
+
+⋆ ⋆ −𝑄 𝑠 𝐿 3
+
+⋆ ⋆ ⋆ He( 𝐿 𝑇  
+
+> 3
+
+Λ𝑠 )
+
+⎤⎥⎥⎥⎥⎦
+
+, 𝑆 𝑚 = 𝑄 𝑚 + 𝑇 𝑠 𝑅 𝑚 , (56) where ⋆ denotes the symmetric transpose of the corresponding upper block. The (2 , 2) block 𝑆 𝑠 − He( 𝑁 1) shows that the destabilizing weight is absorbed by the free matrix 𝑁 1 rather than by 𝑄 𝑚 . Therefore, selecting He( 𝑁 1) ≻ 𝑆 𝑠 directly renders this block negative. The (4 , 4) block He( 𝑁 𝑇  
+
+> 3
+
+Λ𝑚 ) embeds the sliding-surface relation; choosing 𝑁 3 = − 𝜇 Λ−1 
+
+> 𝑚
+
+with 𝜇 > 0 gives He( 𝑁 𝑇  
+
+> 3
+
+Λ𝑚 ) = −2 𝜇𝐼 ≺ 0. The drift variables 𝜂 𝑚 , 𝜂 𝑠 do not appear in the residual terms and remain uncoupled, contributing the negative blocks − 1
+
+> 𝑇 𝑠
+
+𝑅 𝑚 and − 1
+
+> 𝑇 𝑚
+
+𝑅 𝑠 .With the injection in place, (50) becomes ̇𝑉 (𝑡 ) ≤ 𝜒 𝑇 𝑚 Θ𝑚 𝜒 𝑚 + 𝜒 𝑇 𝑠 Θ𝑠 𝜒 𝑠 − 1
+
+𝑇 𝑠 
+
+𝜂 𝑇 𝑚 𝑅 𝑚 𝜂 𝑚 − 1
+
+𝑇 𝑚 
+
+𝜂 𝑇 𝑠 𝑅 𝑠 𝜂 𝑠 − ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+( 𝜓 𝑖 
+
+2𝜆 𝑖 ̃ 𝜃 2 
+
+> 𝑖
+
++ 𝜐 𝑖 
+
+2𝛾 𝑖 ̃ 𝑑 2
+
+> 𝑖
+
+)
+
++ 𝑏 0(𝑡 ), (57) 
+
+Ghaemifar et al.: Preprint Version Page 11 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+If, for the delays 𝑇 𝑚 , 𝑇 𝑠 , there exist symmetric matrices 𝑄 𝑚 , 𝑄 𝑠 , 𝑅 𝑚 , 𝑅 𝑠 ≻ 0 and free-weighting matrices 
+
+𝑁 1, 𝑁 2, 𝑁 3, 𝐿 1, 𝐿 2, 𝐿 3 such that 
+
+Θ𝑚 (𝑇 𝑚 , 𝑇 𝑠 ) ≺ 0 and Θ𝑠 (𝑇 𝑚 , 𝑇 𝑠 ) ≺ 0, (58) with Θ𝑚 , Θ𝑠 given by (55)–(56), then all closed-loop signals 𝑟 𝑖 , 𝑒 𝑖 ,̃ 𝜃 𝑖 ,̃ 𝑑 𝑖 (𝑖 ∈ { 𝑚, 𝑠 }) are uniformly ultimately bounded in the sense of Definition 1. Collect the closed-loop variables into 
+
+𝑍 = [𝜒 ⊤𝑚 𝜒 ⊤𝑠 𝜂 ⊤𝑚 𝜂 ⊤𝑠 ̃ 𝜃 𝑚 ̃ 𝜃 𝑠 ̃ 𝑑 𝑚 ̃ 𝑑 𝑠 
+
+]⊤ . (59) Under (58) the quadratic forms satisfy 𝜒 ⊤𝑚 Θ𝑚 𝜒 𝑚 ≤ −𝜆 min (−Θ 𝑚 )‖𝜒 𝑚 ‖2 and 𝜒 ⊤𝑠 Θ𝑠 𝜒 𝑠 ≤ −𝜆 min (−Θ 𝑠 )‖𝜒 𝑠 ‖2, while 
+
+𝑅 𝑚 , 𝑅 𝑠 ≻ 0 and 𝜓 𝑖 , 𝜐 𝑖 , 𝜆 𝑖 , 𝛾 𝑖 > 0 render the Jensen and adaptive-error terms in (57) negative. Hence there is a constant 
+
+𝛼 = min 
+
+{
+
+𝜆 min (−Θ 𝑚 ), 𝜆 min (−Θ 𝑠 ), 1
+
+> 𝑇 𝑠
+
+𝜆 min (𝑅 𝑚 ), 1
+
+> 𝑇 𝑚
+
+𝜆 min (𝑅 𝑠 ), min 
+
+> 𝑖 𝜓 𝑖
+> 2𝜆 𝑖
+
+, min 
+
+> 𝑖 𝜐 𝑖
+> 2𝛾 𝑖
+
+}
+
+> 0 (60) such that (57) gives ̇𝑉 (𝑡 ) ≤ −𝛼 ‖𝑍 (𝑡 )‖2 + 𝑏 0(𝑡 ) ≤ −𝛼 ‖𝑍 (𝑡 )‖2 +̄ 𝑏 0. (61) Collect the core pointwise variables into 
+
+𝜁 (𝑡 ) ∶= ( 𝑟 𝑚 , 𝑟 𝑠 ,̃ 𝜃 𝑚 ,̃ 𝜃 𝑠 ,̃ 𝑑 𝑚 ,̃ 𝑑 𝑠 
+
+)(𝑡 ), (62) where 𝑥 𝑡 (𝜃 ) ∶= 𝑥 (𝑡 + 𝜃 ), 𝜃 ∈ [− ̄𝑇 , 0] , denotes the history segment of the closed-loop state, and 
+
+‖𝑥 𝑡 ‖𝑐 ∶= sup 
+
+> 𝜃 ∈[− ̄𝑇 , 0]
+
+‖𝑥 (𝑡 + 𝜃 )‖,
+
+with ̄ 𝑇 ∶= max{ 𝑇 𝑚 , 𝑇 𝑠 }. Since 𝑉 is a Lyapunov–Krasovskii functional due to the history-dependent terms 𝑉 𝑄 𝑖 and 
+
+𝑉 𝑅 𝑖 , the UUB property is established by deriving suitable lower and upper bounds for 𝑉 and showing decrease outside a compact set. 
+
+Step 1 Discarding the nonnegative Krasovskii integrals 𝑉 𝑄 𝑖 , 𝑉 𝑅 𝑖 ≥ 0 in (29) and using Property 1, 
+
+𝑉 (𝑡 ) ≥ 𝑉 (𝑡 ) ∶= ∑
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+( 12 𝜆 min {𝑀 𝑖 } ‖𝑟 𝑖 ‖2 + 12𝜆 𝑖 ̃ 𝜃 2 
+
+> 𝑖
+
++ 12𝛾 𝑖 ̃ 𝑑 2
+
+> 𝑖
+
+)
+
+≥ 𝑐 1 ‖𝜁 (𝑡 )‖2 =∶ 𝑢 1
+
+(‖𝜁 (𝑡 )‖), (63) with 
+
+𝑐 1 ∶= 12 min 
+
+> 𝑖 ∈{ 𝑚,𝑠 }
+
+{𝜆 min {𝑀 𝑖 }, 𝜆 −1  
+
+> 𝑖
+
+, 𝛾 −1 
+
+> 𝑖
+
+} > 0, 𝑢 1(𝑠 ) = 𝑐 1𝑠 2 ∈ ∞. (64) 
+
+Step 2 The kinetic and adaptive terms are bounded pointwise, and the Krasovskii terms are bounded over the delay window directly from their definitions,  
+
+> 12
+
+𝑟 ⊤𝑖 𝑀 𝑖 𝑟 𝑖 ≤ 12 𝜆 max {𝑀 𝑖 }‖𝑟 𝑖 ‖2, 𝑉 𝑄 𝑖 (𝑡 ) ≤ 𝑇 𝑗 𝜆 max {𝑄 𝑖 } sup  
+
+> 𝜎 ∈[ 𝑡 −𝑇 𝑗 ,𝑡 ]
+
+‖̇𝑞 𝑗 (𝜎 )‖2, 𝑉 𝑅 𝑖 (𝑡 ) ≤ 𝑇 2 
+
+> 𝑗
+> 2
+
+𝜆 max {𝑅 𝑖 } sup  
+
+> 𝜎 ∈[ 𝑡 −𝑇 𝑗 ,𝑡 ]
+
+‖̇𝑞 𝑗 (𝜎 )‖2.
+
+(65) Since ‖𝑥 𝑡 ‖𝑐 dominates every component norm and windowed supremum above, summing over 𝑖 ∈ { 𝑚, 𝑠 } gives a single history-dependent upper bound 
+
+𝑉 (𝑡 ) ≤ 𝑐 2 ‖𝑥 𝑡 ‖2 
+
+> 𝑐
+
+=∶ 𝑢 2
+
+(‖𝑥 𝑡 ‖𝑐 
+
+), 𝑢 2(𝑠 ) = 𝑐 2𝑠 2 ∈ ∞, (66) 
+
+𝑐 2 ∶= ∑ 
+
+> 𝑖 ∈{ 𝑚,𝑠 }12
+
+𝜆 max {𝑀 𝑖 } + 12𝜆 𝑖 
+
++ 12𝛾 𝑖 
+
++ 𝑇 𝑗 𝜆 max {𝑄 𝑖 } + 𝑇 2 
+
+> 𝑗
+> 2
+
+𝜆 max {𝑅 𝑖 }. (67) 
+
+Ghaemifar et al.: Preprint Version Page 12 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Table 2 
+
+Feasibility analysis of the delay-dependent LMI condition for different communication delays. 
+
+𝑇 (s) −𝜆 max (Θ) LMI status 0.05 442.1 Feasible 0.10 330.6 Feasible 0.15 209.2 Feasible 0.20 107.1 Feasible 0.256 ≈ 0 Boundary of feasibility 0.30 -0.26 Infeasible 
+
+The history-dependent terms are therefore bounded by the closed-loop history norm ‖𝑥 𝑡 ‖𝑐 .
+
+Step 3 Since 𝜁 is a sub-vector of 𝑍 in (59), ‖𝑍 ‖2 ≥ ‖𝜁 ‖2, so (61) gives a decrease in the current core state, ̇𝑉 (𝑡 ) ≤ −𝛼 ‖𝑍 (𝑡 )‖2 +̄ 𝑏 0 ≤ −𝛼 ‖𝜁 (𝑡 )‖2 +̄ 𝑏 0 ≤ − 𝛼  
+
+> 2
+
+‖𝜁 (𝑡 )‖2 whenever ‖𝜁 (𝑡 )‖ ≥ 𝜇 ∶= 
+
+√ 
+
+> 2̄𝑏 0
+> 𝛼
+
+, (68) with 𝛼 > 0 from (60) and ̄ 𝑏 0 from (51); thus 𝑊 3(𝜁 ) ∶= 𝛼  
+
+> 2
+
+‖𝜁 ‖2 is continuous positive-definite and ̇ 𝑉 < 0 outside the ball ‖𝜁 ‖ ≤ 𝜇 . Therefore, the Lyapunov–Krasovskii UUB conditions are satisfied: 
+
+𝑢 1
+
+(‖𝜁 (𝑡 )‖) ≤ 𝑉 (𝑡 ) ≤ 𝑢 2
+
+(‖𝑥 𝑡 ‖𝑐 
+
+),̇ 𝑉 (𝑡 ) ≤ −𝑊 3
+
+(𝜁 (𝑡 )) ∀ ‖𝜁 (𝑡 )‖ ≥ 𝜇, 𝑢 1, 𝑢 2 ∈ ∞.
+
+Hence 𝑉 is bounded for all 𝑡 ≥ 0, and 𝜁 is uniformly ultimately bounded with 
+
+lim sup 
+
+> 𝑡 →∞
+
+‖𝜁 (𝑡 )‖ ≤ 𝑢 −1 1
+
+(𝑢 2(𝜇 )) =
+
+√ 𝑐 2
+
+> 𝑐 1
+
+𝜇 =
+
+√ 2 𝑐 2̄ 𝑏 0  
+
+> 𝑐 1𝛼
+
+. (69) Equivalently, 
+
+lim sup 
+
+> 𝑡 →∞
+
+𝑉 (𝑡 ) ≤̄ 𝑉 ∶= 𝑢 2(𝜇 ) = 𝑐 2𝜇 2 = 2 𝑐 2̄ 𝑏 0
+
+𝛼 . (70) 
+
+Step 4 By (63) and (70), 𝑟 𝑖 ,̃ 𝜃 𝑖 ,̃ 𝑑 𝑖 are uniformly ultimately bounded, with 
+
+lim sup 
+
+> 𝑡 →∞
+
+‖𝑟 𝑖 ‖ ≤
+
+√  
+
+> 2̄𝑉 𝜆 min {𝑀 𝑖 }
+
+, lim sup 
+
+> 𝑡 →∞
+
+|̃𝜃 𝑖 | ≤
+
+√
+
+2𝜆 𝑖 ̄ 𝑉 , lim sup 
+
+> 𝑡 →∞
+
+|̃𝑑 𝑖 | ≤
+
+√
+
+2𝛾 𝑖 ̄ 𝑉 , 𝑖 ∈ { 𝑚, 𝑠 }, (71) each proportional to 
+
+√̄𝑏 0∕𝛼 through ̄ 𝑉 = 2 𝑐 2̄ 𝑏 0∕𝛼 . Since Λ𝑖 ≻ 0, the error dynamics are exponentially stable with respect to the input 𝑟 𝑖 . Hence, the UUB property of 𝑟 𝑖 implies the UUB property of 𝑒 𝑖 and ̇ 𝑒 𝑖 , where 
+
+lim sup 
+
+> 𝑡 →∞
+
+‖𝑒 𝑖 ‖ ≤ 1
+
+𝜆 min {Λ 𝑖 } lim sup 
+
+> 𝑡 →∞
+
+‖𝑟 𝑖 ‖ ≤ 1
+
+𝜆 min {Λ 𝑖 }
+
+√ 
+
+> 2̄𝑉 𝜆 min {𝑀 𝑖 }
+
+. (72) Therefore, all closed-loop signals 𝑟 𝑖 , 𝑒 𝑖 ,̃ 𝜃 𝑖 ,̃ 𝑑 𝑖 (𝑖 ∈ { 𝑚, 𝑠 }) are uniformly ultimately bounded according to Definition 1. 
+
+## 6. Simulation Results 
+
+The feasibility of the proposed delay-dependent stability condition is evaluated for different communication delays by solving the associated LMIs. The negative definiteness of Θ is verified using the value of −𝜆 max (Θ) , where positive values indicate a feasible LMI solution. As shown in Table 2, the proposed stability condition remains feasible up to approximately 𝑇 = 0 .25 s , while 𝑇 = 0 .256 s is close to the feasibility boundary. For larger delays, such as 𝑇 = 0 .30 s ,the LMI condition becomes infeasible. In the following simulations, a communication delay of 𝑇 = 0 .1 s is considered. The proposed controller is verified in MATLAB/Simulink. The master and the slave are each modeled as a 2-DOF, revolute-joint manipulator. The two arms are coupled only through a delayed communication channel. The scenario 
+
+Ghaemifar et al.: Preprint Version Page 13 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Table 3 
+
+Master-slave robot, operator, environment, and communication parameters 
+
+Parameter Value Parameter Value 
+
+𝑚 𝑚 1 1.5 kg 𝑚 𝑠 1 1.5 kg 
+
+𝑙 𝑚 1 0.6 m 𝑙 𝑠 1 0.6 m 
+
+𝑚 𝑚 2 1.0 kg 𝑚 𝑠 2 1.0 kg 
+
+𝑙 𝑚 2 0.4 m 𝑙 𝑠 2 0.4 m 
+
+𝑀 ℎ 0.1 kg 𝑀 𝑒 0.1 kg 
+
+𝐵 ℎ 10 Ns/m 𝐵 𝑒 10 Ns/m 
+
+𝐾 ℎ 1000 N/m 𝐾 𝑒 1000 N/m 
+
+𝑞 𝑚 1(0) 0.4𝜋 rad 𝑞 𝑠 1(0) 0.25 𝜋 rad 
+
+𝑞 𝑚 2(0) 0.2𝜋 rad 𝑞 𝑠 2(0) 0.1𝜋 rad 
+
+𝑇 𝑚 0.1 s 𝑇 𝑠 0.1 s 
+
+below combines a bounded communication delay, joint friction, an external disturbance, and an operator force pushing on the master. The system is controlled by a neural network adaptive controller; the last part of the section then looks at how the controller gains shape the response. Neglecting the moment of inertia of the rod, the mathematical model of the 2-link robot based on (19) is as follows: 
+
+𝑀 𝑞 𝑖 (𝑞 𝑖 ) = 
+
+[𝑚 𝑖 1𝑙 2 
+
+> 𝑖 1
+
++ 𝑚 𝑖 2𝑙 2 
+
+> 𝑖 1
+
++ 𝑚 𝑖 2𝑙 2 
+
+> 𝑖 2
+
++ 2 𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2 cos( 𝑞 𝑖 2) 𝑚 𝑖 2𝑙 2 
+
+> 𝑖 2
+
++ 𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2 cos( 𝑞 𝑖 2)
+
+𝑚 𝑖 2𝑙 2 
+
+> 𝑖 2
+
++ 𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2 cos( 𝑞 𝑖 2) 𝑚 𝑖 2𝑙 2
+
+> 𝑖 2
+
+]
+
+(73) 
+
+𝐶 𝑞 𝑖 (𝑞 𝑖 ,̇𝑞 𝑖 ) = 
+
+[−𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2̇𝑞 𝑖 2 cos( 𝑞 𝑖 2) −𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2(̇𝑞 𝑖 1 +̇ 𝑞 𝑖 2) sin( 𝑞 𝑖 2)
+
+𝑚 𝑖 2𝑙 𝑖 1𝑙 𝑖 2̇𝑞 𝑖 1 sin( 𝑞 𝑖 2) 0
+
+]
+
+(74) 
+
+𝐺 𝑞 𝑖 (𝑞 𝑖 ) = 
+
+[(𝑚 𝑖 1𝑙 𝑖 2 + 𝑚 𝑖 2𝑙 𝑖 1)𝑔 cos( 𝑞 𝑖 1) + 𝑚 𝑖 2𝑙 𝑖 2𝑔 cos( 𝑞 𝑖 1 + 𝑞 𝑖 2)
+
+𝑚 𝑖 2𝑙 𝑖 2𝑔 cos( 𝑞 𝑖 1 + 𝑞 𝑖𝑢 )
+
+]
+
+(75) 
+
+𝐻 𝑖 = [𝑙 𝑖 1 cos( 𝑞 𝑖 1) + 𝑙 𝑖 2 cos( 𝑞 𝑖 1 + 𝑞 𝑖 2) 𝑙 𝑖 1 sin( 𝑞 𝑖 1) + 𝑙 𝑖 2 sin( 𝑞 𝑖 1 + 𝑞 𝑖 2)] (76) 
+
+𝐽 𝑖 (𝑞 𝑖 ) = 
+
+[−𝑙 𝑖 1 sin( 𝑞 𝑖 1) − 𝑙 𝑖 2 sin( 𝑞 𝑖 1 + 𝑞 𝑖 2) −𝑙 𝑖 2 sin( 𝑞 𝑖 1 + 𝑞 𝑖 2)−𝑙 𝑖 2 sin( 𝑞 𝑖 1 + 𝑞 𝑖 2) 𝑙 𝑖 2 cos( 𝑞 𝑖 1 + 𝑞 𝑖 2)
+
+]
+
+. (77) In addition, in the simulation, the external disturbances acting on the master and slave robots are set as 
+
+𝑓 𝑖 (̇𝑞 𝑖 ,̇𝑞 𝑖 ) = [0.1𝑞 𝑖 1̇𝑞 𝑖 1 sin( 𝑡 ) 0.1𝑞 𝑖 2̇𝑞 𝑖 2 sin( 𝑡 )𝑇 .] (78) The internal friction of the master robot is defined as 
+
+𝑓 𝑐𝑚 (̇𝑞 𝑚 ) = [𝑓 𝑑 1̇𝑞 𝑚 1 + 𝑘 1 sin( 𝑞 𝑚 1), 𝑓 𝑑 2̇𝑞 𝑚 2 + 𝑘 2 sin( 𝑞 𝑚 2)]𝑇 , (79) where 𝑓 𝑑 1, 𝑓 𝑑 2, 𝑘 1, 𝑘 2 are constants. Similarly, the internal friction of the slave robot is given by the following equation with 𝑓 𝑑 3, 𝑓 𝑑 4, 𝑘 3, 𝑘 4 being constant parameters. 
+
+𝑓 𝑐𝑠 (̇𝑞 𝑠 ) = [𝑓 𝑑 3̇𝑞 𝑠 1 + 𝑘 3 sin( 𝑞 𝑠 1), 𝑓 𝑑 4̇𝑞 𝑠 2 + 𝑘 4 sin( 𝑞 𝑠 2)]𝑇 , (80) Parameters of the simulation are set according to Tables 3 and 4: 
+
+Ghaemifar et al.: Preprint Version Page 14 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+Table 4 
+
+Friction and disturbance parameters 
+
+Parameter Value 
+
+Viscous friction coefficients [𝑓 𝑑 1, … , 𝑓 𝑑 4] 1, 2, 3, 3
+
+Coulomb friction coefficients [𝑘 1, … , 𝑘 4] 3, 2, 4, 6
+
+An operator force (in one dimension) is applied to the master robot as per Fig (3), which is applied to the system as −𝐽 𝑇 𝑓 ∗ 
+
+> ℎ1
+
+(the whole force is applied as 
+
+[𝑓 ∗
+
+> ℎ1
+
+0
+
+]
+
+.
+
+Figure 3: Applied human force The master and slave controllers are given by Equation 26 with adaptive laws 27 and 28. After tuning, the controller parameters are selected as 𝑘 𝑚 = 𝑘 𝑠 = diag(100 , 100) , 𝑎 𝑚 = 𝑎 𝑠 = 5, and the sliding mode parameters are 
+
+Λ𝑚 = Λ 𝑠 = 5 𝐼 The adaptive law parameters are 𝛾 𝑚 = 𝛾 𝑠 = 𝜆 𝑚 = 𝜆 𝑠 = 1 , 𝜓 𝑚 = 𝜓 𝑠 = 0 .5, 𝜈 𝑚 = 𝜈 𝑠 = 0 .5.
+
+The neural network contains 50 nodes with centers uniformly distributed over [−2 , 2] .The tracking performance of the designed controller can be seen in Figure (4) 
+
+Figure 4: Master-slave joint tracking and error performance 
+
+Ghaemifar et al.: Preprint Version Page 15 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+The top row shows the master and slave joint angles, and the bottom row shows the synchronization error 
+
+𝑒 𝑗 = 𝑞 𝑚𝑗 − 𝑞 𝑠𝑗 . it can be seen that the slave catches up to the master within about 2–3 seconds after the initial offset and stays nearly locked on afterward. Every time the operator force changes we see that the changes are compensated quickly. The error plots has the same performance. The initial joint-1 error of about 0.74 rad dies out by 𝑡 ≈ 2 s. After that, both joints stay very close to zero, with errors between force steps hovering around 10 −3 rad. Figure (5) plots the estimated parameters for both the master and slave over time. On the master side, the initial estimates. The neural network quickly adapts to the unknown dynamics. Once the tracking error settles down, the leakage in the adaptive laws gradually pulls the estimates back. The force steps cause only minor, short-lived spikes. Importantly, the estimates never diverge; they remain well-behaved throughout. 
+
+Figure 5: Master and slave estimated parameters Figure (6) shows the control torques. They stay within the ±200 N·m limits, only hitting and only reaching this limit in the initial startup and at the two larger force steps at 𝑡 = 12 and 18 s. Most of the time, the torques are relatively small. Some high-frequency chatter is visible, especially on the slave during the first few seconds and right after each force change. This happens when the error is large and the sliding-mode term is doing most of the work. Once the error settles into the boundary layer, the chatter fades and the torque becomes smooth. This is the usual sliding-mode trade-off. the same switching action that gives robustness to friction and disturbances also introduces chatter while the error is still significant.                                            
+
+> Ghaemifar et al.: Preprint Version Page 16 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions
+> Table 5
+> Gain settings used in the parameter study
+> Case 𝑘 𝑚 =𝑘 𝑠 𝑎 𝑚 =𝑎 𝑠
+> Low gains diag(30 ,30) 2.5 Baseline diag(100 ,100) 5High gains diag(300 ,300) 10
+> Table 6
+> Performance under the three gain settings. Settling is the time for |𝑒 1|to drop below 0.05 rad.
+> Case Mean |𝑒 1|(rad) Settling (s) RMS 𝜏 𝑚 1(N·m) Peak 𝜏 𝑚 1(N·m) Low gains 0.047 5.8 18 189 Baseline 0.015 1.1 30 200 High gains 0.018 3.8 37 200
+
+Figure 6: Control Signals of the bilateral system For the last part we changed the gains and kept everything else fixed, just to see how much they matter. Three settings of the sliding gain 𝑘 and the robust gain 𝑎 were tried, and they are listed in Table 5. Figure (7) shows the joint-1 error and the master torque for the three cases, and Table 6 has the numbers. With the low gains the slave is clearly slower, it needs almost six seconds to settle and sits at a steady error of about 0.05 rad. The good side is that the torque stays gentle and never even reaches the saturation limit. The baseline gains do best, they bring the error down in about a second and keep it the smallest of the three. Turning the gains up further does not really help. The response actually gets a bit slower again, the joint-1 error is slightly worse, and mostly what grows is the chatter and the control effort, with the root-mean-square (RMS) torque going from about 18 to 30 to 37 N·m across the three cases.   
+
+> Ghaemifar et al.: Preprint Version Page 17 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions
+
+Figure 7: Effect of the controller gains: (a) joint-1 synchronization error, and (b) master joint-1 torque over the first ten seconds, for the three settings in Table 5. So it is not really a case of higher always being better. Since the actuator saturates at ±200 N·m, pushing the gains up mainly turns into chatter and wasted effort rather than faster tracking. The baseline sits nicely between a sluggish response and an over-aggressive one, which is why we used it for the rest of the results. 
+
+## 7. Conclusion 
+
+This paper addressed the combined problem of unknown nonlinear dynamics and constant communication delay in bilateral teleoperation. The operator and environment impedances were folded into the master and slave manipulator models to obtain a combined joint-space description, and a two-sided adaptive controller was designed in which an RBF-basis-weighted feedback term is driven by a single scalar estimate of the ideal weight norm, and a second scalar estimate bounds the aggregate of joint friction, approximation residual, and external disturbance. Because both adaptive quantities are scalars, the number of parameters updated online is two per side and does not grow with the number of RBF nodes, which is the property distinguishing this construction from designs that adapt full weight matrices. The stability analysis placed the adaptive mechanism and the communication delay inside a single Lya-punov–Krasovskii functional rather than treating the delay through a separate passivity transformation, predictor, or delay observer. Free-weighting matrices generated from the sliding-surface identities were used to obtain delay-dependent matrix conditions, under which the sliding variables, synchronization errors, and adaptive estimates were shown to be uniformly ultimately bounded, with the ultimate bound expressed explicitly in terms of the adaptation gains, leakage coefficients, and design constants. Simulations of two 2-DOF revolute manipulators subject to joint friction, external disturbance, and stepwise operator forcing showed the slave synchronizing with the master within approximately 2 s of the initial offset and recovering rapidly after each force step, with the adaptive estimates remaining bounded throughout. A gain study over three settings indicated that raising the sliding and robust gains beyond the baseline did not improve tracking accuracy but increased the RMS control effort from approximately 18 to 37 N·m and amplified chattering, reflecting the usual switching-robustness trade-off. Several limitations bound these conclusions. The analysis assumes constant, known-bounded delays and does not cover time-varying delay, channel asymmetry, or packet loss. The RBF approximation property holds on a compact input set, and the present argument does not establish forward invariance of that set, so the result is local in this respect. Actuator saturation is active in the simulation but is not represented in the stability analysis. The evaluation is confined to simulation of a single 2-DOF pair without measurement noise. Extending the analysis to time-varying delay, incorporating input saturation, and experimental validation on a physical master–slave pair are the natural next steps. Another direction is to improve the convergence speed of the proposed controller. Finite- and fixed-time neural controllers have already been studied for uncertain teleoperation systems with communication delays [25, 33], and similar ideas could be incorporated into the present framework to obtain a convergence-time guarantee instead of UUB alone. Reinforcement learning (RL) also offers a different extension. Actor–Critic control with RISE compensation [34] and integral reinforcement learning with robust integral of the sign of the error (RISE) [35] have been used to learn control policies for uncertain teleoperators with variable delays. A more recent approach combines Actor– Critic learning with RBF-based uncertainty compensation [36], which is particularly relevant to the RBFNN structure   
+
+> Ghaemifar et al.: Preprint Version Page 18 of 20
+
+Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+considered here. These methods suggest that RL could be used as part of the controller itself, for example to improve tracking performance or optimize control effort while the adaptive RBFNN continues to compensate the uncertain dynamics. A separate and more direct extension is gain tuning. The controller and adaptation gains in the present work are fixed, whereas the deep reinforcement learning-based method in [37] provides a relevant example of adapting control gains in teleoperation systems with uncertain dynamics and communication delays. Such an approach could be used to replace the fixed feedback, robust, and adaptation gains employed in the present study. 
+
+## References 
+
+[1] N. Rastogi, S. Gupta, K. K. Gotewal, Haptic master arm development for tele-manipulation in tokamak like challenging environments, Fusion Engineering and Design 220 (2025) 115355. doi: 10.1016/j.fusengdes.2025.115355 .[2] E. Nasiri, S. Sowrirajan, L. Wang, Teleoperation in robot-assisted MIS with adaptive RCM via admittance control, International Journal of Intelligent Robotics and Applications 8 (2024) 827–839. doi: 10.1007/s41315-024-00389-0 .[3] J. Ichihara, S. Miura, Quantifying the effects of delays on telerobotic surgical operability via brain activity measurements, International Journal of Computer Assisted Radiology and Surgery 20 (2025) 2371–2379. doi: 10.1007/s11548-025-03487-x .[4] H. Xu, M. Chen, G. Li, L. Wei, S. Peng, H. Xu, Z. Wang, H. Cao, Q. Li, An immersive virtual reality bimanual telerobotic system with haptic feedback, IET Cyber-Systems and Robotics 7 (2025) e70033. doi: 10.1049/csy2.70033 .[5] M. Sadeghi, J. C. Ceron Espejo, T. A. Kern, A visuo-haptic teleoperation platform for demonstration-based programming of force-sensitive robotic tasks, International Journal on Interactive Design and Manufacturing (IJIDeM) (2026). doi: 10.1007/s12008-026-02600-x , online first. [6] R. J. Anderson, M. W. Spong, Bilateral control of teleoperators with time delay, IEEE Transactions on Automatic Control 34 (1989) 494–501. doi: 10.1109/9.24201 .[7] G. Niemeyer, J.-J. E. Slotine, Stable adaptive teleoperation, IEEE Journal of Oceanic Engineering 16 (1991) 152–162. doi: 10.1109/48. 64895 .[8] E. Nuño, R. Ortega, N. Barabanov, L. Basañez, A globally stable PD controller for bilateral teleoperators, IEEE Transactions on Robotics 24 (2008) 753–758. doi: 10.1109/TRO.2008.921565 .[9] H. Yang, L. Liu, Y. Wang, Observer-based sliding mode control for bilateral teleoperation with time-varying delays, Control Engineering Practice 91 (2019) 104097. doi: 10.1016/j.conengprac.2019.07.015 .[10] O. Sename, A. Fattouh, Robust 𝐻 ∞ control of bilateral teleoperation systems under communication time-delay, in: J. Chiasson, J. J. Loiseau (Eds.), Applications of Time Delay Systems, volume 352 of Lecture Notes in Control and Information Sciences , Springer, Berlin, Heidelberg, 2007, pp. 99–116. doi: 10.1007/978-3-540-49556-7_6 .[11] E. Nuño, R. Ortega, L. Basañez, An adaptive controller for nonlinear teleoperators, Automatica 46 (2010) 155–159. doi: 10.1016/j. automatica.2009.10.026 .[12] S. Lu, Y. Ban, X. Zhang, B. Yang, S. Liu, L. Yin, W. Zheng, Adaptive control of time delay teleoperation system with uncertain dynamics, Frontiers in Neurorobotics 16 (2022) 928863. doi: 10.3389/fnbot.2022.928863 .[13] A. Khanzadeh, S. Ganjefar, M. Ghaemifar, An adaptive controller for cooperative teleoperation system with time-varying delay and formation, in: 2023 11th RSI International Conference on Robotics and Mechatronics (ICRoM), 2023, pp. 48–53. doi: 10.1109/ICRoM60803.2023. 10412586 .[14] P. N. Dao, V. T. Nguyen, Y.-C. Liu, Finite-time convergence for bilateral teleoperation systems with disturbance and time-varying delays, IET Control Theory & Applications 15 (2021) 1736–1748. doi: 10.1049/cth2.12155 .[15] Z. Li, X. Cao, N. Ding, Adaptive fuzzy control for synchronization of nonlinear teleoperators with stochastic time-varying communication delays, IEEE Transactions on Fuzzy Systems 19 (2011) 745–757. doi: 10.1109/TFUZZ.2011.2143417 .[16] Y. Yang, C. Ge, H. Wang, X. Li, C. Hua, Adaptive neural network based prescribed performance control for teleoperation system under input saturation, Journal of the Franklin Institute 352 (2015) 1850–1866. doi: 10.1016/j.jfranklin.2015.01.032 .[17] H. Wang, P. X. Liu, S. Liu, Adaptive neural synchronization control for bilateral teleoperation systems with time delay and backlash-like hysteresis, IEEE Transactions on Cybernetics 47 (2017) 3018–3026. doi: 10.1109/TCYB.2016.2644656 .[18] H. Li, W. Chou, Adaptive FNN backstepping control for nonlinear bilateral teleoperation with asymmetric time delays and uncertainties, International Journal of Control, Automation and Systems 21 (2023) 3091–3104. doi: 10.1007/s12555-022-0158-9 .[19] S. Ganjefar, M. Afshar, M. H. Sarajchi, Z. Shao, Controller design based on wavelet neural adaptive proportional plus conventional integral-derivative for bilateral teleoperation systems with time-varying parameters, International Journal of Control, Automation and Systems 16 (2018) 2405–2420. doi: 10.1007/s12555-017-0739-1 .[20] C.-C. Hua, Y. Yang, X. Guan, Neural network-based adaptive position tracking control for bilateral teleoperation under constant time delay, Neurocomputing 113 (2013) 204–212. doi: 10.1016/j.neucom.2013.01.016 .[21] Z. Li, Y. Xia, Adaptive neural network control of bilateral teleoperation with unsymmetrical stochastic delays and unmodeled dynamics, International Journal of Robust and Nonlinear Control 24 (2014) 1628–1652. doi: 10.1002/rnc.2950 .[22] D. Sun, F. Naghdy, H. Du, Neural network-based passivity control of teleoperation system under time-varying delays, IEEE Transactions on Cybernetics 47 (2017) 1666–1680. doi: 10.1109/TCYB.2016.2554630 .[23] Z. Chen, F. Huang, W. Sun, J. Gu, B. Yao, RBF-neural-network-based adaptive robust control for nonlinear bilateral teleoperation manipulators with uncertainty and time delay, IEEE/ASME Transactions on Mechatronics 25 (2020) 906–918. doi: 10.1109/TMECH.2019.2962081 .[24] Y. Wang, J. Tian, Y. Liu, B. Yang, S. Liu, L. Yin, W. Zheng, Adaptive neural network control of time delay teleoperation system based on model approximation, Sensors 21 (2021) 7443. doi: 10.3390/s21227443 .
+
+Ghaemifar et al.: Preprint Version Page 19 of 20 Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions 
+
+[25] H. Zhang, A. Song, H. Li, D. Chen, L. Fan, Adaptive finite-time control scheme for teleoperation with time-varying delay and uncertainties, IEEE Transactions on Systems, Man, and Cybernetics: Systems 52 (2022) 1552–1566. doi: 10.1109/TSMC.2020.3032295 .[26] P. M. Kebria, A. Khosravi, S. Nahavandi, P. Shi, R. Alizadehsani, Robust adaptive control scheme for teleoperation systems with delay and uncertainties, IEEE Transactions on Cybernetics 50 (2020) 3243–3253. doi: 10.1109/TCYB.2019.2891656 .[27] P. M. Kebria, A. Khosravi, S. Nahavandi, D. Wu, F. Bello, Adaptive type-2 fuzzy neural-network control for teleoperation systems with delay and uncertainties, IEEE Transactions on Fuzzy Systems 28 (2020) 2543–2554. doi: 10.1109/TFUZZ.2019.2941173 .[28] H. K. Khalil, Nonlinear Systems, 3rd ed., Prentice Hall, Upper Saddle River, NJ, USA, 2002. [29] K. Gu, V. L. Kharitonov, J. Chen, Stability of Time-Delay Systems, Control Engineering, Birkhäuser Boston, Boston, MA, USA, 2003. doi: 10.1007/978-1-4612-0039-0 .[30] S. Boyd, L. El Ghaoui, E. Feron, V. Balakrishnan, Linear Matrix Inequalities in System and Control Theory, volume 15 of Studies in Applied and Numerical Mathematics , Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 1994. doi: 10.1137/1.9781611970777 .[31] J. Park, I. W. Sandberg, Universal approximation using radial-basis-function networks, Neural Computation 3 (1991) 246–257. doi: 10.1162/ neco.1991.3.2.246 .[32] S. S. Haykin, Neural Networks: A Comprehensive Foundation, 2nd ed., Prentice Hall, Upper Saddle River, NJ, USA, 1999. [33] S. Zhang, S. Yuan, X. Yu, L. Kong, Q. Li, G. Li, Adaptive neural network fixed-time control design for bilateral teleoperation with time delay, IEEE Transactions on Cybernetics 52 (2022) 9756–9769. doi: 10.1109/TCYB.2021.3063729 .[34] P. N. Dao, Q. P. Nguyen, M. H. Vu, Adaptive optimal coordination control of perturbed bilateral teleoperators with variable time delays using Actor–Critic reinforcement learning algorithm, Mathematics and Computers in Simulation 229 (2025) 151–175. doi: 10.1016/j.matcom. 2024.09.007 .[35] P. N. Dao, V. Q. Nguyen, H. A. Nguyen Duc, Nonlinear RISE based integral reinforcement learning algorithms for perturbed bilateral teleoperators with variable time delay, Neurocomputing 605 (2024) 128355. doi: 10.1016/j.neucom.2024.128355 .[36] E. Li, Y. Shen, H. Zhang, Reinforcement learning method for adaptive control of uncertain bilateral teleoperation robots, in: Q. Yang (Ed.), The Proceedings of the 12th Frontier Academic Forum of Electrical Engineering (FAFEE2025): Volume II, volume 1505 of Lecture Notes in Electrical Engineering , Springer Nature Singapore, 2026, pp. 444–459. doi: 10.1007/978-981-95-4274-1_47 .[37] A. Attarzadeh, M. A. Ghaemifar, A. Khanzadeh, S. Ganjefar, Deep reinforcement learning for adaptive gain tuning in control of teleoperation manipulators with joint flexibility and time-varying delays, arXiv preprint arXiv:2607.21145 (2026). doi: 10.48550/arXiv.2607.21145 .
+
+arXiv:2607.21145 .[38] F. Scarselli, A. C. Tsoi, Universal approximation using feedforward neural networks: A survey of some existing methods, and some new results, Neural Networks 11 (1998) 15–37. doi: 10.1016/S0893-6080(97)00097-X .[39] K. S. Narendra, K. Parthasarathy, Identification and control of dynamical systems using neural networks, IEEE Transactions on Neural Networks 1 (1990) 4–27. doi: 10.1109/72.80202 .[40] K. Khosravi, M. Ghaemifar, S. Ebadollahi, Enhancing spatial awareness: A survey of camera-based frontal view to bird’s-eye-view conversion, SSRN Electronic Journal (2024). doi: 10.2139/ssrn.4829554 .[41] H. Arabsorkhi, M. Ghaemifar, S. Ebadollahi, S. Moradi, GA-tuned ensemble learning for improving the performance of Wi-Fi RSS-based indoor positioning, in: 2024 10th International Conference on Web Research (ICWR), IEEE, 2024, pp. 349–354. doi: 10.1109/ICWR61162. 2024.10533318 .
+
+Ghaemifar et al.: Preprint Version Page 20 of 20
