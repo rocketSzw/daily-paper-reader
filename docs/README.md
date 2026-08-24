@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-24</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 13 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-23 20:31:09 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-24 19:35:55 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读2篇、速读5篇，聚焦神经符号世界模型与机器人控制前沿。</p>
-<p>最值得看零样本任务迁移的神经符号世界模型，及不确定遥操作系统的自适应鲁棒控制。</p>
-<p>建议后续关注世界模型在具身智能与多智能体协作中的落地潜力。</p>
+<p>今日聚焦无人机自主飞行与编队控制，共处理13篇论文，其中5篇精读、8篇速读。</p>
+<p>最值得关注的两个9分方向：基于原语模仿学习的端到端规划器，以及高速敏捷编队的模型预测控制。</p>
+<p>后续可延伸阅读随机可达分析的物理信息强化学习、事件相机特征提取等前沿子领域。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Towards Zero-Shot Task Transfer with Neurosymbolic World Models">Towards Zero-Shot Task Transfer with Neurosymbolic World Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions">Adaptive RBFNN Control of Uncertain Bilateral Teleoperation Systems with Delay-Dependent LMI Stability Conditions</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Neural-Primitive: An Efficient End-to-end Local Planner with Primitive-based Imitation Learning for Autonomous Flight">Neural-Primitive: An Efficient End-to-end Local Planner with Primitive-based Imitation Learning for Autonomous Flight</span></li><li><span class="dpr-home-dashboard-paper-title" title="FF-MPCC: High-speed Agile Formation Flight with Model Predictive Contouring Control">FF-MPCC: High-speed Agile Formation Flight with Model Predictive Contouring Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="Nonlinear Model Predictive Control for Trajectory Tracking of Differentially Flat Fixed-Wing Aerial Systems">Nonlinear Model Predictive Control for Trajectory Tracking of Differentially Flat Fixed-Wing Aerial Systems</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WONDER: A Radio World Model-based Negotiation Framework for Multi-Agent UAV Coverage Optimization">WONDER: A Radio World Model-based Negotiation Framework for Multi-Agent UAV Coverage Optimization</span></li><li><span class="dpr-home-dashboard-paper-title" title="DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation">DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation</span></li><li><span class="dpr-home-dashboard-paper-title" title="GigaBrain-WBC-0.5: A Behavior World Model for Robust Whole-Body Control with Environment Interaction">GigaBrain-WBC-0.5: A Behavior World Model for Robust Whole-Body Control with Environment Interaction</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Physics-informed Reinforcement Learning for Stochastic Reach-Avoid Analysis">Physics-informed Reinforcement Learning for Stochastic Reach-Avoid Analysis</span></li><li><span class="dpr-home-dashboard-paper-title" title="Rigidity-Aware Formation Tracking under Sensing Range Constraints via Single Control Barrier Function Constraint">Rigidity-Aware Formation Tracking under Sensing Range Constraints via Single Control Barrier Function Constraint</span></li><li><span class="dpr-home-dashboard-paper-title" title="FLEET: Token-Based Feature Extraction for Event Camera-based Reinforcement Learning">FLEET: Token-Based Feature Extraction for Event Camera-based Reinforcement Learning</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>8</strong></span></div>
 </section>
 </div>
 

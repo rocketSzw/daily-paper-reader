@@ -1,0 +1,890 @@
+Title: Adaptive Model Predictive Control for Ground Vehicles: Review and Demonstrative Implementation
+
+URL Source: https://arxiv.org/pdf/2608.17902v1
+
+Published Time: Wed, 19 Aug 2026 01:07:50 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Adaptive Model Predictive Control for Ground Vehicles: Review and Demonstrative Implementation 
+
+# CHETANA GADGIL 1 , MAHENDRA SINGH TOMAR 1, 
+
+> 1
+
+Department of Electrical and Electronics Engineering, BITS Pilani Goa 
+
+Abstract. This paper reviews Adaptive Model Predictive Control (AMPC) methods for Autonomous Vehicles (AVs), focusing on control strategies that dynamically adapt to uncertainties and changing conditions in real-time. The critical role of Adaptive Model Predictive Control (AMPC) in addressing the challenges of autonomous vehicle control are discussed. For the scope of this paper, AMPC is defined as a class of Model Predictive Control (MPC) techniques that modify the system model, cost function, constraints, or prediction horizon, based on real-time data. Traditional MPC, while e ff ective for constrained optimization, struggles with model inaccuracies, computational demands, and dynamic environments, necessitating AMPC methods. The review covers existing literature on Gain scheduled MPC, Online Model Estimation MPC, Weight Adaptive MPC, Horizon Adaptive MPC, Learning Based MPC, and Hybrid MPC that combines MPC with other control methods. In addition to the survey, a demonstrative simulation of an adaptive MPC controller is presented that illustrates practical aspects of weight and speed adaptation in trajectory tracking. 
+
+Keywords. Model Predictive control, Adaptive MPC, Autonomous Ground vehicles 
+
+1 Introduction 
+
+Autonomy in transport has evolved over time from no automation to High Automation over the years. It is advantageous to define the levels of autonomy for regulatory purposes. SAE International’s J3016 standard [1] defines six levels of driving automation, from Level 0 (no automation) to Level 5 (full automation), as shown in Table 1. These levels provide a framework for understanding the progression of autonomous control, with higher levels demanding more sophisticated control strategies. The current implementations of autonomy are between level 2 to 4 in the industry and research. Achieving Level 5 automation necessitates further research in advanced control strategies for autonomous vehicles. Autonomous driving systems are typically organized into four major functional modules: perception, localization, path planning, and control. Fig 1 illustrates the key subsystems of a modern autonomous driving architecture. Among these modules, the control layer plays a critical role in ensuring accurate trajectory tracking and vehicle stability under varying operating conditions. Model-based control strategies, particularly Model Predictive Control (MPC), have been widely adopted in autonomous vehicle research due to their ability to explicitly handle constraints and optimize future control actions over a prediction horizon. Control methods in general, can be broadly classified into two categories: model based and data driven. Benosman [2] Model based controllers, such as Model Predictive Control (MPC) and Proportional Integral Derivative (PID) control, rely on mathematical representations of vehicle dynamics. These methods o ff er higher interpretability and predictability. In contrast, data-driven approaches, such as Reinforcement Learning (RL), learn control policies from real world or simulated data, adapting to complex and uncertain environments without requiring fixed models. However, data-driven methods often lack full interpretability and depend heavily on the quality and quantity of training data, which makes provable safety di ffi cult to achieve Kiran et al. [3], Zhao et al. [4]. Many AV systems combine these approaches, combining advantages of both approaches. The model based methods provide robustness and the data driven methods provide adaptability. These can be called as hybrid methods. Table 2 provides a list and description of the widely researched control algorithms used for Autonomous Vehicles (AVs). Of these, the Adaptive Model Predictive Control (AMPC) and the Reinforcement Learning (RL) methods provide the best outcomes and are widely researched for modern AV control. The control strategies of commercial autonomous vehicles are not open source and not well documented. However, some technical blogs provide some pointers. The blog post titled ”Tesla’s End-to-End Deep Learning Approach” on Think Autonomous [5] talks about Tesla’s transition from a modular autonomous driving architecture to a fully end-to-end deep learning system with the release of FSD v12. Lu et al. [6], Bronstein et al. [7] and Gulino et al. [8] are white papers from Waymo. These papers demonstrate Hierarchical Model-Based Imitation Learning for Planning in Autonomous Driving, Imitation with Reinforcement Learning, and Waymax, an Accelerated, Data-Driven Simulator for Large-Scale Autonomous Driving Research. Despite advancements, control systems 1arXiv:2608.17902v1 [eess.SY] 18 Aug 2026 2 Chetana Gadgil, Mahendra Singh Tomar 
+
+Table 1: SAE Levels of Driving Automation (J3016 Standard)               
+
+> Level Name Description Level 0 No Automation Human driver performs all driving tasks. Vehicle may issue warnings or momentary assistance (e.g., lane departure alert).
+> Level 1 Driver Assistance Vehicle can assist with either steering or acceleration /deceleration (e.g., Adaptive Cruise Control), but not both simultaneously. Driver remains fully engaged.
+> Level 2 Partial Automation Vehicle can control both steering and acceleration /deceleration under some conditions. Driver must monitor and be ready to intervene at all times.
+> Level 3 Conditional Automation Vehicle can perform all driving tasks in specific conditions. Human driver must take over when requested (e.g., tra ffi c jam pilot).
+> Level 4 High Automation Vehicle performs all driving tasks in defined areas or scenarios (geofenced). No driver attention is required within these conditions.
+> Level 5 Full Automation Vehicle is capable of all driving tasks under all conditions. No driver required at any time or location.
+
+face challenges in edge cases, such as adverse weather or unpredictable human behavior, which can degrade sensor accuracy and decision-making Chougule et al. [9]. For instance, LiDAR struggles in heavy precipitation, and vision-based systems may misinterpret ambiguous road signs. These limitations, coupled with potential over-reliance on automation, underscore the need for robust control methods. MPC, particularly its adaptive variants, dominates research due to its ability to handle constraints and dynamic environments, as evidenced by its prevalence in recent studies Stano et al. [10]. This review explores traditional MPC, Adaptive MPC, and hybrid methods, analyzing their advantages and shortcomings for path tracking and lane following in AVs. The primary objective of this paper is to provide a structured review of Adaptive Model Predictive Control methods for autonomous vehicles and to consolidate key adaptation mechanisms reported in the literature. In addition to the review, a demonstrative implementation is presented as an illustrative case study to show how curvature- and speed-based adaptation mechanisms can be integrated within a nonlinear MPC framework. The implementation is intended to support understanding of practical design considerations rather than to propose a new control algorithm. 
+
+Perception 
+
+Cameras, LiDAR, Radar, Ultrasonic Sensors, Computer Vision, Sensor Fusion 
+
+Localization 
+
+GPS, IMU, Odometry, SLAM, HD Maps 
+
+Path Planning 
+
+A* Algorithm, RRT, Dynamic Programming, Behavior Planning 
+
+Control 
+
+Reinforcement Learning, Model Predictive Control, Hybrid control combined with PID, Sliding mode control etc Steering /Throttle /Brake, Actuator Commands 
+
+Figure 1 : Block diagram of autonomous driving system components. The main contributions of this paper are: 
+
+• A structured review of Adaptive MPC methods for autonomous vehicles. 
+
+• A comparative discussion of adaptation mechanisms and their practical implications. 
+
+• A demonstrative simulation study illustrating curvature and speed adaptive MPC in trajectory tracking. 
+
+2 Scope of this Review 
+
+This review paper focuses on Adaptive Model Predictive Control (AMPC) methods for autonomous vehicles (AVs), emphasizing control strategies that dynamically adapt to uncertainties and changing conditions in real-time. For the purposes of this review, AMPC is defined as a class of Model Predictive Control (MPC) techniques that explicitly incorporate adaptation mechanisms to modify the system Adaptive MPC: Review and Demonstrative Study 3
+
+Table 2 : Leading Control Algorithms for Autonomous Vehicles in Research         
+
+> Control Algorithm Description References
+> PID Control Classical controller using proportional, integral, and derivative terms to minimize trajectory tracking error. Widely used due to simplicity and low computational cost. [11] Traditional Model Predictive Control (MPC) Optimizes control inputs over a prediction horizon using a vehicle dynamics model while respecting system constraints. E ff ective for complex and constrained environments. [10] Sliding Mode Control (SMC) Robust nonlinear control technique that handles model uncertainties and disturbances using switching control laws. Often combined with MPC or fuzzy control. [12, 13] Fuzzy Logic Rule-based controller using fuzzy sets and linguistic variables to handle nonlinear systems and uncertainty. Often integrated with other control methods. [13] Adaptive MPC Enhances MPC by adjusting controller parameters online to account for changing vehicle dynamics and environmental disturbances. [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27] Reinforcement Learning Control Data-driven control method where optimal policies are learned through interaction with the environment using reward signals. [28, 29] Pure Pursuit Geometric path-following algorithm that computes steering commands based on a look-ahead point along the reference trajectory. [30, 31]
+
+model, cost function, constraints, or prediction horizon based on real-time data or operating conditions. These adaptations ensure robust and e ffi cient control for AV tasks such as path tracking, trajectory following, and obstacle avoidance under dynamic environments (e.g., varying road conditions, tra ffi cpatterns, or vehicle parameters). The scope encompasses the following AMPC methods, which are characterized by their explicit adaptation mechanisms: 
+
+• Gain-Scheduled MPC: Adapts by switching precomputed controllers based on scheduling variables (e.g., vehicle speed) to handle di ff erent operating regimes 
+
+• Online Model Estimation MPC: Updates model parameters (e.g., tire friction, vehicle mass) in real-time using estimators like recursive least squares or Kalman filters 
+
+• Weight-Adaptive MPC: Dynamically tunes cost function weights to balance objectives like tracking accuracy and control e ff ort 
+
+• Horizon-Adaptive MPC: Adjusts horizon, such that the prediction horizon N becomes a time-varying parameter Nk, updated at each time step based on a scheduling variable or algorithm. 
+
+• Learning-Based MPC: Employs machine learning, such as Radial Basis Function (RBF) neural networks, to adapt system dynamics, either enhancing a nominal model or replacing it entirely in Model-Free Predictive Control (MFPC) In addition, this paper reviews hybrid control strategies that integrate Model Predictive Control (MPC) with other control methods, including PID control, fuzzy logic control, sliding mode control, and reinforcement learning. 
+
+3 Traditional MPC 
+
+This section will outline the traditional MPC method and its advantages and disadvantages. Model Predictive Control (MPC) is a popular model based approach currently used widely for autonomous vehicles that optimizes control actions over a prediction horizon, considering the vehicle model and constraints. Stano et al. [10] gives a detailed review of the model predictive control used in autonomous vehicles. Traditional Model Predictive Control (MPC) is a model based control strategy that optimizes control inputs over a finite prediction horizon, using a vehicle model to consider constraints such as road boundaries and speed limits. It predicts future states and minimizes a cost function to achieve tasks like path tracking. Model predictive control has been explored as a control strategy for autonomous vehicles for more than 2 decades, with early research papers such as Ra ff o et al. [32], Chen et al. [33] and Klanˇ car and ˇSkrjanc [34]. Since then MPC is widely researched and several improvements have been explored with Adaptive and Hybrid variants of MPC. The block diagram of traditional 4 Chetana Gadgil, Mahendra Singh Tomar 
+
+MPC for AVs is depicted in Figure 2, illustrating the interaction of key components. Reference Trajectory, (xref ,k)MPC Controller Predictor, (xk+1)Optimizer, min J Cost Function, JConstraints Vehicle Dynamics Sensors Perception error 
+
+xk
+
+Figure 2 : MPC Block Diagram 3.1 Explanation of Each Block 
+
+3.1.1 Reference Trajectory Generator 
+
+This block can be thought of the hardware and software that generates the desired trajectory (e.g., position, velocity, yaw) based on navigation goals and environmental data, providing the reference xref ,k for tracking. However, there may be several challenges. Some of these trajectories may be infeasible due to vehicle constraints (e.g., maximum steering angle) or dynamic obstacles, causing tracking errors. Therefore MPC controller has constraints as an input for selecting feasible trajectories. Even after a feasible trajectory is selected, sudden changes in tra ffi c conditions might make a selected trajectory infeasible , reducing responsiveness. Such abrupt changes can lead to unstable vehicle behavior. In order to overcome these challenges, real time sensor data can be used with adaptive MPC algorithms. Changing vehicle dynamics can be incorporated in the planning. In order to smoothen the dynamically changing trajectories, to avoid abrupt changes, smoothing techniques like splines can be applied. 3.1.2 State Estimator (Perception Sensors and Feedback Loop) 
+
+The state estimator can be thought of as combination of Perception Sensors and Feedback to the reference trajectory generator. It is responsible for measuring and estimating the vehicle’s dynamic state variables, such as position, velocity, and yaw rate, by integrating data from onboard sensors, including GPS, IMU, and LiDAR. The error between the measured state xk and the reference is fed back to the Model Predictive Controller (MPC) to enable closed loop control. However, noisy sensor measurements can lead to erroneous estimations, which can lead to degraded or even unsafe control performance. In addition, sensor delays, typically in the range of tens to hundreds of milliseconds contribute to delays in response, especially in fast changing driving conditions. This can also lead to unsafe control. Sensor failures, whether transient or permanent, pose a risk to system safety and reliability. These challenges can be mitigated using sensor fusion as well as estimation techniques such as Kalman filtering, which help in reducing noise and improving robustness. 3.1.3 MPC Controller 
+
+The MPC controller comprises four major components: the prediction model, the optimizer, and the control function module and the constraints. The prediction model utilizes a simplified dynamic representation of the vehicle to forecast future states over a finite prediction horizon N.The evolution of the vehicle state is typically modeled using equations of the type eq1 
+
+xk+1 = xk + vk cos( ψk)∆t
+
+yk+1 = yk + vk sin( ψk)∆t
+
+ψk+1 = ψk + vk
+
+L tan( δk)∆t
+
+(1) Here, xk and yk denote the global position coordinates of the vehicle, ψ is the yaw angle, v is the longitudinal velocity, δ is the steering angle, L is the wheelbase, and 
+
+∆t is the sampling time. The Model can be linear or Non linear in nature. While this model captures basic kinematic behavior, it su ff ers from model mismatch and fails to represent complex physical phenomena such as tire slip, suspension dynamics, and road irregularities. To overcome these limitations, adaptive modeling approaches such as Online Model Estimation can be employed to update model parameters in real-time. The optimizer in MPC solves a constrained optimization problem to compute the control input sequence that minimizes a cost function over the horizon. A typical cost function takes the form eq2 min 
+
+> u0,..., uN−1
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xref ,k∥2 
+
+> Q
+
++ ∥uk∥2
+
+> R
+
+ +
+
+∥xN − xref ,N ∥2
+
+> P
+
+,
+
+(2) subject to the vehicle dynamics xk+1 = f (xk, uk) and state and control constraints xk ∈ X , uk ∈ U . The optimization step is computationally demanding, particularly for nonlinear or long-horizon problems, making it di ffi cult to meet real time control deadlines. However since the problem is not convex in nature, the solution can get stuck in a local minima leading to sub optimal solutions. To handle this problem, Methods like interior point or sequential quadratic programming are proposed to solve these problems. Making the model simpler, shortening the prediction horizon, or using techniques like warm starting or rewriting the problem in a simpler (convex) form are some other options. The MPC controller applies the input from the optimized sequence typically steering, throttle, or braking to the actual vehicle. However, this step must account for actuator constraints and Adaptive MPC: Review and Demonstrative Study 5dynamics. Hence, constraints are an important part of the MPC controller. Real world actuators may saturate, meaning they cannot execute commands beyond certain physical limits, which can destabilize the vehicle if not properly handled. Furthermore, actuator dynamics, such as delays and nonlinear responses, are often neglected in simplified control models. These limitations can be mitigated by incorporating actuator constraints directly into the optimization problem and using auxiliary controllers or soft constraints to manage the e ff ects of actuator dynamics. 3.1.4 Vehicle Dynamics 
+
+The vehicle dynamics block represents the actual behavior of the physical vehicle as it responds to control inputs and interacts with its environment. While theoretical models attempt to approximate this behavior, they often omit crucial real-world factors such as tire slip, suspension eff ects, and drivetrain losses. These unmodeled dynamics can significantly a ff ect vehicle performance, particularly under aggressive maneuvers or on uneven terrain. In addition, external disturbances such as wind gusts, road grade, and surface irregularities introduce uncertainties that are not captured in nominal models. To handle such variability, control techniques like Adaptive MPC can be employed to maintain stability despite bounded disturbances. Disturbance observers or adaptive feedforward control strategies can also be integrated to compensate for known or estimated disturbances in real time. 3.2 Shortcomings of Traditional MPC as a Standalone Algorithm 
+
+Model based controllers can o ff er performance guarantees and stability, particularly when using well established control techniques. It is possible to ensure safety critical behavior and incorporate safety constraints in MPC. However, since MPC relies on the vehicle model for prediction, changes in vehicle dynamics can pose a challenge. In addition, MPC is computationally demanding, especially for complex vehicle models and long prediction horizons. Although traditional MPC provides a structured framework for optimal control under constraints, it faces several limitations when applied as a standalone algorithm to autonomous vehicles. One major drawback is model inaccuracy, as fixed linear models fail to capture the time varying nature of vehicle dynamics, such as changing tire friction or varying road conditions. This results in poor tracking performance, particularly during aggressive or emergency maneuvers. Another significant challenge is the computational demand involved in solving optimization problems in real time, particularly for nonlinear systems or extended prediction horizons. Furthermore, traditional MPC does not inherently account for disturbances such as wind, road slope, or sensor uncertainty, which reduces its robustness in unstructured or dynamic environments. Additionally, performance can degrade due to sensor noise and delays, making accurate state estimation essential for reliable control. Finally, actuator limits and their dynamic characteristics are often simplified or omitted in the control formulation, which may result in instability or unsafe behavior. These limitations highlight the need for more advanced approaches such as adaptive, learning based, or gain scheduled MPC methods that can better handle the complex and time varying nature of real world driving conditions. 3.3 Linear vs. Nonlinear Models 
+
+Linear MPC uses simplified models (e.g., kinematic bicycle model), reducing computational load but sacrificing accuracy. Nonlinear MPC (NMPC) off ers superior performance in dynamic scenarios but demands more computational resources and robust solvers. For AVs, NMPC is preferred for high speed or unstructured environments, while linear MPC suits simpler tasks. Adaptive form of MPC can use either Linear or Nonlinear Models. Hence this review does not specifically dedicate separate sections for these two. 
+
+4 Adaptive MPC 
+
+Variations of traditional MPC like adaptive MPC can be used to handle dynamic and uncertain environments like hilly terrains. Traditional Model Predictive Control (MPC) uses a fixed model and cost function, while Adaptive MPC updates its system model and /or cost function weights online during operation, allowing it to better handle changing dynamics and uncertainties. Adaptive MPC typically achieves better performance, especially when dealing with nonlinear or time varying systems. Adaptive MPC can be categorized based on how the ”adaptation” is achieved. This section outlines AMPC methods like Gain Scheduled, Online Model Estimation, Learning-Based (including Model-Free), Weight-Adaptive, and Horizon Adaptive MPC. This section excludes Nonlinear MPC unless adaptive. 4.1 MPC Formulation 
+
+Model Predictive Control (MPC) computes an optimal control sequence by solving the following finite-horizon optimization problem: min 
+
+> u0,..., uN−1
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xref ,k∥2 
+
+> Q
+
++ ∥uk∥2
+
+> R
+
+ +
+
+∥xN − xref ,N ∥2
+
+> P
+
+subject to 
+
+xk+1 = f (xk, uk), xk ∈ X , uk ∈ U , x0 = x(0) where 
+
+• xk denotes the system state at time step k (e.g., vehicle position, velocity, and yaw angle). 6 Chetana Gadgil, Mahendra Singh Tomar 
+
+• uk denotes the control input at time step k (e.g., steering angle and acceleration). 
+
+• xref ,k is the reference state corresponding to the desired trajectory. 
+
+• f (·) represents the system dynamics model, which may be linear or nonlinear. 
+
+• Q and R are weighting matrices that penalize state tracking error and control e ff ort. 
+
+• P is the terminal cost matrix penalizing the final state deviation. 
+
+• X and U denote State constraints (e.g., road boundaries, speed limits) and Input constraints (e.g., steering angle limits, acceleration bounds) respectively. The prediction horizon is denoted by N. At each time step t, the current state x(t) is measured and the optimization problem is solved to obtain the optimal control sequence 
+
+{u0, . . . , uN−1}. Only the first control input u0 is applied to the system, after which the horizon is shifted forward and the procedure is repeated. 
+
+5 AMPC Methods 
+
+Each AMPC method modifies the standard MPC formulation to achieve adaptability, addressing uncertainties or changing conditions in AVs (e.g., road friction, vehicle load, or tra ffi c). 5.1 Gain-Scheduled MPC 
+
+Uses a set of precomputed controllers, each designed for specific operating conditions (e.g., speed ranges, road types), selected via a scheduling variable (e.g., vehicle speed v, yaw rate). Switches precomputed controllers using a scheduling variable σ(t) (e.g., speed): The MPC problem remains the same, but the controller parameters (e.g., model f , weights Q, R, or control law) are selected from a precomputed set based on a scheduling variable σ(t) (e.g., σ(t) = v(t)), as shown in eq3 
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xref ,k∥2 
+
+> Qσ(t)
+
++ ∥uk∥2
+
+> Rσ(t)
+
+ +
+
+∥xN − xref ,N ∥2
+
+> Pσ(t)
+
+(3) 
+
+xk+1 = fσ(t)(xk, uk)A lookup table or function maps σ(t) to the appropriate model fσ(t) and weights Qσ(t), Rσ(t), Pσ(t).This method can be used in AV lane keeping for speed based switching. For example, controllers might be precomputed for speed ranges (e.g., 0-30 km /h, 30-60 km /h), with σ(t) =
+
+v(t) selecting the controller. 
+
+Xie et al. [15] proposes a Gain Scheduling Robust Model Predictive Control (GS-RMPC) approach for the path following control of autonomous independent drive electric vehicles (AIDEVs). The method addresses time varying system dynamics and modeling uncertainties by integrating gain-scheduling mechanisms within a robust MPC framework. Both polytopic and norm-bounded uncertainty representations are considered to enhance robustness. This approach combines o ffl ine and online optimization to improve computational effi ciency while maintaining control performance. Authors in Yacoub et al. [16] propose a Gain Scheduled Model Predictive Control (MPC) framework for vehicle following applications. Here a single MPC controller is modified to operate under three di ff erent driving modes : Speed control, headway control, and emergency braking. The proposed approach allows explicit tuning of two main parameters, namely the standstill distance between the ego and lead vehicles and the desired time headway. The controller is experimentally validated on a passenger vehicle and demonstrates improved smoothness in longitudinal motion by mitigating repetitive acceleration and braking in congested tra ffi c scenarios. Real time data obtained from LiDAR, onboard cameras, and vehicle mounted sensors are used to construct a range-rate representation, from which the desired velocity trajectory for the lower level speed controller is generated. Gain scheduled MPC (GS MPC ) is rarely used in modern AVs as a standalone control algorithm for path tracking due to the complex nature of the problem in real world. While GS MPC is an e ff ective Adaptive Model Predictive Control (AMPC) method that adapts by switching precomputed controllers based on scheduling variables (e.g., vehicle speed, road curvature), its practical challenges make it less suitable as a standalone solution compared to other AMPC methods. AV path tracking requires handling continuous, unpredictable changes (e.g., sudden obstacles, varying friction). GS MPC’s reliance on predefined operating regimes limits its ability to adapt to conditions outside the scheduled set. Some form of gain scheduling is often used with other online adaptive methods of MPC to achieve good results. 5.2 Online Model Estimation MPC 
+
+Online Model Estimation MPC continuously updates model parameters (e.g., vehicle mass or tire friction) in real time using parameter estimators such as Recursive Least Squares (RLS) or Kalman filtering. This allows the system model 
+
+f to adapt to changing vehicle dynamics and environmental conditions. The system model f (xk, uk, θ k) is parameterized by a vector of parameters θk. For example, 
+
+θk = [m, C f ]⊤,
+
+where m denotes the vehicle mass and C f represents the tire cornering sti ff ness. Adaptive MPC: Review and Demonstrative Study 7At each time step, an estimator updates the parameter vector based on observed system data: 
+
+θk+1 = Estimator( θk, xk, uk, yk), xk+1 = f (xk, uk, θ k),
+
+where yk denotes the measured output (e.g., vehicle position obtained from GPS). The resulting MPC optimization problem is formulated as shown in eq4 min 
+
+> u0,..., uN−1
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xre f ,k∥2 
+
+> Q
+
++ ∥uk∥2
+
+> R
+
+
+
++ ∥xN − xre f ,N ∥2
+
+> P
+
+(4) subject to 
+
+xk+1 = f (xk, uk, θ k), xk ∈ X , uk ∈ U .
+
+For example, RLS might estimate C f from lateral acceleration and yaw rate measurements, updating the bicycle model: ˙ψk+1 = C f
+
+mv k
+
+δk
+
+Applications of Online Model Estimation MPC can include adaptation of a wet road by updating tire sti ff ness in a kinematic model in order to maintain accurate path tracking. This involves continuously updating the parameters of the prediction model within the MPC framework as the system operates. This can be done using techniques like Least squares estimation, Moving Horizon Estimation or Kalman Filtering. In Sakhdari and Azad [17], an adaptive tube-based nonlinear MPC approach is proposed in which uncertain vehicle parameters are estimated online using a recursive least squares (RLS) method. The updated parameter estimates are incorporated into the prediction model, enabling the controller to account for modeling errors while preserving robustness through tube-based constraint tightening. This approach allows the system to maintain stability and performance despite variations in vehicle dynamics and external disturbances. In Liang et al. [35] , a multi model adaptive control strategy is developed to address uncertainty in tire cornering sti ff ness. Multiple candidate vehicle models are constructed to represent di ff erent operating regimes, and a convex combination of these models is used within the MPC framework. The model weights are adjusted online based on system behavior, allowing the controller to adapt smoothly to changes in road tire interaction without requiring explicit parameter identification. Similarly, Liu et al. [36] presents an adaptive MPC framework that explicitly estimates both tire cornering sti ff ness and road friction coe ffi cients in real time. These estimates are used to update the internal prediction model as well as the associated constraints, such as slip angle limits, to ensure safe and accurate trajectory tracking. The approach further enhances adaptability by incorporating online tuning of control parameters, enabling consistent performance across a wide range of vehicle speeds and driving conditions. 
+
+Vo et al. [18] proposes a robust adaptive path tracking control framework based on a predicted interval formulation for autonomous driving under uncertainty. A set membership based recursive estimation scheme is employed to update uncertain model parameters online, enabling adaptive refinement of the predictive model. The resulting interval based representation is incorporated into a robust MPC framework to ensure constraint satisfaction and closed loop stability. The approach achieves reliable tracking performance under significant modeling uncertainties and varying driving conditions, as demonstrated through extensive simulation studies. 5.3 Weight-Adaptive MPC 
+
+This method dynamically tunes the cost function weights 
+
+Q, R, or P based on operating conditions, often using optimization or ML techniques (e.g., PSO-BP neural network). The cost function weights are parameterized as functions of a condition or learned model: 
+
+Qk = Q(ζk), Rk = R(ζk), Pk = P(ζk)where ζk is a condition (e.g., vehicle speed, road curvature) or output of an ML model (e.g., neural network). The MPC problem can be written as shown in eq5 min 
+
+> u0,..., uN−1
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xre f ,k∥2  
+
+> Q(ζk)
+
++ ∥uk∥2 
+
+> R(ζk)
+
+ +
+
+∥xN − xre f ,N ∥2 
+
+> P(ζk)
+
+(5) subject to: 
+
+xk+1 = f (xk, uk), xk ∈ X , uk ∈ U 
+
+This method balances tracking accuracy and control e ff ort in path tracking or trajectory following, adapting to conditions like high-speed driving. For example adjusting Q to prioritize tracking accuracy on curved roads. Hu et al. [19] propose a weight-adaptive model predictive control (MPC) strategy that accounts for variations in road curvature, vehicle speed, and road friction conditions. The controller dynamically adjusts the weighting factors in the MPC cost function to enhance tracking performance under diverse driving scenarios. Co-simulation results obtained using CarSim and MATLAB Simulink demonstrate that the proposed approach achieves safe and stable path tracking across a wide range of operating conditions. 
+
+Tang et al. [20] develop a weight-adaptive MPC framework based on a particle swarm optimization–backpropagation (PSO-BP) neural network. In this approach, optimal weighting parameters are obtained offl ine through automated simulations and subsequently 8 Chetana Gadgil, Mahendra Singh Tomar 
+
+used for online adaptation within the MPC structure. Validation using a PreScan–CarSim–Simulink co-simulation environment shows that the proposed strategy improves tracking accuracy and robustness while satisfying real-time implementation requirements. Similarly, Chang and Suqin [21] employ a fuzzy logic based adaptive mechanism to tune the weighting coe ffi cients of the MPC controller. By adjusting the control weights in response to changes in vehicle speed and road curvature, the method enhances trajectory tracking accuracy and improves vehicle stability under varying driving conditions. The results demonstrate that adaptive weight tuning enables eff ective performance across a wide range of operating scenarios. 5.4 Horizon-Adaptive MPC 
+
+Adjusts the horizon such that the prediction horizon N
+
+becomes a time-varying parameter Nk, updated at each time step based on a scheduling variable or algorithm. Krener [22] is an example of such an algorithm. 
+
+Nk = h(σk)where σk could be vehicle speed, tracking error, or environmental data (e.g., distance to obstacles). The modified MPC problem is shown in eq6 min  
+
+> u0,..., uNk−1
+
+J = 
+
+> Nk−1
+
+X
+
+> k=0
+
+∥xk+1 − xre f ,k∥2 
+
+> Q
+
++ ∥uk∥2
+
+> R
+
+ +
+
+∥xNk − xre f ,Nk ∥2
+
+> P
+
+(6) subject to: 
+
+xk+1 = f (xk, uk), xk ∈ X , uk ∈ U , x0 = x(0) 
+
+Nk can be determined by: 
+
+• Rule-Based: Nk = Nshort if speed is greater than threshold, else Nlong .
+
+• Optimization-Based: Minimize a cost function balancing performance and computation. 
+
+• ML-Based: A neural network predicts Nk based on data (e.g., tra ffi c density, road curvature). Example: For an AV, Nk = 5 in dense urban tra ffi c (fast response) and Nk = 20 on highways (smooth tracking). 
+
+Kim et al. [23] propose a Model Predictive Control (MPC) framework with a time-varying, non-uniform prediction horizon for autonomous vehicle path following and collision avoidance. The approach employs shorter prediction intervals in the near term to enhance tracking performance in high-curvature segments, while longer intervals are used farther ahead to improve obstacle anticipation and avoidance. This adaptive horizon design enables a balanced trade-o ff 
+
+between tracking accuracy and computational e ffi ciency, resulting in improved performance without increasing the overall computational burden. 5.5 Learning-Based MPC 
+
+Uses machine learning (e.g., neural networks, Gaussian processes) to update or represent system dynamics, either enhancing a model-based approach or replacing the model entirely (MFPC). Adaptation occurs through learning from data to improve predictions. we can further divide these into Model-Enhanced and Model-Free MPC as follows 5.5.1 Model-Enhanced 
+
+A Machine Learning model augments the system dynamics 
+
+f , predicting unmodeled dynamics or disturbances, where 
+
+gML is a learned function (e.g., neural network) with parameters ϕk, updated via training on data: 
+
+ϕk+1 = Update( ϕk, xk, uk, yk)The MPC model can then be written as eq7 
+
+xk+1 = f (xk, uk, θ k) + gML (xk, uk; ϕk) (7) 
+
+Vaskov et al. [24] propose a friction-adaptive stochastic nonlinear model predictive control (SNMPC) framework for autonomous driving under uncertain road conditions. The method employs a Bayesian learning framework to estimate tire road friction characteristics online using measurements from automotive grade sensors. Two complementary estimators are used to capture both the mean behavior and uncertainty of the friction model, enabling probabilistic characterization of the vehicle road interaction. These uncertainty estimates are incorporated directly into the SNMPC formulation, allowing the controller to adjust its behavior in the presence of high uncertainty, such as during aggressive maneuvers or low-friction conditions. The approach can be regarded as a hybrid of online model estimation and learning based MPC, as it combines data driven friction learning with model based predictive control. Similarly, Kim and Kee [25] employ aneural-network–based approach to adapt the weighting matrices of an MPC controller. In this work, a prediction model based on lateral error dynamics is formulated, and the corresponding MPC objective function is optimized using weight matrices estimated through a radial basis function neural network. The neural network is trained to approximate optimal weighting parameters under varying driving conditions, enabling adaptive adjustment of the controller’s behavior. The proposed method is validated through simulation studies using a CarMaker–MATLAB /Simulink co-simulation framework, demonstrating improved tracking performance and robustness compared to fixed weight MPC strategies. 5.5.2 Model Free (MFPC) 
+
+A model free MPC Completely replaces the model f with a data driven predictor hML . This method can be applied for Adaptive MPC: Review and Demonstrative Study 9complex tasks like urban driving or drift control, where ML handles nonlinearities or uncertainties. MFPC uses a neural network to predict vehicle trajectory from past sensor data, adapting to urban tra ffi c without a model. 
+
+xk+1 = hML (xk−m:k, uk−m:k; ϕk).
+
+where hML (e.g., a neural network) predicts the next state based on past states and inputs, and ϕk is updated via data. 
+
+ϕk+1 = Update( ϕk, xk, uk, yk)The MPC problem can be written as in eq8 min 
+
+> u0,..., uN−1
+
+J =
+
+> N−1
+
+X
+
+> k=0
+
+∥xk+1 − xre f ,k∥2 
+
+> Q
+
++ ∥uk∥2
+
+> R
+
+ +
+
+∥xN − xre f ,N ∥2
+
+> P
+
+(8) subject to: 
+
+xk+1 = hML (xk−m:k, uk−m:k; ϕk), xk ∈ X , uk ∈ U 
+
+Example: In MFPC, a neural network trained on sensor data (e.g., GPS, LIDAR) predicts vehicle states for steering control. 
+
+Nguyen et al. [26] employ deep neural networks (DNNs) to reduce the computational burden associated with Model Predictive Control (MPC) in adaptive cruise control applications. By leveraging the function approximation capability of deep learning, the proposed approach replaces computationally intensive components of the MPC optimization process, enabling faster online execution while preserving control performance. Similarly, Rokonuzzaman et al. [27] present an MPC framework that integrates a neural network–based vehicle dynamics model learned from data collected under diverse driving conditions. The learned model captures complex nonlinear vehicle behaviors that are di ffi cult to represent using conventional analytical models, thereby improving prediction accuracy over the control horizon. The enhanced prediction capability leads to superior tracking performance, particularly in scenarios involving parametric uncertainties and nonlinear dynamics. Simulation results demonstrate that the proposed learning-based MPC approach outperforms conventional model-based MPC in terms of accuracy and robustness across varying road conditions. 
+
+6 Hybrid Methods 
+
+To enhance robustness, Model Predictive Control (MPC) is often combined with other control algorithms, making use of their complementary strengths while retaining the optimization capability of MPC. These hybrid schemes are closely aligned with the principles of Adaptive MPC (AMPC), as they incorporate adaptation mechanisms to cope with varying operating conditions. The current research in hybrid methods can be broadly categorized into following types. 6.1 PID and MPC Hybrid 
+
+In the PID-MPC hybrid approach, MPC is responsible for high level trajectory tracking and generates optimal setpoints, while Proportional-Integral-Derivative (PID) controllers handle low-level actuator commands such as throttle and steering. This division of tasks reduces the computational burden on MPC and ensures fast dynamic responses through PID. The hybrid structure is widely used in practice, for instance in Apollo’s control framework for lane keeping, where MPC ensures smooth trajectory planning and PID guarantees eff ective actuator control. 
+
+Chu et al. [37] present a trajectory planning and tracking framework in which artificial potential fields are employed to generate reference trajectories, while an MPC augmented with PID feedback is used for trajectory tracking. Although eff ective in improving tracking performance, the reliance on fixed PID gains limits the controller’s adaptability to varying vehicle dynamics and road conditions. This limitation motivates the incorporation of adaptive or gain-scheduled mechanisms within the MPC framework to enhance robustness across diverse operating scenarios. In a related direction, Norlund et al. [38] propose a control architecture that integrates a conventional PID controller with an MPC-based supervisory layer. In this formulation, the MPC provides a feedforward control action that augments the PID output, allowing a smooth transition between pure PID control and MPC dominated operation. The blending between the two control actions is governed by a single tuning parameter, enabling improved performance and stability across di ff erent driving regimes while maintaining computational e ffi ciency. 6.2 Fuzzy Logic and MPC Hybrid 
+
+The fuzzy logic-MPC hybrid incorporates fuzzy inference to adjust MPC parameters such as prediction horizons and cost function weights according to external conditions like vehicle speed or road curvature. This enhances adaptability in uncertain environments and improves tracking performance in dynamic driving scenarios. Nevertheless, the eff ectiveness of this approach depends heavily on the quality and completeness of the fuzzy rule base, which requires extensive tuning and may still struggle under extreme uncertainties. For example, in Chang and Suqin [21] , Zhang et al. [39] employ fuzzy logic based adaptation mechanisms to dynamically adjust prediction horizons and weighting parameters in MPC for path following applications. In these works, an adaptive velocity planner generates speed profiles based on road curvature and friction conditions, while the fuzzy MPC controller regulates steering and tire forces to ensure stable and accurate trajectory tracking. By continuously tuning the control parameters in response to changing driving conditions, the proposed approaches enhance robustness and tracking performance, particularly in scenarios involving varying road geometry and surface characteristics. 10 Chetana Gadgil, Mahendra Singh Tomar 
+
+6.3 Sliding Mode Control and MPC Hybrid 
+
+The sliding mode control (SMC) MPC hybrid exploits the robustness of SMC against disturbances and model mismatches, while using MPC to optimize reference trajectories. SMC provides inherent stability under uncertainties, making the hybrid approach suitable for challenging scenarios such as unstructured or slippery terrains. However, the chattering e ff ect associated with SMC can cause actuator wear and needs to be mitigated through adaptive schemes to maintain AMPC compliance. Applications of this hybrid strategy have demonstrated improved robustness and stability for autonomous vehicle path tracking in adverse conditions such as icy or low-friction roads. Dai and Wang [40] propose a hybrid control framework that integrates robust sliding mode control (SMC) with tube-based model predictive control (MPC). In this approach, MPC is employed to generate the nominal control input for trajectory tracking, while an auxiliary sliding mode controller is designed to regulate the error dynamics between the actual and nominal systems. The sliding surface and reaching law are formulated to ensure robustness against disturbances and modeling uncertainties, allowing the actual system to closely follow the nominal trajectory generated by the MPC. This combined strategy e ff ectively leverages the constraint-handling capability of MPC and the robustness of SMC. Similarly, Ao et al. [41] and El Atwi and Daher [42] investigate hybrid control architectures that integrate model predictive control with super-twisting sliding mode control for autonomous vehicle trajectory tracking. In these works, MPC is used to generate reference control actions, while the super-twisting sliding mode controller compensates for uncertainties and external disturbances, ensuring stable and robust tracking performance under varying operating conditions. 6.4 Reinforcement Learning with MPC 
+
+While standalone reinforcement learning (RL) based control is excluded from this review, hybrid RL–MPC approaches are highly relevant when they incorporate adaptive MPC mechanisms. RL can complement MPC by learning optimal policies or tuning parameters, thereby improving adaptability and robustness. In such frameworks, RL is used to adjust components of MPC such as cost function weights or model parameters. For example, an RL agent may learn a policy 
+
+π that dynamically tunes the weighting matrices Qk and Rk
+
+in the cost function J, where the policy is updated based on rewards derived from tracking accuracy, stability, or safety performance. The integration of RL with MPC off ers several advantages. By learning parameter adjustments, RL enhances adaptability in dynamic environments such as dense urban tra ffi c or rapidly changing road conditions. Furthermore, performance improvements can be achieved since the RL agent can optimize MPC parameters either offl ine during training or online in real time, leading to more precise tracking and better control under uncertainty. However, challenges remain. Training RL agents requires extensive computational resources and large amounts of data, making deployment costly. In addition, RL often su ff ers from a lack of interpretability, and without carefully designed safety constraints, this can pose risks in safety-critical applications such as autonomous driving. Recent studies have demonstrated promising results in this direction. Wang et al. [43] propose a self-learning framework in which reinforcement learning is employed to adaptively tune the weighting coe ffi cients of a model predictive controller. The method extracts representative features from dynamic tra ffi c scenes and utilizes a risk-aware evaluation mechanism to adjust the MPC cost function accordingly. A risk threshold model is introduced to categorize driving scenarios based on their complexity, which in turn guides the reward design for reinforcement learning. This enables the controller to adapt its behavior to varying tra ffi c conditions and enhances its decision-making capability in complex environments. Similarly, Fischer et al. [44] introduce a safe reinforcement learning–based MPC framework that generates reference trajectories while explicitly accounting for safety constraints. In this approach, reinforcement learning is used to explore control policies beyond the local neighborhood of conventional MPC solutions, enabling improved performance in complex driving scenarios. Safety is enforced through a constrained reinforcement learning formulation, where a handcrafted energy-based safety function defines admissible regions of operation. The integration of learning-based exploration with constraint-aware MPC ensures both improved adaptability and safety in autonomous driving applications. 
+
+7 Implementation of Weight and Speed Adaptive MPC 
+
+This section describes a demonstrative implementation of Adaptive Model Predictive Controller (AMPC), which adapts the cost function weights and target speed according to the curvature and slope of the road. The objective of this implementation is not to introduce a novel control method, but to provide a practical demonstration of adaptive MPC concepts discussed in the preceding sections. The controller is designed as a representative example showing how previewed curvature and slope information can be used to adjust reference speed and cost weights within an NMPC framework. The results serve as an illustrative case study in simulation. The controller is formulated as a nonlinear MPC (NMPC) using a dynamic bicycle model and implemented in CasADi. Two MPC formulations are considered, a Fixed-weight MPC (FMPC) with constant target speed and cost function weights, and an Adaptive MPC (AMPC) that adjusts the target speed and cost function weights based on a preview of the upcoming road. The objective is to compare the performance of FMPC and AMPC on identical trajectories containing both curved and sloped road segments. Adaptive MPC: Review and Demonstrative Study 11 Both FMPC and AMPC use identical dynamics, constraints, and solver settings, and are evaluated in the CARLA simulator, on the same trajectories. The AMPC and FMPC formulations share identical vehicle parameters, prediction horizon, discretization scheme, solver configuration, and baseline cost weights as shown in Table 4 . Performance di ff erences between FMPC and AMPC therefore arise solely from adaptation for target speed and weights based on curvature and slope. 7.1 Vehicle Model 
+
+The vehicle state is defined as 
+
+xt = hx y ψ vx vy ri⊤
+
+,
+
+where ( x, y) denote the global Cartesian position of the vehicle, ψ is the yaw angle, ( vx, vy) are body-frame velocities, and r is the yaw rate. The control input is 
+
+u = hax δi⊤
+
+,
+
+with longitudinal acceleration ax and front steering angle δ.The front and rear slip angles are computed as 
+
+α f = arctan vy + l f rvx
+
+!
+
+− δ, αr = arctan vy − lrrvx
+
+!
+
+,
+
+and the corresponding lateral tire forces are obtained from a linear tire model: 
+
+Fy f = −C f α f , Fyr = −Crαr.
+
+where l f and lr are the distances from the vehicle center of gravity to the front and rear axles, respectively, and C f and 
+
+Cr denote the cornering sti ff ness coe ffi cients of the front and rear tires. The continuous-time dynamics ˙ s = f (s, u) are given by ˙x = vx cos ψ − vy sin ψ, 
+
+˙y = vx sin ψ + vy cos ψ, 
+
+˙ψ = r,
+
+˙vx = ax − 1
+
+m Fy f sin δ + rv y,
+
+˙vy = 1
+
+m (Fy f cos δ + Fyr ) − rv x,
+
+˙r = 1
+
+Iz
+
+(l f Fy f cos δ − lr Fyr ).
+
+where ( x, y) denote the vehicle position in the inertial frame, ψ is the yaw angle, vx and vy are the longitudinal and lateral velocities expressed in the body-fixed frame, r is the yaw rate, δ is the steering angle, ax is the longitudinal acceleration input, m is the vehicle mass, Iz is the yaw moment of inertia, and Fy f , Fyr are the front and rear lateral tire forces. 
+
+Algorithm 1 Weight and Speed Adaptive MPC 
+
+Require: Reference trajectory, vehicle parameters, MPC horizon N, sampling time ∆t 
+
+> 1:
+
+Preprocess trajectory to obtain arc-length s, curvature 
+
+κ(s), and slope α(s) 
+
+> 2:
+
+Build dynamic bicycle model and RK4 integrator  
+
+> 3:
+
+Formulate NMPC with states X ∈ R6×(N+1) , controls U ∈
+
+R2×N 
+
+> 4:
+
+Initialize solver, adaptive weights, and reference speed 
+
+vprev  
+
+> 5:
+
+while vehicle not at goal do  
+
+> 6:
+
+Measure current state xt = (x, y, ψ, vx, vy, r) 
+
+> 7:
+
+Compute current arc length position st 
+
+> 8:
+
+if st near end of trajectory then  
+
+> 9:
+
+stop and exit  
+
+> 10:
+
+end if  
+
+> 11:
+
+for k = 0 . . . N do  
+
+> 12:
+
+sk ← st + vx∆t k  
+
+> 13:
+
+end for  
+
+> 14:
+
+max previewed curvature κmax ← max k |κ(sk)| 
+
+> 15:
+
+max previewed slope αmax ← max k |α(sk)| 
+
+> 16:
+
+vκ ←
+
+r alat ,max 
+
+κmax + ε 
+
+> 17:
+
+γα ← min 1, max 0.7, 1 − cααdeg 
+
+> max
+
+  
+
+> 18:
+
+vallowed ← min( vmax , max( vmin , vκγα))  
+
+> 19:
+
+vref ← (1 − αv)vprev + αvvallowed  
+
+> 20:
+
+vprev ← vref  
+
+> 21:
+
+Qraw y ← Qy,base (1 + γκκmax ) 
+
+> 22:
+
+Qraw  
+
+> ψ
+
+← Qψ, base (1 + γκκmax ) 
+
+> 23:
+
+Qy ← min( Qy,max , max( Qy,min , Qraw y ))  
+
+> 24:
+
+Qψ ← min( Qψ, max , max( Qψ, min , Qraw  
+
+> ψ
+
+))  
+
+> 25:
+
+Apply temporal smoothing to adaptive weights  
+
+> 26:
+
+Construct reference trajectory with constant vref  
+
+> 27:
+
+Solve NMPC and apply first control input ( a0, δ 0) 
+
+> 28:
+
+end while 
+
+Discrete time Integration (RK4) 
+
+The equations are discretized using an explicit fourth-order Runge–Kutta integrator with fixed time step ∆t = 0.10 s and symbolically implemented in CasADi. The discrete-time state Xk+1 is computed from Xk and Uk over a time step dt :
+
+k1 = f (Xk, Uk)
+
+k2 = f Xk + dt 
+
+2 k1, Uk
+
+!
+
+k3 = f Xk + dt 
+
+2 k2, Uk
+
+!
+
+k4 = f (Xk + dtk 3, Uk)
+
+Xk+1 = Xk + dt 
+
+6 (k1 + 2k2 + 2k3 + k4)While it may be possible to include gravity component in the vehicle model and representing the roll and pitch, the model in this implementation does not use the acceleration due to gravity ”g”. Adding gravity increases model 12 Chetana Gadgil, Mahendra Singh Tomar 
+
+(a) FMPC tracking on slope varying track 25 50 75 100 125 150 X (m) 175  
+
+> 150
+> 125
+> 100
+> 75
+> 50
+> 25
+> Y (m)
+> Start
+> End
+> Planned (green), Actual (black), Slope (background color)
+> 8
+> 4
+> 048
+> Slope (deg) Zoomed region
+
+(b) AMPC tracking on slope varying track 25 50 75 100 125 150 X (m) 175 
+
+> 150
+> 125
+> 100
+> 75
+> 50
+> 25
+> Y (m)
+> Start
+> End
+> Planned (green), Actual (black), Slope (background color)
+> 8
+> 4
+> 048
+> Slope (deg) Zoomed region
+
+Figure 3 : Simulation results in CARLA showing planned (green) and actual (black) vehicle trajectories with road slope indicated by the background colormap. sophistication and makes the optimization problem more intensive. Including gravitational acceleration due to road grade (g sin α) in the prediction model, even when α is estimated from an IMU, provides only reactive compensation that acts after the vehicle has already entered the incline. IMU based slope estimation lacks the critical preview required for anticipative braking before downhill curves or speed reduction ahead of steep descents followed by sharp turns. In contrast, vision based preview of upcoming slope and curvature enables proactive adaptation of reference velocity and stage costs in the MPC. This implemented adaptive MPC relies on preview of upcoming road geometry ie, curvature and slope. The controller then lowers the reference velocity and adjusts the cost function weights in advance when it detects an upcoming slope or curvature, preventing the overspeed or undershoot phenomena. 7.2 NMPC Formulation 
+
+At each control step, the NMPC solves min 
+
+> u0: N−1
+> N−1
+
+X
+
+> k=0
+
+∥Xk+1 − Xref ,k∥2 
+
+> Qk
+
++ ∥Uk∥2 
+
+> R
+
++ ∥XN − Xref ,N ∥2
+
+> P
+
+subject to the vehicle dynamics, actuator limits, and steering-rate constraints. The nonlinear program is solved using IPOPT. The FMPC employs constant weights and a fixed reference speed, whereas the AMPC updates the reference speed and cost weights online. 
+
+Table 4 : Initialization and Adaptation Parameters 
+
+Parameter Value 
+
+Qx,base 25 
+
+Qy,base 25 
+
+Qψ, base 40 
+
+Qvx,base 20 
+
+Racc 0.4 
+
+Rsteer 15 
+
+R∆steer 350 
+
+Qy,min , Qy,max 10, 80 
+
+Qψ, min , Qψ, max 5, 40 
+
+alat ,max 6 m /s2
+
+cα 0.007 deg −1
+
+vmin , vmax 8, 25 m /s
+
+αv 0.3 
+
+αQ 0.20 
+
+γκ 15 7.3 Curvature and Slope Adaptive Strategy for AMPC 
+
+The proposed AMPC uses road curvature and slope information extracted from the preview of trajectory to adapt the controller to those particular road segments. Curvature and slope each play di ff erent roles in the adaptation. Road curvature changes both the AMPC cost weights and allowable reference speed. Curvature is computed numerically from the reference path geometry. At each control step, curvature is previewed over the AMPC prediction horizon, and a single e ff ective curvature value is obtained as the maximum absolute curvature within this horizon. The initialization and adaptation parameters used in the Adaptive MPC: Review and Demonstrative Study 13 simulation study are summarized in Table 4. Baseline state and input weights correspond to nominal straight-road operation and remain fixed for the FMPC case. In the AMPC formulation, lateral and heading tracking weights, as well as the reference speed, are updated online based on previewed road geometry. 
+
+Curvature and Slope Aware Speed Scheduling 
+
+The allowable reference speed is computed using previewed curvature and slope over a finite lookahead window. The maximum curvature κmax and slope αmax is obtained as shown in the algorithm 1. A lateral acceleration limited speed is then obtained as 
+
+vκ =
+
+r alat ,max 
+
+κmax + ε
+
+where alat ,max denotes the maximum allowable lateral acceleration and ε is a small regularization constant preventing division by zero. Slope aware attenuation is subsequently applied using the maximum previewed slope angle αmax (expressed in degrees): 
+
+γα = max 0.7, min 1.0, 1 − cααdeg max 
+
+ 
+
+where cα = 0.007 deg −1 is a fixed slope sensitivity coe ffi cient. It provides 0.7% speed reduction per degree of slope and is empirically selected. The attenuation factor is bounded as γα ∈ [0 .7, 1]. The upper bound ensures that slope does not increase the allowable speed, while the lower bound preserves numerical robustness and minimum forward progress. The resulting speed is bounded within predefined limits: 
+
+vallowed = min( vmax , max( vmin , vκγα)) .
+
+ensuring feasibility and preventing excessive deceleration. Temporal smoothing is applied to maintain continuity using a first-order discrete filter: 
+
+vre f = (1 − αv)vprev + αvvallowed .
+
+Temporal smoothing is introduced to ensure gradual variation of the reference speed and adaptive weights. This improves numerical robustness of the NMPC solver, prevents abrupt control transients, and enhances feasibility when large preview variations occur. This anticipative scheduling enables speed reduction prior to high-curvature or downhill segments without explicitly incorporating gravitational terms into the prediction model. 
+
+Curvature Adaptive Cost Weights 
+
+The state weights Qx,base , Qy,base , Qψ, base , and Qvx,base 
+
+penalize errors in longitudinal position, lateral position, heading angle, and vehicle speed respectively. Racc and Rsteer 
+
+penalizes acceleration, and steering change, while R∆steer 
+
+Table 5 : Comparison of Fixed MPC and Adaptive MPC Performance                 
+
+> Metric Fixed MPC Adaptive MPC
+> Average speed (m /s) 20.075 18.214 Minimum speed (m /s) 0.000 0.000 Maximum speed (m /s) 24.250 24.169 Average deviation (m) 0.806 0.597 Maximum deviation (m) 3.236 1.568 RMS lateral error (m) 1.013 0.697 95th percentile deviation (m) 2.148 1.236
+
+is used to smoothen sudden steering changes. The lateral position and heading error weights are adapted using the previewed maximum curvature: 
+
+Qy = max Qy,min , min Qy,max , Qy,base 
+
+ 1 + γκκmax 
+
+ 
+
+Qψ = max Qψ, min , min Qψ, max , Qψ, base 
+
+ 1 + γκκmax 
+
+ 
+
+where γκ is a fixed curvature sensitivity gain, tuned empirically and κmax is recomputed at each control step. First-order temporal smoothing is applied in order to prevent abrupt transients: 
+
+Qsm k = (1 − αQ)Qsm k−1 + αQ Qk.
+
+7.4 Results and Observations 
+
+Fig. 3 compares FMPC and AMPC performance on a trajectory containing combined curvature and slope variations. Both controllers track the path accurately on flat segments. However, the FMPC maintains a near constant high reference speed (approximately 25 m/s), causing overspeed and lateral deviation in downhill curves. In comparison, the AMPC previews upcoming curvature and slope, reducing the reference speed in downhill sloped and curved regions. Despite the absence of explicit gravity terms in the prediction model, this anticipative speed and weights adaptation e ff ectively compensates for downhill slopes and curves. Table 5 shows the comparison between Fixed MPC and Adaptive MPC implemented as above on various metrics. The average path deviation is reduced from 0.806 m to 0.597 m (approximately 26% improvement), while the RMS lateral error decreases from 1.013 m to 0.697 m (approximately 31% reduction). The maximum deviation is reduced from 3.236 m to 1.568 m, corresponding to an improvement of approximately 52%, indicating substantially improved robustness in high curvature or dynamically varying segments. The average vehicle speed is slightly lower for the Adaptive MPC, as the adaptive mechanism reduces the speed on highly curved roads to maintain stability and tracking accuracy. However, the maximum speed achieved on straight 14 Chetana Gadgil, Mahendra Singh Tomar 
+
+road segments remains nearly identical for both FMPC and AMPC, indicating that the adaptive strategy does not unnecessarily limit performance on straight roads. These improvements are a result of the curvature and speed dependent adaptation of MPC weights and velocity, which increases tracking priority and moderates vehicle speed on high curvature segments while allowing higher speeds in low curvature roads. This results in improved tracking accuracy, reduced extreme deviations, and more stable and reliable trajectory following performance. 
+
+Nomenclature 
+
+x, y Global position coordinates (m) 
+
+ψ Yaw angle (rad) 
+
+vx, vy Longitudinal and lateral velocities (m /s) 
+
+r Yaw rate (rad /s) 
+
+ax Longitudinal acceleration (m /s2)
+
+δ Steering angle (rad) 
+
+l f , lr Distance from CG to front and rear axles (m) 
+
+m Vehicle mass (kg) 
+
+Iz Yaw moment of inertia (kg ·m2)
+
+C f , Cr Tire cornering sti ff ness (N /rad) 
+
+α f , α r Slip angles (rad) 
+
+Fy f , Fyr Lateral tire forces (N) 
+
+κ Road curvature (m −1)
+
+κmax Maximum curvature (m −1)
+
+α Road slope (rad) 
+
+αmax Maximum slope (rad) 
+
+vref Reference velocity (m /s) 
+
+vκ Curvature-limited velocity (m /s) 
+
+vallowed Allowable velocity (m /s) 
+
+γκ Curvature adaptation gain 
+
+γα Slope attenuation factor 
+
+Q, R, P MPC weighting matrices 
+
+Qy, Qψ Lateral and heading error weights 
+
+N Prediction horizon 
+
+∆t Sampling time (s) 
+
+Xk, Uk State and control vectors 
+
+8 Conclusion 
+
+This paper presented a structured review of Adaptive Model Predictive Control (AMPC) methods for autonomous ground vehicles, with emphasis on explicit adaptation mechanisms applied to the system model, cost function, constraints, or prediction horizon. Adaptive mechanism helps to mitigate the shortcomings of traditional MPC arising from model inaccuracies and dynamic environments. Hybrid approaches such as PID-MPC, Fuzzy-MPC, SMC-MPC and RL-MPC improve robustness and adaptability. In addition to the review, a demonstrative nonlinear MPC implementation incorporating curvature and slope based preview adaptation was presented. The simulation study shows how adaptation of reference speed and cost weights can improve tracking performance without modifying the underlying vehicle dynamics model. Comparative evaluation against fixed weight MPC showed measurable reductions in lateral tracking error and peak deviation. This highlights the practical value of preview based adaptation for trajectory tracking on road segments with challenging geometries. Future research will focus on reducing computational burdens, improving real time adaptability, and integrating AMPC with advanced perception systems to ensure safe and effi cient AV operation in complex scenarios. 
+
+References 
+
+[1] SAE. Taxonomy and definitions for terms related to driving automation systems for on-road motor vehicles, April 2021. [2] Mouhacine Benosman. Model-based vs data-driven adaptive control: An overview. International Journal of Adaptive Control and Signal Processing , 32(5):753–776, 2018. [3] B. Ravi Kiran, Ibrahim Sobh, Victor Talpaert, Patrick Mannion, Ahmad A. Al Sallab, Senthil Yogamani, and Patrick P´ erez. Deep reinforcement learning for autonomous driving: A survey. IEEE Transactions on Intelligent Transportation Systems , 23(6):4909–4926, 2022. [4] Rui Zhao, Yun Li, Yuze Fan, Fei Gao, Manabu Tsukada, and Zhenhai Gao. Recent advancements in autonomous driving using deep reinforcement learning: Applications, challenges, and solutions. IEEE Transactions on Intelligent Transportation Systems , 25(12):19365–19398, 2024. [5] Think Autonomous. Tesla’s end-to-end deep learning approach. https://www.thinkautonomous.ai/blog/ tesla-end-to-end-deep-learning , 2024. [6] Yiren Lu, Justin Fu, George Tucker, Xinlei Pan, Eli Bronstein, Becca Roelofs, Benjamin Sapp, Brandyn White, Aleksandra Faust, Shimon Whiteson, Dragomir Anguelov, and Sergey Levine. Imitation is not enough: Robustifying imitation with reinforcement learning for challenging driving scenarios, 2022. [7] Eli Bronstein, Mark Palatucci, Dominik Notz, Brandyn White, Alex Kuefler, Yiren Lu, Supratik Paul, Payam Nikdel, Paul Mougin, Hongge Chen, Justin Fu, Austin Abrams, Punit Shah, Evan Racah, Benjamin Frenkel, Shimon Whiteson, and Dragomir Anguelov. Hierarchical model-based imitation learning for planning in autonomous driving, 2022. [8] Cole Gulino, Justin Fu, Wenjie Luo, George Tucker, Eli Bronstein, Yiren Lu, Jean Harb, Xinlei Pan, Yan Wang, Xiangyu Chen, John D. Co-Reyes, Rishabh Agarwal, Rebecca Roelofs, Yao Lu, Nico Montali, Paul Mougin, Zoey Yang, Brandyn White, Aleksandra Faust, Rowan McAllister, Dragomir Anguelov, and Benjamin Sapp. Waymax: An accelerated, data-driven simulator for large-scale autonomous driving research. In Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks , 2023. [9] Amit Chougule, Vinay Chamola, Aishwarya Sam, Fei Richard Yu, and Biplab Sikdar. A comprehensive review on limitations of autonomous driving and its impact on accidents and collisions. IEEE Open Journal of Vehicular Technology ,5:142–161, 2024. Adaptive MPC: Review and Demonstrative Study 15 
+
+[10] P. Stano, U. Montanaro, D. Tavernini, M. Tufo, G. Fiengo, L. Novella, and A. Sorniotti. Model predictive path tracking control for automated road vehicles: A review. Annual Reviews in Control , 55:194–236, 2023. [11] P. Shakouri, A. Ordys, D.S. Laila, and M. Askari. Adaptive cruise control system: Comparing gain-scheduling PI and LQ controllers. IFAC Proceedings Volumes , 44(1):12964–12969, 2011. 18th IFAC World Congress. [12] Luca Bascetta, Gian Paolo Incremona, Fabio Della Rossa, and Fabio Dercole. Sliding mode control of an autonomous ground vehicle via flatness based feedback linearization. In 
+
+2022 IEEE 18th International Conference on Automation Science and Engineering (CASE) , pages 557–562, 2022. [13] Rachid Alika, El Mehdi Mellouli, and El Houssaine Tissir. A modified sliding mode controller based on fuzzy logic to control the longitudinal dynamics of the autonomous vehicle. 
+
+Results in Engineering , 22:102120, 2024. [14] Weida Wang, Yuhang Zhang, Chao Yang, Tianqi Qie, and Mingyue Ma. Adaptive model predictive control-based path following control for four-wheel independent drive automated vehicles. IEEE Transactions on Intelligent Transportation Systems , 23(9):14399–14412, 2022. [15] Zhengchao Xie, Shuang Li, Pak Kin Wong, Wenfeng Li, and Jing Zhao. An improved gain-scheduling robust MPC for path following of autonomous independent-drive electric vehicles with time-varying uncertainties. Vehicle System Dynamics ,63(4):695–721, 2025. [16] Mostafa Yacoub, Michal Antkiewicz, Krzysztof Czarnecki, and John McPhee. Gain-scheduled model predictive controller for vehicle-following trajectory generation for autonomous vehicles. Vehicle System Dynamics ,63(6):1111–1136, 2025. [17] Bijan Sakhdari and Nasser L. Azad. Adaptive tube-based nonlinear MPC for economic autonomous cruise control of plug-in hybrid electric vehicles. IEEE Transactions on Vehicular Technology , 67(12):11390–11401, 2018. [18] Cong Phat Vo, Jungeun Lee, and Jeong Hwan Jeon. Robust adaptive path tracking control scheme for safe autonomous driving via predicted interval algorithm. IEEE Access ,10:124333–124344, 2022. [19] Juqi Hu, Wenlong Liu, and Hejia Gao. MPC-based path tracking control for autonomous vehicles on varying friction roads. In 2024 6th International Conference on Industrial Artificial Intelligence (IAI) , pages 1–6, 2024. [20] Xianzhi Tang, Longfei Shi, Bo Wang, and Anqi Cheng. Weight adaptive path tracking control for autonomous vehicles based on PSO-BP neural network. Sensors , 23(1), 2023. [21] Ge Chang and Qian Suqin. An adaptive MPC trajectory tracking algorithm for autonomous vehicles. In 2021 17th International Conference on Computational Intelligence and Security (CIS) , pages 197–201, 2021. [22] Arthur J. Krener. Adaptive horizon model predictive control. IFAC-PapersOnLine , 51(13):31–36, 2018. 2nd IFAC Conference on Modelling, Identification and Control of Nonlinear Systems MICNON 2018. [23] Minsung Kim, Donggil Lee, Joonwoo Ahn, Minsoo Kim, and Jaeheung Park. Model predictive control method for autonomous vehicles using time-varying and non-uniformly spaced horizon. IEEE Access , 9:86475–86487, 2021. [24] Sean Vaskov, Rien Quirynen, Marcel Menner, and Karl Berntorp. Friction-adaptive stochastic nonlinear model predictive control for autonomous vehicles. Vehicle System Dynamics , 62(2):347–371, 2024. [25] Hakjoo Kim and Seok-Cheol Kee. Development of adaptive model predictive control using radial basis function neural network approximator for autonomous vehicles. In 2023 23rd International Conference on Control, Automation and Systems (ICCAS) , pages 1947–1951, 2023. [26] Duc Giap Nguyen, Suyong Park, Jinrak Park, Dohee Kim, Jeong Soo Eo, and Kyoungseok Han. An MPC approximation approach for adaptive cruise control with reduced computational complexity and low memory footprint. 
+
+IEEE Transactions on Intelligent Vehicles , 9(2):3154–3167, 2024. [27] Mohammad Rokonuzzaman, Navid Mohajer, Saeid Nahavandi, and Shady Mohamed. Model predictive control with learned vehicle dynamics for autonomous vehicle path tracking. IEEE Access , 9:128233–128249, 2021. [28] M. Dhinakaran, R. Thalapathi Rajasekaran, V. Balaji, V. Aarthi, and S. Ambika. Advanced deep reinforcement learning strategies for enhanced autonomous vehicle navigation systems. In 2024 2nd International Conference on Computer, Communication and Control (IC4) , pages 1–4, 2024. [29] Wei Xia, Huiyun Li, and Baopu Li. A control strategy of autonomous vehicles based on deep reinforcement learning. In 2016 9th International Symposium on Computational Intelligence and Design (ISCID) , volume 2, pages 198–201, 2016. [30] Wei-Jen Wang, Tusng-Ming Hsu, and Tzu-Sung Wu. The improved pure pursuit algorithm for autonomous driving advanced system. In 2017 IEEE 10th International Workshop on Computational Intelligence and Applications (IWCIA) ,pages 33–38, 2017. [31] Rui Wang, Ying Li, Jiahao Fan, Tan Wang, and Xuetao Chen. A novel pure pursuit algorithm for autonomous vehicles based on salp swarm algorithm and velocity controller. IEEE Access ,8:166525–166540, 2020. [32] Guilherme V. Ra ff o, Guilherme K. Gomes, Julio E. Normey-Rico, Christian R. Kelber, and Leandro B. Becker. A predictive controller for autonomous vehicle path tracking. 
+
+IEEE Transactions on Intelligent Transportation Systems ,10(1):92–102, 2009. 16 Chetana Gadgil, Mahendra Singh Tomar 
+
+[33] Hong Chen, Miao-Miao Ma, Hu Wang, Zhi-Yuan Liu, and Zi-Xing Cai. Moving horizon H∞ tracking control of wheeled mobile robots with actuator saturation. IEEE Transactions on Control Systems Technology , 17(2):449–457, 2009. [34] Gregor Klanˇ car and Igor ˇ Skrjanc. Tracking-error model-based predictive control for mobile robots in real time. Robotics and Autonomous Systems , 55(6):460–469, 2007. [35] Yixiao Liang, Yinong Li, Amir Khajepour, and Ling Zheng. Multi-model adaptive predictive control for path following of autonomous vehicles. IET Intelligent Transport Systems ,14(14):2092–2101, 2020. [36] Xinyong Liu, Jian Ou, Dehai Yan, Yong Zhang, and Guohong Deng. Path tracking control of automated vehicles based on adaptive MPC in variable scenarios. IET Intelligent Transport Systems , 18(6):1031–1044, 2024. [37] Duanfeng Chu, Haoran Li, Chenyang Zhao, and Tuqiang Zhou. Trajectory tracking of autonomous vehicle based on model predictive control with PID feedback. IEEE Transactions on Intelligent Transportation Systems ,24(2):2239–2250, 2023. [38] F. Norlund, T. H¨ agglund, and K. Soltesz. Seamless PID–MPC hybrid control. IFAC-PapersOnLine ,58(7):19–24, 2024. 4th IFAC Conference on Advances in Proportional-Integral-Derivate Control PID 2024. [39] Qian Zhang, Huifang Kong, Tiankuo Liu, and Xiaoxue Zhang. Adaptive model predictive control–based curved path-tracking strategy for autonomous vehicles under variable velocity. Transactions of the Institute of Measurement and Control , 47:1624–1638, 2024. [40] Yong Dai and Duo Wang. A tube model predictive control method for autonomous lateral vehicle control based on sliding mode control. Sensors , 23(8), 2023. [41] Di Ao, Wei Huang, Pak Kin Wong, and Jialin Li. Robust backstepping super-twisting sliding mode control for autonomous vehicle path following. IEEE Access ,9:123165–123177, 2021. [42] Hassan El Atwi and Naseem Daher. A composite model predictive and super twisting sliding mode controller for stable and robust trajectory tracking of autonomous ground vehicles. In 2021 IEEE 3rd International Multidisciplinary Conference on Engineering Technology (IMCET) , pages 107–112, 2021. [43] Liwen Wang, Shuo Yang, Kang Yuan, Yanjun Huang, and Hong Chen. A combined reinforcement learning and model predictive control for car-following maneuver of autonomous vehicles. Chinese Journal of Mechanical Engineering ,36(1):80, Jul 2023. [44] Johannes Fischer, Marlon Steiner, ¨Omer S ¸ ahin Tas ¸, and Christoph Stiller. Safety reinforced model predictive control (SRMPC): Improving MPC with reinforcement learning for motion planning in autonomous driving. In 2023 IEEE 26th International Conference on Intelligent Transportation Systems (ITSC) , pages 2811–2818, 2023.
