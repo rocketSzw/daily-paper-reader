@@ -1,0 +1,277 @@
+Title: Spinning Quadrotor: Hover Thrust Augmentation with Passive Lifting Surfaces
+
+URL Source: https://arxiv.org/pdf/2608.23163v1
+
+Published Time: Tue, 25 Aug 2026 02:27:00 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Spinning Quadrotor: Hover Thrust Augmentation with Passive Lifting Surfaces 
+
+Aniketh Parkala Harikumar Kandath 
+
+Abstract —Conventional multirotor aerial vehicles actively sup-press yaw rotation during hover, expending power to maintain a fixed heading despite the fact that yaw regulation is not required for force balance or altitude control. This paper challenges that paradigm by proposing a spinning quadrotor architecture that intentionally operates at a sustained yaw rate, converting power traditionally spent on yaw regulation into useful aerodynamic effects. A dynamic model of the spinning quadrotor is developed, analysis for low Re range is conducted to choose an airfoil for lifting surfaces. Preliminary hardware tests show a 22% reduc-tion in thrust required. These findings suggest that intentional yaw rotation, rather than being suppressed, can be exploited as a design mechanism for efficient and robust multirotor flight. 
+
+I. I NTRODUCTION 
+
+A. Motivation 
+
+Multirotor vehicles typically suppress yaw during hover using differential rotor torques. This work instead considers sustained intentional yaw rotation as an alternative operating point. By canting all rotors in a common direction, the vehicle converges to a steady spin while regulating altitude and reduced attitude. The resulting tangential airflow enables lift generation from radially mounted aerodynamic surfaces, reducing propeller thrust demand. Various use cases of spinning drones have been given below. 
+
+1) Fault-tolerant control (FTC) for quadrotors via spin-ning: A substantial body of work studies spinning as a
+
+recovery mechanism for conventional quadrotors after actuator loss. In these “relaxed hover” approaches, yaw regulation is intentionally sacrificed so that the remaining actuators can reg-ulate thrust magnitude and direction. Mueller and D’Andrea[1] derive periodic spinning solutions that retain position control even with the complete loss of one, two, or three propellers . Freddi et al. and Lanzon et al.[2], [3] use feedback lineariza-tion (and robust variants) to stabilize the vehicle under single-rotor failure by converging to a constant-spin equilibrium . More recently, Ke et al.[4] propose a uniform passive FTC that treats rotor faults as a lumped disturbance, avoiding controller switching and explicit fault detection . Practical deployment also raises sensing challenges during high-spin flight; Sun et al.[5] study visual-inertial estimation under rapid spinning and highlight the limitations of standard cameras due to motion blur . 
+
+Both authors are with the Robotics Research Center (RRC), IIIT Hyderabad, India (e-mail: anikethparkala@gmail.com; harikumar.k@iiit.ac.in). 
+
+Fig. 1. CAD model of configuration 2. All motors are canted 10 degrees 
+
+2) Novel monocopter and samara-inspired designs: Asecond theme departs from the quadrotor form factor and instead designs vehicles whose primary lift and stability mechanisms are inherently rotation-driven. Examples include foldable single-actuator monocopters inspired by samara seeds [6], bioinspired revolving-wing drones that exploit unsteady aerodynamics for high power loading [7], and modular mono-copter systems that can connect and separate in flight [8]. Related analysis on mono-spinners shows that asymmetric layouts with deliberate tilt can reduce power consumption while maintaining stable hover [9]. 
+
+3) Hybrid and transformable rotary platforms: A third line of research explores hybrid or mechanically transformable ro-tary platforms that bridge hovering and efficient forward flight. Low et al. [10] present a transformable hovering rotorcraft that transitions between whole-body spinning hover and fixed-wing cruise . Orsag et al. [11] analyze spincopters in which thrust pulsation produces horizontal motion while the craft spins. In contrast to under-actuated spinning strategies, over-actuated tilt-arm quadrotors can decouple attitude and translation via thrust vectoring to achieve full pose tracking [12]. Building on these three themes, this paper focuses on spin-ning as an intentional hover operating point for a quadrotor-scale platform, primarily motivated by efficiency: replacing continuous yaw suppression with steady rotation, exploiting spin-averaging of disturbances, and enabling lift augmentation from aerodynamic surfaces during hover. The contributions of this work 1 are as given below. 1) We propose a spinning-quadrotor hover architecture that replaces yaw suppression with intentional steady rotation 
+
+> 1
+
+Code:https://github.com/pyromania99/spinning-quadrotor-hover arXiv:2608.23163v1 [cs.RO] 24 Aug 2026 and enables aerodynamic lift augmentation with passive lifting surfaces. 2) Design of an optimal airfoil for the lifting surfaces in the low Reynolds number (Re) regime, based on glider airfoil and XFLR analysis. 3) Multi-fidelity validation via simulation (BEMT), CFD, and hardware experiments which show a promising increase of 22% of lift when compared to conventional quadrotors. II. P ROBLEM PREMISE AND OPERATING CONDITIONS 
+
+Conventional quadrotor hover is defined as the equilibrium condition given by Eq. (1). 
+
+˙ωz = 0 , ω = 0 (1) Where ωz (rad/s) is the yaw rate, ω (rad/s) is angular velocity, with the thrust balancing the weight, and all angular rates are regulated to zero. In contrast, this work considers a modified hover equilibrium 
+
+˙ωz = 0 , ωz̸ = 0 , (2) in which altitude and reduced attitude (roll and pitch) are regulated while yaw converges to a nonzero steady rate. Yaw is therefore treated as an operating parameter rather than a disturbance to be rejected. At steady yaw rate ω, a point located at radius r experiences tangential velocity 
+
+V (r) = ωz r. (3) where r (m) is radial distance from the vehicle center. Thus, radially mounted lifting surfaces experience effective airflow even in zero freestream conditions. The generated lift scales as shown in Eq. (4) 
+
+L = 12 ρ(ω2r2)SC L, (4) where ρ (kg/m 3) is the air density, ω (rad/s) is the steady yaw rate, r (m) is the radial position of the lifting surface, S (m 2) is the wing planform area, and CL is the lift coefficient. This suggests that intentional spinning may augment lift and reduce propeller thrust demand. However, this regime is bounded by control, aerodynamic, structural, and safety constraints. 
+
+A. Constraints a) Yaw-rate authority and control bandwidth.: Motor bandwidth limits the authority at higher yaw rates. As steady yaw increases, rate-loop saturation, unaccounted cross-axis gyroscopic coupling ( ω × Iω), reduced mixer authority, and estimator bandwidth limitations degrade reduced-attitude per-formance. These effects are primarily control- and bandwidth-limited rather than arising from structural imbalance or rigid-body natural frequency constraints. Experimentally, stable spinning hover is maintained up to 
+
+ω ≈ 8–10 rad /s. (5) Beyond this range, oscillatory behavior and loss of roll– pitch robustness are observed. While nonlinear or spin-aware controllers (as used in fault-tolerant spinning literature) could permit higher rates, the present implementation is intentionally limited to the standard PX4 cascaded framework. Accordingly, 
+
+ω ≤ 10 rad /s defines the practical upper. The standard PX4 controller is used without structural modification; to accommodate continuous yaw rotation, the yaw reference is offset so that roll and pitch commands remain defined in a fixed inertial (world) frame. The total mass is constrained to 
+
+m < 1 kg for safe experimental validation. 
+
+b) Aerodynamic velocity and Reynolds regime.: mean-ingful aerodynamic lift must be generated within the allowable structural radius. The radial arm length was therefore extended to l ≤ 0.65 m , where l (m) is the motor arm length, beyond which structural flexibility and vibration modes increase no-ticeably during spin. At this maximum radius, the achievable tangential velocity is given by Eq. (6). 
+
+Vmax = ωl ≈ 6.5 m /s. (6) To obtain Reynolds numbers sufficiently high for practical lift generation within this velocity bound, relatively large chord lengths are required. For chord values in the range c ≈ 0.20 –
+
+0.30 m , the resulting Reynolds number lies in the low-Re regime, 
+
+Re = ρV c μ ∼ 10 5. (7) where c (m) is the chord length, and μ (Pa ·s) is the dynamic viscosity of air. Accordingly, airfoil selection is constrained to profiles optimized for low-Re operation, making glider-inspired airfoils a natural and physically motivated choice. To-gether, these constraints define a bounded but experimentally realizable spinning-hover regime within which aerodynamic lift augmentation can be evaluated. 
+
+B. Rotor Forces 
+
+Each rotor produces thrust 
+
+fi = kf ω2 
+
+> i
+
+, (8) where fi (N) is rotor thrust, kf (N ·s2) is the thrust coefficient, and ωi (rad/s) is rotor angular speed. The resulting force vector is defined in Eq. (9). 
+
+Fi = fi
+
+  sin α ˆti + cos α ˆz, (9) where ˆti is the tangential unit vector in the xy -plane , and α
+
+(rad) is the motor cant angle. 
+
+C. Total Forces and Moments 
+
+The net vertical force and control moments equations are given in Eq. (10)-(13) 
+
+Fz =
+
+> 4
+
+X
+
+> i=1
+
+fi cos α, (10) 
+
+Mϕ = l cos α(f1 + f2 − f3 − f4), (11) 
+
+Mθ = −l cos α(f1 − f2 + f3 − f4), (12) 
+
+Mψ =
+
+> 4
+
+X
+
+> i=1
+
+ kτ ω2 
+
+> i
+
++ fi sin α l . (13) where Mϕ, Mθ , and Mψ (N ·m) denote the roll, pitch, and yaw moments about the body-fixed x, y, and z axes, respec-tively; and kτ (N ·m·s2) is the propeller torque coefficient. 
+
+D. Dynamics of motion 
+
+The dynamics of motion are given in Eq. (14)-(15) 
+
+m( ˙ v + ω × v) = mR ⊤g + X
+
+> i
+
+Fi, (14) 
+
+I ˙ω + ω × (Iω) = M (15) with angular rates ω = [ ωx, ω y , ω z ]⊤.Where v (m/s) is body-frame velocity, I(kg ·m2) is the inertia matrix, where R ∈ SO (3) is the body-to-inertial rotation matrix, g = [0 , 0, −g]⊤ and M (N ·m) is the net moment vector. III. H ARDWARE CONFIGURATION AND DESIGN 
+
+To maintain a non zero-yaw rate against wing drag, all of the motors are mounted spinning and canted in the same direction, to add to the torque produced by rotating the propellers in the same direction. The angle at which they are canted is fixed precisely by 3d printing the motor mounts and affixing them to square carbon arms. The arm length of the design has been extended to 0.5 m to support the lift surfaces. The lift surface chosen is based on a custom airfoil which we will explore in section(IV-B). Winglets have been added to reduce any wake and edge vortex effects. Two distinct airframe configurations were evaluated to examine the relationship be-tween motor placement, thrust vector orientation, and resulting force–moment generation. 
+
+a) Configuration I: Lever-Arm-Optimized Asymmetric Layout: The first configuration employs an asymmetric quad-motor arrangement designed to enhance rotational authority. Two motors are positioned along the secondary body axis at a radial distance of 0.5 m from the vehicle center of mass and are tilted outward by 10 ◦. The increased lever arm is intentionally selected to amplify the generated torque for a given thrust level, thereby optimizing the configuration for spinning motion. Along the primary axis, the remaining two motors are located at a radial distance of 0.3 m, with two wings further outboard, spanning radially from 0.4 m to 0.65 m. This config-uration is intended to approximate the upper bound of isolated wing thrust generation by reducing aerodynamic interference effects between lifting surfaces. A model of Configuration I is shown in Fig. 2. 
+
+b) Configuration II: Symmetric Fully Tilted Distributed Wing Layout: The second configuration adopts a more sym-metric geometry to evaluate the trade-off between increased lifting surface area and the associated aerodynamic interfer-ence effects. All four motors are mounted at a uniform radial distance of 0.3 m and are tilted by 10 ◦. One wing is aligned along each motor arm, extending radially from 0.4 m to 0.65 m. This configuration removes lever-arm-induced bias and iso-lates the effects of uniform thrust vectoring and distributed 10 o 
+
+> Fig. 2. CAD model of configuration 1, with only 2 motors canted on non-wing arms (exaggerated motor tilt for visualization)
+
+lift generation. A schematic of Configuration II is shown in Fig. 1. IV. A IRFOIL SELECTION 
+
+Since the controllable steady yaw rate is limited to approxi-mately ω ≈ 8–12 rad /s and the wing radius is r ≤ 0.65 m , the characteristic tangential flow velocity V (r) ≈ ωr , combined with chord lengths on the order of c ≈ 0.25 –0.30 m , places the lifting surfaces firmly within the low-Reynolds-number regime. Accordingly, candidate airfoils were selected from glider and low-Reynolds-number airfoil families and evaluated over the relevant (α, Re) operating space. 
+
+A. Candidate Airfoils and Screening Procedure 
+
+The candidate airfoils considered were AG-14, RG-14, RG-15, S1223, SD7032, SD7037, SD7062, and NACA 4412. For each airfoil, polar data were generated across multiple Reynolds numbers and angles of attack. Aerodynamic effi-ciency, quantified by Cl/C d within the expected operating envelope, served as the primary screening metric to reduce the candidate set prior to detailed operating-point optimization. 
+
+B. Custom Airfoil Generation 
+
+A custom airfoil, denoted Franky , was generated by inter-polating the geometries of S1223 and SD7037 with a 26% blend ratio (S1223–SD7037). This interpolation was chosen to combine the high-lift characteristics of S1223 with the high 
+
+Cl/C d at low-Re of SD7037. A second candidate, Franky-2 (60% blend), demonstrated competitive performance but exhibited optimal behavior over a narrower range of angles of attack and was therefore not selected α values Fig 3 
+
+C. Reynolds number-Specific Operating-Point Optimization 
+
+Airfoil performance was evaluated over the Reynolds range Re = 0.040–0.090 ×10 6, corresponding to the operational envelope of the lifting surfaces. As no aerodynamic surfaces exist in the hub region, all blade sections operate entirely within this range during steady spinning-hover. Rather than selecting airfoils based on global peak metrics, a Reynolds-specific optimization strategy was employed. For each Reynolds number, all candidate airfoils and angles of attack were evaluated simultaneously, and performance metrics Fig. 3. Airfoil characteristics comparison  
+
+> Fig. 4. Optimal operating-point performance score as a function of Reynolds number for candidate airfoils, using per-Reynolds normalization.
+
+were normalized within each Reynolds group. A composite performance score is given in Eq. (16). 
+
+J = 0 .50 Cl
+
+Cd
+
++ 0 .30 Cl + 0 .20 Cp, min (16) where Cl/C d represents aerodynamic efficiency, Cl ensures adequate lift generation, and Cp, min penalizes operating points with aggressive pressure gradients, improving stall margin and robustness. The inclusion of Cp, min serves as a heuristic proxy for pressure-gradient severity and stall robustness, rather than a formal stability criterion. For each airfoil at each Reynolds number, the angle of attack maximizing J was selected as the optimal operating point. This procedure yields Reynolds-specific operating conditions that balance efficiency, thrust generation, and flow robustness, directly informing blade pitch and twist selection. Comparison based on J is shown in Fig 4, showing SD7037 outperforming up to 6.0 ×10 4, after which 
+
+Franky performs the best overall.                                                        
+
+> TABLE I RADIAL OPERATING POINTS AND SECTION PERFORMANCE USED TO GUIDE THE WING DESIGN .
+> r(m) V(m/s) Re ( ×10 4)Foil α(◦)c(m) ClCl/C d
+> 0.40 3.2 2.2 SD7037 8.6 0.10 0.83 9.3 0.45 3.6 4.6 Franky 10.5 0.19 1.00 6.3 0.50 4.4 8.5 Franky 10.0 0.29 1.79 39.6 0.55 4.8 8.8 Franky 10.0 0.27 1.79 39.6 0.60 5.2 9.0 Franky 10.0 0.26 1.79 39.6 0.65 5.6 9.1 Franky 10.0 0.24 1.79 39.6 50 280 100 2.5
+> Tapered section Outer section
+> 650.00 400.00
+> Fig. 5. Wing planform (all dimensions in mm)
+
+D. Wing Planform Design for Spinning Hover 
+
+As seen in Fig. 5, a short inner transition region was introduced between r = 0 .40 –0.45 m to provide a smooth aerodynamic handover between the hub and the primary lifting sections. This region is not intended to contribute significantly to thrust generation. Its purpose is to mitigate root vorticity, flow separation, and three-dimensional interaction effects at the inner edge of the lifting surface during spinning-hover. The wing planform (Fig 6) was generated to match the radial variation in tangential airspeed V (r) = ωr . To reduce profile and induced losses, the chord was tapered toward the inner radius, and inner sections that experience minimal incoming airspeed were omitted. The resulting design, shown in Table I, targets efficient lift generation in the expected spin-rate band 
+
+ω ≈ 8–12 rad /s.V. R ESULTS AND DISCUSSIONS 
+
+A. MuJoCo Simulation 
+
+To evaluate the feasibility of spinning hover and quantify potential efficiency benefits, a coupled simulation framework was developed that integrates (i) a rigid-body multirotor vehi-cle model with tilted motors and (ii) blade-element momentum Fig. 6. Wing designed for spinning-hover operation. 
+
+theory (BEMT) for the rotating lifting surfaces. Wing aero-dynamics are computed using Reynolds-number-dependent airfoil polars, while a PID altitude controller regulates total motor thrust to maintain hover. 
+
+Modeling assumptions and scope: The simulation adopts several idealizations that define the scope of the results. Wing aerodynamics are modeled as quasi-steady, with two-dimensional airfoil polars derived from XFLR5 applied to rotating three-dimensional wing sections. Dynamic stall, az-imuthal force variation, and wing–wing aerodynamic interac-tion are neglected. Induced flow is assumed axis-symmetric with a simplified tip-loss correction; wake contraction, ground effect, and wake re-ingestion are not modeled. Motors and propellers are represented as ideal actuator disks with constant efficiency ηm = 0 .65 , independent of thrust level, rotational speed, or inflow conditions. Propeller–wing aerodynamic interaction is neglected. Mechanical losses (e.g., bearing friction, structural damping, vibration) and electrical losses (e.g., ESCs and wiring) are omitted. Because identical modeling assumptions are applied to both the spinning-wing configuration and the motor-only base-line, the simulation enables meaningful relative comparisons of electrical power demand. Absolute power values should therefore be interpreted as idealized estimates. While un-modeled losses are expected to reduce real-world efficiency gains relative to the predictions reported here, the underlying trend—that aerodynamic lift augmentation reduces propeller thrust requirements - remains consistent. 
+
+Torque balance and spin equilibrium: Fig 7 shows conver-gence to a steady spinning equilibrium within approximately 2 s. At steady state, the motor-generated yaw torque balances the aerodynamic drag torque of the rotating wings, 
+
+τmotor ≈ τwing , (17) with steady-state values of 1.033 N ·m and 1.043 N ·m, re-spectively, indicating agreement to within 1% and a stable constant-spin operating condition. The motor yaw torque is dominated by thrust-induced torque from the tilted motors set to 44 ◦ (∼98.5%), with propeller reaction torque contributing only ∼1.5%. The 44 ◦ tilt is larger than the hardware con-figuration due to the simplified motor model underestimating   
+
+> Fig. 7. Motor yaw torque and wing drag torque with component breakdown. The residual torque remains below 1% at steady state.
+> Fig. 8. Stacked area plot of vertical force contributions during steady hover. The rotating wings supply 67.2% of the lift, with motors providing the remainder.
+
+torque; a higher cant angle is therefore required in simulation to achieve comparable steady spin rates. 
+
+Lift distribution: The vertical force balance during hover is given by 
+
+Tmotor,vert + Lwing = W. (18) Figure 8 shows the steady-state vertical force distribution during hover. At steady state, the rotating wings generate 5.27 N (67.2%) of the total vehicle weight of 7.85 N, while the motors provide the remaining 2.58 N (32.8%). This approx-imately 2:1 wing-to-motor lift ratio significantly reduces the thrust required from the propellers and constitutes the primary mechanism driving the predicted power reduction. 
+
+Wing aerodynamic performance: The system converges to an effective wing lift-to-drag ratio of approximately 2.5 across the span. The resulting steady-state aerodynamic drag torque of 1.043 N ·m sets the yaw torque that must be supplied by the motors to sustain rotation. 
+
+Altitude and yaw rate convergence: Figure 9 shows the con-vergence of altitude to 1.473 m (target altitude: 1.5 m, steady-state error: 0.008 m) and yaw rate stabilizes to 9.27 rad/s (88.5 RPM). 
+
+Power analysis: The power budget provides an idealized estimate of efficiency gains by accounting for the dominant Fig. 9. Time histories of yaw rate and altitude showing convergence to steady spinning hover. 
+
+energy flows in steady hover. The aerodynamic power dissi-pated by the rotating wings is given below 
+
+Pwing = τwing ω, (19) which evaluates to approximately 9.7 W. Using momentum theory, the induced velocity associated with the vertical motor thrust is 
+
+vi, motor =
+
+s
+
+Tmotor,vert 
+
+2ρA motor 
+
+, (20) where Tmotor,vert (N) is the total vertical motor thrust and Amotor 
+
+(m 2) is the total propeller disk area, yielding an induced velocity of 6.82 m/s. The corresponding electrical power required to generate vertical thrust is 
+
+Pmotor,thrust = Tmotor,vert vi, motor 
+
+ηm
+
+, (21) Which evaluates to 37.6 W. To sustain steady rotation, the motors must additionally supply yaw power given by 
+
+Pmotor,yaw = τmotor ωηm
+
+, (22) resulting in an electrical yaw power of approximately 14.7 W. The total steady-state electrical power draw is therefore 52.3 W. Note that the aerodynamic wing power Pwing repre-sents energy transferred to the airflow and is already accounted for within Pmotor,yaw . For comparison, a conventional motor-only quadcopter operating in hover requires 
+
+Pbaseline = W v i, baseline 
+
+ηm
+
+, vi, baseline =
+
+s
+
+W
+
+2ρA motor 
+
+, (23) which evaluates to a baseline electrical power of 122.0 W. Under the idealized modeling assumptions described above, the resulting electrical power estimate corresponds to a 57.1% reduction relative to a motor-only hover baseline. This value represents an upper-bound prediction under quasi-steady aero-dynamics and constant motor efficiency assumptions. Fig-ure 10 summarizes the electrical power breakdown for the spinning configuration and the motor-only baseline.   
+
+> Fig. 10. Electrical power breakdown illustrating a 57% idealized reduction relative to a motor-only baseline.
+> Fig. 11. ANSYS Fluent static pressure contour around a wing cross-section, illustrating the local pressure field under the aerodynamic effect of the other wings
+
+Overall, the simulation demonstrates that intentional spin-ning hover can substantially reduce propeller power require-ments by transferring the majority of lift generation to aero-dynamic wings. The reported power reduction represents an upper bound under idealized assumptions. Real-world perfor-mance is expected to be reduced by aerodynamic interaction effects, non-uniform inflow, motor efficiency variation, and mechanical losses, underscoring the need for experimental validation. 
+
+B. CFD Cross-Validation 
+
+A steady-state CFD analysis was performed in ANSYS Flu-ent using a multiple reference frame (MRF) formulation at a rotational speed of ω = 10 rad /s. The low-Reynolds-number k–ω SST turbulence model was employed to capture boundary-layer behavior in the Re ∼ 10 5 regime. The simula-tion considered the complete four-wing assembly in rotation, while excluding propeller-induced flow to isolate lift generated solely by the rotating aerodynamic surfaces. The integrated lift was LCFD = 4 .50 N . The static pressure contour shown in Fig. 11 represents a cross-sectional slice of a representative wing, illustrating the pressure differential responsible for lift generation. Unlike the CFD model, MuJoCo simulations do Fig. 12. Configuration I: Orthogonal wing–motor layout with asymmetric motor tilt.  
+
+> Fig. 13. Configuration II: Fully tilted motor layout with distributed wings. Representative flight tests for all configurations are shown in the supplemen-tary video available at: https://youtu.be/q07RIcLkxVw.
+
+not capture three-dimensional aerodynamic blade–blade inter-actions or detailed flow effects; instead, they approximate lift contributions at a system level. Consequently, CFD provides a more accurate bound than MuJoCo. 
+
+C. Hardware Hover Performance 
+
+Hover flight tests were conducted across four hardware config-urations to quantify the aerodynamic contribution of rotating wings during sustained spinning hover. The evaluated cases comprise spinning and non-spinning variants of both the asymmetric two-wing configuration (Configuration I) and the symmetric four-wing configuration (Configuration II), each tested at identical vehicle mass. The tested hardware platforms are shown in Fig. 12 and Fig. 13. Configuration I employs an orthogonal two-wing layout with asymmetric motor tilt, whereas Configuration II uses a symmetric four-wing arrange-ment with fully tilted motors. For each flight, a stabilized hover interval was identified by excluding transient ascent and descent phases and selecting steady-state motor command regions. Wing lift was inferred from vertical force equilibrium, 
+
+Lwing = mg − Tmotor cos θ, (24) where m is the vehicle mass, g is gravitational acceleration, 
+
+Tmotor is the total motor thrust required for hover, and θ
+
+is the motor tilt angle. Table II summarizes the measured hover performance across all configurations, and Table III summarizes across the various result sections.     
+
+> Fig. 14. Comparison of thrust production and hover efficiency for spinning and stationary configurations under identical payload conditions. Each re-ported value represents the mean over N= 5 independent hover trials, each consisting of a 10 s steady-state window. Error bars in the figures denote one standard deviation across trials.
+
+Figure 14 compares thrust production at hover across spin-ning and stationary configurations. Across both airframe ge-ometries, spinning configurations consistently required lower motor thrust to maintain hover than their stationary coun-terparts. In the four-wing configuration, steady hover was achieved at a mean command of 1487 DSHOT units—an 18% reduction relative to the stationary four-wing baseline. At this operating point, the motors generated 758 g of total thrust, corresponding to 746 g of vertical force after accounting for the 10° tilt. For a 960 g vehicle, the remaining 214 g (22.3%) of lift was supplied by the rotating wings which is almost as much as an additional motor. Consequently, the motors provided approximately 21% less thrust than would be required in a motor-only hover condition. A comparable fractional lift contribution was observed in the two-wing configuration. The spinning two-wing platform required a 15% lower motor command than its stationary baseline, with the rotating wings supplying 147 g of lift, corresponding to 22.3% of vehicle weight. Notably, the per-wing lift in the two-wing case (73.4 g per wing) exceeded that of the four-wing configuration (53.5 g per wing), despite similar total lift fractions. The reduced per-wing lift observed in the four-wing spin-ning configuration is attributed to increased aerodynamic in-teraction and wake interference arising from the higher blade count. With four lifting surfaces operating at similar radii, wake overlap and induced velocity effects reduce the effective angle of attack experienced by downstream sections, thereby lowering the lift generated per wing. The stability and yaw-rate and throttle over flight of con-figuration 1 and 2 can be seen in Figure 15. VI. C ONCLUSION AND FUTURE WORK 
+
+The results demonstrate that intentional spinning hover can reduce propeller thrust demand by transferring a portion of lift generation to rotating aerodynamic surfaces, with simula-tions establishing an upper bound and hardware experiments TABLE II HOVER PERFORMANCE METRICS ACROSS SPINNING AND STATIONARY CONFIGURATIONS .Configuration Mass (g) DSHOT Motor Thrust (g) Wing Lift (g) % Weight Lifted Per-Wing Lift (g) Stationary 4-Wing 960 1809 960 0 0.0 —Spinning 4-Wing (+10°) 960 1487 758 214 22.3 53.5 Stationary 2-Wing 658 1339 658 0 0.0 —Spinning 2-Wing 658 1133 511 147 22.3 73.4 
+
+Fig. 15. Experimental Roll, pitch stability, yaw rate and DSHOT history of configuration 1 and 2 TABLE III COMPARISON OF WING LIFT PREDICTIONS ACROSS MODELING AND EXPERIMENT .Method Total Lift (N) BEMT Simulation (9.27 rad/s) 5.27 CFD (MRF, k–ω SST) 4.50 Hardware (experimental results) 2.10 per motor thrust (configuration 2) 2.35 
+
+confirming practical feasibility. Notably, in spinning configu-rations the wings generate lift comparable to that produced by one of the four motors during stationary hover, highlighting their meaningful aerodynamic contribution. Future work will primarily focus on fault-tolerant control, particularly exploit-ing rotational dynamics to sustain stability and lift under partial motor failure. Emphasis will be placed on control strategies that leverage passive aerodynamic stabilization while ensuring robustness under actuator degradation, positioning spinning hover as a viable fault-tolerant operating regime for multirotor platforms. VII. A CKNOWLEDGMENTS 
+
+The authors acknowledge the support provided by MeitY, Govt. of India, under the project ”Capacity Building for Human Resource Development in Unmanned Aircraft System (Drone and Related Technology).” REFERENCES [1] M. W. Mueller and R. D’Andrea, “Stability and control of aquadrocopter despite the complete loss of one, two, or three propellers,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) . Hong Kong, China: IEEE, May 2014, pp. 45–52. [Online]. Available: http://ieeexplore.ieee.org/document/6906588/ [2] A. Freddi, A. Lanzon, and S. Longhi, “A Feedback Linearization Approach to Fault Tolerance in Quadrotor Vehicles,” IFAC Proceedings Volumes , vol. 44, no. 1, pp. 5413–5418, Jan. 2011. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S1474667016444678 [3] A. Lanzon, A. Freddi, and S. Longhi, “Flight Control of a Quadrotor Vehicle Subsequent to a Rotor Failure,” Journal of Guidance, Control, and Dynamics , vol. 37, no. 2, pp. 580–591, Mar. 2014. [Online]. Available: https://arc.aiaa.org/doi/10.2514/1.59869 [4] C. Ke, K.-Y. Cai, and Q. Quan, “Uniform passive fault-tolerant control of a quadcopter with one, two, or three rotor failure,” IEEE Transactions on Robotics , vol. 39, no. 6, pp. 4827–4846, 2023. [5] S. Sun, G. Cioffi, C. De Visser, and D. Scaramuzza, “Autonomous Quadrotor Flight Despite Rotor Failure With Onboard Vision Sensors: Frames vs. Events,” IEEE Robotics and Automation Letters ,vol. 6, no. 2, pp. 580–587, Apr. 2021. [Online]. Available: https://ieeexplore.ieee.org/document/9312462/ [6] S. K. H. Win, L. S. T. Win, D. Sufiyan, and S. Foong, “Design and control of the first foldable single-actuator rotary wing micro aerial vehicle,” Bioinspiration & Biomimetics , vol. 16, no. 6, p. 066019, Nov. 2021. [Online]. Available: https://iopscience.iop.org/article/10. 1088/1748-3190/ac253a [7] S. Bai, Q. He, and P. Chirarattananon, “A bioinspired revolving-wing drone with passive attitude stability and efficient hovering flight,” 
+
+Science Robotics , vol. 7, no. 66, p. eabg5913, 2022. [8] X. Cai, S. K. H. Win, L. S. T. Win, D. Sufiyan, and S. Foong, “Cooperative Modular Single Actuator Monocopters Capable of Controlled Passive Separation,” in 2022 International Conference on Robotics and Automation (ICRA) . Philadelphia, PA, USA: IEEE, May 2022, pp. 1989–1995. [Online]. Available: https://ieeexplore.ieee.org/ document/9812182/ [9] M. Hedayatpour, M. Mehrandezh, and F. Janabi-Sharifi, “Optimal-power configurations for hover solutions in mono-spinners,” in 2017 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,2017, arXiv:1709.07969. [10] J. E. Low, L. T. S. Win, D. S. B. Shaiful, C. H. Tan, G. S. Soh, and S. Foong, “Design and dynamic analysis of a Transformable Hovering Rotorcraft (THOR),” in 2017 IEEE International Conference on Robotics and Automation (ICRA) .Singapore, Singapore: IEEE, May 2017, pp. 6389–6396. [Online]. Available: http://ieeexplore.ieee.org/document/7989755/ [11] M. Orsag, J. Cesic, T. Haus, and S. Bogdan, “Spincopter Wing Design and Flight Control,” Journal of Intelligent & Robotic Systems ,vol. 70, no. 1-4, pp. 165–179, Apr. 2013. [Online]. Available: http://link.springer.com/10.1007/s10846-012-9725-2 [12] D. Invernizzi, M. Giurato, P. Gattazzo, and M. Lovera, “Full pose tracking for a tilt-arm quadrotor uav,” in 2018 IEEE Conference on Control Technology and Applications (CCTA) . IEEE, 2018, pp. 1–6.
