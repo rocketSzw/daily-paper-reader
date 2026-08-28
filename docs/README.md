@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-25</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-28</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>6</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-25 20:35:43 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-28 03:26:12 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日聚焦19篇前沿研究，精选7篇精读与12篇速读，覆盖无人机导航与多机器人强化学习。</p>
-<p>最值得关注：AirAlign以9.0分领跑，专攻无人机末段导航的几何感知对齐；模型强化学习解决多机器人任务分配分布偏移，获8.0分。</p>
-<p>建议优先精读高分论文，并留意其方法在动态环境与安全控制中的迁移潜力。</p>
+<p>今日共扫描18篇论文，精读6篇、速读12篇，重点关注无人机安全控制与导航决策。最值得关注的是两篇9分精读：基于生存核MPC的全驱动多旋翼安全最优飞行，以及用潜在世界模型预测后果强化导航策略。建议普通读者优先深入这两篇精读，再按需浏览速读中的低空视觉定位与多无人机感知通信相关论文。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">6 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="AirAlign: Geometry-Aware Relative Pose Alignment for UAV Last-Meter Navigation">AirAlign: Geometry-Aware Relative Pose Alignment for UAV Last-Meter Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Model-Based Reinforcement Learning for Heterogeneous Multi-Robot Task Assignment Under Distribution Shifts">Model-Based Reinforcement Learning for Heterogeneous Multi-Robot Task Assignment Under Distribution Shifts</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safety-Critical Bilateral Teleoperation for Omnidirectional Aerial Manipulation Using Force-Sensorless Haptic Feedback">Safety-Critical Bilateral Teleoperation for Omnidirectional Aerial Manipulation Using Force-Sensorless Haptic Feedback</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Towards safe and optimal flight: Viability Kernel MPC for Fully Actuated Multirotor">Towards safe and optimal flight: Viability Kernel MPC for Fully Actuated Multirotor</span></li><li><span class="dpr-home-dashboard-paper-title" title="Predicting Consequences and Reinforcing Navigation Policies with Latent World Models">Predicting Consequences and Reinforcing Navigation Policies with Latent World Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Towards Safe Reinforcement Learning with Reduced Conservativeness: A Case Study on Drone Flight Control">Towards Safe Reinforcement Learning with Reduced Conservativeness: A Case Study on Drone Flight Control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Reward-Free Continual Adaptation for Resilient Space Robots">Reward-Free Continual Adaptation for Resilient Space Robots</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Hybrid End-to-End and Modular Control Architecture Toward Safe Vehicle Lateral Control: Combining Soft Actor-Critic with Model Predictive Control">A Hybrid End-to-End and Modular Control Architecture Toward Safe Vehicle Lateral Control: Combining Soft Actor-Critic with Model Predictive Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="On the Capability Separation Between World-Model Policy Learning and Imitated World-Action Models">On the Capability Separation Between World-Model Policy Learning and Imitated World-Action Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DECO: Depth-Guided Co-Visibility Reasoning for Low-Altitude UAV Visual Localization">DECO: Depth-Guided Co-Visibility Reasoning for Low-Altitude UAV Visual Localization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Trusted Polytopic Action Sets for Fast Planning in Underactuated Systems">Trusted Polytopic Action Sets for Fast Planning in Underactuated Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="AERIS: Offline Policy Improvement for Multi-UAV Integrated Sensing and Communication">AERIS: Offline Policy Improvement for Multi-UAV Integrated Sensing and Communication</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>9</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
 </section>
 </div>
 
