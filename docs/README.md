@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-28</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-29</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>6</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-28 03:26:12 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-29 03:44:59 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共扫描18篇论文，精读6篇、速读12篇，重点关注无人机安全控制与导航决策。最值得关注的是两篇9分精读：基于生存核MPC的全驱动多旋翼安全最优飞行，以及用潜在世界模型预测后果强化导航策略。建议普通读者优先深入这两篇精读，再按需浏览速读中的低空视觉定位与多无人机感知通信相关论文。</p>
+<p>今日聚焦世界动作模型、机器人避障导航与多模态地理定位等AI前沿方向，共读8篇，其中精读2篇、速读3篇。</p>
+<p>最值得关注：两篇精读分别通过“潜在动作意图”增强世界模型想象效率、用扩散策略实现机器人人群导航的短时规划，均获8.0高分。</p>
+<p>建议下一步优先复现或测试这两个模型，并搭配速读中的开源轨迹规划库OpenSCvx进行实际部署验证。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Towards safe and optimal flight: Viability Kernel MPC for Fully Actuated Multirotor">Towards safe and optimal flight: Viability Kernel MPC for Fully Actuated Multirotor</span></li><li><span class="dpr-home-dashboard-paper-title" title="Predicting Consequences and Reinforcing Navigation Policies with Latent World Models">Predicting Consequences and Reinforcing Navigation Policies with Latent World Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Towards Safe Reinforcement Learning with Reduced Conservativeness: A Case Study on Drone Flight Control">Towards Safe Reinforcement Learning with Reduced Conservativeness: A Case Study on Drone Flight Control</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Latent Action as Intention Enables Efficient Future Imagination for World Action Models">Latent Action as Intention Enables Efficient Future Imagination for World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation">Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Making Latent Evolution Explicit: Operator-Structured Transitions for World Action Models">Making Latent Evolution Explicit: Operator-Structured Transitions for World Action Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DECO: Depth-Guided Co-Visibility Reasoning for Low-Altitude UAV Visual Localization">DECO: Depth-Guided Co-Visibility Reasoning for Low-Altitude UAV Visual Localization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Trusted Polytopic Action Sets for Fast Planning in Underactuated Systems">Trusted Polytopic Action Sets for Fast Planning in Underactuated Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="AERIS: Offline Policy Improvement for Multi-UAV Integrated Sensing and Communication">AERIS: Offline Policy Improvement for Multi-UAV Integrated Sensing and Communication</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="UniGeo: A Multi-modal Large Language Model for Text-Guided Cross-View Geo-Localization">UniGeo: A Multi-modal Large Language Model for Text-Guided Cross-View Geo-Localization</span></li><li><span class="dpr-home-dashboard-paper-title" title="OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package">OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package</span></li><li><span class="dpr-home-dashboard-paper-title" title="CounterAlign: Counterfactual Supervision for Vision-Language-Action Models">CounterAlign: Counterfactual Supervision for Vision-Language-Action Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 </div>
 
