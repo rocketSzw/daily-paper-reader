@@ -1,0 +1,454 @@
+Title: Leveraging UAV Autonomy for Minimum 4D Flight Authorization Volumes
+
+URL Source: https://arxiv.org/pdf/2608.23166v1
+
+Published Time: Tue, 25 Aug 2026 02:00:33 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Leveraging UAV Autonomy for Minimum 4D Flight Authorization Volumes 
+
+Christian Vitale, Yiannis Grigoriou, Panayiotis Kolios, and Georgios Ellinas 
+
+Abstract—The increasing UAV traffic in urban areas has prompted the creation of U-space, an EASA framework for safe and efficient unmanned aerial vehicle (UAV) operations. Within this context, this work presents a flight authoriza-tion framework that leverages autonomous UAVs, using their motion models and control characteristics to improve autho-rization efficiency. In the proposed framework, probabilistic spatial-temporal envelopes are generated to predict future UAV locations within a desired confidence level, and this information is then used to determine the minimum 4D operational volumes that form a valid authorization request for the mission. By reserving only the necessary airspace, the approach enhances capacity and supports simultaneous UAV operations. Simula-tions comparing the proposed method with a conventional rule-based strategy demonstrate consistently more compact and efficient airspace reservations across a range of mission types. Keywords—Autonomous UAV, Trajectory Predictions, Airspace Management. 
+
+I. Introduction The usage of unmanned aerial vehicles (UAVs) has witnessed rapid growth in recent years, driven by tech-nological developments in the sector. These advances have expanded the application of UAVs across numerous industries including construction [1], agriculture [2], infras-tructure inspection, monitoring [3], [4], cinematography [5], and more. With the rapid increase in UAV operations, especially for complex missions like Beyond Visual Line of Sight (BVLOS) [6] flights and urban deployments, the need for a structured airspace management system becomes critical. U-space was introduced in the regulation (EU) 2021/664 [7] and has been developed to be aspecialized, automated traffic management framework for UAVs. It integrates digital services such as network identi-fication, geofencing, flight authorization, and conformance monitoring to ensure safe UAV operations. 
+
+C. Vitale, Y. Grigoriou, and G. Ellinas are with the Department of Electrical and Computer Engineering and the KIOS Research and Innovation Center of Excellence (KIOS CoE), University of Cyprus, Nicosia, Cyprus. P. Kolios is with the Department of Computer Science and the KIOS CoE, University of Cyprus. Emails: 
+
+{vitale.christian, grigoriou.yiannis, pkolios, gellinas}@ucy.ac.cy 
+
+This work was supported by the Border Management and Visa Policy Instrument (BMVI), co-financed by the European Union and the Republic of Cyprus (BMVI/2021-2022/SA/1.2.1/015) (project REACTION). It was also partially supported by the European Union’s Horizon Europe research and innovation program under grant agreement No 101187121 (EUSOME) and by the Republic of Cyprus through the Deputy Ministry of Research, Innovation and Digital Policy. 
+
+Recent research and real-world trials further highlight the impact of U-space. Studies show that U-space en-ables highly automated and parallel BVLOS operations, essential for scaling large fleets and supporting emerging commercial drone services [8]. The U-space and Unmanned Traffic Management (UTM) frameworks have also been shown to unlock new opportunities for complex missions, such as UAV-based medical transport, by enabling reliable and regulated operation in challenging environments [9]. Finally, improvements such as contingency management services are essential for volume safety, ensuring robust mitigation of risks and emergencies during routine UAV traffic [10]. By leveraging U-space services, the integration of au-tonomous UAVs can unlock new operational opportunities and enhance the overall efficiency of airspace utilization. Thanks to on-board autonomy, autonomous UAVs are capable of executing flight trajectories with a higher degree of predictability compared to piloted UAVs. Such predictability enables more accurate forecasting of future positions, thereby supporting a more optimal trade-off between operational efficiency and the safe management of airspace. Despite this potential, current flight au-thorization schemes are largely agnostic to the degree of UAV autonomy and typically rely on conservative safety buffers that create overly large reserved volumes. While these buffers guarantee safety, they significantly reduce airspace capacity and limit the number of UAVs that can operate simultaneously. Significant progress has been made in developing U-space infrastructure, yet key challenges persist in optimizing 4D volume reservations for dense urban operations. As urban UAV traffic continues to grow, addressing these issues is essential to improve airspace efficiency, ensure fair access among operators, and maintain safe and effective traffic management. This is precisely the focus of this work, which aims to determine the minimum 4D operational volumes required for a UAV mission. Specifically, this work’s contributions are the following:  
+
+> •
+
+Development of a 4D volume reservation algorithm that leverages UAV autonomy to optimize flight authorization services within the U-space framework.  
+
+> •
+
+Demonstration of enhanced airspace utilization and scalability by reserving only the necessary operational volume, enabling simultaneous high-density UAV op-erations in urban environments. arXiv:2608.23166v1 [eess.SY] 24 Aug 2026 • Validation of the proposed method through simula-tions reflecting realistic flight scenarios, proving its effectiveness and practical potential for operational deployment. The remainder of the paper is organized as follows: Section II presents related work. Section III provides an overview of the proposed solution, while Section IV discusses the location prediction method. Section V introduces the approach for creating minimum volume flight authorization requests. Section VI showcases the performance evaluation of the system. Finally, Section VII concludes the paper and discusses possible directions for future research. II. Related Work The concept of U-space represents a coordinated frame-work of services and infrastructure designed to enable the safe integration of UAVs into shared airspace through the automation of flight operations. Early research has addressed foundational aspects such as regulatory devel-opment, flight authorization, conflict management, and communication feasibility, all of which are essential for enabling BVLOS and high-density urban UAV operations [11]. Despite this progress, several obstacles remain. Cur-rent flight authorization processes often suffer from delays and lack efficient mechanisms for managing dense and dynamic traffic situations, raising concerns about scalabil-ity as UAV activity continues to increase [12]. Although initial U-space services such as registration and geofencing are already deployable, significant challenges persist for real-time operations, including accurate tracking, com-munication reliability, and situational awareness [13]. Moreover, performance differences among U-space Service Providers (USSPs) directly affect efficiency and fairness, emphasizing the need for standardized and transparent processes [14]. Addressing these limitations is critical to achieving a seamless and sustainable integration of high-density UAV operations within the European airspace. Moreover, a comprehensive U-space Concept of Oper-ations (CONOPS) [15] has been published, defining the services, infrastructure, and responsibilities required for safe UAV traffic management across both controlled and uncontrolled airspace. Building on this foundation, recent research has proposed operational strategies to support highly automated UAV operations. For example, [16] assesses the role of strategic planning in shared U-space volumes, while [17] introduces a multi-layer framework that incorporates obstacles, no-fly zones, connectivity, and ground risk into BVLOS mission planning. Other ef-forts, such as [8], demonstrate parallel BVLOS operations for agricultural monitoring, highlighting the potential of automation in mission execution and traffic scalability. Complementary efforts have focused directly on flight authorization processes. The EuroDrone UTM testbed [18] validates interoperability across U-space Levels 1–3, iden-tifying regulatory gaps and technical requirements that affect authorization workflows in urban environments. In parallel, [12] proposes a scalable authorization workflow aimed at ensuring fairness and capacity management, introducing a multi-queue, priority-based service within the Common Information Service Provider (CISP). Their results demonstrate that such mechanisms can mitigate unfairness and prevent monopolization of airspace re-sources. While recent contributions have advanced automation workflows and multi-constraint mission planning, they typically assume conventional flight authorization proce-dures. In particular, volume reservations are often handled in a static or rule-based manner, resulting in conservative and oversized allocations in space and time. Although such approaches guarantee safety, they lead to inefficient airspace usage, especially in dense urban environments. Initial results in [14] demonstrate this effect: static-rule but high-resolution 4D reservation algorithms nearly double the mission acceptance rate compared to lower-resolution reservations. This underscores the importance of efficient and precise volume reservations for enabling high-density UAV operations and maximizing airspace utilization. To address this limitation, we introduce a novel 4D volume reservation algorithm within the U-space framework. Our approach leverages probabilistic trajectory predictions of autonomous UAVs to dynamically compute the minimum operational volumes required for each mission, ensuring strict containment while substan-tially reducing reserved airspace. Unlike prior work, this method explicitly exploits UAV autonomy to improve the efficiency of flight authorization, thereby enhancing scalability and capacity in future high-density operations. III. Solution Overview By combining enhanced motion predictability with advanced control flexibility, autonomous UAVs provide the foundation for more efficient airspace management. Building on these capabilities, this work introduces a novel framework that generate optimized flight authorizations. The method enables operators to request the minimum possible 4D volumes, ensuring with high probability that the UAV remains within the reserved airspace. By reserv-ing only the strictly necessary volumes, the approach con-tributes to increased airspace capacity and facilitates the simultaneous accommodation of multiple UAV operations. A. The 4D Reservation Algorithm The 4D volume reservation algorithm presented in this work is organized into two interconnected components, whose high-level descriptions are provided in the following and whose representation is shown in Fig. 1. 1) The Trajectory Prediction Component: The first block operates in discrete time slots and receives as input a sequence of desired waypoints defining the intended path of the autonomous UAV, W = {wi}Ni=1 , where each waypoint is represented by the vector Figure 1. System Overview 
+
+wi =
+
+[xwi
+
+˙xwi
+
+]
+
+∈ R6, (1) with xwi ∈ R3 denoting the spatial position of the i-th way-point and ˙xwi ∈ R3 the associated desired velocity vector. Explicitly, xwi = ( xwi , y wi , z wi )⊤ and ˙xwi = ( ˙ xwi , ˙ywi , ˙zwi )⊤.Given a sequence of desired waypoints, Model Predictive Control (MPC) is employed offline to generate feasible state trajectories for the autonomous UAVs. These trajec-tories are computed under the assumption that the UAV dynamics evolve according to the following model 
+
+xk+1 = f (xk, uk, nk), (2) where the state vector is defined as 
+
+xk =
+
+[pk
+
+˙pk
+
+]
+
+∈ R6, (3) with pk = ( xk, y k, z k)⊤ denoting the UAV position at time step k, ˙pk = ( ˙ xk, ˙yk, ˙zk)⊤ the velocity, and nk a stochastic disturbance term accounting for external factors, e.g., wind effects and model inaccuracies. The control input is denoted by uk, and f (·) is the discrete-time motion model. The resulting trajectories are denoted by {xk}Kk=0 , with associated control inputs {uk}K−1 
+
+> k=0
+
+, where K represents the prediction horizon corresponding to the UAV’s mission duration from take-off to landing. The MPC-generated control sequence is obtained by minimizing the traversal time between waypoints. Explicitly accounting for stochastic disturbances nk, the output of this block is a time-indexed sequence of volumes 
+
+Vk ⊂ R3, each representing a high-probability region that contains the UAV’s location at the corresponding time step, i.e., 
+
+P(pk ∈ V k) ≥ 0.95 . (4) These volumes represent the spatial envelopes that must be respected by the subsequent reservation block. 2) The Minimum 4D Volume Authorization Request Component: The second block converts the probabilistic envelopes {V k}Kk=0 into a minimum set of reserved 4D volumes {Ωj }Vj=1 , with each Ωj ⊂ R3 × R represented as a rectangle in the (x, y )-plane and extending vertically to the U-space ceiling. These volumes define the UAV’s reserved airspace. Each volume Ωj is associated with a start time 
+
+sj and an end time ej , so that it is active for the interval 
+
+[sj , e j ]. Although not explicitly detailed in this work, it is assumed that an additional operational buffer, as specified by U-space regulations, is applied to each volume when submitting the Flight Authorization Request. To ensure robustness, each reserved volume must last at least kv seconds, and consecutive volumes must overlap in time by at least ko seconds, where kv , k o ∈ R+ are design parameters defined during U-space designation. The high-level optimization problem underlying the minimum-volume flight authorization request can be sum-marized as follows 
+
+min    
+
+> {Ωj,s j,e j}Vj=1
+> V
+
+∑
+
+> j=1
+
+Ωj (5) s.t. Vk ⊆
+
+> V
+
+∪
+
+> j=1
+
+Ωj , ∀k, (6) 
+
+ej − sj ≥ kv , ∀j, (7) 
+
+ej − sj+1 ≥ ko, ∀j. (8) IV. Location Prediction for Unmanned Autonomous Vehicles The first component of the proposed 4D volume reser-vation solution is responsible for predicting the evolution of the autonomous UAV along the intended sequence of waypoints. To this end, a discrete-time motion model is combined with a MPC strategy that ensures convergence of the UAV state towards the designated waypoints. The resulting state distributions are subsequently used to estimate the volumes Vk representing the regions of the airspace in which the UAV is expected to be located. A. UAV Motion Model In this work, a linear stochastic kinematic model is assumed for the UAV, following the formulation presented in [19]. Using the state notation introduced in Section III, the UAV dynamics evolve over one time step as 
+
+xk+1 = Axk + Buk + nk, (9) where uk ∈ R3 is the control input, represented as the force vector applied to the UAV along the three spatial axes, and nk ∈ R3 ∼ N (0 , Q ) is an i.i.d. Gaussian distur-bance with covariance matrix Q. The system matrices are given by 
+
+A =
+
+[I3 ∆T I 3
+
+03 (1 − η) I3
+
+]
+
+, B =
+
+[ 03∆Tm I3
+
+]
+
+,where I3 and 0 3 are the 3 × 3 identity and zero matrices, respectively; η is the air resistance coefficient, m denotes the UAV mass, and ∆T indicates the sampling interval. By iterating (9), the state evolution over k steps, given the initial UAV state x0 and the control sequence 
+
+{u0, . . . , uk−1}, can be expressed as 
+
+xk = Akx0 +
+
+> k−1
+
+∑
+
+> i=0
+
+Ak−1−iBui +
+
+> k−1
+
+∑
+
+> i=0
+
+Ak−1−ini. (10) Since the disturbance terms ni are assumed independent and Gaussian, it follows that the distribution of xk is also Gaussian, 
+
+xk ∼ N (μk, Σk), (11) with mean 
+
+μk = Akx0 +
+
+> k−1
+
+∑
+
+> i=0
+
+Ak−1−iBui, (12) and covariance 
+
+Σk =
+
+> k−1
+
+∑
+
+> i=0
+
+Ak−1−iQ(Ak−1−i)⊤. (13) The mean trajectory μk characterizes the expected evo-lution of the UAV state under the applied control inputs. More specifically, the position and velocity components are given by μpk and μvk, respectively. The associated covariance matrix Σk quantifies the propagation of uncer-tainty over time resulting from process disturbances. The positional component of the distribution, obtained from 
+
+μpk and the corresponding block of Σk, serve as the basis for the construction of probabilistic reservation volumes in the subsequent sections. B. Waypoint-Matching Path Planning Given the initial known UAV state x0 at waypoint 
+
+i − 1 and the target waypoint wi, MPC is used to compute the control inputs {uk}Ki−1 
+
+> k=0
+
+that minimize the deviation of the predicted UAV trajectory from the target over a sufficiently long planning horizon of length Ki.Deviations are measured in both position and velocity, and an exponentially increasing weight ρk (ρ > 1) is applied to encourage rapid convergence towards the waypoint. The resulting controls {uk}Ki−1 
+
+> k=0
+
+determine the expected UAV trajectory between waypoints i − 1 and i. Specifically, the following MPC strategy is employed: 
+
+min  
+
+> {uk}Ki−1
+> k=0
+> Ki
+
+∑
+
+> k=0
+
+ρk ∥μk − wi∥22, (14) s.t. μk = Akx0 +
+
+> k−1
+
+∑
+
+> i=0
+
+Ak−1−iBui, ∀k, (15) 
+
+∥uk∥∞ ≤ umax , ∀k, (16) 
+
+∥uk+1 − uk∥∞ ≤ ∆umax , ∀k, (17) 
+
+∥μvk∥∞ ≤ vmax , ∀k, (18) where constraints (16) and (17) limit the control input magnitude and its variation between consecutive steps, and where constraint (18) enforces a maximum velocity bound. The parameter Ki denotes the discrete time horizon allocated for the UAV to reach waypoint wi. Within this horizon, the waypoint is considered reached at time step Kwi , corresponding to the instant at which the predicted UAV state is closest to wi, and any remaining control inputs are disregarded. This procedure is applied to all waypoints. A feasible solution ensures that the UAV trajectory closely approaches each waypoint while satisfying dynamic and operational constraints, with ex-ponential weighting promoting rapid convergence towards the target. C. Location Prediction for Unmanned Autonomous Vehi-cles Given the MPC strategy presented earlier, the control inputs {uk}Kwi −1 
+
+> k=0
+
+applied by the autonomous UAV to track the intended waypoints are determined, yielding the predicted trajectory. As stated in (11), the state distribution at each time step remains Gaussian, with μk
+
+and Σk computed as in (12) and (13), now fully specified, since the applied controls {uk}Kwi −1 
+
+> k=0
+
+are known. The marginal distribution of the UAV position is therefore 
+
+pk ∼ N (μpk, Σpk),
+
+where μpk and Σpk denote the mean and covariance of the spatial component of xk.In principle, probabilistic envelopes {V k}Kk=0 can be obtained by integrating the probability density of pk,resulting in ellipsoids centered at μpk [20]. However, within the U-space framework, reserved volumes Ωj are assumed to extend vertically to the ceiling. Consequently, the 
+
+z-dimension does not affect the optimization and the formulation can be restricted to the (x, y )-plane. Let μxy k
+
+and Σxy k denote the mean and covariance of the UAV position projected onto the horizontal plane. The ellipse that characterizes the region containing the UAV with a specified confidence level, 95% in the following, can be constructed from the eigenvalues λxy k, 1 and λxy k, 2 of Σxy k .Specifically, the eigenvalues determine the squared semi-axes of the confidence ellipse [20]: 
+
+axy k, 1 =
+
+√
+
+χ22,0.95 λxy k, 1,axy k, 2 =
+
+√
+
+χ22,0.95 λxy k, 2, (19) where χ22,0.95 is the 95 th percentile of the chi-squared distribution with two degrees of freedom. For tractability, each ellipse is conservatively approxi-mated by a circle of radius 
+
+rk = max {axy k, 1, a xy k, 2}, (20) centered at μxy k . This worst-case approximation guaran-tees that the true confidence ellipse is fully contained within the circular footprint, while substantially simpli-fying the subsequent optimization. V. An Approach for Minimum-Volume Flight Authorization Requests Building on the predicted UAV footprints 
+
+{(μxy k , r k)}Kk=0 derived in Sec. IV, this section presents a framework for generating minimum-volume flight authorization requests. The approach approximates the probabilistic spatial envelopes of the UAV trajectory with a set of compact 4D volumes, ensuring safe containment while minimizing the total reserved airspace. A. MILP Formulation for Minimum-Volume Flight Au-thorization Requests The task of minimizing the total reserved 4D space-time is formulated as a mixed-integer linear program (MILP). Each predicted UAV footprint at time step k must be fully contained within at least one reserved 4D volume 
+
+Ωj ⊂ R3 × R. As previously noted, each Ωj is represented as a rectangle in the (x, y )-plane, extending vertically to the U-space ceiling, and is associated with an activation time interval. Formally, each 4D volume Ωj is parameter-ized by its spatial bounds (xj
+
+> min
+
+, x j
+
+> max
+
+, y j
+
+> min
+
+, y j
+
+> max
+
+) and its temporal interval [sj , e j ]. To improve packing efficiency, a discrete set of orientations is considered. In this work, two orientations ( 0◦ and 45 ◦) relative to the Cartesian axes of the airspace are incorporated, although the approach can be generalized to additional angles. An auxiliary binary variable δj specifies whether Ωj is rotated by 45 ◦ (δj = 1 )or remains axis-aligned ( δj = 0 ). Based on these definitions, the problem of minimizing the total reserved 4D airspace, while ensuring full coverage of the UAV trajectory under temporal and orientation constraints, is formulated as the following MILP: Problem Min Volume Reservation: 
+
+min ∑
+
+> k
+
+∑
+
+> j
+
+zkj Aj (21a) decision variables: 
+
+zkj ∈ { 0, 1}, δ j ∈ { 0, 1}, ∀k, j xj
+
+> min
+
+, x j
+
+> max
+
+, y j
+
+> min
+
+, y j
+
+> max
+
+, ∀j (21b) subject to: 
+
+bkj ≤ zkj , bkj + δj ≤ 1, bkj ≥ zkj − δj ∀k, j (21c) 
+
+xj 
+
+> min
+
+≤ μxk − rk + M (1 − bkj ) ∀k, j (21d) 
+
+xj 
+
+> max
+
+≥ μxk + rk − M (1 − bkj ) ∀k, j (21e) 
+
+yj 
+
+> min
+
+≤ μyk − rk + M (1 − bkj ) ∀k, j (21f) 
+
+yj 
+
+> max
+
+≥ μyk + rk − M (1 − bkj ) ∀k, j (21g) 
+
+xj 
+
+> min
+
+≤ μxk,δ − rk + M (1 − (zkj − bkj )) ∀k, j (21h) 
+
+xj 
+
+> max
+
+≥ μxk,δ + rk − M (1 − (zkj − bkj )) ∀k, j (21i) 
+
+yj 
+
+> min
+
+≤ μyk,δ − rk + M (1 − (zkj − bkj )) ∀k, j (21j) 
+
+yj 
+
+> max
+
+≥ μyk,δ + rk − M (1 − (zkj − bkj )) ∀k, j (21k) 
+
+Aj = wj hj ∀j (21l) 
+
+wj ≥ xj 
+
+> max
+
+− xj 
+
+> min
+
+∀j (21m) 
+
+hj ≥ yj 
+
+> max
+
+− yj 
+
+> min
+
+∀j (21n) ∑
+
+> j
+
+zkj ≥ 1 ∀k (21o) 
+
+∑
+
+> k
+
+zkj ≥ kv ∀j (21p) 
+
+sj ≤ kz kj + M (1 − zkj ), ej ≥ kz kj ∀k, j (21q) ∑
+
+> k
+
+zkj = ej − sj + 1 ∀j (21r) 
+
+ej ≥ sj , sj+1 ≥ sj , ej+1 ≥ ej ∀j (21s) 
+
+ej − sj+1 ≥ ko ∀j (21t) In the Min Volume Reservation optimization, each assignment variable zkj ∈ { 0, 1} indicates whether the horizontal footprint of the UAV at time step k is covered by the 4D volume Ωj . By construction, zkj = 1 if footprint 
+
+k is contained within Ωj , and zkj = 0 otherwise. Hence, the objective function (21a) minimizes the total reserved airspace by summing over all assignments. Specifically, the horizontal footprint associated with Ωj is counted once for each envelope k it covers, so that its contribution to the objective is proportional to the number of time steps during which it is active. Indeed, multiplying zkj by the area Aj of the horizontal footprint of Ωj captures this space-time cost; the horizontal area is weighted by the temporal duration implied by the sum over k, effectively accounting for the total 4D volume reserved by Ωj .The coverage and rotation logic is encoded via the auxiliary variable bkj in (21c). By construction, bkj = 1 
+
+when the axis-aligned constraints are active and bkj = 0 
+
+when the rotated constraints are active. Indeed, the three inequalities in (21c), together with the large constant 
+
+M in the Big-M formulation of (21d)–(21k), ensure that the appropriate set of coverage constraints is enforced. Specifically, when zkj = 1 , if δj = 0 , the third inequality in (21c) forces bkj = 1 , activating the axis-aligned constraints (21d)–(21g); conversely, if δj = 1 , the second inequality in (21c) forces bkj = 0 , activating the rotated constraints (21h)–(21k). The Big-M terms relax the inactive con-straints, ensuring they do not restrict the solution and guaranteeing that exactly one set of constraints is active for each footprint assignment, consistent with the chosen orientation of Ωj . When zkj = 0 , the UAV footprint k is not assigned to volume Ωj . In this case, bkj = 0 by the first inequality in (21c), and the corresponding coverage constraints are inactive, rendering them irrelevant to the feasibility of the optimization. The axis-aligned constraints (21d)–(21g) enforce that the predicted horizontal footprint of the UAV at time k,represented by (μxk , μ yk) with radius rk, is fully contained within the horizontal bounds [xj
+
+> min
+
+, x j
+
+> max
+
+] × [yj
+
+> min
+
+, y j
+
+> max
+
+]
+
+of volume Ωj . The rotated constraints (21h)–(21k) are obtained by applying a planar rotation matrix Rθ to the footprint coordinates 
+
+[μxk,δ 
+
+μyk,δ 
+
+]
+
+= Rθ
+
+[μxk
+
+μyk
+
+]
+
+, Rθ =
+
+[cos θ − sin θ
+
+sin θ cos θ
+
+]
+
+, θ = 45 ◦.
+
+The resulting coordinates (μxk,δ , μ yk,δ ) represent the hori-zontal footprint of the UAV in the rotated reference frame of Ωj . The rotated constraints then ensure that this ro-tated footprint is fully contained within the corresponding horizontal bounds [xj
+
+> min
+
+, x j
+
+> max
+
+]×[yj
+
+> min
+
+, y j
+
+> max
+
+] of the volume. Constraint (21l) defines the area of each rectangle Aj as the product of its width wj and height hj . The additional constraints (21m)–(21n) enforce that wj and hj are at least as large as the horizontal extents of the rectangle. Introducing wj and hj as explicit variables simplifies the optimization problem by avoiding direct multiplication of decision variables in the objective function and constraints, while still guaranteeing that the calculated area Aj fully contains the assigned footprint in any orientation. Constraint (21o) ensures that every footprint k is covered by at least one volume. Constraint (21p) enforces a minimum active duration kv for each volume. The start time sj and end time ej of each volume, defined by (21q)–(21r), correspond respectively to the first and last time steps at which the volume Ωj is active. In particular, sj becomes equal to the minimum k for which the Big-M terms in the coverage constraints (21d)–(21k) become active, effectively marking the first activation of the volume, while ej is equal to the maximum k for which the volume is assigned to any footprint. Constraint (21r) further enforces that the assignments of volume Ωj are consecutive in time, so that there are no gaps between its activations. Temporal consistency and ordering across volumes are imposed by (21s), and the minimum temporal overlap ko between consecutive volumes is enforced by (21t). Finally, the total number of reserved volumes, V ,serves as a tunable parameter rather than a decision variable within the MILP. While a higher V theoretically allows for a tighter approximation of the flight path, the aforementioned safety constraints regarding the mini-mum volume duration kv and the mandatory temporal overlap ko impose a limit on airspace fragmentation. Consequently, increasing V indefinitely yields diminishing returns, and in practice, a small number of volumes suffices for typical urban trajectories. To identify the optimal count, a sequential sensitivity analysis is performed: the Min Volume Reservation optimization is solved iteratively with increasing values of V until the objective function converges, indicating that maximum packing efficiency has been reached. Overall, the presented framework provides a rigorous mechanism for generating minimum-volume flight autho-rization requests. By jointly optimizing footprint assign-ment, volume orientation, and spatial-temporal bounds, it ensures that all predicted UAV positions are fully cov-ered, while maintaining temporal continuity and satisfying minimum-duration requirements. The explicit handling of axis-aligned and rotated footprints, combined with auxiliary variables and Big-M activation, guarantee that each volume is efficiently used in both space and time. The resulting 4D reservation is compact, safe, and minimizes the total reserved volume required for the UAV trajectory. Clearly, the proposed MILP formulation can involve a large number of variables and constraints, particularly for long trajectories or fine temporal discretizations. However, the optimization is performed offline, prior to UAV take-off, so real-time performance is not required. This allows solving the problem in reasonable time using standard MILP solvers, even for complex trajectories. VI. Performance Evaluation This section evaluates the effectiveness of the proposed Min Volume Reservation framework through simulation experiments. The objectives are to quantify reductions in reserved airspace volume compared to standard baseline strategies and to validate that the probabilistic envelopes derived from UAV trajectory predictions accurately cap-ture the actual paths followed by autonomous UAVs. A. Simulation Environment Two representative UAV flight scenarios are considered: 1) Long-Range Trajectory: a straight-line mission con-necting a sequence of waypoints at constant speed, representing typical long-distance transit operations. 2) Circular Monitoring Trajectory: a closed-loop mis-sion along a circular path, where the UAV hovers at each waypoint to perform monitoring tasks. The main physical parameters, control settings, and reservation-related constraints used throughout the exper-iments are summarized in Table I. For the long-range trajectory, the UAV performs avertical take-off from the origin, climbs to a cruising altitude of 100 m, and traverses seven waypoints at a constant speed of 7 m/s, before executing a vertical landing TABLE I. Simulation Parameters Parameter Symbol / Value Sampling time ∆T = 1 sDrag coefficient η = 0 .1                         
+
+> UAV mass m= 10 kg Maximum force umax = 300 NMaximum force variation ∆umax = 10 NMaximum velocity vmax = 14 m/s Increasing Exponential Factor ρ= 1 .05
+> Probability level 95%
+> Minimum duration kv= 60 sMinimum overlap ko= 20 sProcess noise covariance Q=
+> [0.1I30.2I3
+> 0.2I30.4I3
+> ]
+
+at (1500 , 900 , 0) . The mission spans approximately 2 km and lasts about 3 minutes and 20 seconds. For the circular monitoring trajectory, the UAV simi-larly ascends vertically to 100 m and then follows a closed-loop path connecting seven waypoints arranged in a near-circular configuration. At each waypoint, the UAV hovers to perform monitoring tasks before reaccelerating towards the next location, and concludes with a vertical landing at the origin. Although the total path length is slightly below 
+
+2 km, the overall mission time is longer (almost 4 minutes) due to repeated hovering and acceleration phases. B. Performance Assessment and Baseline Comparison The effectiveness of the Min Volume Reservation frame-work is assessed by illustrating the predicted UAV trajec-tories along with the corresponding 4D reserved volumes for the considered simulation scenarios. To provide a performance benchmark, a baseline strat-egy is introduced in which 4D volumes are generated without solving the Min Volume Reservation optimiza-tion problem. Given the expected trajectory {μxy k }Kk=0 
+
+of the autonomous UAV, as computed in Section IV, the mission is partitioned uniformly in time rather than adapting the 4D volumes to the predicted probabilistic envelopes. Specifically, consecutive temporal segments of length kv − ko are defined, ensuring that each reserved volume satisfies both the minimum active duration kv
+
+and the required temporal overlap ko. Furthermore, each volume is modeled with a fixed lateral extent of 300 maround the predicted trajectory. While this baseline ap-proach leverages trajectory predictions developed in this work, it remains representative of conventional rule-based reservation practices in U-space and serves as a reference for quantifying the benefits achieved by the proposed optimization framework. Figure 2 illustrates the results for the long-range mission. Specifically, Fig. 2a depicts the expected UAV trajectory, while Fig. 2b shows the 4D reservation volumes obtained with the proposed Min Volume Reservation framework. Several configurations with different numbers of volumes Ωj are tested, and the solution achieving the smallest overall reservation volume is reported. The use of probabilistic envelopes of the UAV trajectory enables the optimizer to adapt both the timing and the size of the 4D volumes, leading to substantially more compact authorizations compared to the baseline approach (Fig. 2c). In the baseline approach, the mission is evenly partitioned in time and volumes are requested without leveraging trajectory uncertainty, resulting in un-necessarily large reservations. By contrast, the optimized reservations demonstrate that adaptively selecting the start and end times of each volume in accordance with the predicted trajectory significantly reduces the required spatio-temporal authorization. Overall, the requested 4D reservation is reduced by 17 .3% relative to the baseline approach, while still guaranteeing complete coverage of the UAV path. Figure 3 presents the results for the circular monitoring mission. The predicted trajectory with hovering phases is shown in Fig. 3a, while the corresponding optimized reser-vation is depicted in Fig. 3b. The results demonstrate that the proposed Min Volume Reservation framework adapts seamlessly to mission profiles that include intermittent hovering and repeated accelerations, automatically gen-erating compact authorization requests. In contrast, the baseline approach (Fig. 3c) produces overly conservative volumes that do not exploit the structure of the trajectory. In this scenario as well, the total requested 4D reservation is reduced by 25 .1% compared to the baseline approach, while still ensuring full coverage of the UAV path. Overall, these results highlight the ability of the pro-posed framework to generate compact and adaptive flight authorizations across diverse mission types, while fully satisfying spatial and temporal constraints. Most notably, in both missions, the reduction in 4D reserved volume is achieved without increasing the number of volumes in the authorization request, but rather by optimally selecting their sizes and activation times. C. Evaluation of the Approach Robustness The robustness of the proposed framework is assessed on the segment between waypoints W6 and W7 of the long-range trajectory. In this scenario, the UAV follows the optimal controls computed in Section IV, applied to the motion model that includes the disturbance term 
+
+nk. To account for the stochastic effects of this distur-bance, a Monte Carlo simulation with 10 ,000 realizations is performed, generating an ensemble of possible UAV trajectories. Each trajectory is compared against the 95% 
+
+probabilistic envelopes of the UAV position, which are precomputed as described in Section IV-C. For clarity of Fig. 4, the envelopes are displayed only at selected time steps rather than continuously. As expected, about 5% of the simulated trajectories lie outside the probabilistic envelopes, consistent with their confidence level. It is important to note that this does not mean that the UAV spends 5% of its flight outside the (a) Predicted UAV trajectory. (b) Min Volume Reservation optimization. (c) Baseline approach.      
+
+> Figure 2. Long-Range Trajectory.
+> (a) Predicted UAV trajectory. (b) Min Volume Reservation optimization. (c) Baseline approach.
+> Figure 3. Circular Monitoring Trajectory.
+> Figure 4. Evaluation of the long-range mission between W6and W7
+> against the probabilistic envelopes and reserved 4D volumes.
+
+probabilistic envelopes. Rather, at each time step there is a 5% probability of being outside the envelope. The reserved 4D volume that covers this segment of the mission is also shown in Fig. 4. Only a small portion of the simulated trajectories (about 0.08%) extend beyond its boundaries, and those that do remain very close to the edge. This confirms the compact and reliable definition of the reserved volumes achieved by the proposed framework. VII. Conclusion This work introduces a novel optimization framework for generating compact 4D flight authorizations for au-tonomous UAV missions. The approach leverages trajec-tory predictions and probabilistic envelopes to adaptively define the spatial and temporal extent of each reserved volume, thereby minimizing the overall reservation while ensuring complete coverage of the UAV path. A baseline strategy is also considered for comparison, and results demonstrated that the proposed method consistently yields significantly smaller and more efficient reservations across different mission types. Crucially, this framework is made possible by the enhanced predictability and reliability of autonomous UAV operations. By exploiting accurate trajectory forecasts, it becomes feasible to re-quest compact authorizations that remain valid and safe, avoiding the overly conservative buffers typically required in conventional rule-based practices. Future work will investigate extensions that exploit the versatility of the proposed framework. In particular, ground risk will be incorporated, along with alternative objectives when defining both the UAV path and the corresponding 4D flight authorization request, further broadening the applicability of the approach to diverse operational settings. References 
+
+[1] S. Gupta and S. Nair, “A review of the emerging role of UAVs in construction site safety monitoring,” Materials Today: Proceedings, 2023. [2] J. Kim, S. Kim, C. Ju, and H. I. Son, “Unmanned aerial vehicles in agriculture: A review of perspective of platform, control, and applications,” IEEE Access, vol. 7, pp. 105 100–105 115, 2019. [3] A. Savva, A. Zacharia, R. Makrigiorgis, A. Anastasiou, C. Kyrkou, P. Kolios, C. Panayiotou, and T. Theocharides, “ICARUS: Automatic autonomous power infrastructure inspec-tion with UAVs,” in Proc. ICUAS, 2021, pp. 918–926. [4] A. Lekidis, A. G. Anastasiadis, and G. A. Vokas, “Electricity infrastructure inspection using AI and edge platform-based UAVs,” Energy Reports, vol. 8, pp. 1394–1411, 2022. [5] I. Mademlis, V. Mygdalis, N. Nikolaidis, M. Montagnuolo, F. Negro, A. Messina, and I. Pitas, “High-level multiple-UAV cinematography tools for covering outdoor events,” IEEE Trans-actions on Broadcasting, vol. 65, no. 3, pp. 627–635, 2019. [6] F. B. Sorbelli, P. Chatterjee, P. Das, and C. M. Pinotti, “Risk assessment in BVLoS operations for UAVs: Challenges and solutions,” in Proc. IEEE DCOSS-IoT, 2024, pp. 300–307. [7] “Commission implementing regulation (EU) 2021/664 of 22 April 2021 on a regulatory framework for the U-space,” Official Journal of the European Union, L 139, 23.4.2021, pp. 161–183, 2021. [Online]. Available: https: //eur-lex.europa.eu/eli/reg_impl/2021/664/oj [8] Y. Dobrev, N. Voget, L. Danielmeier, J. Krimphove, S. Seitz, J. Holsten, and D. Moormann, “A flight operation strategy for highly automated parallel BVLOS operations,” in Proc. CEAS EuroGNC, 2024. [9] M. Kotlinski and J. K. Calkowska, “U-Space and UTM de-ployment as an opportunity for more complex UAV operations including UAV medical transport,” Journal of Intelligent & Robotic Systems, vol. 106, no. 1, p. 12, 2022. [10] J. L. Muñoz Gamarra, J. J. Ramos González, and Z. Liu, “U-space contingency management service: enhancing U-space volumes safety,” in Proc. SESAR Innovation Days, 2024. [11] J. H. Jepsen, K. H. Laursen, and K. Jensen, “A survey of state-of-the-art U-space research,” in Proc. ICARA, 2024, pp. 265– 272. [12] D. Carramiñana, J. A. Besada, J. M. Molina, and A. M. Bernardos, “Scalable U-Space authorization workflow enabling fairness and capacity management,” in Proc. SESAR Innovation Days, 2024. [13] L. Rognin, A. Trzmiel, and P. Alty, “If you can’t measure U-space, you can’t improve it!” in Proc. DASC, 2020, pp. 1–6. [14] J. L. Muñoz Gamarra, J. J. Ramos González, Z. Liu, and A. Sobejano Ventayol, “Impact of USSPs performance in shared U-space volumes,” in Proc. SESAR Innovation Days, 2023. [15] “U-space ConOps and architecture (edition 4),” SESAR JU COROS-XUAM Project Deliverable, 2023. [Online]. Avail-able: https://www.sesarju.eu/sites/default/files/documents/ reports/U-space%20CONOPS%204th%20edition.pdf [16] J. J. R. González, Z. Liu, J. L. Muñoz-Gamarra, E. Pastor, and C. Barrado, “Impact assessment of the strategic planning performance in shared U-space volumes,” European Journal of Transport and Infrastructure Research, vol. 25, no. 1, 2025. [17] F. B. Sorbelli, P. Chatterjee, F. Coro, L. Palazzetti, and C. M. Pinotti, “A novel multi-layer framework for BVLoS drone operation: A preliminary study,” in Proc. IEEE INFOCOM, 2023, pp. 1–6. [18] V. Lappas, G. Zoumponos, V. Kostopoulos, H. Shin, A. Tsour-dos, M. Tantarini, D. Shmoko, J. Munoz, N. Amoratis, A. Maragkakis, T. Machairas, and A. Trifas, “EuroDRONE, A European UTM testbed for U-Space,” in Proc. ICUAS, 2020, pp. 1766–1774. [19] C. Vitale, S. Papaioannou, P. Kolios, and G. Ellinas, “Au-tonomous 4D trajectory planning for dynamic and flexible air traffic management,” Journal of Intelligent & Robotic Systems, vol. 106, no. 1, p. 11, 2022. [20] M. I. Ribeiro, “Gaussian probability density functions: Proper-ties and error characterization,” in Technical Report, Institute for Systems and Robotics (ISR/IST), Portugal, 2004, pp. 1–30.

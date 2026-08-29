@@ -44,14 +44,14 @@
       <span class="dpr-home-dashboard-kicker">2026-08-29</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-29 03:44:59 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-29 22:54:09 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日聚焦世界动作模型、机器人避障导航与多模态地理定位等AI前沿方向，共读8篇，其中精读2篇、速读3篇。</p>
-<p>最值得关注：两篇精读分别通过“潜在动作意图”增强世界模型想象效率、用扩散策略实现机器人人群导航的短时规划，均获8.0高分。</p>
-<p>建议下一步优先复现或测试这两个模型，并搭配速读中的开源轨迹规划库OpenSCvx进行实际部署验证。</p>
+<p>今日精读聚焦世界行动模型，重点探讨高效未来想象与长时程扩展。最值得看的两篇均围绕世界模型：潜在意图驱动的高效想象，以及跨尺度自回归实现的长时程预测。下一步可关注世界模型在真实机器人规划中的泛化能力。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Latent Action as Intention Enables Efficient Future Imagination for World Action Models">Latent Action as Intention Enables Efficient Future Imagination for World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation">Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Making Latent Evolution Explicit: Operator-Structured Transitions for World Action Models">Making Latent Evolution Explicit: Operator-Structured Transitions for World Action Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Latent Action as Intention Enables Efficient Future Imagination for World Action Models">Latent Action as Intention Enables Efficient Future Imagination for World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="WALL-SS: Scaling Long-horizon World Models via Next-Scale Autoregression">WALL-SS: Scaling Long-horizon World Models via Next-Scale Autoregression</span></li><li><span class="dpr-home-dashboard-paper-title" title="Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation">Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">13 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="UniGeo: A Multi-modal Large Language Model for Text-Guided Cross-View Geo-Localization">UniGeo: A Multi-modal Large Language Model for Text-Guided Cross-View Geo-Localization</span></li><li><span class="dpr-home-dashboard-paper-title" title="OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package">OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package</span></li><li><span class="dpr-home-dashboard-paper-title" title="CounterAlign: Counterfactual Supervision for Vision-Language-Action Models">CounterAlign: Counterfactual Supervision for Vision-Language-Action Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package">OpenSCvx: An Open-Source Modular and Extensible Nonlinear Trajectory Planning Package</span></li><li><span class="dpr-home-dashboard-paper-title" title="LD4WAM: Learning Latent Dynamics from Human Videos for World Action Models">LD4WAM: Learning Latent Dynamics from Human Videos for World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Distributed Trajectory Planning and Resource Allocation for Dynamic Multi-UAV Collaborative Computing">Distributed Trajectory Planning and Resource Allocation for Dynamic Multi-UAV Collaborative Computing</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>11</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
 </section>
 </div>
 
