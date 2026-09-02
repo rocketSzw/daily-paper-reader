@@ -1,0 +1,401 @@
+Title: A Hybrid PEM-GP Framework for Uncertainty-Aware System Identification of Quadcopters
+
+URL Source: https://arxiv.org/pdf/2608.30433v1
+
+Published Time: Tue, 01 Sep 2026 02:15:00 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# A Hybrid PEM–GP Framework for Uncertainty-Aware System Identification of Quadcopters 
+
+Abdallah Ghoul 1,∗ Ismail Khalil Bousserhane 1 Kadri Boufeldja 1
+
+> 1
+
+Electrical Engineering Department, University of Bechar, Bechar 08000, Algeria 
+
+> ∗
+
+Corresponding author: abdallah.ghoul@univ-bechar.dz 
+
+Journal reference: International Journal of Control, Automation, and Systems, Vol. 24, No. 8, pp. 2047–2057, 2026. 
+
+DOI: 10.1007/s12555-026-00123-5 
+
+Abstract 
+
+Accurate dynamic models play a central role in achieving reliable control of quadcopters. Classical system identification methods remain widely used, mainly because of their inter-pretability. However, they often fail to capture important nonlinear effects, especially in small-scale aerial platforms where such effects become more pronounced. Data-driven approaches offer a different perspective. They can represent complex nonlinear dynamics more effectively, but this comes at the cost of reduced interpretability and the absence of well-calibrated uncertainty estimates. In this work, we propose a framework that combines physics-based modeling with data-driven learning, while explicitly accounting for uncertainty. A physics-based model is first identified using the Prediction Error Method (PEM), which captures the main structure of the system. The remaining dynamics are then modeled using a Gaussian Process (GP), allowing the residual behavior to be learned directly from data. This separation makes it possible to distinguish between known physical effects and unmodeled dynamics. The proposed framework is validated on a Duckiedrone-like experimental setup. The results show that the PEM–GP model achieves prediction accuracy comparable to that of a Long Short-Term Memory (LSTM) network, while additionally providing calibrated uncertainty estimates. This combination improves model reliability and supports uncertainty-aware decision-making. 
+
+Keywords: System identification; Grey-box modeling; Gaussian Processes; Uncertainty quan-tification; Prediction Error Methods; LSTM; Quadcopter; Duckiedrone. 
+
+# 1 INTRODUCTION 
+
+Unmanned aerial vehicles (UAVs)—and especially quadcopters—now serve research, inspection, agriculture, and last-mile delivery [1, 2]. Their value depends on precise, stable flight. That, in turn, depends on a dynamic model that predicts the vehicle response under control inputs and disturbances with high fidelity [3]. System identification provides that model. It estimates parameters and structures directly from data [4]. For quadcopters this includes inertias, thrust and drag coefficients, aerodynamic derivatives, and trajectory-level motion primitives [5, 6]. The quality of the identified model controls what follows: model-based control, high-fidelity simulation, and state estimation [5]. If the model is weak, everything downstream suffers. Small platforms such as Duckiedrone make this hard [7]. They are light, underactuated, and sensitive to effects that larger vehicles mostly ignore. Examples include PWM-to-thrust nonlinearity and voltage sag, blade flapping and ground effect, and strong cross-axis coupling [8, 9]. Low-cost MEMS IMUs add noise, bias, and scale errors. Data look messy; dynamics hide behind 1arXiv:2608.30433v1 [cs.RO] 31 Aug 2026 sensor artifacts. Classical identification remains a useful baseline. PEM and frequency-domain analysis work well for linear, time-invariant systems and yield interpretable models [4]. On small quadcopters their scope is narrow. Linearization around hover helps, but aggressive flight and aerodynamic nonlinearities break assumptions. Treating roll, pitch, and yaw as decoupled also fails once manoeuvres couple axes. The models hold only near a single operating point [10]. Data-driven methods push farther. LSTM networks learn nonlinear temporal dependencies and often predict better than classical models [11]. They are black boxes, though. They do not explain their outputs and, critically, they do not report uncertainty. That is a problem in safety-critical robotics [12]. GP offer a probabilistic alternative with calibrated uncertainty [13]. A full GP over the entire dynamics can be data-hungry and may ignore known physics. We take a hybrid path. A simplified PEM-based physics model captures dominant, structured dynamics. A GP then learns the residual—the part the physics misses. The physics keeps interpretability and acts as a strong prior. The GP adds flexibility and delivers uncertainty. Together they cover the space that neither covers alone. Recent advances in learning-based system identification have explored hybrid modeling strategies that combine physics-based models with machine learning techniques. Several studies augment simplified UAV dynamic models using learning algorithms to capture aerodynamic disturbances and nonlinear effects that are difficult to model analytically. For example, Becker et al. demonstrated that learning-based aerodynamic compensation can improve quadrotor prediction accuracy during aggressive maneuvers [14]. Similarly, Faessler et al. showed that aerodynamic effects such as blade flapping and drag forces play a significant role in quadrotor dynamics and must be properly modeled to obtain accurate system identification results [8]. Gaussian Process regression has also gained increasing attention in robotics because it provides probabilistic predictions and calibrated uncertainty estimates. These properties are particularly important for safety-critical systems such as UAVs where controllers must account for model confidence. The theoretical foundations of Gaussian Process modeling are presented in Rasmussen and Williams [13], while Deisenroth et al. demonstrated the effectiveness of probabilistic dynamics models for robotics learning and control tasks [12]. Hybrid identification approaches aim to combine the strengths of physical modeling and data-driven learning. Physics-based models preserve interpretability and incorporate known structural properties of the system, whereas learning algorithms can capture residual nonlinear dynamics that remain unmodeled. However, many existing approaches either rely entirely on black-box models such as neural networks [15] or use physics models only as initialization for data-driven learning. Explicit frameworks that combine Prediction Error Method identification with Gaussian Process residual learning for quadrotor dynamics remain relatively limited in the UAV iden-tification literature. In particular, the use of a PEM-based parametric model as a structured baseline together with a GP residual learner provides a principled way to distribute modeling effort between known physical dynamics and unmodeled nonlinear effects. In this work, we investigate such a hybrid identification strategy where a PEM-based parametric model captures the dominant structured dynamics, while a Gaussian Process learns the residual nonlinear behavior that the physics model cannot represent. The principal contributions of this work are threefold: We introduce a novel, structured system identification methodology that hybridizes a classical PEM model with a GP residual learner for small-scale quadcopters. We demonstrate that this hybrid PEM-GP framework not only achieves high predictive accuracy, comparable to a black-box LSTM, but also provides explicit, quantitative uncertainty estimates—a feature absent in both PEM and LSTM models. We provide a comprehensive experimental evaluation using the Duckiedrone model, validating the performance of our approach against standalone PEM, GP, and LSTM baselines across a range of excitation trajectories. 2The remainder of this paper is organized as follows: Section 2 reviews related work in classical, data-driven, and hybrid system identification. Section 3 details our methodology, including the problem formulation and the proposed hybrid framework. Section 4 describes the experimental setup. Section 5 presents and discusses the results, and Section 6 offers concluding remarks and directions for future work. 
+
+# 2 Related Work 
+
+Research on system identification for robots spans three lines: classical parametric methods, data-driven non-parametric methods, and Grey-box hybrids. This section reviews representative work in each line with an emphasis on UAVs. 
+
+2.1 Classical System Identification Methods 
+
+Classical identification offers a rigorous foundation. Ljung formalized the PEM and its guarantees for linear, time-invariant models [4]. For UAVs, Mueller et al. demonstrated PEM on a small quadcopter and showed its utility for controller design [5]. In related work, efficient motion prim-itives for quadrotor trajectory generation have also been proposed, highlighting the importance of accurate dynamic models for real-time applications [6]. Frequency-domain techniques remain attractive in aerospace for their noise rejection and clear gain-phase interpretation [10]. Limits appear on small, agile platforms. The linearity assumption leaves out key effects [3]. Axis-by-axis identification ignores cross-couplings that the aerodynamics literature documents [8, 9]. In practice, these models work near hover and degrade under coupled, aggressive motion. They are interpretable and fast, but their valid region is narrow. 
+
+2.2 Data-Driven and Machine Learning Approaches 
+
+Machine learning addresses those limits by learning dynamics directly from data. Neural networks are universal approximators; see Gamboa for a concise overview of deep models for sequences [11]. Recurrent architectures—and LSTMs in particular—capture temporal dependencies and often outperform linear baselines on complex UAV trajectories [15]. Gaussian Processes provide a Bayesian alternative. Rasmussen and Williams summarize the theory and the role of kernels and uncertainty [13]. In robotics, GP are valued for calibrated prediction variance, which supports safe decision-making and robust control [12]. Despite their strong modeling capabilities, these approaches present several limitations. Deep neural networks are typically considered black-box models, offering limited physical interpretability and reduced transparency in decision-making processes [16]. In addition, GP models may suffer from scalability issues when applied to large datasets and can become data-inefficient when used to learn full system dynamics without incorporating prior physical knowledge. 
+
+2.3 Grey-Box and Hybrid Modeling Techniques 
+
+Grey-box methods combine physics with learning. A physics model captures dominant structure, then a learning module explains residual dynamics. Prior work explores several patterns: Neural networks augment specific unmodeled terms such as aerodynamic wrenches [14]. Simple physics models paired with GP have been used in manipulation and related tasks [17]. However, for full quadcopter identification, systematic frameworks combining a PEM-based baseline with GP residual learning remain relatively scarce in the literature. Our approach fills that gap. We first identify a PEM-based white-box model for the core dynamics. We then train a GP on the residual error to capture nonlinearities and cross-axis 3couplings the PEM misses. The split focuses learning capacity where it matters while keeping a physically meaningful core. The result is a practical balance: high accuracy, explicit uncertainty, and retained interpretability. Although hybrid physics–learning approaches have been explored in robotics and system identification, many existing studies either rely entirely on data-driven models or augment physics-based models using machine learning components [18, 8]. For instance, Gaussian Process models have been widely used for learning system dynamics and uncertainty-aware control in robotics [13, 12]. In contrast, the proposed framework combines Prediction Error Method (PEM) identification with Gaussian Process residual learning in a structured identification pipeline specifically designed for quadrotor dynamics. In this approach, the PEM model captures the dominant physics-based behavior of the system, while the GP is trained only on the residual nonlinear dynamics that remain unexplained by the parametric model. This separation allows the learning component to focus on a simpler modeling task while preserving the interpretability of the physical model parameters. 
+
+# 3 Methodology 
+
+This section outlines the theoretical foundation and the proposed framework for quadcopter system identification. We begin with the problem formulation and a description of the standard quadcopter dynamics, followed by an overview of the baseline identification methods. Finally, we present our novel hybrid PEM-GP methodology in detail. 
+
+3.1 Problem Formulation and Quadcopter Dynamics 
+
+We pose quadcopter identification as supervised sequence modeling. Given an input–output datasets: 
+
+D = {u(t), y (t)}Nt=1 (1) With motor commands u(t) ∈ R4 (PWM values, squared rotor speeds) and measured outputs 
+
+y(t) ∈ Rm (angular rates, linear accelerations), the goal is to learn a predictive model M that maps inputs to outputs: ˆy(t) = M(u(t), u (1 : t − 1) , y (1 : t − 1)) , (2) such that ˆ y(t) accurately reproduces the system response for the given u(t). Identification is cast as minimizing a prediction-error objective over D.The body-frame Newton–Euler equations are: 
+
+m ˙v + ω × (mv) = F,
+
+J ˙ω + ω × (Jω) = τ , (3) where m is the mass, v = [ u, v, w ]T is the linear velocity vector, ω = [ p, q, r ]T is the angular velocity vector, J is the inertia matrix, F is the total force vector, and τ = [ τϕ, τ θ, τ ψ]T is the total torque vector. The total force F and torque τ are: 4F =
+
+> 
+
+00 
+
+> ∑4
+> i=1
+
+Fi 
+
+> 
+
++ RT
+
+> 
+
+00
+
+−mg  
+
+> 
+
++ Fa,
+
+τ =
+
+> 
+
+l(F2 − F4)
+
+l(F3 − F1)
+
+κ(F1 − F2 + F3 − F4) 
+
+> 
+
++ τa,
+
+(4) with Fi = ctω2 
+
+> i
+
+the i-th rotor thrust, l the arm length, κ the yaw torque coefficient, R the rotation matrix (world to body), g gravity, and Fa, τa aerodynamic contributions not captured by the nominal model. 
+
+3.2 Baseline Identification Methods 
+
+3.2.1 Prediction Error Method (PEM) 
+
+In this work we use PEM [4] as the classical baseline. Given a parametric model M(θ) and data {u(t), y (t)}Nt=1 , PEM estimates θ by minimizing the one–step prediction error: ˆθ = arg min  
+
+> θ
+
+JN (θ), JN (θ) = 12
+
+> N∑
+> t=1
+
+∥e(t, θ )∥2, (5) where e(t, θ ) = y(t) − ˆy(t|t − 1; θ) is the conditional one-step-ahead predictor. We consider discrete-time , linear state-space models(innovation form): 
+
+xk+1 = Ax k + Bu k + Ke k,yk = Cx k + Du k + ek, (6) with ek zero-mean, temporally white, cov( ek)=Λ. For attitude identification we adopt, unless stated, a decoupled SISO structure for roll, pitch, and yaw to simplify estimation and interpretation. A full MIMO version is also evaluated in validation. The matrices A, B, C, and 
+
+D represent the discrete-time state-space dynamics of the quadrotor around the hover operating point. Matrix A describes the evolution of the system states and captures the coupling between the rotational dynamics, while B represents the influence of the control inputs generated by the motors. Matrix C maps the internal states to the measured outputs obtained from the onboard sensors, and D accounts for possible direct feedthrough between the inputs and outputs. The matrix K denotes the Kalman gain associated with the innovation process ek, which models disturbances and unmodeled dynamics in the system. 
+
+Estimation details: 
+
+• Initialization and order selection: Model order nx is chosen via AIC/BIC and confirmed by residual whiteness and cross-validation. Initial parameters come from subspace identifi-cation. • Optimization: We use the Gauss–Newton and Levenberg–Marquardt solver in Python, with output-error. • Excitation: Data are collected with persistently exciting inputs (chirps, steps, coupled manoeuvres) to satisfy identifiability. • Validation: Fits are reported on disjoint datasets using R2, M SE , and correlation tests of residuals and input–residual cross-correlations. 5Scope and limitations: 
+
+PEM yields interpretable, statistically efficient estimates for linear, time-invariant dynamics and provides a stable baseline near hover. It does not capture: • Actuator and aerodynamic nonlinearities (saturation, ground effect...). • Cross-axis couplings when identified as decoupled SISO channels. • Slow time-variation (battery voltage sag) without explicit augmentation. These gaps motivate the data-driven and hybrid methods introduced next. 
+
+3.2.2 Long Short-Term Memory (LSTM) Network 
+
+We adopt an LSTM as a black-box sequence model. It maps a finite history of inputs and outputs to the next output: ˆy(t) = hLSTM 
+
+> (
+
+y(t − 1 : t − na), u (t − 1: t − nb); θLSTM 
+
+> )
+
+, (7) where hLSTM is the nonlinear function realized by the network with the parameter θLSTM . inte-gers na, nb define the output and input window lengths, respectively. The model is multi-output and predicts all channels of y(t). 
+
+Data windowing and normalization: We form supervised pairs {(Xt, y (t)) } with: 
+
+Xt = [ y(t − 1 : t − na), u (t − 1 : t − nb)] (8) All channels are standardized (zero mean, unit variance) using statistics from the training split only. 
+
+Architecture: Two LSTM layers (hidden size H) with a linear output head: 
+
+h1 = LSTM 1(Xt), h2 = LSTM( h1), ˆy = W h 2 + b. (9) We apply dropout on recurrent outputs and L2 weight decay on all trainable parameters. 
+
+Training objective: The parameters θLSTM minimize mean-squared error over the training set: min  
+
+> θLSTM
+> (
+
+12
+
+> N∑
+> t=1
+
+∥y(t) − ˆy(t)∥2). (10) For optimization, we use the Adam optimizer with learning rate scheduling and early stopping on a validation set. We report both teacher-imposed one-step measures and free (multi-step) deployments. 
+
+Evaluation: Performance is measured with R2, M SE , and spectral error over held-out trajectories. Residual whiteness and input–residual cross-correlations are checked to detect leakage or bias. 
+
+Scope and limitations: The LSTM captures nonlinear and coupled dynamics without speci-fying structure. It does not provide interpretable physical parameters and, in its basic form, yields no calibrated predictive uncertainty. Generalization outside the training distribution is monitored via free-run rollouts and stress-tests on unseen manoeuvres. 63.2.3 Gaussian Process (GP) Regression 
+
+A GP is a collection of random variables, any finite number of which have a joint Gaussian distribution [13]. It is fully specified by a mean function m(x) and a covariance kernel function 
+
+k(x, x′): 
+
+f (x) ∼ GP (m(x), k (x, x ′)) (11) For regression, given training data X = [ x1, ..., x N ]T , y = [ y1, ..., y N ]T , the predictive distri-bution for a new test point x∗ is Gaussian with mean and variance: 
+
+E[f (x∗)] = kT 
+
+> ∗
+
+(K + σ2
+
+> n
+
+I)−1y, 
+
+V[f (x∗)] = k(x∗, x ) − kT 
+
+> ∗
+
+(K + σ2
+
+> n
+
+I)−1k∗, (12) where K ∈ RN ×N is the kernel matrix with Kij = k(xi, x j ), k∗ = [ k(x∗, x 1), ..., k (x∗, x N )] T , and 
+
+σ2 
+
+> n
+
+is the noise variance. 
+
+Kernel: We use the squared exponential kernel and train independent GP for each output dimension: 
+
+k(x, x ′) = σ2 
+
+> f
+
+exp 
+
+> (
+
+− 12
+
+> D∑
+> d=1
+
+(xd − x′
+
+> d
+
+)2
+
+ℓ2
+
+> d
+> )
+
+, (13) with output scale σ2 
+
+> f
+
+and length-scales {ℓd}. One independent GP is trained per output dimension of y.
+
+Training: Hyper-parameters {σ2 
+
+> f
+
+, ℓ d, σ 2
+
+> n
+
+} are learned by maximizing the log marginal likeli-hood. Inputs and outputs are standardized using training-set statistics. We report predictive mean and variance; the latter is used later for uncertainty-aware control. 
+
+Computational aspects: Exact GP inference scales as O(N 3) due to the Cholesky of K + σ2
+
+> n
+
+I.For long trajectories, sparse approximations (inducing points) or mini-batch stochastic variational GP can be used. 
+
+3.3 Proposed Hybrid PEM-GP Framework 
+
+Our framework (Figure 1) combines a physics-based PEM baseline with a GP residual model in three phases. 
+
+Figure 1: Block diagram of the proposed hybrid PEM-GP identification framework. 7Phase 1 −White-box baseline (PEM): Identify a decoupled, discrete-time state–space model 
+
+MPEM from persistently exciting flight data. The baseline predictor is: ˆyPEM (t) = MPEM (u(t), θ PEM ) (14) which captures dominant linear dynamics and anchors the model in interpretable parameters. 
+
+Phase 2 −Residual learning (GP): Compute the residual between measurements and baseline prediction. 
+
+r(t) = y(t) − ˆyPEM (t) (15) This residual encapsulates all the dynamics that the linear PEM model fails to capture, including nonlinearities, cross-couplings, and complex aerodynamic effects. A Gaussian Process 
+
+GP res is then trained to model this residual. The input to the GP is the system’s operational state vector x(t) = [ ϕ, θ, ψ, p, q, r, u 1, u 2, u 3, u 4]T , which includes attitude, angular rates, and motor commands: 
+
+r(t) ∼ GP res (m(x(t)) , k (x(t), x (t)′)) (16) This stage targets the nonlinearities, cross-couplings, and aerodynamic effects not represented in the PEM structure. 
+
+Phase 3 −Hybrid prediction and uncertainty: The final prediction of the hybrid model is the sum of the PEM baseline and the GP-predicted residual: ˆyHybrid (t) = ˆ yPEM (t) + ˆ r(t) (17) Importantly, the hybrid model also provides a predictive uncertainty estimate σ2Hybrid (t), which is directly inherited from the GP’s predictive variance V[r(t)]. This uncertainty quantification is a key advantage, enabling the design of robust controllers that can adapt their behavior based on model confidence. This framework ensures that the model retains a physically interpretable core through MPEM ,while the GP flexibly captures the intricate residual dynamics, resulting in a model that is both accurate and informative. 
+
+3.4 Hybrid PEM–GP Identification Algorithm 
+
+The overall identification process of the proposed hybrid approach is summarized in Algorithm 1. First, the Prediction Error Method (PEM) is used to estimate the parameters of the physics-based model. Then, the residual dynamics, defined as the difference between the observed outputs and the model predictions, are computed. These residuals are used to train a Gaussian Process (GP) regression model. Finally, the hybrid prediction is obtained by combining the PEM-based prediction with the GP-based estimation of the residual dynamics. 
+
+# 4 Data Collection Procedure 
+
+A persistently exciting dataset is required for unbiased identification. We use a multi-stage input sequence u(t) comprising: • Multi-sine chirps: 0.1–20 Hz applied to individual motors and to collective thrust. • Steps and doublets: to elicit transient dynamics and actuator saturation. • Coupled-axis manoeuvres: simultaneous roll–pitch commands to excite cross-couplings. • Hover segments: for baseline estimation and bias checks. 8Algorithm 1 Hybrid PEM–GP System Identification 
+
+Require: Dataset D = {u(t), y (t)}Nt=1  
+
+> 1:
+
+Collect persistently exciting input–output flight data.  
+
+> 2:
+
+Estimate parameters of the physics-based model using the Prediction Error Method (PEM): ˆθP EM = arg min θ 
+
+> ∑Nt=1
+
+∥y(t) − ˆyP EM (t, θ )∥2 
+
+> 3:
+
+Compute residual dynamics: 
+
+r(t) = y(t) − ˆyP EM (t) 
+
+> 4:
+
+Construct regression input vector: 
+
+x(t) = [ ϕ, θ, ψ, p, q, r, u 1, u 2, u 3, u 4]T 
+
+> 5:
+
+Train Gaussian Process model: 
+
+r(t) ∼ GP (m(x(t)) , k (x(t), x (t)′))  
+
+> 6:
+
+Predict residual dynamics: ˆr(t) 
+
+> 7:
+
+Hybrid prediction: ˆyHybrid (t) = ˆ yP EM (t) + ˆ r(t) 
+
+> 8:
+
+return Hybrid prediction ˆ yHybrid (t) and predictive variance σ2 
+
+> GP
+
+(t)The total sequence lasts 30 s producing N = 3000 samples. We log synchronized inputs and outputs: 
+
+u(t) = [ P W M 1, P W M 2, P W M 3, P W M 4]T ,y(t) = [ p, q, r, a x, a y, a z ]T (18) Data are split chronologically: We keep the common 70/30 convention and make it explicit in time. Train: 0–20s, Validation: 20–25s (used for model selection and early stopping), and Test: 25–30s (held-out and reported exclusively). All preprocessing statistics are computed on train only and applied to validation and test unchanged. 
+
+# 5 Results and Analysis 
+
+This section offers a comprehensive comparison of the system identification methods described in Section 3. We compare the performance of baseline PEM, LSTM, and GP models with our new hybrid PEM-GP method. The comparison is performed on the held-out test data set according to quantitative performance metrics as well as qualitative comparisons of prediction profiles and uncertainty bounds. We use mean squared error ( M SE ) and coefficient of determination ( R2)to evaluate models. 
+
+5.1 PEM results 
+
+The PEM model captures dominant linear dynamics near hover. Figure 2 plots predicted and true angular rates on a test segment. The PEM traces gentle motion but degrades under aggressive manoeuvres. This aligns with the model’s linear, decoupled structure. Quantitatively, the PEM model produced a total M SE of 3 .87 × 10 −3 and an R2 of 0 .995. Although the figures show a good fit, visual inspection does affirms that important dynamic aspects are not yet captured. 
+
+5.2 LSTM results 
+
+The LSTM network was shown to possess an enhanced ability to learn the temporal and nonlinear behavior of the quadcopter dynamics. As shown in Figure 3, the LSTM predictions (red dashed line) closely match the ground truth, even during high-speed transients and aggressive flight maneuvers where the PEM model failed. 9Figure 2: PEM identification results: predicted vs. measured angular rates. 10 LSTM could simulate the complex couplings between axes and nonlinear effects like actuator saturation and aerodynamic damping. Quantitatively, it was superior to the PEM model, yielding a lower M SE of 2 .25 × 10 −3 and a higher R2 score of 0 .997. This confirms the hypothesis that data-driven methods are better able to capture the full richness of the dynamics of the system. The fundamental failure of the LSTM is its complete lack of interpretability and absence of any inherent uncertainty quantification. It is an accurate but opaque black-box model, limiting its utility in safety-critical applications where an understanding of model confidence is paramount. 
+
+Figure 3: LSTM identification results: predicted vs. measured angular rates. 
+
+5.3 GP results 
+
+The Gaussian Process model provided a solid competitor, as it was equally competitive in terms of performance but probabilistic. Figure 4 shows the GP predictions (red, green, blue solid lines) along with the ±2σ confidence intervals (shaded region). The GP can model the nonlinear dynamics well, and the uncertainty bounds understandably increase in regions where test data drifts away from training distribution or under highly dynamic maneuvering. The GP had an M SE of 1 .76 × 10 −3 and R2 value of 0 .998, outperforming both PEM and LSTM on both these metrics. The direct quantification of uncertainty is also a big plus, as it provides a model confidence estimate that can be easily utilized for robust control design. 11 Figure 4: GP identification results with ±2σ uncertainty bands. 
+
+Figure 5: Predictive uncertainty from the Gaussian Process model for roll, pitch, and yaw angular rates. 12 5.4 Hybrid PEM–GP results 
+
+The proposed hybrid PEM-GP approach achieved the highest performance, with the optimal combination of the strengths of its individual components. As it is evident in Figure 6, the hybrid estimates (purple dashed line) are practically hard to distinguish from real one (solid blue line), tracking slow and fast dynamics with high accuracy. The hybrid technique leverages the PEM baseline for linear parts that have been comprehensively understood and takes advantage of the GP for residual correction, resulting in a data-driven and more systematic learning process. This is evident in its improved quantitative performance with an M SE of 2 .70 × 10 −9 and a clean R2 score of 0 .999. Moreover, the hybrid model inherits the uncertainty quantification attribute of the GP. Figure 7 displays the time evolution of the prediction standard deviation σ for the three angular rates. As expected, the uncertainty is low under steady, hover-like flight but becomes large during maneuvers with high agility , precisely where the simple PEM model performs most poorly and the dynamics are most complex. This behavior is a good reason to use the uncertainty estimate to warn regimes when the model is less confident. 
+
+Figure 6: Hybrid model predictions with GP uncertainty bands. 
+
+5.5 Comparative analysis 
+
+Table 1 summarizes the quantitative performance of the evaluated identification methods together with qualitative indicators describing interpretability , uncertainty estimation capability, and 
+
+nonlinear modeling ability. The outcomes clearly indicate the trade-offs of each approach. The PEM model is most comprehensible and computationally inexpensive but has worst-in-class accuracy on nonlinear dynamics. The LSTM model possesses outstanding accuracy but is a black-box with high computational expense and with no uncertainty estimates. The GP solution has an acceptable accuracy versus uncertainty estimation trade-off. The hybrid PEM-GP model is the best-balanced one, though, with the same accuracy level as the pure data-driven models but providing necessary uncertainty estimates and with some interpretability preserved in its physics-based core. 13 Figure 7: Hybrid model uncertainty over time: grows in high dynamics, shrinks in hover. To facilitate a structured comparison of the evaluated identification approaches, Table 1 reports both quantitative metrics and qualitative indicators. The quantitative metrics include the mean squared error (MSE) and the coefficient of determination ( R2), which measure prediction accuracy. In addition to these numerical metrics, three qualitative indicators are considered. Inter-pretability refers to the degree to which the model parameters correspond to meaningful physical quantities of the quadrotor dynamics. Classical parametric identification methods such as the Prediction Error Method provide interpretable parameters directly related to system dynamics [4]. Uncertainty refers to the ability of the model to provide predictive confidence estimates. Probabilistic models such as Gaussian Processes naturally provide predictive variance together with the mean prediction, enabling uncertainty-aware modeling and control [13, 12]. Finally, Nonlinear model reflects a model’s ability to accommodate complex and indirect relationships between control inputs and system outputs. Data-driven models, such as LSTM networks and Gaussian process models, are particularly effective at handling nonlinear dynamics because they make no assumptions about linearity. [11, 15]. Table 1: Comprehensive performance comparison of the identification methods.                                 
+
+> Method M SE R2Interpretability Uncertainty Nonlinear Modeling
+> PEM 3.87 ×10 −30.995 High No Poor LSTM 2.25 ×10 −30.997 Low No Very Good GP 1.76 ×10 −30.998 Medium Yes Very Good Hybrid (PEM–GP) 2.70 ×10 −90.999 Medium Yes Excellent
+
+The results reported in Table 1 highlight the main characteristics of the considered identifi-cation approaches. The PEM provides accurate predictions near the hover operating point. In this regime, the system dynamics remain close to the assumptions of linear system identification, and the 14 dominant aerodynamic effects can be approximated by a linear model. However, when the quadrotor performs aggressive maneuvers, the prediction accuracy decreases because nonlinear aerodynamic effects become more significant. Similar limitations of linear identification methods for quadrotor dynamics have been reported in [10]. This should not come as a surprise, however. After all, at hover, the quadrotor’s motion is very similar to what the classical linear system identification paradigm assumes. At hover, the nonlinear effects of aerodynamics are relatively mild, and the linear approximation is able to capture most of the essential features of the system. However, the method does not perform as well during high-gain maneuvers. When roll and pitch are changing rapidly, nonlinear effects of aerodynamics appear, which are difficult to capture using the linear Prediction Error Method, making it difficult for the model to replicate these rapid attitude changes. This limitation of linear identification techniques has been noted in other studies on quadrotor modeling as well [10]. The LSTM model shows improved prediction accuracy for flight conditions that deviate from the hover regime, as indicated by the lower prediction errors reported in Table 1. This behavior is consistent with previous studies demonstrating that recurrent neural networks can capture nonlinear temporal dependencies in dynamic systems [11, 15]. However, the model produces deterministic point predictions and does not provide a direct estimate of prediction uncertainty. For safety–critical applications such as UAV control, the absence of uncertainty information may limit the reliability of the model when operating outside the training conditions. The GP models address this limitation by providing probabilistic predictions together with explicit uncertainty estimates. These properties make GP models attractive for modeling and control of robotic systems where model confidence is important. However, training GP models for high-dimensional dynamic systems can be computationally demanding because the inversion of the covariance matrix typically scales with O(N 3) with respect to the number of training samples [13]. This computational requirement may limit the amount of data that can be used for training when modeling the full quadrotor dynamics. The hybrid identification framework combines a physics-based PEM model with a Gaussian Process residual learner. In this formulation, the PEM model captures the dominant structured dynamics derived from the physical behavior of the quadrotor, while the GP component models the residual nonlinear effects that are not represented in the parametric model. As shown in Table 1, the hybrid formulation achieves lower prediction errors compared with the individual modeling approaches while still providing predictive uncertainty through the GP component. This structure allows the model to retain partial physical interpretability through the PEM parameters while improving predictive performance through data-driven learning. Although the hybrid model does not remain fully physics-based, it preserves partial in-terpretability through the PEM structure while benefiting from the flexibility of data-driven learning. This combination is particularly useful for modeling complex robotic systems where both predictive accuracy and uncertainty awareness are required. 
+
+# 6 Discussion 
+
+The experimental results of Section 5 validate the main postulate of this paper: a hybrid modeling methodology that synergistically combines physics-based and data-driven paradigms can work where each paradigm alone does not. The improved performance of the hybrid PEM-GP model is more than a numerical achievement but a qualitative shift in the trade-offs typically faced in system identification. The PEM model by itself, while understandable and computationally light, proved the long-established limitation of linear models when dealing with extremely nonlinear systems like small quadcopters. Its inability to account for peak responses and phase lag during aggressive flight further underscores the significance of unmodeled aerodynamics and dynamic cross-couplings. This agrees with Brescianini and D’Andrea [3] findings and reiterates that for mission tasks 15 requiring a performance beyond light hovering, conventional linear identification is not enough. In contrast, the LSTM network illustrated the impressive capability of deep learning in modeling intricate, nonlinear temporal behavior. Its performance, however, is achieved at the expense of interpretability and computational cost. The black-box model nature, as deplored by Rudin [16], prevents extracting physical insight or being able to rely upon its performance in safety-critical applications where it is most important to know the failure modes. Further, the absence of native uncertainty quantification means that the controller gets no indication on when it can anticipate the model’s prediction to be unreliable. The Gaussian Process model harmonized well, yielding both accurate performance and principled uncertainty estimates. Its quality makes sense of Deisenroth et al.’s argument [12] in favor of probabilistic methods in robotics. But training a GP to learn the entire system dynamics from scratch can be considered as a wastage of prior knowledge. Our hybrid approach addresses this by using the PEM model as an informative prior, allowing the GP to focus its modeling ability on the residual dynamics—the "unknown unknowns." The structured approach not only improved accuracy but also reduced the GP training time over the individual model because it was working on a simpler learning problem. The uncertainty estimates that the hybrid model produces are particularly valuable. The empirically realized correlation between aggressive maneuver and high uncertainty (Figure 7) provides a solid basis by which a downstream controller can reason about model confidence. It is then possible to implement conservative control actions or model-switching thresholds in real-time, creating an immediate gain in operating safety. The hybrid model therefore offers a realistic compromise. It has a physically reasonable core through the PEM component, providing a degree of interpretability and ensuring good performance even outside the training set distribution. The GP component then acts as a platform-specific performance booster,learning the specific idiosyncrasies of the platform. This design is especially well-adapted to robotic systems like the Duckiedrone, where general understanding of physical principles in action is good but platform-specific idiosyncrasies (for reasons of manufacturing tolerance or unique aerodynamic interactions) are difficult to model from first principles. 
+
+6.1 Computational Considerations 
+
+However, the computational aspect also encompasses the speed at which the model can be deployed for the UAV system. The PEM model excels in this aspect as well, as the output of the model can be calculated as linear state space propagation. Using Neural Networks, as seen with the LSTM model, requires more computations with the propagation of the signal through the various recurrent nodes. Using Gaussian Process model also poses a computational challenge, as the model requires the inversion of the covariance matrix for training the model, which results in a complexity of 
+
+O(N 3) for the number of training samples used for the model[13]. Such a complexity can be a major challenge for the model. For the proposed hybrid model, applying the Gaussian Process model for the residual dynamics instead of the overall system dynamics helps alleviate the complexity and speed of the model. The overall model complexity for the prediction of the hybrid model can be considered within the range of the quadcopter system sampling rate. In practice, the prediction stage of the hybrid model involves a linear state propagation from the PEM component combined with a Gaussian Process residual prediction. Since the GP model is trained offline and only inference is performed during deployment, the computational cost during operation remains moderate. For the dataset sizes considered in this work, the hybrid model can generate predictions within the sampling period typically used in quadrotor flight control systems, which commonly operate at frequencies between 100 Hz and 500 Hz [19]. 16 7 Conclusion and Future Work 
+
+We have presented here a new hybrid framework of system identification for small-scale quad-copters by combining a standard PEM model with a GP residual learner. We have demonstrated, through extensive real-world experiments on a physical Duckiedrone, that this Grey-box approach is able to maintain a more optimal trade-off between accuracy, interpretability, and uncertainty quantification compared to stand-alone standard and data-driven approaches. The key point here is that the hybrid PEM-GP model does not merely average the strength of its components but results in a synergistic effect. The PEM model provides a structurally sound and interpretable baseline, while the GP captures the complex residuals effectively, resulting in a model that is superior to PEM or GP in isolation and more trustworthy than a black-box LSTM. The intrinsic uncertainty quantification is an essential feature for operating trained models in real robotic deployments. There are a number of directions with high potential for the future. First, short-term next steps include applying adaptive or robust controllers with explicit use of the uncertainty information from the hybrid model to life for real-time performance improvement and safety assurance. Second, although the experiments were performed on an actual Duckiedrone platform, broader validation under varied flight conditions and environments is required to assess generality and to handle real-world concerns like sensor bias and latency. Simulation remains useful for stress testing and repeatability. Lastly, the overall hybrid method is not limited to PEM and GP. Testing other combinations of white-box models with other black-box learners could yield further improvements for some tasks. In summary, this paper provides a concrete and feasible system for high-fidelity uncertainty-aware system identification and forms a solid foundation for the next generation of intelligent and robust UAV control systems. 
+
+# DECLARATIONS 
+
+Conflict of Interest 
+
+The authors declare that they have no known competing financial interests or personal relation-ships that could have appeared to influence the work reported in this paper. 
+
+Authors’ Contributions 
+
+Abdallah GHOUL conceived the study, developed the methodology, designed and performed the experiments, analyzed the data, and wrote the original manuscript. Ismail Khalil Bousserhane 
+
+and Kadri Boufeldja supervised the research, provided critical feedback on the manuscript. All authors reviewed and approved the final manuscript. 
+
+Funding 
+
+This research received no external funding. 
+
+Ethics declaration 
+
+This work does not involve human participants, animals, or sensitive data. No ethical approval was required. 
+
+Data and Code Availability 
+
+We release code, minimal data to reproduce tables and figures, and figure-source CSVs at https://github.com/alla82gh/hybrid-pem-gp-quadrotor-id 17 An archived snapshot with DOI is available at: https://doi.org/10.5281/zenodo.17273194 
+
+# References 
+
+[1] J. Smith, M. Brown, S. Johnson, Applications of uavs in precision agriculture, Journal of Field Robotics 37 (4) (2020) 642–659. [2] A. Johnson, D. Williams, W. Chen, The future of parcel delivery with drones, Transportation Research Part C: Emerging Technologies 125 (2021) 103–118. [3] D. Brescianini, R. D’Andrea, Nonlinear system identification for multicopter vehicles, in: 2018 IEEE International Conference on Robotics and Automation (ICRA), IEEE, 2018, pp. 1747–1754. [4] L. Ljung, System Identification: Theory for the User, 2nd Edition, Prentice Hall, 1999. [5] M. W. Mueller, M. Hehn, R. D’Andrea, System identification of first-principles models for small uavs, IEEE Robotics and Automation Letters 1 (1) (2015) 274–281. [6] M. W. Mueller, M. Hehn, R. D’Andrea, A computationally efficient motion primitive for quadrotor trajectory generation, IEEE Transactions on Robotics 31 (6) (2015) 1294–1310. [7] D. Foundation, The duckiedrone project, https://www.duckietown.org/research/ duckiedrone (2023). [8] M. Faessler, F. Fontana, C. Forster, D. Scaramuzza, Modeling the thrust and aerodynamic forces of a quadrotor, IEEE Robotics and Automation Letters 1 (2) (2016) 776–783. [9] M. Bangura, R. Mahony, Aerodynamics of rotor blades for quadrotors, Journal of Field Robotics 33 (5) (2016) 673–689. [10] F. Schiano, A. Franchi, A comparison of system identification methods for quadrotors, in: 2018 European Control Conference (ECC), IEEE, 2018, pp. 1215–1220. [11] J. C. B. Gamboa, Deep learning for time-series analysis, arXiv preprint arXiv:1701.01887 (2017). [12] M. P. Deisenroth, G. Neumann, J. Peters, Survey on policy search with gaussian processes, Journal of Machine Learning Research 14 (2013) 3205–3248. [13] C. E. Rasmussen, C. K. I. Williams, Gaussian Processes for Machine Learning, MIT Press, 2006. [14] P. Becker, G. Li, A. Franchi, Learning aerodynamic effects for uav system identification, in: 2022 IEEE International Conference on Robotics and Automation (ICRA), 2022, pp. 100–107. [15] S. Hochreiter, J. Schmidhuber, Long short-term memory, Neural Computation 9 (8) (1997) 1735–1780. [16] C. Rudin, Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead, Nature Machine Intelligence 1 (5) (2019) 206–215. [17] J. Ko, D. J. Klein, D. Fox, D. Hähnel, Gaussian process dynamics for robotic manipulators, in: 2007 IEEE/RSJ International Conference on Intelligent Robots and Systems, IEEE, 2007, pp. 2863–2870. 18 [18] M. P. Deisenroth, C. E. Rasmussen, Gaussian processes for data-efficient learning in robotics and control, IEEE Transactions on Pattern Analysis and Machine Intelligence 37 (2) (2015) 408–423. [19] F. Kendoul, Survey of advances in guidance, navigation, and control of unmanned rotorcraft systems, Journal of Field Robotics 29 (2) (2012) 315–378. 19

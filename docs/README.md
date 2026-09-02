@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-31</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-02</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 15 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-01 00:29:11 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-02 23:05:19 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读3篇论文，覆盖分布式模型扩散、无人机语义搜索与旋翼气动交互。</p>
-<p>最值得关注：分布式扩散在有限时域延迟下的收缩保证，以及大模型提升无人机搜索效率。</p>
-<p>建议进一步比较这些方法在真实飞行场景中的鲁棒性与计算开销。</p>
+<p>今日精读聚焦无人机智能：混合框架提升不确定性感知的系统辨识，视觉编队在GPS受限下稳健协作；速读覆盖泊车规划、长程导航与空中操作仿真。最值得关注的是四旋翼模型精度与无GPS编队控制，为复杂环境自主飞行提供关键支撑。普通读者可留意“视觉+学习”融合趋势，后续结合实测数据验证算法鲁棒性更佳。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Distributed Model-Based Diffusion: Finite Horizon Contraction under Bounded Delay">Distributed Model-Based Diffusion: Finite Horizon Contraction under Bounded Delay</span></li><li><span class="dpr-home-dashboard-paper-title" title="Spatial-Semantic Reasoning using Large Language Models for Efficient UAV Search Operations">Spatial-Semantic Reasoning using Large Language Models for Efficient UAV Search Operations</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="A Hybrid PEM-GP Framework for Uncertainty-Aware System Identification of Quadcopters">A Hybrid PEM-GP Framework for Uncertainty-Aware System Identification of Quadcopters</span></li><li><span class="dpr-home-dashboard-paper-title" title="Vision-Based Leader-Follower Formation Control for Cooperative UAVs in GPS-Degraded Environments">Vision-Based Leader-Follower Formation Control for Cooperative UAVs in GPS-Degraded Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Hydra: A Navigation World Action Model with Discrete Latent Planning and Continuous Flow-Matching Execution">Hydra: A Navigation World Action Model with Discrete Latent Planning and Continuous Flow-Matching Execution</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">1 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Wing-Rotor Aerodynamic Interactions in Small UAVs During Hover and Cruise">Wing-Rotor Aerodynamic Interactions in Small UAVs During Hover and Cruise</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="NeuralParker: A Reinforcement Learning Planner for Irregular Parking Environments">NeuralParker: A Reinforcement Learning Planner for Irregular Parking Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Scaffolding Foundation Models into Physical-World Agents Pushes the Frontier of Long-Horizon Navigation">Scaffolding Foundation Models into Physical-World Agents Pushes the Frontier of Long-Horizon Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="AM-Bench: A Modular Simulation Suite and Benchmark for Aerial Manipulation Policy Learning">AM-Bench: A Modular Simulation Suite and Benchmark for Aerial Manipulation Policy Learning</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
 </section>
 </div>
 
