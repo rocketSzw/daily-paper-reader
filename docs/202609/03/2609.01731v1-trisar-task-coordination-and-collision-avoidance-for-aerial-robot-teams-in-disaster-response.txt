@@ -1,0 +1,188 @@
+Title: TriSAR: Task Coordination and Collision Avoidance for Aerial Robot Teams in Disaster Response
+
+URL Source: https://arxiv.org/pdf/2609.01731v1
+
+Published Time: Thu, 03 Sep 2026 00:05:14 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# TriSAR: Task Coordination and Collision Avoidance for Aerial Robot Teams in Disaster Response 
+
+Aditya Anil Kapile ∗, Pedro Machado ∗, Isibor Kennedy Ihianle ∗∗School of Science and Technology, Nottingham Trent University, Nottingham, United Kingdom 
+
+Abstract. Multi-Unmanned Aerial Vehicle (UAV) disaster-response systems require coordinated task assignment and local trajectory control, yet the individual and combined contributions of these coordination layers to mission efficiency and operational safety remain insufficiently characterised un-der controlled experimental conditions. TriSAR is evaluated as a five-UAV coordination system operating in a physics-based Gazebo simulation of an earthquake-damaged urban environment. A 2 × 2 factorial design compares two task-allocation strategies (Genetic Algorithm and greedy fitness-based allocation) with reactive collision avoidance either en-abled or disabled. Each of the four configurations was evaluated over 30 stochastic episodes drawn from a single consistent execution batch, within a common scenario of five UAVs and eight targets. The results reveal an allocation-dependent safety pattern. Under greedy allocation, enabling repulsion eliminated recorded collision-threshold violations relative to the disabled condition, a difference confirmed by a Mann-Whitney test (U = 885 , p = 4 .03 × 10 −12 , rank-biserial r = 0 .97 ). Under GA allocation, the same protective effect was also confirmed (Mann-Whitney U = 675 , p = 1.26 × 10 −5, rank-biserial 
+
+r = 0 .50 ), though with a smaller effect size than under greedy allocation. For the continuous mission-efficiency metrics, GA-based allocation showed no statistically detectable advantage over greedy allocation when repulsion was enabled, but asignificant advantage on all three efficiency metrics (steps, path length, energy) when repulsion was disabled (Welch’s t-tests, 
+
+|g| between 0.92 and 1.76). The findings therefore show that reactive repulsion provides a substantial, allocation-dependent safety benefit, while the additional computational complexity of GA-based task allocation yields a detectable mission-efficiency benefit only in the specific condition where repulsion is disabled. 
+
+Keywords: multi-UAV systems, swarm robotics, genetic al-gorithm, particle swarm optimisation, task allocation, multi-robot task allocation, collision avoidance, disaster robotics, ablation study I. I NTRODUCTION 
+
+Murphy [1] highlights how earthquakes, structural col-lapse, and post-disaster fires can restrict ground access for human first responders at precisely the stage when rapid survivor localisation is most critical. Unmanned Aerial Vehicles (UAVs) provide an alternative means of access-ing hazardous or obstructed areas, while coordinated aerial robot teams can distribute search, structural assessment, and communication-relay tasks across a wider operational area than a single platform, a capability demonstrated in deployed multi-UAV search-and-rescue systems [2]. Alqefari and Menai [3] identify dynamic multi-UAV task assignment as a central challenge in such systems, particularly when mission priorities, resource constraints, and environmental conditions vary during operation. Effective disaster-response coordination therefore requires two closely related decisions: which aerial robot should be assigned to each mission target, and how each robot should navigate towards its assignment while maintaining safe separation from neighbouring agents and obstacles. Yan et al. [4] and Xiong and Zhang [5] demonstrate the po-tential of hybrid optimisation approaches that combine task allocation with trajectory or route planning for multi-UAV systems. However, evaluations of such architectures com-monly focus on aggregate performance against alternative optimisation methods, making it difficult to determine how individual coordination components contribute to observed mission outcomes. The research gap addressed in TriSAR is therefore not the combination of Genetic Algorithm (GA) and Particle Swarm Optimisation (PSO) itself, but the limited controlled evidence concerning the contribution of each coordination layer. In particular, it remains unclear whether the additional search complexity introduced by GA-based allocation provides a measurable benefit for small aerial robot teams, whether reactive repulsion improves operational safety, and whether the observed safety contribution of reactive control depends on the task-allocation strategy. The study addresses three research questions. RQ1: Does GA-based task-priority optimisation improve mission effi-ciency relative to greedy fitness-based allocation in the tested multi-UAV disaster-response scenario? RQ2: Does reactive repulsion reduce the incidence and number of collision-threshold violations? RQ3: Does the observed safety effect of reactive repulsion depend on the task-allocation strategy? RQ1 and RQ2 are associated with directional hypotheses defined before analysis. H1: GA-based allocation is expected to reduce mission cost relative to greedy fitness-based al-location, as reflected by execution steps, fleet path length, and simulated energy consumption. H2: enabling reactive repulsion is expected to reduce the incidence and number of collision-threshold violations relative to configurations in which repulsion is disabled. RQ3 remains exploratory be-cause the allocation-dependent safety pattern was identified during analysis of the experimental results in Section VI, rather than being specified as a directional hypothesis in advance. The article makes three contributions. First, it provides an integrated Genetic Algorithm-Particle Swarm Optimi-sation (GA-PSO) coordination architecture combining apermutation-encoded GA task allocator with a PSO-based trajectory controller and reactive repulsion within a physics-arXiv:2609.01731v1 [cs.RO] 1 Sep 2026 based Gazebo Sim environment. Second, a controlled 2 × 2
+
+factorial ablation separates task-allocation strategy from re-active collision avoidance, allowing the individual and com-bined effects of the two coordination layers to be examined rather than evaluating only the complete architecture. Third, the study reports a conditional pattern rather than a uni-form one: under the investigated configuration of five aerial robots and eight mission targets, GA-based allocation shows no statistically detectable mission-efficiency advantage over greedy allocation when reactive repulsion is enabled, but a significant advantage on all three efficiency metrics when repulsion is disabled, while reactive repulsion itself provides a safety benefit that is statistically confirmed under both allocators, with a substantially larger effect size under greedy allocation than under GA allocation. II. R ELATED WORK 
+
+Swarm-intelligence reviews [6], [7] and multi-robot task-allocation taxonomies [8], [9] together establish that most coordinated robot-team systems combine a global assignment mechanism with local, reactive rules; TriSAR investigates precisely this two-layer structure. Gerkey and Matari´ c’s taxonomy [8] classifies TriSAR’s own allocator as centralised and single-shot, while Chakraa et al.’s survey [9] situates the comparison reported in Section VI-C within the broader di-versity of centralised, distributed, heuristic, and optimisation-based allocation strategies these reviews identify. Across the genetic-algorithm allocation literature specif-ically [10], [11], [12], [13], a consistent pattern emerges: each study reports that population-based search improves assignment quality over simpler heuristics for its own tested problem formulation, whether under heterogeneous-fleet con-straints [12], simultaneous-arrival and resource constraints [13], or other operational variants [11], but none reports the computation-time cost of that improvement, and none isolates the allocator’s own contribution from the trajectory or route-planning component evaluated alongside it. Alqe-fari and Menai’s review of dynamic multi-UAV assignment [3] makes the resulting trade-off explicit at the level of method families (market-based [14], intelligent-optimisation, clustering-based), identifying computational cost as a prop-erty of intelligent-optimisation approaches in general rather than measuring it for a specific allocator; TriSAR’s own GA-versus-greedy timing comparison (Section VI-C) supplies exactly this missing measurement for one such allocator. The collision-avoidance literature builds on Kennedy and Eberhart’s introduction of PSO as a population-based search method [15], and separates along a different axis: whether the underlying model reasons over relative position or rela-tive velocity. Position-based reactive methods [16], [17] are computationally cheap but are well known to suffer from local minima, since neither the potential-field formulation [16] nor the dynamic window approach [17] reasons about a neighbour’s velocity, only its instantaneous position. Van den Berg et al.’s reciprocal velocity obstacles [18] were intro-duced specifically to close this gap by reasoning over relative velocity, at the cost of additional computation. TriSAR’s own repulsion term (Section IV-B) sits on the cheaper, position-based side of this divide, and Section VI accordingly reports the local-minima vulnerability this choice inherits directly, rather than assuming it away. Two hybrid GA-PSO systems most closely resemble TriSAR’s own architecture, and both illustrate the same lim-itation from a different angle. Yan et al. [4] embed genetic-style crossover and mutation operators directly inside the PSO population, reporting improvements over Ant Colony Optimisation (ACO) [19] and GA baselines across multiple scenario sizes; Xiong and Zhang [5] share a single grid representation between the GA’s encoding and PSO’s search space, reporting multi-objective improvements over Non-dominated Sorting Genetic Algorithm II (NSGA-II) and Mul-tiobjective Evolutionary Algorithm Based on Decomposition with Differential Evolution (MOEA/D-DE). In both designs the evolutionary and swarm-intelligence contributions are fused into one mechanism rather than kept independently switchable, so neither study can attribute its reported aggre-gate gain to allocation, trajectory control, or their interaction specifically. TriSAR’s architecture deliberately keeps the GA allocator and PSO repulsion term as two independently toggleable components instead (Section IV), so that the factorial ablation in Section V can attribute an observed effect to one component, the other, or their interaction, rather than to the hybrid as a whole. Read together, the reviewed literature leaves the same gap open from three directions: allocation studies report quality gains without cost measurement or ablation [10], [11], [12], [13], [3]; collision-avoidance studies trade computational cost against local-minima robustness without being evaluated inside a task-allocation pipeline [16], [17], [18]; and hybrid GA-PSO systems fuse both coordination layers so tightly that neither can be measured independently [4], [5]. TriSAR’s controlled 2 × 2 factorial ablation (Section V) is designed to close all three gaps within a single experiment, at the cost of testing only one specific allocator and one specific reactive-avoidance mechanism, not a general claim across the wider method families each belongs to. Against this background, Section III defines the TriSAR system model, including the simulated disaster environment, aerial robot state representation, mission targets, and initial deployment configuration that provide the common experimental basis for the coordination and evaluation methods developed later in the article. III. S YSTEM MODEL 
+
+Figure 1 summarises TriSAR’s overall architecture: an agent and kinematic state layer at the base, a coordination layer combining the GA allocator and PSO controller, a middleware and simulation layer bridging to the physics engine, and a deployment and evaluation layer. The environment is a 500 m × 500 m × 120 m simulated metropolis containing N = 5 homogeneous quadcopter agents (3 search-and-rescue agents and 2 dedicated relay agents, the latter assigned fixed rooftop relay stations rather than competing for the M = 8 targets) and M = 8 mission Fig. 1: TriSAR’s four-layer system architecture. 
+
+Fig. 2: Circular ring spawn formation for N = 5 , R = 4 .0
+
+m. targets (4 rooftop, 4 ground-level). Each agent i has position 
+
+pi ∈ R3, velocity vi, maximum speed vmax = 15 .0 m/s, and battery level bi ∈ [0 , 100] . Agents are spawned in a circular ring formation of radius R = 4 .0 m, 
+
+xi = Xc + R cos   2πi N
+
+ , yi = Yc + R sin   2πi N
+
+ , (1) which provides equal angular dispersion and equal radial spacing around the common spawn centre, avoiding initial positional clustering among UAVs, illustrated in Figure 2. IV. P ROPOSED HYBRID GA-PSO C OORDINATION 
+
+Figure 3 shows the full coordination pipeline described in this section, from task registration on a shared blackboard through GA-based allocation, PSO-based trajectory control, and the energy update that closes the loop each simulation step. 
+
+A. Task Allocation 
+
+A chromosome is a permutation of task indices rep-resenting assignment priority order. Decoding walks the chromosome, assigning each task to the agent with the lowest assignment cost c(a , t) , evaluated as 
+
+c(a , t) = d(a , t) 
+
+vmax 
+
+
+
+1 + 100 − b(a) 50 
+
+
+
+× max(0 .1, 11 − u(t)) 10 τ (type) ,
+
+(2) where d(a , t) is the Euclidean distance between agent a and target t, b(a) is agent a’s current battery level, u(t) ∈ [1 , 10] 
+
+is target t’s urgency (so higher urgency yields lower, more favourable cost), and τ (type) = 1 .25 for rooftop targets (reflecting additional climb cost) or 1.0 otherwise. With 3 search-and-rescue agents and 8 targets, decoding proceeds over multiple rounds: after each round assigns one task per available agent, all agents become available again for the next round against remaining tasks, until all 8 are assigned; an unassigned task (not encountered in the tested scenario) would incur a fixed penalty of 500.0 in the chromosome’s total cost. Selection uses 3-way tournament; crossover uses Partially Matched Crossover (PMX) with probability 0.85; mutation is per-gene swap with probability 0.15; the top-2 individuals are retained via elitism. The population size is 40, with a maximum of 100 generations and early stopping after 15 generations without improvement. Both allocation strategies use the same agent-task cost function above, en-suring that the comparison isolates the effect of the allocation search strategy rather than differences in the underlying cost model: the GA searches over permutations of task prior-ity before decoding the resulting chromosome into agent-task assignments, whereas the greedy baseline performs the corresponding assignment directly without population-based optimisation. 
+
+B. Trajectory Control 
+
+Each agent’s velocity is updated at 10 Hz following a per-agent local-trajectory variant of the PSO velocity update [15]. At each control step, agent k maintains a population of P =10 candidate velocity vectors vm (m = 1 , . . . , P ), freshly re-initialised around the current target-heading direction rather than carried over from the previous step. Each candidate’s cost is evaluated at its own projected position, pk +vm∆t, so the quantity optimised by the search is the candidate velocity itself, not the agent’s physical position. Over K = 5 inner iterations, indexed by τ and distinct from the outer 10 Hz control-step index t, each candidate is updated as 
+
+v(τ +1)  
+
+> m
+
+= wv(τ ) 
+
+> m
+
++c1r1(vbest ,m −v(τ ) 
+
+> m
+
+)+ c2r2(vbest ,g −v(τ ) 
+
+> m
+
+),
+
+(3) where vbest ,m is the lowest-cost velocity candidate slot 
+
+m has attained across the current control step’s iterations, 
+
+vbest ,g is the lowest-cost candidate found across the whole population at this step, and w = c1 = c2 = 0 .5. Both vbest ,m 
+
+and vbest ,g are tracked per agent across that agent’s own candidate population rather than as a single value shared across the fleet, since five agents pursuing distinct assigned targets cannot share one physically meaningful global-best velocity; this is accordingly a per-agent, velocity-space local-trajectory optimiser, not the canonical global-landscape PSO Fig. 3: TriSAR’s GA-PSO coordination pipeline, from task registration through allocation, trajectory control and energy update, with per-step state feedback closing the loop. The blackboard registers the rooftop and ground-level targets defined in Section III; relay agents are assigned fixed rooftop stations separately, rather than competing for these targets. formulation, which searches directly over position. After K
+
+iterations, the candidate with the lowest final cost is selected and sent to the drone. Repulsion is applied as a separate adjustment to this selected velocity: for every neighbour or obstacle j within dsafe = 2 .5 m of agent i, a unit vector ˆrij 
+
+pointing from j towards i is scaled by the fractional violation depth, (dsafe − dij )/d safe , and summed, 
+
+ri = krep 
+
+X  
+
+> j:dij <d safe
+
+ˆrij 
+
+ dsafe − dij 
+
+dsafe 
+
+
+
+, (4) with krep = 3 .0 m/s. This term is structurally an artificial potential field [16] and, as discussed in Section VI, inherits its known local-minima susceptibility. 
+
+C. Energy Model 
+
+Battery drain follows a cubic-drag model consistent with the parasitic-power term of Zeng et al. [20], 
+
+∆E =  Phover + Cdrag ∥v∥3 + Cmass ∥a∥ ∆t, (5) with Phover = 0 .28 , Cdrag = 7 × 10 −5, Cmass = 0 .05 
+
+(percentage points per second, per corresponding unit). These coefficients are simulation-scale battery-depletion parameters rather than calibrated physical power coefficients; the result-ing energy metric is accordingly a normalised simulation proxy used for relative comparison between experimental conditions, not for prediction of real UAV energy consump-tion. V. E XPERIMENTAL SETUP 
+
+All results use a fixed scenario (5 drones, 8 targets: 4 rooftop, 4 ground-level) executed in a Gazebo Sim (Har-monic) backend bridged to a Python control loop via a persistent User Datagram Protocol (UDP) socket. Four vari-ants were each run for n = 30 independent episodes: 
+
+Full (GA + PSO with repulsion); No-GA (greedy nearest-cost allocator + PSO with repulsion); No-Repulsion (GA + PSO, repulsion disabled); Floor (greedy allocator, repulsion disabled). Each episode uses an independently drawn ran-dom seed; ground-level target coordinates are additionally perturbed each episode by uniform jitter of ±2 m on each axis, while rooftop coordinates, agent count, and environ-mental conditions are held fixed across episodes and are not separately matched between the four variants. Reported metrics are mission completion, execution steps, path length, cumulative fleet energy consumed, and collision-threshold violations, given as mean ± standard deviation. A target is considered reached, and is removed from an agent’s task queue, when the agent comes within 5.0 m of it in three-dimensional Euclidean distance or within 4.0 m in horizontal (two-dimensional) distance, whichever condition triggers first; arrival is evaluated instantaneously, with no dwell-time or additional action required. Mission completion requires every target to be reached by some agent. A collision-threshold violation is operationally defined as a pairwise Euclidean separation between two agents falling below dsafe = 2 .5 m, evaluated once per control step on re-alised (not projected) positions; a violation between an agent and a restricted building zone is defined analogously using that zone’s radius plus a fixed clearance. This threshold is a distance-based safety criterion rather than a physical Gazebo contact event, and we refer to violations rather than collisions accordingly where precision matters. A single sustained vio-lation spanning several consecutive control steps is recorded as multiple discrete violation-steps rather than collapsed into one incident; this convention is applied uniformly across all four conditions. Drone-drone and drone-obstacle violations are logged separately but combined into a single count for the statistics reported below, since the ablation design tests the repulsion mechanism as a whole rather than its inter-agent TABLE I: Welch’s t-tests, GA vs. greedy, with 95% CIs and Hedges’ g.                         
+
+> Metric Comparison Mean diff. [95% CI], g
+> Steps Repulsion ON 5.30 [ −7.70 , 18.30], g=0 .21
+> Repulsion OFF −7.67 [−12 .00 ,−3.34 ], g=−0.92
+> Path Repulsion ON −4.54 [−14 .58 , 5.50], g=−0.24
+> Repulsion OFF −16 .42 [−21 .25 ,−11 .59 ], g=−1.76
+> Energy Repulsion ON 3.99 [ −2.44 , 10.42], g=0 .32
+> Repulsion OFF −2.99 [−4.40 ,−1.58 ], g=−1.09
+
+and obstacle-avoidance components individually; no drone-obstacle violations were recorded in the reported batch. VI. R ESULTS AND DISCUSSION 
+
+All results reported in this section are drawn from the single, consistent n = 30 -per-condition ablation batch de-scribed in Section V; no results from separately-run batches are combined with these figures, so that all comparisons in Table II are directly comparable. 
+
+A. Statistical Analysis 
+
+We analyse the 2 × 2 factorial design directly: allocator (GA vs. greedy) and repulsion (enabled vs. disabled) as two factors, each with n = 30 episodes per cell. For the three continuous efficiency metrics (steps, path length, energy), we report Welch’s unequal-variances t-tests computed directly on the per-episode data, with 95% Confidence Intervals (CIs) and Hedges’ g, since GA-allocated conditions show substan-tially higher variance than greedy-allocated conditions (Table II). Table I reports the result: with repulsion enabled, no GA-versus-greedy comparison’s CI excludes zero; with repulsion disabled, every comparison’s CI excludes zero, with |g|
+
+between 0.92 and 1.76. This pattern is consistent with an allocator-repulsion interaction, though no formal interaction term was estimated; it directly answers RQ1 conditionally rather than uniformly: GA shows no detectable efficiency advantage when repulsion is enabled, but a significant ad-vantage on all three metrics when repulsion is disabled. For the collision-threshold-violation outcome, Full and No-GA recorded zero violation-steps across all 30 episodes; No-Repulsion and Floor recorded means of 2.70 ± 3.22 and 
+
+3.03 ± 1.96 respectively. A Mann-Whitney U test compar-ing Floor against No-GA is significant ( U = 885 , p =4.03 ×10 −12 , rank-biserial r = 0 .97 ), confirming repulsion’s protective effect under greedy allocation specifically. The equivalent test under GA allocation (Full vs. No-Repulsion) is also significant ( U = 675 , p = 1 .26 × 10 −5, rank-biserial 
+
+r = 0 .50 ), confirming repulsion’s protective effect under GA allocation as well. This answers RQ2 with strong statistical support under both allocators. For RQ3, the two effect sizes differ substantially in magnitude ( r = 0 .97 under greedy versus r = 0 .50 under GA), a pattern directionally consistent with the allocator dependence observed for the efficiency metrics above; as with RQ1, however, no formal interaction term was estimated for the collision outcome either, so this pattern is reported as suggestive rather than as a formally confirmed interaction. TABLE II: Four-variant ablation comparison ( n = 30 per variant).                                                       
+
+> Variant Steps Path (m) Energy % Viol. Full 179 .07 ±34 .15 355 .85 ±26 .74 96 .85 ±17 .12 0.00 ±0.00
+> No-GA 173 .77 ±7.46 360 .39 ±3.14 92 .86 ±1.94 0.00 ±0.00
+> No-Repulsion 152 .63 ±11 .20 331 .35 ±12 .70 71 .81 ±3.50 2.70 ±3.22
+> Floor 160 .30 ±3.23 347 .77 ±2.76 74 .80 ±1.55 3.03 ±1.96
+> Episodes with ≥1 violation, n(%): Full 0/30 (0%); No-GA 0/30 (0%); No-Repulsion 15/30 (50.0%); Floor 29/30 (96.7%).
+
+B. Ablation Study 
+
+Table II and Figure 4 report the four-variant comparison underlying the statistical analysis above. Figure 4 shows the full per-episode distribution underlying Table II rather than only the mean and standard deviation. All four distributions are visibly right-skewed, with the mean sitting above the median in every case, and each variant contains at least one high-value outlier episode. This skew does not change the conclusions above, which use Welch’s test specifically because it does not assume equal variance, but it is a more complete picture of the underlying variability than the summary statistics alone convey, and is reported here directly rather than obscured behind symmetric error bars. 
+
+Repulsion reduces collision-threshold violations, con-firmed under both allocators. Floor (greedy, repulsion disabled) recorded a mean of 3.03 ± 1.96 violation-steps per episode against zero for No-GA (greedy, repulsion enabled); this difference is statistically confirmed (Mann-Whitney U = 885 , p = 4 .03 × 10 −12 , rank-biserial r =0.97 ). No-Repulsion (GA, repulsion disabled) recorded a mean of 2.70 ± 3.22 violation-steps against zero for Full (GA, repulsion enabled); this difference is also statistically confirmed (Mann-Whitney U = 675 , p = 1 .26 × 10 −5,rank-biserial r = 0 .50 ), though with a smaller effect size than under greedy allocation. At the episode level, 29 of 30 Floor episodes and 15 of 30 No-Repulsion episodes recorded at least one violation-step, against zero for both repulsion-enabled conditions. Figure 5 shows representative flight paths illustrating the violation mechanism (generated under an earlier system version, not the batch reported in Table II). In the illustrated No-Repulsion episode, two UAVs converge to a minimum separation of 0.911 m, below the 2.5 m collision-threshold defined in Section V, before separating again. The corre-sponding Full episode shows all five drones maintaining separation throughout. 
+
+The GA allocator shows an efficiency advantage only when repulsion is disabled. Contrary to a uniform direc-tional expectation [11], the Full variant is the worst of the four on steps and energy consumption and second-worst on path length (behind No-GA); Table I shows none of these repulsion-enabled differences reach significance. With repulsion disabled, GA (No-Repulsion) is the best of the four on all three metrics, and every GA-vs-greedy comparison in that condition is significant with large effect sizes (Table I). A plausible mechanism, offered as interpretation, is that active repulsion’s reactive detours dominate route shaping for Fig. 4: Distribution of the three continuous efficiency metrics across all n = 30 individual episodes per variant. Boxes show the interquartile range and median; diamonds show the mean; points show every individual episode. 
+
+Fig. 5: Representative flight trajectories (top-down, x-y plane) for a violation-free Full episode (left) and a violation episode under No-Repulsion (right). Circles mark starting positions, squares mark final positions, and stars mark the verified point of closest approach between UAV_1 and UAV_5 (0.911 m at step 18) in the violation episode. both allocators alike, masking whatever advantage GA’s task ordering otherwise provides. We report this as a scenario-scale-dependent, repulsion-conditional finding: Yan et al. [4] and Xiong and Zhang [5] both report GA/hybrid advantages that grow with problem size and asymmetry, and a natural extension of this work is to test whether TriSAR’s own GA allocator shows an analogous scale-dependent advantage at larger N and M or under asymmetric target distributions. 
+
+C. Computational Cost 
+
+Allocation wall-clock time was not captured for the main 
+
+n = 30 canonical batch; we added this logging afterwards and report it here from a separate n = 5 verification sample per allocator, run under otherwise identical conditions on the same development machine (AMD Ryzen 5 4600H, 3.00 GHz, 8 GB RAM) used for all reported episodes. GA allocation time clustered tightly (mean 86 .53 ± 13 .83 ms, range 67.6–109.3 ms), with early stopping firing consistently after 16–19 generations in every run, well short of the 100-generation cap, indicating this is representative behaviour rather than an artefact of a single lucky or unlucky run. Greedy allocation was both faster and more consistent (mean 
+
+0.174 ± 0.039 ms, range 0.11–0.21 ms), giving an approxi-mate 500 × computational overhead for GA relative to greedy allocation. In absolute terms this overhead is small relative to per-episode wall-clock flight time (multiple seconds), so it does not materially affect the mission-efficiency metrics reported above; it is, however, a real and consistent cost that any future scale-up of the GA allocator should account for, since the 100-generation ceiling was never approached at this scenario size and larger, more complex assignment problems may behave differently. 
+
+D. Limitations 
+
+Five limitations bound the interpretation of these results. First, the ablation was conducted at a single, small, sym-metric scenario scale; the finding regarding GA performance should not be generalised beyond it without further testing at larger scale. Second, no comparison against established external baselines (Ant Colony Optimisation [19], market-based allocation [14], or reciprocal velocity obstacles) was conducted; the ablation isolates TriSAR’s own components against internal simplifications of themselves, not against competing published methods. Third, the computational-cost measurement above is drawn from a separate n = 5 
+
+verification sample per allocator rather than the full n = 30 
+
+canonical batch, since allocation timing was not logged when that batch was originally collected; the tight clustering observed gives reasonable confidence in the reported figures, but a full n = 30 timing sample was not collected before submission. Fourth, all results are obtained in physics-based simulation (Gazebo Sim) using perfect simulator ground truth; sensing and communication effects were not modelled at all, rather than modelled in simplified form, and no simulation-to-real transfer has been attempted or evaluated. Fifth, the 2.5 m collision threshold is a distance-based safety criterion evaluated on simulated agent positions, not a physical Gazebo contact event; the reported violation counts should be read accordingly and would need re-derivation against a specific airframe’s physical dimensions before informing a real deployment. VII. C ONCLUSION AND FUTURE WORK 
+
+We presented TriSAR, a hybrid GA–PSO coordination architecture evaluated for multi-UAV disaster response, and reported a controlled four-variant factorial ablation study rather than aggregate self-reported performance alone. The results provide statistically-supported evidence that local reactive collision avoidance measurably reduces collision-threshold violations under both allocation strategies in this scenario (Mann-Whitney U = 885 , p = 4.03 × 10 −12 
+
+under greedy allocation; U = 675 , p = 1 .26 × 10 −5 under GA allocation), with a substantially larger effect size under greedy allocation, and a conditional finding regarding the GA allocator’s efficiency: no detectable advantage over greedy when repulsion is enabled, but a significant advantage on all three efficiency metrics when repulsion is disabled (Welch’s 
+
+t-tests, Table I). Future work should extend the ablation to larger, asymmetric scenarios to test for scale-dependent GA advantage, fit a formal interaction model to confirm the allocator-repulsion pattern reported here, benchmark against reciprocal velocity obstacles to directly address the local-minima vulnerability inherited from the potential-field-like repulsion term, compare against established external base-lines (ACO [19], market-based allocation [14]) to situate TriSAR’s performance within the wider literature rather than only against internal ablations of itself, extend the fleet to heterogeneous robot capabilities rather than homogeneous quadcopters, and pursue simulation-to-real validation of the coordination architecture on physical hardware. REPRODUCIBILITY 
+
+Source code, simulation configurations, experiment scripts and data-processing pipelines required to reproduce the re-ported results are publicly available at https://github. com/Aditya-1711/TriSAR .REFERENCES [1] R. R. Murphy, Disaster Robotics . Cambridge, MA: MIT Press, 2014. [2] J. Scherer, S. Yahyanejad, S. Hayat, E. Yanmaz, T. Andre, A. Khan, V. Vukadinovic, C. Bettstetter, H. Hellwagner, and B. Rinner, “An autonomous multi-UAV system for search and rescue,” in Proceedings of the First Workshop on Micro Aerial Vehicle Networks, Systems, and Applications for Civilian Use (DroNet ’15) , Florence, Italy, 2015, pp. 33–38. [3] S. Alqefari and M. E. B. Menai, “Multi-UAV task assignment in dynamic environments: Current trends and future directions,” Drones ,vol. 9, no. 1, p. 75, 2025. [4] M. Yan, H. Yuan, J. Xu, Y. Yu, and L. Jin, “Task allocation and route planning of multiple UAVs in a marine environment based on an improved particle swarm optimization algorithm,” EURASIP Journal on Advances in Signal Processing , vol. 2021, no. 1, p. 94, 2021. [5] Y. Xiong and L. Zhang, “Multi-UAV task allocation based on grid-based particle swarm and genetic hybrid algorithm,” Mathematics ,vol. 13, no. 22, p. 3591, 2025. [6] L. V. Nguyen, “Swarm intelligence-based multi-robotics: A compre-hensive review,” AppliedMath , vol. 4, no. 4, pp. 1192–1210, 2024. [7] H. Duan, M. Huo, and Y. Fan, “From animal collective behaviors to swarm robotic cooperation,” National Science Review , vol. 10, no. 5, p. nwad040, 2023. [8] B. P. Gerkey and M. J. Matari´ c, “A formal analysis and taxonomy of task allocation in multi-robot systems,” International Journal of Robotics Research , vol. 23, no. 9, pp. 939–954, 2004. [9] H. Chakraa, F. Guérin, E. Leclercq, and D. Lefebvre, “Optimization techniques for multi-robot task allocation problems: Review on the state-of-the-art,” Robotics and Autonomous Systems , vol. 168, p. 104492, 2023. [10] Y. Eun and H. Bang, “Cooperative task assignment/path planning of multiple unmanned aerial vehicles using genetic algorithm,” Journal of Aircraft , vol. 46, no. 1, pp. 338–343, 2009. [11] Y. Tan, C. Zhou, and F. Qian, “Cooperative task allocation method for multi-unmanned aerial vehicles based on the modified genetic algorithm,” IET Intelligent Transport Systems , vol. 18, no. 6, pp. 1164– 1173, 2024. [12] Q. Deng, J. Yu, and N. Wang, “Cooperative task assignment of multi-ple heterogeneous unmanned aerial vehicles using a modified genetic algorithm with multi-type genes,” Chinese Journal of Aeronautics ,vol. 26, no. 5, pp. 1238–1250, 2013. [13] F. Yan, J. Chu, J. Hu, and X. Zhu, “Cooperative task allocation with simultaneous arrival and resource constraint for multi-UAV using a genetic algorithm,” Expert Systems with Applications , vol. 245, p. 123023, 2024. [14] M. B. Dias, R. Zlot, N. Kalra, and A. Stentz, “Market-based multirobot coordination: A survey and analysis,” Proceedings of the IEEE , vol. 94, no. 7, pp. 1257–1270, 2006. [15] J. Kennedy and R. Eberhart, “Particle swarm optimization,” in Pro-ceedings of the IEEE International Conference on Neural Networks ,Perth, Australia, 1995, pp. 1942–1948. [16] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” International Journal of Robotics Research , vol. 5, no. 1, pp. 90–98, 1986. [17] D. Fox, W. Burgard, and S. Thrun, “The dynamic window approach to collision avoidance,” IEEE Robotics & Automation Magazine , vol. 4, no. 1, pp. 23–33, 1997. [18] J. van den Berg, S. J. Guy, M. Lin, and D. Manocha, “Reciprocal 
+
+n-body collision avoidance,” in Robotics Research . Berlin: Springer, 2011, pp. 3–19. [19] M. Dorigo and T. Stützle, Ant Colony Optimization . Cambridge, MA: MIT Press, 2004. [20] Y. Zeng, J. Xu, and R. Zhang, “Energy minimization for wireless communication with rotary-wing UAV,” IEEE Transactions on Wire-less Communications , vol. 18, no. 4, pp. 2329–2345, 2019.
