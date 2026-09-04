@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-03</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-04</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 15 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-03 23:01:51 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-04 21:54:32 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,10 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 11 篇推荐（精读 3 篇，速读 8 篇）</p>
-<p>精读：《Self-Aware Active Learning Enables Continual Improvement in Autonomous Driving》（8.0/10）, 《World-Coherent Decoding: Self-Verifying Test-Time Planning for World Action Models》（8.0/10）</p>
-<p>速读：《Learning neural controllers for nonlinear systems from data》（7.0/10）, 《PAVE: Predictive Alignment and Value-Guided Evolution for World-Action Policies》（7.0/10）, 《TriSAR: Task Coordination and Collision Avoidance for Aerial Robot Teams in Disaster Response》（7.0/10）</p>
-<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
+<p>今日共荐15篇论文，精读5篇、速读10篇，核心聚焦无人机自适应控制与跨平台视觉导航。</p>
+<p>最值一看的是满分10分的泰勒信息预测自适应控制（含在线重力修正），其次为CanonNav解耦相机几何的导航方法（8分）。</p>
+<p>建议普通读者顺带浏览速读中的人形机器人稀疏结构穿越及视觉语言导航闭环RL，均为7分潜力作。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Self-Aware Active Learning Enables Continual Improvement in Autonomous Driving">Self-Aware Active Learning Enables Continual Improvement in Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="World-Coherent Decoding: Self-Verifying Test-Time Planning for World Action Models">World-Coherent Decoding: Self-Verifying Test-Time Planning for World Action Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Spatially Aware World Action Model via Geometric Latent Diffusion">Spatially Aware World Action Model via Geometric Latent Diffusion</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Taylor-Informed Predictive Cost Adaptive Control for Quadrotors with Online Gravity-Trim Adaptation">Taylor-Informed Predictive Cost Adaptive Control for Quadrotors with Online Gravity-Trim Adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="CanonNav: Disentangling Navigation Behavior from Camera Geometry in Cross-Platform Visual Navigation">CanonNav: Disentangling Navigation Behavior from Camera Geometry in Cross-Platform Visual Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SUN: Persistent Programs For Language-Grounded Control-to-Learning-to-Real Policies">SUN: Persistent Programs For Language-Grounded Control-to-Learning-to-Real Policies</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">8 篇</strong>
+    <strong class="dpr-home-dashboard-count">10 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning neural controllers for nonlinear systems from data">Learning neural controllers for nonlinear systems from data</span></li><li><span class="dpr-home-dashboard-paper-title" title="PAVE: Predictive Alignment and Value-Guided Evolution for World-Action Policies">PAVE: Predictive Alignment and Value-Guided Evolution for World-Action Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="TriSAR: Task Coordination and Collision Avoidance for Aerial Robot Teams in Disaster Response">TriSAR: Task Coordination and Collision Avoidance for Aerial Robot Teams in Disaster Response</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids">Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids</span></li><li><span class="dpr-home-dashboard-paper-title" title="Taylor-Informed Indirect Adaptive Predictive Control Using Jacobian-Frozen Affine Predictors">Taylor-Informed Indirect Adaptive Predictive Control Using Jacobian-Frozen Affine Predictors</span></li><li><span class="dpr-home-dashboard-paper-title" title="Revisiting Topological Graphs for Macro Action based Closed-loop Reinforcement Learning of Vision Language Navigation in Continuous Environment">Revisiting Topological Graphs for Macro Action based Closed-loop Reinforcement Learning of Vision Language Navigation in Continuous Environment</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
 </section>
 </div>
 
