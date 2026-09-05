@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-04</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-05</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 15 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-04 21:54:32 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-05 22:21:46 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共荐15篇论文，精读5篇、速读10篇，核心聚焦无人机自适应控制与跨平台视觉导航。</p>
-<p>最值一看的是满分10分的泰勒信息预测自适应控制（含在线重力修正），其次为CanonNav解耦相机几何的导航方法（8分）。</p>
-<p>建议普通读者顺带浏览速读中的人形机器人稀疏结构穿越及视觉语言导航闭环RL，均为7分潜力作。</p>
+<p>今日速读4篇论文，聚焦自动驾驶世界模型与安全迁移，但均未精读。</p>
+<p>最值得看的两方向：几何观测下的行动条件JEPA世界模型，及端到端驾驶环视世界-动作模型SV-WAM。</p>
+<p>建议优先精读这两篇7分论文，重点核查其sim-to-real安全性验证与真实点云泛化能力。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Taylor-Informed Predictive Cost Adaptive Control for Quadrotors with Online Gravity-Trim Adaptation">Taylor-Informed Predictive Cost Adaptive Control for Quadrotors with Online Gravity-Trim Adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="CanonNav: Disentangling Navigation Behavior from Camera Geometry in Cross-Platform Visual Navigation">CanonNav: Disentangling Navigation Behavior from Camera Geometry in Cross-Platform Visual Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SUN: Persistent Programs For Language-Grounded Control-to-Learning-to-Real Policies">SUN: Persistent Programs For Language-Grounded Control-to-Learning-to-Real Policies</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids">Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids</span></li><li><span class="dpr-home-dashboard-paper-title" title="Taylor-Informed Indirect Adaptive Predictive Control Using Jacobian-Frozen Affine Predictors">Taylor-Informed Indirect Adaptive Predictive Control Using Jacobian-Frozen Affine Predictors</span></li><li><span class="dpr-home-dashboard-paper-title" title="Revisiting Topological Graphs for Macro Action based Closed-loop Reinforcement Learning of Vision Language Navigation in Continuous Environment">Revisiting Topological Graphs for Macro Action based Closed-loop Reinforcement Learning of Vision Language Navigation in Continuous Environment</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Does Latent Planning Survive Point Clouds? Action-Conditioned JEPA World Models for Geometric Observations">Does Latent Planning Survive Point Clouds? Action-Conditioned JEPA World Models for Geometric Observations</span></li><li><span class="dpr-home-dashboard-paper-title" title="Provably Safe Sim-to-Real Transfer">Provably Safe Sim-to-Real Transfer</span></li><li><span class="dpr-home-dashboard-paper-title" title="SV-WAM: An Efficient Surround-View World-Action Model for End-to-End Autonomous Driving">SV-WAM: An Efficient Surround-View World-Action Model for End-to-End Autonomous Driving</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 
