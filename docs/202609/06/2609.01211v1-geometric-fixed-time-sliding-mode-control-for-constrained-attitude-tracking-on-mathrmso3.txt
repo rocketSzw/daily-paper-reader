@@ -1,0 +1,2560 @@
+Title: Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on SO(3)
+
+URL Source: https://arxiv.org/pdf/2609.01211v1
+
+Published Time: Wed, 02 Sep 2026 01:21:54 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+> 1
+
+# Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on SO(3) 
+
+Saumitra Barman, Shashi Ranjan Kumar, Senior Member, IEEE, and Rohit Gupta 
+
+Abstract— This paper studies constrained spacecraft atti-tude tracking on the Riemannian configuration manifold SO( 3)
+
+in the presence of multiple attitude pointing constraints and matched external disturbances. To address this, an attitude potential function is proposed intrinsically on SO( 3), and its key properties are established using intrinsic geometric analy-sis. Under mild conditions, the potential function is shown to admit a unique nondegenerate minimum at the desired attitude over the admissible subset of SO( 3), defined by excluding the forbidden attitude regions as well as a measure-zero set, thereby ensuring a well-posed constrained attitude tracking problem. A Riemannian Hessian analysis shows that the Hessian of the potential function is locally uniform positive definite in an open neighborhood of the desired attitude, thereby establishing local strong convexity. A nonsingular fixed-time geometric sliding manifold is proposed using the Riemannian gradient of the potential function, leading to a geometric fixed-time sliding-mode-based constrained attitude control law. It is shown that, for every initial attitude in the admissible subset, the closed-loop state trajectory evolves on SO( 3) × R3, with the attitude remaining in the admissible subset throughout the maneuver, while the state converges to a sufficiently small compact neighborhood of the desired equilibrium in a prescribed fixed time. Numerical simulations validate the proposed control approach and illustrate the theoretical results. Index Terms— constrained attitude control, pointing con-straints, geometric control, fixed-time stability, sliding mode control. 
+
+I. I NTRODUCTION 
+
+Spacecraft attitude tracking requires steering a space-craft from its current orientation to a desired orientation in three-dimensional space, while ensuring that a body-fixed instrument boresight does not point towards undesirable directions, for example, keeping telescopic instruments away from bright celestial objects to avoid damage and preserve mission functionality. In this setting, the control objective is to develop a guidance and control strategy that drives the spacecraft to the commanded attitude while consistently avoiding these prohibited pointing directions. A prominent example is the Cassini spacecraft, in which a dedicated constraint-monitoring mechanism was employed in [1] to prevent specific onboard sensors from being directed towards the Sun. To address this challenge, one class of methods focuses on trajectory planning, where a feasible attitude path is 
+
+The authors are with the Department of Aerospace Engineering, Indian Institute of Technology Bombay, Powai, Mumbai 400076, India (e-mails: {saumitra, srk, rohit}@aero.iitb.ac.in). 
+
+generated in advance while explicitly incorporating point-ing constraints. A variety of attitude trajectory planning strategies have been proposed in the literature, including constraint-monitoring schemes (see, e.g., [1]), geometric planners (see, e.g., [2], [3]), randomized exploration tech-niques (see, e.g., [4]), discretization-based approaches (see, e.g, [5], [6]), recursive methods that decompose rotational paths (see, e.g., [7]), gradient-driven optimization planners (see, e.g., [8]). However, such approaches generally demand substantial computational resources, resulting in high costs for real-time onboard implementation. A second major line of research incorporates constraints into the control design through artificial potential field (APF)– based formulations, in which the potential function attains a minimum at the target reference and takes large values in the vicinity of exclusion zones. Within the APF-based framework, several control architectures have been devel-oped, including proportional–derivative controllers (see, e.g., [9]–[11]), backstepping designs (see, e.g., [12], [13]), sliding-mode schemes (see, e.g., [14]–[16]), and kinematic steering laws (see, e.g., [17]). Although the offline synthesis of such controllers can be relatively involved, their result-ing explicit closed-form state-feedback structure leads to modest computational effort, making them well-suited for real-time implementation. Sliding mode control (SMC) has been extensively em-ployed in spacecraft attitude control owing to its inherent robustness property to model uncertainties, nonlinearities, and bounded exogenous disturbances (see, e.g., [18], [19]). Despite these advantages, standard SMC formulations do not explicitly account for attitude constraints, and constraint satisfaction cannot, in general, be guaranteed. To overcome this limitation, several works have combined SMC with artificial potential function (APF) techniques to incorporate constraint handling (see, e.g., [14]–[16]). However, such approaches typically guarantee only asymp-totic convergence of the closed-loop system, for which the settling time is theoretically infinite. This limitation may be undesirable in safety-critical spacecraft attitude maneuvers that require guaranteed convergence within a fixed amount of time. Motivated by this limitation, the fixed-time stability concept originally introduced in [20] was employed in [16] to design a fixed-time sliding mode control scheme for constrained spacecraft attitude control. Nevertheless, all the above-discussed APF-based space-craft attitude controllers rely on Euclidean-space attitude arXiv:2609.01211v1 [eess.SY] 1 Sep 2026 2
+
+parameterizations, such as Euler angles (see, e.g., [9]) or modified Rodrigues parameters (see, e.g., [17]). Although convenient, these parameterizations are valid only locally and inevitably suffer from coordinate singularities, which can lead to undesirable numerical and control issues near the singular configurations (see, e.g., [21]). On the other hand, unit quaternions provide a globally nonsingular alternative and have therefore been widely employed in constructing potential functions (see, e.g., [10]–[13], [15]); however, they introduce an inherent ambiguity, since the set of unit quaternions S3, is a double cover of SO(3) 
+
+(see, e.g., [22]). As a result, a pair of antipodal unit quaternions represents the same physical attitude, which can lead to inconsistent control actions and the well-known unwinding phenomenon, whereby the controller unnecessarily commands a large rotation before reaching the desired attitude for certain initial conditions (see, e.g., [23]). In contrast, attitude tracking directly on the underlying configuration manifold SO(3) have been shown to achieve almost-global stabilization without encounter-ing coordinate singularities or the unwinding phenomenon (see, e.g., [24]). Controllers formulated intrinsically based on the configuration manifold, commonly referred to as geometric controllers, have been studied extensively in the literature (see, e.g., [25]–[29]). By avoiding local parameterizations, geometric control approaches exploit the underlying structure of the configuration manifold, revealing properties that are not captured by coordinate-based formulations. However, these geometric controllers typically guarantee only asymptotic convergence to the desired attitude and are not explicitly designed to ac-commodate system uncertainties or external disturbances. To address these limitations, fixed-time geometric sliding mode control strategies have been proposed (see, e.g., [30], [31]). Despite extensive work on unconstrained attitude track-ing, constrained attitude tracking on SO(3) has received comparatively limited attention. Specifically, a barrier function-based controller was proposed in [32], a path planning-based approach was developed in [33], and a model predictive control formulation was presented in [34]. The path planning-based method in [33] generates feasible constrained trajectories through sampling or rotation-space search; however, it requires offline path computation and does not inherently guarantee closed-loop invariance. The model predictive control approach in [34] enforces constraints via online optimization, offering flexibility at the expense of increased computational complexity and without guarantees of finite-time convergence. The barrier function-based geometric controller in [32] enforces attitude constraint avoidance on SO(3) ×R3. However, this approach may introduce multiple critical points within the admissible free space, i.e., the set of attitude configurations that satisfy the prescribed pointing constraints, without guaranteeing their nondegeneracy, which can cause the system to converge to undesired configurations. Moreover, it typically guarantees only asymptotic convergence and does not explicitly characterize the maximal invariant admissible set. Furthermore, to the best of the authors’ knowledge, sliding mode control–based constrained space-craft attitude tracking on SO(3) has not yet been reported in the literature. Motivated by these observations, this paper develops a geometric sliding-mode controller on SO(3) × R3 that integrates a proposed attitude potential function with a nonsingular fixed-time sliding manifold for constrained spacecraft attitude maneuvering. The proposed controller renders the admissible free space, excluding a zero-measure set, the largest positively invariant set of the closed-loop dynamics, thereby ensuring multiple pointing constraints throughout all admissible attitude maneuvers. It requires no offline or online optimization, yielding a computationally efficient closed-loop solution. Finally, the effectiveness of the proposed approach is demonstrated through two numerical examples. The main contributions of this work are summarized as follows: (i) An attitude potential function is intrinsically con-structed on the Riemannian manifold SO(3) for constrained spacecraft attitude maneuvering, and its key properties are established directly on the mani-fold rather than through an extrinsic formulation in the higher-dimensional Euclidean space. Under mild conditions, the potential function is shown to admit a unique nondegenerate minimum at the desired attitude over the admissible subset of SO(3) , defined by excluding the forbidden attitude regions as well as a measure-zero set, thereby ensuring a well-posed constrained attitude tracking problem. Moreover, a Riemannian Hessian analysis shows that the Hessian of the potential function is locally uniform positive definite in an open neighborhood of the desired attitude, thereby establishing local strong convexity. (ii) A nonsingular fixed-time sliding manifold is pro-posed on SO(3) × R3 by exploiting the Riemannian gradient of the attitude potential function. Based on this manifold, a geometric fixed-time sliding-mode control law is developed for constrained spacecraft attitude tracking in the presence of multiple pointing constraints and matched external disturbances. To the best of the authors’ knowledge, such a sliding-mode formulation posed directly on SO(3) × R3
+
+has not been previously reported. Moreover, the equilibrium corresponding to the desired attitude is shown to be unique for the resulting closed-loop attitude dynamics. Furthermore, it is shown that, for every initial attitude in the admissible subset, the closed-loop state trajectory evolves on SO(3) × R3,with the attitude remaining in the admissible subset throughout the maneuver, while the state converges to a sufficiently small compact neighborhood of the desired equilibrium in a prescribed fixed time. 
+
+II. P RELIMINARIES AND PROBLEM STATEMENT 
+
+A. Notations The following mathematical notations are adopted throughout the paper. Let a Riemannian manifold M3
+
+be endowed with a Riemannian metric 〈· , ·〉 x on each tangent space TxM, where x ∈ M . The tangent bundle of M is denoted by T M. The notation int( M) denotes the topological interior of M, while ∂M and ∂top M
+
+denote the manifold boundary and topological boundary of M, respectively. The notation ∇ξ denotes the covariant derivative induced by the Levi–Civita connection associ-ated with the underlying Riemannian metric, evaluated along the vector field ξ ∈ TxM. The Riemannian volume measure on M is denoted by μM. The 3 × 3 identity matrix is defined as I3×3 ∈ R3×3. For x, y ∈ R3, their inner product is denoted by x · y ∈ R. The unit sphere is defined as S2 = {a ∈ R3 : ‖a‖ = 1 }. The operator tr( ·)
+
+denotes the matrix trace, and ‖ · ‖ denotes the Euclidean norm for vectors and the Frobenius norm for matrices. The special orthogonal group is defined as SO(3) = {R ∈
+
+R3×3 : R⊤R = I3×3, det R = 1 }, and its Lie algebra is defined as so (3) = {S ∈ R3×3 : S⊤ = −S}, where det( ·)
+
+denotes the determinant operator. The tangent space of 
+
+SO(3) at R is given by TRSO(3) = {RX ∈ R3×3 : X⊤ =
+
+−X}. The bi-invariant Riemannian metric on SO(3) is defined as 〈M , N 〉R = tr( M ⊤N ), where R ∈ SO(3) and 
+
+M , N ∈ TRSO(3) . The cross map (·)× : R3 → so (3) is defined by x× := [0 − x3 x2; x3 0 x1; −x2 − x1 0] ,where x := [ x1 x2 x3]⊤ ∈ R3, and the “vee” map (·)∨ :
+
+so (3) → R3 is its inverse. For a subset S ⊂ M , S denotes its closure in M. The skew-symmetric part of a matrix A is denoted by skew( A) := ( A−A⊤)/2. For a smooth function 
+
+Ψ : SO(3) → R, grad Ψ and Hess Ψ denote the Riemannian gradient and Hessian, while ∇Ψ and ∇2Ψ denote their Euclidean counterparts. The notation λmax (A) gives the largest eigenvalue of a symmetric matrix A. The operators 
+
+max( ·) and min( ·) return the maximum and minimum of their arguments, respectively. The notion [x]+ is defined as [x]+ := max {x, 0}, where x ∈ R. The time index is denoted by t ∈ R≥0. The sets of nonnegative and positive real numbers are denoted by R≥0 := {x ∈ R : x ≥ 0} and 
+
+R>0 := {x ∈ R : x > 0}, respectively. B. Definitions and Lemmas The following definitions and fixed-time stability con-dition extend the framework of [20] to dynamical sys-tems on Riemannian manifolds. Consider the following autonomous dynamical system on a Riemannian manifold 
+
+M:
+
+˙x(t) = f (x(t)) , x(0) = x0, (1) where x(t) ∈ M and f (x) ∈ TxM. The vector field f may be discontinuous, and the solutions of (1) are understood in the sense of Filippov (see, e.g., [35]). Furthermore, xd ∈M denotes the desired equilibrium of (1). Definition 1: The desired equilibrium xd of (1) is said to be almost-globally finite-time stable on M if there exists a subset M0 ⊆ M containing xd such that μM(M \ M0) = 0 , xd is asymptotically stable relative to M0,and every solution x(·, x0) with x0 ∈ M 0 reaches xd in finite time. That is, there exists a settling-time function 
+
+T : M0 → R≥0 such that x(t, x0) = xd for all t ≥ T (x0)
+
+and x0 ∈ M 0.Definition 2: The equilibrium xd of (1) is said to be almost-globally fixed-time stable on M if it is almost-globally finite-time stable and there exists a constant 
+
+Tmax ∈ R>0 such that T (x0) ≤ Tmax for all x0 ∈ M 0.Definition 3: Consider the autonomous dynamical sys-tem (1). A set E ⊂ M is said to be almost-globally fixed-time attractive on M if there exists a subset M0 ⊆ M 
+
+satisfying μM(M \ M 0) = 0 and a constant Tmax ∈ R>0
+
+such that, for every initial condition x0 ∈ M0, the corresponding solution satisfies x(t, x0) ∈ E for all t ≥
+
+T (x0), where T (x0) ≤ Tmax for all x0 ∈ M 0. In addition, 
+
+E is forward invariant, i.e., x0 ∈ E implies x(t) ∈ E for all 
+
+t ∈ R≥0.Lemma 1 (Manifold extension of fixed-time criterion [20]): Consider the autonomous dynamical system (1). Suppose there exists a subset M0 ⊆ M such that 
+
+μM(M \ M 0) = 0, and let E ⊂ M0 be a closed set such that xd ∈ int( E). Suppose there exists a continuously differentiable nonnegative function 
+
+V : M0 → R≥0 such that V (xd) = 0 and V (x) > 0
+
+for all x ∈ M 0 \ { xd} and a constant 0 < ϵ < 1 such that E = {x ∈ M 0 : V (x) ≤ ϵ}. Moreover, suppose that, along every trajectory of (1) with x0 ∈ M 0, the function V satisfies ˙V (x) ≤ − k1V p(x) − k2V q (x) for all 
+
+x ∈ M 0 \ E and ˙V (x) < 0 for all x ∈ E \ { xd}, where 
+
+k1, k 2 ∈ R>0 and 0 < p < 1 < q . Then, E is almost-globally fixed-time attractive and forward invariant on 
+
+M, and T (x0) ≤ 1/(k1(1 − p)) + ( k2(q − 1)) for all 
+
+x0 ∈ M 0.Remark 1: When the target set reduces to the singleton 
+
+E = {xd} and ˙V ≤ − k1V p − k2V q for all x ∈ M 0 \ { xd},Lemma 1 reduces to the standard almost-global fixed-time stability criterion for the desired equilibrium xd.C. Spacecraft Attitude Kinematics and Dynamics Let FB denote a body-fixed frame attached to the spacecraft, with its origin located at the spacecraft’s center of mass. Similarly, let FN denote the inertial reference frame with respect to which the spacecraft dynamics is described. The spacecraft attitude with respect to the FN
+
+frame is represented by a rotation matrix R ∈ SO(3) . Let 
+
+ω = [ ω1 ω2 ω3]⊤ ∈ R3 denote the angular velocity vector of the spacecraft with respect to the FN frame, with components expressed in the FB frame. The kinematic equation of the spacecraft in terms of rotation matrix is given by ˙R = Rω × (see, e.g., [24]). To formulate the attitude tracking objective on SO(3) , a desired frame 
+
+FD is introduced as the reference configuration that the spacecraft body-fixed frame FB is required to track. The attitude error between FB and FD is represented by the error rotation matrix Re ∈ SO(3) , defined as Re = R⊤ 
+
+> d
+
+R,where Rd ∈ SO(3) denotes the desired attitude of the spacecraft with respect to the inertial frame FN . The angular velocity error vector eω : (SO(3)) 2 ×(R3)2 → R3 is defined as eω (R, Rd, ω, ωd) := ω − R⊤ 
+
+> e
+
+ωd, where ωd ∈ R34
+
+is the desired angular velocity vector expressed in the desired frame FD . The attitude error kinematics of the spacecraft is given by 
+
+˙Re = Ree× 
+
+> ω
+
+. (2) The time derivative of eω is given by ˙eω = ˙ ω +e× 
+
+> ω
+
+R⊤ 
+
+> e
+
+ωd −
+
+R⊤ 
+
+> e
+
+˙ωd. Therefore, using Euler’s equation of motion, the attitude error dynamics of the spacecraft are obtained as 
+
+I ˙eω = −ω×Iω + Ie × 
+
+> ω
+
+R⊤ 
+
+> e
+
+ωd − IR ⊤ 
+
+> e
+
+˙ωd + τ + τ d, (3) where I = I⊤ ∈ R3×3 is the spacecraft inertia matrix, and 
+
+τ , τ d ∈ R3 denote the control and disturbance torques, respectively, applied about the spacecraft center of mass and expressed in the FB frame. Assumption 1: The desired signals ωd(t) and ˙ωd(t) are assumed to be locally bounded for all t ∈ R≥0, and the disturbance τ d is Lebesgue measurable and satisfies 
+
+sup t∈R≥0 ‖τ d(t)‖ ≤ ¯τd < γ , where ¯τd > 0 is a known upper bound on the disturbance magnitude, and γ > 0 is a prescribed constant. D. Attitude Pointing Constraints and Forbidden Regions The pointing constraints introduced at the beginning of the Introduction are illustrated using the rotation matrix 
+
+R ∈ SO(3) . Let gd ∈ S2 denote direction of a sensitive axis (e.g., a sensor line-of-sight direction) of the spacecraft, ex-pressed in FB frame. Let y′ 
+
+> i
+
+∈ S2 represent ith unit vector collinear with the forbidden direction in FN frame (e.g., a bright object like the Sun) that must not align too closely with Rg d for i ∈ I , where I := {1, ..., n } and n denotes the total number of pointing constraints. Violating this constraint could result in damage to sensitive equipment or mission failure. To enforce this constraint, we define the pointing constraint set Oi ⊂ SO(3) for each forbidden di-rection y′ 
+
+> i
+
+as Oi := 
+
+{
+
+R ∈ SO(3) : y′⊤  
+
+> i
+
+Rg d > cos θi, i ∈ I 
+
+}
+
+,where θi ∈ (0 , π ) is the minimum allowable angle between the vector Rg d and the forbidden inertial direction y′
+
+> i
+
+.Intuitively, the sensor line-of-sight direction Rg d must remain outside the cone of half-angle θi centered about 
+
+y′ 
+
+> i
+
+in FN frame. Moreover, we want all possible relative attitudes of the spacecraft to exclude a subset defined by L := {R ∈ SO(3) : tr( R⊤ 
+
+> d
+
+R) > −1}. Therefore, the admissible attitude set is defined as int( M), where 
+
+M := L ∩ 
+
+(
+
+SO(3) \
+
+> m
+
+⋃
+
+> i=1
+
+Oi
+
+)
+
+.
+
+Moreover, the admissible attitude set in terms of Re can be expressed as int( Me), where Me := {Re ∈ SO(3) : tr( Re) > −1, y⊤ 
+
+> i
+
+Regd ≤ cos θi, i ∈ I} , where yi = R⊤ 
+
+> d
+
+y′
+
+> i
+
+.It will be shown in the next section that M and Me
+
+are smooth 3-dimensional manifolds with boundary. To proceed, the following assumptions are needed. Assumption 2: The initial attitude satisfies R(0) ∈
+
+int( M) and the desired attitude satisfies Rd(t) ∈ int( M)for all t ∈ R≥0.Assumption 3: The forbidden regions are pairwise dis-joint, i.e., Oi ∩ O j = ∅ for i 6 = j.Assumption 2 ensures that both the initial and desired attitudes lie in the interior of the admissible attitude manifold M.E. Problem Statement The control objective is to design a geometric fixed-time sliding mode control law on SO(3) × R3 such that the attitude constraints are satisfied throughout the maneuver, i.e., R(t) ∈ int( M) for all t ∈ R≥0, for every initial attitude R(0) ∈ int( M). Simultaneously, the control law is required to drive the error-state trajectory 
+
+(Re(t), eω (t)) into a sufficiently small compact neighbor-hood E ⊂ int( Me)×R3 of the desired equilibrium (I3×3, 0)
+
+within a prescribed fixed time Tf ∈ R>0. In particular, 
+
+(Re(t), eω (t)) ∈ E for all t ≥ Tf , where (I3×3, 0) ∈ int( E).Consequently, the control law is required to render E
+
+almost-globally fixed-time attractive on (int( Me)∪L )×R3
+
+and forward invariant, while ensuring satisfaction of all attitude constraints throughout the maneuver. 
+
+III. A N OVEL ATTITUDE POTENTIAL FUNCTION ON SO(3) 
+
+To facilitate the construction and analysis of the pro-posed attitude potential function on SO(3) , we first estab-lish the geometric properties of the admissible attitude sets. Since the constraints are imposed on the actual attitude, whereas the tracking problem is formulated in terms of the attitude error, it is necessary to establish the correspondence between the admissible sets int( M)
+
+and int( Me). Furthermore, characterizing these sets as manifolds with boundary provides the geometric setting required to study scalar-valued functions defined on them, particularly their critical points and boundary behavior. These properties are essential for the development and analysis of the proposed potential function and will subsequently support the constraint-invariance analysis presented in the next section. The geometric properties required for this development are established in the following lemmas. Lemma 2: Let Rd(t) ∈ int( M) for all t ∈ R≥0 be a smooth time-varying desired attitude trajectory, and let the attitude error Re be as defined in (2). Then, the map 
+
+φt(Re) = Rd(t)Re is a diffeomorphism of SO(3) for each 
+
+t ∈ R≥0 satisfying φt(int( Me)) = int( M) and preserves the attitude flow. Proof: Since Rd(t) ∈ int( M) ⊂ SO(3) , the map 
+
+φt(Re) = Rd(t)Re is a left translation on SO(3) and hence a diffeomorphism, with inverse φ−1 
+
+> t
+
+(R) = Rd(t)⊤R. Next, we show that φt(Me) = M. For R = φt(Re) = RdRe,we have Re = R⊤ 
+
+> d
+
+R. Thus, the constraint tr( Re) >
+
+−1 is equivalent to tr( R⊤ 
+
+> d
+
+R) > −1, which defines the set L. Furthermore, using yi = R⊤ 
+
+> d
+
+y′ 
+
+> i
+
+for each i ∈{1, ..., n }, the pointing constraint satisfies y⊤ 
+
+> i
+
+Regd =(R⊤ 
+
+> d
+
+y′
+
+> i
+
+)⊤R⊤ 
+
+> d
+
+Rg d = y′⊤  
+
+> i
+
+Rg d ≤ cos θi, which shows that 
+
+R /∈ O i for all i ∈ { 1, ..., n }. Since Rd(t) ∈ int( M) for all 
+
+t ∈ R≥0, these correspondences hold uniformly in time, yielding Re ∈ M e if and only if φt(Re) ∈ M . Hence, 5
+
+φt(Me) = M. Because diffeomorphisms preserve topolog-ical interiors (see, e.g., [36, Theorem 2.18]), φt(int( Me)) = int( M).To show that the attitude flow is preserved under the diffeomorphism φt, consider the relation R = RdRe.Differentiating both sides with respect to time and using the kinematic equations ˙Rd = Rdω× 
+
+> d
+
+and (2), we obtain 
+
+˙R = Rd
+
+(ω× 
+
+> d
+
+Re + Ree×
+
+> ω
+
+) = Rω ×, where ω = eω +R⊤ 
+
+> e
+
+ωd.Therefore, the dynamics of the error system on Me are mapped consistently to the dynamics on M through φt.As a result, every trajectory Re(t) ∈ int( Me) corresponds to a unique trajectory R(t) ∈ int( M) for all t ∈ R≥0, and vice versa through the inverse map φ−1 
+
+> t
+
+. This completes the proof. Lemma 3: Under Assumption 3, the admissible sets M
+
+and Me are smooth 3-dimensional manifolds with bound-ary. Their manifold boundaries are ∂M = ⋃ni=1 Σi and 
+
+∂Me = ⋃ni=1 Σei , where Σi := {R ∈ SO(3) : y′⊤  
+
+> i
+
+Rg d =cos θi} and Σei := {Re ∈ SO(3) : y⊤ 
+
+> i
+
+Regd = cos θi},
+
+i ∈ { 1, . . . , n }. Moreover, the topological boundaries of 
+
+M and Me relative to SO(3) are ∂top M = Γ ∪ ⋃ni=1 Σi
+
+and ∂top Me = Γ e ∪ ⋃ni=1 Σei , where Γ := {R ∈ SO(3) : tr( R⊤ 
+
+> d
+
+R) = −1} and Γe := {Re ∈ SO(3) : tr( Re) = −1}.Proof: Since SO(3) is a smooth compact Lie group, it is a 3-dimensional manifold. The map Φ( R) = tr( R⊤ 
+
+> d
+
+R)
+
+is smooth, hence L = Φ −1(] − 1, ∞[) is open in SO(3) , so 
+
+L is a smooth 3-manifold. The set Γ is not contained in M but lies in its topological boundary since every neighborhood of such points intersects both M and its complement. For each i, define hi(R) = y′⊤  
+
+> i
+
+Rg d. Then hi
+
+is smooth and Oi = h−1 
+
+> i
+
+(] cos θ, ∞[) , hence Oi is open in 
+
+SO(3) . Its boundary is Σi = h−1 
+
+> i
+
+(cos θi). For any R ∈ Σi,the differential satisfies Dh i(R)[ Rω ×] = y′⊤  
+
+> i
+
+Rω ×gd. If 
+
+Dh i(R) = 0 , then (R⊤y′
+
+> i
+
+)⊤(ω×gd) = 0 for all ω, implying 
+
+ω⊤(g× 
+
+> d
+
+R⊤y′
+
+> i
+
+) = 0 for all ω, hence g× 
+
+> d
+
+R⊤y′ 
+
+> i
+
+= 0 . Therefore 
+
+R⊤y′ 
+
+> i
+
+is parallel to gd, giving y′⊤  
+
+> i
+
+Rg d = ±1, contradicting 
+
+cos θi ∈ (−1, 1) . Thus Dh i(R) 6 = 0 , therefore cos θi is a regular value of hi. By the regular level-set theorem (see, e.g., [36, Corollary 5.14]), Σi is a smooth embedded codimension-one submanifold of SO(3) , i.e., a smooth hypersurface. Since the constraint regions are pairwise nonintersect-ing, i.e., Σi ∩ Σj = ∅ for i 6 = j (see Assumption 3), their boundaries do not intersect. Thus, each boundary point is associated with at most one constraint, ensuring that the boundary remains locally smooth and no corner singularities arise. Let R ∈ Σi. There exists an open neighborhood U ⊂ SO(3) of R and a smooth coordinate chart φ : U → R3, φ(R) = (x1, x 2, x 3), such that 
+
+hi(R) − cos θi = x3 for all R ∈ U . Hence M ∩ U = {R ∈
+
+U : x3 ≤ 0} = φ−1({x3 ≤ 0}), showing that M is locally diffeomorphic to a half-space at every boundary point. Interior points inherit standard manifold charts from 
+
+SO(3) , so M is a smooth manifold with manifold boundary 
+
+∂M = ⋃ni=1 Σi and topological boundary relative to SO(3) 
+
+is ∂top M = Γ ∪ ⋃ni=1 Σi. Similarly, it can be shown that 
+
+Me is also a smooth manifold with manifold boundary 
+
+∂Me = ⋃ni=1 Σei and topological boundary relative to 
+
+SO(3) is ∂top Me = Γ e ∪⋃ni=1 Σei . This completes the proof. Guided by this geometric characterization, a potential function Ψ : SO(3) → R≥0 is constructed that promotes convergence to the desired attitude, Rd, while penalizing proximity to the constraint boundaries, ∂Me, consistent with the geometry of SO(3) , and is defined as 
+
+Ψ( Re) := Ψ x(Re) −
+
+> n
+
+∑
+
+> i=1
+
+1
+
+α ln 
+
+(
+
+cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+1 + cos( θi)
+
+)︸ ︷︷ ︸ 
+
+> :=Ψ y(Re)
+
+Ψx(Re),
+
+(4) where Ψx : SO(3) → R≥0 is defined as 
+
+Ψx(Re) := 2 − √1 + tr( Re) (5) and it denotes the attractive potential part of Ψ( Re),whereas (1 − Ψy (Re)) ∈ R≥0 represents the repulsive potential part, and α ∈ R>0 is a design parameter. The differential-geometric properties of Ψ( Re) are established next to facilitate the characterization of its critical points. In particular, the Riemannian gradient and Hessian pro-vide the necessary tools for this analysis on the admissible attitude manifold int( Me). The following lemmas provide the necessary preliminaries for characterizing the critical points of Ψ( Re) and analyzing their local properties. Lemma 4: Consider the functions Ψx(Re) and Ψy (Re)
+
+as defined in (5) and (4), respectively, for all Re ∈
+
+int( Me). Then, at a point Re ∈ int( Me), the Rie-mannian gradients grad Ψ i(Re) ∈ TRe SO(3) , i ∈{x, y }, are elements of the tangent space TRe SO(3) = 
+
+{ Ree× 
+
+> ω
+
+: e× 
+
+> ω
+
+∈ so (3) }, and satisfy 
+
+grad Ψ x(Re) = − 14√1 + tr( Re)
+
+(I3×3 − R2
+
+> e
+
+) , (6) 
+
+grad Ψ y (Re) = −
+
+> n
+
+∑
+
+> i=1
+
+Re skew 
+
+(
+
+R⊤ 
+
+> e
+
+gdy⊤
+
+> i
+
+)
+
+α
+
+(
+
+cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+) . (7) Proof: The differential of Ψx(Re) at Re is given by 
+
+dΨx(Re) = − 12√1 + tr( Re) tr( dRe).
+
+By the definition of the matrix gradient, dΨx =tr(( ∇Re Ψx)⊤dRe), and equating this with the earlier expression for dΨx yields 
+
+tr(( ∇Re Ψx(Re)) ⊤dRe) = − 12√1 + tr( Re) tr( dRe).
+
+Since this identity must hold for all variations dRe, it follows that 
+
+∇Re Ψx(Re) = − 12√1 + tr( Re) I3×3.
+
+The Riemannian gradient grad Ψ x(Re) is the orthogonal projection of ∇Re Ψx onto TRe SO(3) with respect to the Frobenius inner product. The projection PTRe SO(3) of any 6
+
+A ∈ R3×3 is given by PTRe SO(3) (A) = Re skew( R⊤ 
+
+> e
+
+A).Applying this projection to A = ∇Re Ψx, we have 
+
+grad Ψ x(Re) = Re skew 
+
+(
+
+R⊤
+
+> e
+
+(
+
+− 12√1 + tr( Re) I3×3
+
+)) 
+
+= − 14√1 + tr( Re) (I3×3 − R2
+
+> e
+
+).
+
+Similarly, Ψy (Re) satisfies the following equality: 
+
+tr(( ∇Re Ψy (Re)) ⊤dRe) = −
+
+> n
+
+∑
+
+> i=1
+
+tr (yig⊤ 
+
+> d
+
+dRe
+
+)
+
+α
+
+(
+
+cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+) .
+
+The Riemannian gradient of Ψy (Re) is obtained as 
+
+grad Ψ y (Re) = Re skew 
+
+(
+
+R⊤ 
+
+> e
+
+∇Re Ψy (Re)
+
+)
+
+= −
+
+> n
+
+∑
+
+> i=1
+
+Re skew 
+
+(
+
+R⊤ 
+
+> e
+
+gdy⊤
+
+> i
+
+)
+
+α
+
+(
+
+cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+) .
+
+Note that grad Ψ j (Re) ∈ TRe SO(3) for j ∈ { x, y }, and it is well-defined for all Re ∈ int( Me). This completes the proof. Lemma 5: Consider the functions Ψx(Re) and Ψy (Re)
+
+as defined in (5) and (4), respectively, for all Re ∈
+
+int( Me). Then, the following properties hold: 
+
+∥∥grad Ψ x(Re)∥∥ =
+
+√ Ψx(Re)(Ψ x(Re) + 4) 8 , (8) 
+
+∥∥grad Ψ y (Re)∥∥ = 1
+
+αδ , (9) where cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi ≥ δ > 0, i ∈ { 1, ..., n }.Proof: Let Re be parameterized by an axis-angle representation with rotation angle ϕ ∈ [0 , π ]. Then 
+
+tr( Re) = 1 + 2 cos ϕ, and R2 
+
+> e
+
+corresponds to a rotation of angle 2ϕ, implying tr( R2
+
+> e
+
+) = 1 + 2 cos 2 ϕ. Hence, ‖I3×3 −
+
+R2
+
+> e
+
+‖2 = 2 tr( I3×3 − R2
+
+> e
+
+) = 4(1 − cos 2 ϕ). Substituting the above expression into (6) yields ‖ grad Ψ x(Re)‖ =(1 /√2) sin( ϕ/ 2) . Finally, using the identity Ψx = 2(1 −
+
+cos( ϕ/ 2)) , we obtain the relation stated in (8). To derive an expression for grad Ψ y (Re) from (7), we use the inequality 
+
+‖ skew( R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+)‖ ≤ ‖ R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+‖ together with the fact that ‖R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+‖ = ‖R⊤ 
+
+> e
+
+gd‖ ‖ yi‖ = 1 , since gd and yi
+
+are unit vectors and Re ∈ SO(3) . Consequently, each summand is bounded above by (cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi)−1.Admissibility of int( Me) implies cos θi −g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi ≥ δ > 0,from which (9) follows. This completes the proof. Lemma 6: Consider the function Ψx(Re) as defined in (5). Then there exist an open neighbourhood U := 
+
+{Re ∈ M e : 1 < tr( Re)} of the identity matrix I3×3 and a constant k ∈ R>0 such that, for every Re ∈ U and every 
+
+ξ ∈ TRe SO(3) , Hess Ψ x(Re)[ ξ, ξ] ≥ k‖ξ‖2. Consequently, 
+
+Ψx is locally strongly convex on U.Proof: According to Lemma 4, the Riemannian gradient of Ψy (Re) at Re with respect to the canonical metric on SO(3) , is given by (6). To compute the Hessian, we define g(Re) := grad Ψ x(Re) = c(Re) h(Re), where 
+
+c(Re) := 12√1 + tr( Re) , h(Re) := Re skew( Re).
+
+Differentiating c(Re) in the direction ξ ∈ TRe SO(3) , we get 
+
+Dc (Re)[ ξ] = − 14(1 + tr( Re)) 3/2 tr( ξ).
+
+Taking the transpose of ξ yields ξ⊤ = −e× 
+
+> ω
+
+R⊤ 
+
+> e
+
+. There-fore, tr( ξ⊤) = − tr( e× 
+
+> ω
+
+R⊤ 
+
+> e
+
+). Using the cyclic property of the trace, tr( e× 
+
+> ω
+
+R⊤ 
+
+> e
+
+) = tr( Ree× 
+
+> ω
+
+) = tr( ξ), which gives 
+
+tr( ξ⊤) = − tr( ξ). Since tr( ξ⊤) = tr( ξ), it follows that 
+
+tr( ξ) = 0 . Thus, Dc (Re)[ ξ] = 0 . The differential of h(Re)
+
+in direction ξ is 
+
+Dh[ξ] = lim 
+
+> t→0
+
+(Re + tξ) skew( Re + tξ) − Re skew( Re)
+
+t
+
+= lim 
+
+> t→0
+
+Re (Re−R⊤  
+
+> e)2
+
++ tξ (Re−R⊤  
+
+> e)2
+
++ tRe (ξ−ξ⊤)2
+
+t
+
++ lim 
+
+> t→0
+
+t2ξ (ξ−ξ⊤)2 − Re (Re−R⊤ 
+
+> e)2
+
+t
+
+= 12
+
+(
+
+ξ(Re − R⊤ 
+
+> e
+
+) + Re(ξ − ξ⊤)
+
+)
+
+.
+
+The Riemannian Hessian of Ψx(Re) at Re applied to the direction ξ, is obtained as follows: 
+
+Hess Ψ x(Re)[ ξ] = ∇ξg(Re)=
+
+(
+
+Dg[ξ] − (g(Re)R⊤ 
+
+> e
+
+ξ + ξR ⊤ 
+
+> e
+
+g(Re)) 
+
+)
+
+2=
+
+(
+
+Re(Re − R⊤ 
+
+> e
+
+)R⊤ 
+
+> e
+
+ξ + Re(ξ − ξ⊤)
+
+)
+
+4√1 + tr( Re) .
+
+(10) It is observed that Hess Ψ x(Re)[ ξ] ∈ TRe SO(3) . Let 
+
+Q1 : TRe SO(3) × TRe SO(3) → R be the quadratic function defined by Q1(ξ) := Hess Ψ x(Re)[ ξ, ξ] =
+
+〈Hess Ψ x(Re)[ ξ], ξ〉. Using the identity ξ⊤ = −R⊤ 
+
+> e
+
+ξR ⊤ 
+
+> e
+
+,we get 
+
+Q1(ξ) = tr 
+
+(
+
+ξ⊤Re(Re − R⊤ 
+
+> e
+
+)R⊤ 
+
+> e
+
+ξ + ξ⊤Reξ + ξ⊤ξR ⊤
+
+> e
+
+)
+
+4√1 + tr( Re) .
+
+The first term can be rewritten as tr( ξ⊤Re(Re −
+
+R⊤ 
+
+> e
+
+)R⊤ 
+
+> e
+
+ξ) = − tr( e× 
+
+> ω
+
+e× 
+
+> ω
+
+(Re − R⊤ 
+
+> e
+
+)) . Noting that e× 
+
+> ω
+
+e×
+
+> ω
+
+is symmetric while (Re − R⊤ 
+
+> e
+
+) is skew-symmetric, and that the trace of the product of a symmetric and askew-symmetric matrix is always zero, it follows that 
+
+tr( ξ⊤Re(Re − R⊤ 
+
+> e
+
+)R⊤ 
+
+> e
+
+ξ) = 0. The second term can be written as tr( ξ⊤Reξ + ξ⊤ξR ⊤ 
+
+> e
+
+) = − tr( e× 
+
+> ω
+
+e× 
+
+> ω
+
+(R⊤ 
+
+> e
+
++
+
+Re)) . Using the skew-symmetry property, (e× 
+
+> ω
+
+)⊤e× 
+
+> ω
+
+=
+
+‖eω ‖2I3×3 − eω e⊤ 
+
+> ω
+
+, we get tr( ξ⊤Reξ + ξ⊤ξR ⊤ 
+
+> e
+
+) =2‖eω ‖2 tr( Re) − e⊤ 
+
+> ω
+
+(Re + R⊤ 
+
+> e
+
+)eω . Using Rodrigues’ for-mula, the rotation matrix Re can be expressed as Re =cos ϕ I3×3 + sin ϕ u × +(1 − cos ϕ) uu ⊤, where ϕ ∈ [0 , π ] is the rotation angle about the unit axis u ∈ S2. The vector 
+
+eω can be decomposed along and perpendicular to u as 
+
+eω = ( u⊤eω )u + e⊥ 
+
+> ω
+
+, with e⊥ 
+
+> ω
+
+⊥ u. Using these equations and 2‖eω ‖2 = ‖ξ‖2, we can rewrite Q1(ξ) as follows: 
+
+Q1 = (1 + cos ϕ)‖e⊥ 
+
+> ω
+
+‖2 + 2 cos ϕ(u⊤eω )2)2√1 + tr( Re) ≥ cos ϕm‖ξ‖2
+
+4 cos ϕm
+
+> 2
+
+,7
+
+where 0 ≤ ϕ ≤ ϕm < π/ 2. It follows from the expression for Q1(ξ) that, for all Re ∈ U and every 
+
+ξ ∈ TRe SO(3) , Hess Ψ x(Re)[ ξ, ξ] ≥ k‖ξ‖2, where k =cos ϕm/(4 cos( ϕm/2)) . Consequently, Ψx is locally strongly convex on U. This completes the proof. The presence of both attractive and repulsive compo-nents in Ψ( Re) in (4) may introduce multiple critical points within the admissible manifold int( Me) and does not, a priori, guarantee their nondegeneracy, potentially leading to undesired equilibria. The following theorem establishes that, under suitable conditions, Ψ( Re) ad-mits a unique nondegenerate minimum on the admissible manifold int( Me). Moreover, it will be shown that the Riemannian Hessian of Ψ( Re) is positive definite in an open neighborhood of the desired attitude to establish local uniform strong convexity of Ψ( Re).Theorem 1: Consider the attitude error function Ψ( Re)
+
+as defined in (4). Then, the following properties hold: (i) Ψ( Re) = 0 if and only if Re = I3×3, and Ψ( Re) > 0
+
+for all Re ∈ int( Me) \ { I3×3}.(ii) For every δ ∈ R>0 there exists α∗
+
+> 1
+
+(δ) ∈ R>0 such that, for any α > α ∗
+
+> 1
+
+(δ), the condition grad Ψ( Re) = 0 holds if and only if Re = I3×3 for all Re ∈ int( Me).(iii) The Riemannian Hessian of Ψ( Re) at Re = I3×3
+
+satisfies Hess Ψ( I3×3)[ ξ, ξ] > 0 for any α ∈ R>0.Moreover, for every δ > 0 if α > α∗
+
+> 2
+
+(δ) for some 
+
+α∗
+
+> 2
+
+(δ) ∈ R>0, then there exists an open neighborhood 
+
+U := {Re ∈ M e : 1 < tr( Re)} of the identity I3×3 and a constant k ∈ R>0 such that, for every Re ∈ U and every 
+
+ξ ∈ TRe SO(3) , Hess Ψ( Re)[ ξ, ξ] ≥ k‖ξ‖2. Consequently, 
+
+Ψ( Re) is locally strongly convex on U.Proof: (i) At Re = I3×3, we have tr( I3×3) = 3 , so 
+
+Ψx(I3×3) = 0 , hence Ψ( I3×3) = 0 . For Re 6 = I3×3, we have 
+
+tr( Re) < 3 ⇒ Ψx(Re) > 0. Also, since g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi < cos( θi),the log barrier Ψy (Re) is well-defined and finite, and thus 
+
+Ψ( Re) > 0 for all Re ∈ int( Me) \ { I3×3}.(ii) For Re ∈ int( Me), the Riemannian gradient of 
+
+Ψ( Re) on the manifold SO(3) is given by 
+
+grad Ψ( Re) = grad Ψ x(Re)(1 −Ψy )−Ψx(Re) grad Ψ y (Re).
+
+Suppose grad Ψ( Re) = 0 for some Re ∈ Me. Then it must hold that (1 − Ψy ) grad Ψ x = Ψ x grad Ψ y . By the admissibility condition Re ∈ int( Me), we have 1 + tr( Re) > 0, ensuring that grad Ψ x(Re) is well-defined and finite. Moreover, grad Ψ x(Re) = 0 if and only if 
+
+skew( Re) = 0, which occurs if and only if Re = I3×3.Therefore, at any Re 6 = I3×3 in Me, grad Ψ x(Re) 6 = 0.For the equation (1 − Ψy ) grad Ψ x = Ψ x grad Ψ y to hold at some Re 6 = I3×3, the vectors grad Ψ x and grad Ψ y would have to be collinear. Taking the magnitude of both sides yields 
+
+(α − L) ‖ grad Ψ x‖ = Ψ x‖G‖, (11) where L and G are defined as 
+
+L := 
+
+> n
+
+∑
+
+> i=1
+
+ln 
+
+( δ
+
+1 + cos θi
+
+)
+
+, G := 
+
+> n
+
+∑
+
+> i=1
+
+Re skew 
+
+(
+
+R⊤ 
+
+> e
+
+gdy⊤
+
+> i
+
+)
+
+δ ,
+
+with cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi ≥ δ > 0, i ∈ { 1, ..., n }. A sufficient condition for (11) to not hold is given by 
+
+Ψx‖G‖‖ grad Ψ x‖ + L < α. (12) An upper bound for the left-hand side of the equation can be obtained using Lemma 5 as follows: 
+
+Ψx‖G‖‖ grad Ψ x‖ + L ≤ max 
+
+> Re∈M e\{ I3×3}
+
+(√ 8Ψ x
+
+Ψx + 4 ‖G‖ + L
+
+)
+
+≤
+
+> n
+
+∑
+
+> i=1
+
+(
+
+2√63δ + ln δ
+
+1 + cos θi
+
+)
+
+=: α∗
+
+> 1
+
+(δ).
+
+Consequently, for any choice of α > α ∗
+
+> 1
+
+(δ), the equality 
+
+(1 − Ψy ) grad Ψ x = Ψx grad Ψ y is impossible for all 
+
+Re ∈ int( Me) \ { I3×3}. Moreover, it can be observed that grad Ψ y (Re) vanishes when R⊤ 
+
+> e
+
+gd is parallel to yi,since skew( R⊤ 
+
+> e
+
+gd y⊤ 
+
+> i
+
+) = (1 /2)( R⊤ 
+
+> e
+
+g× 
+
+> d
+
+yi)× = 0, yet the overall gradient remains nonzero, grad Ψ( Re) 6 = 0, because 
+
+grad Ψ x(Re) 6 = 0 at these points. Hence, no solution exists to grad Ψ( Re) = 0 for all Re ∈ int( Me) \ { I3×3}, and the identity Re = I3×3 is the unique critical point in the admissible set, while the antipodal singular rotations 
+
+Re = −I3×3 + 2 uu ⊤, with u ∈ S2, are excluded by 
+
+tr( Re) > −1.(iii) For the computation of the Riemannian Hessian of Ψ( Re), we use Levi-Civita connection on SO(3) , i.e., 
+
+Hess Ψ( Re)[ ξ] = ∇ξgradΨ( Re). Applying the Riemannian product rule, we get 
+
+Hess Ψ( Re)[ ξ] = (1 − Ψy (Re)) · Hess Ψ x(Re)[ ξ]
+
+− 〈 grad Ψ y (Re), ξ〉 · grad Ψ x(Re)
+
+− 〈 grad Ψ x(Re), ξ〉 · grad Ψ y (Re)+ Ψ x(Re) · Hess Ψ y (Re)[ ξ].
+
+Let Q2 : TRe SO(3) × TRe SO(3) → R be the quadratic function defined by Q2(ξ) := Hess Ψ( Re)[ ξ, ξ] =
+
+〈Hess Ψ( Re)[ ξ], ξ〉, which simplifies to: 
+
+Q2(ξ) = 〈Hess Ψ x(Re)[ ξ], ξ〉(1 − Ψy (Re)) 
+
+− Ψx(Re)〈Hess Ψ y (Re)[ ξ], ξ〉− 2〈grad Ψ x(Re), ξ〉〈 grad Ψ y (Re), ξ〉.
+
+Since cos θi > g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi, it follows that (cos θi −
+
+g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi)/(1 + cos θi) ∈ (0 , 1) . Consequently, 1 − Ψy > 0.At Re = I3×3, we have Ψx(I3×3) = 0 , grad Ψ x(I3×3) = 0 ,and 〈Hess Ψ x(I3×3)[ ξ], ξ〉 > 0. Hence, 
+
+Q2(ξ)∣∣Re=I3×3 = 〈Hess Ψ x(I3×3)[ ξ], ξ〉(1 − Ψy (I3×3)) > 0.
+
+Therefore, Hess Ψ( Re)[ ξ, ξ] > 0 at Re = I3×3 for all 
+
+α > 0. Now, to ensure Hess Ψ( Re)[ ξ, ξ] > 0 in an open neighborhood U ⊂ M e of the identity I3×3, consider that there exist M1, M 2 ∈ R>0 such that 
+
+|〈 grad Ψ x, ξ〉〈 grad Ψ y , ξ〉| ≤ M1‖eω ‖2,
+
+|Ψx〈Hess Ψ y (Re)[ ξ], ξ〉| ≤ M2‖eω ‖2,
+
+since grad Ψ x(Re), grad Ψ y (Re), and Hess Ψ y (Re)[ ξ] are bounded on M. The gradient inner products can be 8
+
+rewritten as 〈grad Ψ x, ξ〉 = 〈vx, eω 〉 and 〈grad Ψ y , ξ〉 =
+
+〈vy , eω 〉 for some vectors vx, vy ∈ R3. Similarly, the Hessian term admits the form 〈Hess Ψ y [ξ], ξ〉 = e⊤ 
+
+> ω
+
+Hy eω ,where Hy ∈ R3×3 is a symmetric matrix. Apply-ing the Cauchy–Schwarz inequality, the gradient prod-uct satisfies |〈 vx, eω 〉〈 vy , eω 〉| ≤ ‖vx‖‖ vy ‖‖ eω ‖2. Con-sequently, the constant M1 can be taken as M1 =max Re∈int( Me) ‖vx(Re)‖ · ‖ vy (Re)‖. The vector vx for 
+
+∇Ψx can be obtained as 
+
+vx(Re) = (Re − R⊤ 
+
+> e
+
+)∨
+
+4√1 + tr( Re) .
+
+Note that ‖vx‖ = sin 2(ϕ/ 2) ≤ 1. Similarly, the vector vy
+
+for ∇Ψy can be obtained as 
+
+vy = −
+
+> n
+
+∑
+
+> i=1
+
+(1 + cos θi)
+
+α
+
+(
+
+cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+) (R⊤ 
+
+> e
+
+g× 
+
+> d
+
+yi).
+
+Under the feasibility condition that there exists δ > 0 such that cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi ≥ δ, the upper bound on vy is given by ‖vy ‖ ≤ ∑ni=1 (1 + cos θi)/(αδ ) as ‖(R⊤ 
+
+> e
+
+gd)×yi‖ ≤ 1 for all i = {1, ..., n }. To determine M2, one has the following upper bound: 
+
+〈Hess Ψ y [ξ], ξ〉 ≤ 
+
+> n
+
+∑
+
+> i=1
+
+∥∥(gdy⊤ 
+
+> i
+
+Re − R⊤ 
+
+> e
+
+yig⊤
+
+> d
+
+)∨∥∥2 ‖eω ‖2
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi)2
+
+≤
+
+> n
+
+∑
+
+> i=1
+
+‖gd × R⊤ 
+
+> e
+
+yi‖2 ‖eω ‖2
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi
+
+)2
+
+Finally, by combining the preceding results, M1 and M2
+
+are obtained as 
+
+M1 ≤
+
+> n
+
+∑
+
+> i=1
+
+(1 + cos θi)
+
+αδ , M2 ≤
+
+> n
+
+∑
+
+> i=1
+
+2 sin 2 θi
+
+αδ 2 .
+
+Also, there exists a constant c ∈ R such that 
+
+〈Hess Ψ x(Re)[ ξ], ξ〉(1 − Ψy ) ≥ c‖eω ‖2 (see Lemma 6), where the expression of c is obtained as follows: 
+
+c =
+
+(
+
+2 tr( Re) − λmax (Re + R⊤ 
+
+> e
+
+)
+
+)
+
+4√1 + tr( Re) min 
+
+> Re∈M e
+
+(1 − Ψy (Re)) = cos ϕ min Re∈int( Me)(1 − Ψy (Re)) 2√2(1 + cos ϕ)
+
+Note that c > 0 for all Re ∈ U. Hence, it can be guaranteed that Q2(ξ) ≥ (c − M1 − M2)‖eω ‖2 > 0 in the open neighborhood U ⊂ M e of Re = I3×3, if the tuning parameter α is chosen such that α ≥ α∗
+
+> 2
+
+(δ), where 
+
+α∗
+
+> 2
+
+(δ) is given by 
+
+α∗
+
+> 2
+
+(δ) ≥
+
+> n
+
+∑
+
+> i=1
+
+4((1 + cos θi)δ + 2 sin 2 θi)
+
+δ2 .
+
+Therefore, Hess Ψ( Re)[ ξ, ξ] ≥ k‖ξ‖2, where k = ( c − M1 −
+
+M2)/2 > 0 for all Re ∈ U . Consequently, Ψ( Re) is locally strongly convex on U.Remark 2: The parameter α determines the critical-point structure of the potential function Ψ( Re) on Me. By Theorem 1(ii), choosing α > α ∗
+
+> 1
+
+(δ) makes Re = I3×3 the unique critical point in int( Me). Moreover, Theorem 1(iii) shows that this equilibrium is the unique nondegenerate minimum for any α ∈ R>0. If α > α ∗
+
+> 2
+
+(δ), the Hessian of Ψ( Re) remains uniform positive definite in an open neighborhood of I3×3, yielding local strong convexity. Altogether, choosing α > max {α∗
+
+> 1
+
+(δ), α ∗
+
+> 2
+
+(δ)} ensures that Ψ( Re) admits a unique nondegenerate minimum in int( Me) and is locally strongly convex about this minimum. 
+
+IV. D ESIGN OF CONSTRAINED GEOMETRIC FIXED -T IME 
+
+SLIDING MODE CONTROLLER 
+
+In this section, the proposed attitude potential function 
+
+Ψ( Re) (as defined in (4)) is employed to develop aconstrained fixed-time geometric sliding mode control strategy for the spacecraft attitude control problem in the presence of multiple attitude forbidden zones Oi, where 
+
+i ∈ { 1, . . . , n }, and external disturbances. The proposed fixed-time geometric sliding variable S : R3 × R3 → R3 is defined as: 
+
+S(er , eω ) := eω + β1f p(er ) + β2er ‖er ‖q−1, (13) where β1, β 2, p, q ∈ R>0 satisfy p < 1 and q > 1, and 
+
+er : SO(3) ×SO(3) → R3 denotes the attitude error vector, defined as follows: 
+
+er := (1 − Ψy (Re)) 2√1 + tr( Re) (Re−R⊤ 
+
+> e
+
+)∨+
+
+> n
+
+∑
+
+> i=1
+
+Ψx(Re)( R⊤ 
+
+> e
+
+gd)×yi
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi) ,
+
+(14) and f p(er ) is defined as 
+
+f p := 
+
+
+
+εp−1
+
+(
+
+2 − p − (1 − p) ‖er ‖
+
+ε
+
+)
+
+er , 0 ≤ ‖ er ‖ < ε ;
+
+er ‖er ‖p−1, ‖er ‖ ≥ ε, 
+
+with ε ∈ R>0 being a small constant. Theorem 2: Under Assumption 2, consider the attitude motion of the spacecraft governed by (2) and (3) together with the nonsingular geometric fixed-time sliding variable as defined in (13), satisfying S = 0. Then, the closed-loop error state trajectory (Re(·), eω (·)) converges into a sufficiently small compact neighbourhood of (I3×3, 0)
+
+within a fixed time Ts ∈ R≥0 that satisfies 
+
+Ts ≤ 2(p+3) /2
+
+(αm )(p+1) /2(1 − p) + 2(q+3) /2
+
+(αm )(q+1) /2(q − 1) , (15) where m is defined in Lemma 7. Moreover, Re = I3×3 and 
+
+eω = 0 if and only if S = 0.Proof: During the sliding phase, the following con-straint is satisfied: 
+
+eω + β1f p(er ) + β2er ‖er ‖q−1 = 0. (16) The attitude potential function Ψ( Re) as defined in (4), is selected as a Lyapunov candidate function, V1 : SO(3) →
+
+R≥0, to establish fixed-time stability of a sufficiently small neighborhood of the desired trajectory (Rd(·), ωd(·)) 
+
+during the sliding phase, i.e., V1(Re) := Ψ( Re). It is known that tr( P ⊤Q ω ×) = − ω⊤(P ⊤Q − Q⊤P )∨ for any 9
+
+P , Q ∈ R3×3 and ω ∈ R3. Taking the time derivative of 
+
+V1(Re) yields 
+
+˙V1(Re) = 〈grad V1(Re), ˙Re〉
+
+= tr((grad V1(Re)) ⊤ ˙Re)= tr((grad V1(Re)) ⊤Ree× 
+
+> ω
+
+) (17) 
+
+= −e⊤ 
+
+> ω
+
+((grad V1(Re)) ⊤Re − R⊤ 
+
+> e
+
+grad V1(Re)) ∨.
+
+Now, computing the Riemannian gradient of Ψ( Re) and applying Lemma 4, we obtain 
+
+grad V1 = (Ψ y − 1) Re skew( R⊤ 
+
+> e
+
+)2√1 + tr( Re)
+
+︸ ︷︷ ︸
+
+> := V1x(Re)
+
++
+
+> n
+
+∑
+
+> i=1
+
+Ψx Re skew( R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+)
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi)
+
+︸ ︷︷ ︸ 
+
+> := V1y(Re)
+
+For V1x(Re) and V1y (Re) as defined above, we can express 
+
+
+
+V ⊤
+
+> 1x
+
+Re − R⊤ 
+
+> e
+
+V1x = − (1 − Ψy (Re)) 2√1 + tr( Re) (Re − R⊤ 
+
+> e
+
+),V ⊤ 
+
+> 1y
+
+Re − R⊤ 
+
+> e
+
+V1y =
+
+> n
+
+∑
+
+> i=1
+
+Ψx(yig⊤ 
+
+> d
+
+Re − R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+)
+
+α(cos( θi) − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi) .
+
+Therefore, (17) can be rewritten as 
+
+˙V1 = e⊤
+
+> ω
+
+(
+
+(1 − Ψy ) ( Re − R⊤ 
+
+> e
+
+)∨
+
+2√1 + tr( Re)+
+
+> n
+
+∑
+
+> i=1
+
+Ψx(R⊤ 
+
+> e
+
+gdy⊤ 
+
+> i
+
+− yig⊤ 
+
+> d
+
+Re)∨
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤yi)
+
+)
+
+= e⊤
+
+> ω
+
+(
+
+(1 − Ψy ) ( Re − R⊤ 
+
+> e
+
+)∨
+
+2√1 + tr( Re) +
+
+> n
+
+∑
+
+> i=1
+
+Ψx(R⊤ 
+
+> e
+
+gd)×yi
+
+α(cos θi − g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi)
+
+)
+
+= e⊤ 
+
+> ω
+
+er . (18) Substituting (16) into (18) and applying the inequality in (21), together with the fact that 
+
+min Re∈int( Me) |Ψy (Re)| = 0, (18) can be equivalently expressed as 
+
+˙V1 ≤
+
+
+
+−k1V p+1 2 
+
+> 1
+
+− k2V q+1 2 
+
+> 1
+
+, V1 > Aϵ 2;
+
+−k p+1 2 
+
+> 1
+
+εp−1V1 − k2V q+1 2 
+
+> 1
+
+, V1 ≤ Aϵ 2,
+
+(19) where k1 := β1(2 /αm )p+1 and k2 := β2(2 /αm )q+1 . From (19) and Lemma 1, it follows that for V1 ≥ Aϵ 2, the error state trajectory (Re(·), eω (·)) on the sliding manifold converges, in fixed time Ts (defined in (15)), to the sufficiently small compact neighborhood 
+
+E := {(Re, eω ) ∈ int( Me) × R3 : V1(Re) ≤ Aϵ 2, ‖eω ‖ ≤ z}
+
+(20) of (I3×3, 0), where z = β1εp + β2εq and (I3×3, 0) ∈ int( E).By Theorem 1, V1(Re) = Ψ( Re) = 0 if and only if Re =
+
+I3×3. For V1 ≤ Aϵ 2, (19) implies that ˙V1(Re) = 0 only when Re = I3×3. Since er = 0 when Re = I3×3, as follows from (14), and (16) ensures that eω → 0 as Re → I3×3.Therefore, Re = I3×3 and eω = 0 if and only if S = 0.This completes the proof. The following lemma provides a preliminary result for the subsequent constrained attitude control law formulation and stability analysis of the closed-loop attitude control system on SO(3) × R3.Lemma 7: Consider the attitude potential function 
+
+Ψ( Re) and the attitude error vector er as defined in (4) and (14), respectively. Assume that g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi ≤ βi < cos θi
+
+for all i = {1, ..., n }. Define the positive constants m := ∑ni=1 (cos θi − βi) > 0 and M := ∑ni=1 (cos θi + 1) . Then, the following poperties hold: (i) There exist constants A := ( r1 + 2 /αm )−2 and B := (r2 − 2/αm )−2, where 
+
+r1 := max  
+
+> Re∈int( Me)
+
+|Ψy (Re)| , r2 := min  
+
+> Re∈int( Me)
+
+|Ψy (Re)| ,
+
+such that 
+
+A‖er ‖2 ≤ Ψ( Re) ≤ B‖er ‖2. (21) (ii) The time derivative of er is given by 
+
+˙er = (1 − Ψy )
+
+(
+
+(Ree× 
+
+> ω
+
++ e× 
+
+> ω
+
+R⊤ 
+
+> e
+
+)∨
+
+2√1 + tr( Re) − ze ⊤ 
+
+> ω
+
+z
+
+4(1 + tr( Re)) 3/2
+
+)
+
+− Ψxn∑
+
+> i=1
+
+(
+
+δ(R⊤ 
+
+> e
+
+e× 
+
+> ω
+
+gd)×yi + ( R⊤ 
+
+> e
+
+gd)×yig⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+e× 
+
+> ω
+
+yi
+
+δ2
+
+)
+
+−
+
+> n
+
+∑
+
+> i=1
+
+(
+
+(R⊤ 
+
+> e
+
+gd)×yie⊤ 
+
+> ω
+
+− g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+e× 
+
+> ω
+
+yi
+
+)
+
+z
+
+2α√1 + tr( Re)δ ,
+
+where z := ( Re −R⊤ 
+
+> e
+
+)∨ and δ := ∑ni=1 (cos θi −g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi) ∈
+
+[m, M ].Proof: (i) The rotation matrix Re can be parameter-ized by a rotation of angle ϕ ∈ [0 , π ] about an axis u ∈ S2,so that tr( Re) = 1+2 cos ϕ. Hence, Ψx(Re) = 4 sin 2(ϕ/ 4) ,and the first term of er simplifies to 
+
+Ψy (Re)2√1 + tr( Re) (Re − R⊤ 
+
+> e
+
+)∨ = Ψ y (Re) sin 
+
+( ϕ
+
+2
+
+)
+
+u.
+
+Define a := Ψ y (Re) sin( ϕ/ 2) and b := Ψ x(Re)/(αδ ). Since, 
+
+‖(R⊤ 
+
+> e
+
+gd)×yi‖ ≤ 1 for all i ∈ I , let c := ‖(R⊤ 
+
+> e
+
+gd)×yi‖ ∈ 
+
+[0 , 1] . Then er = a u + b v, with ‖u‖ = 1 and ‖v‖ = c ≤ 1,which yields 
+
+(|a| − | b|)2 ≤ ‖ er ‖2 ≤ (|a| + |b|)2.
+
+Furthermore, Ψ( Re) = 4 sin 2(ϕ/ 4)(1 −Ψy (Re)) . Using the inequalities sin( ϕ/ 4) ≤ sin( ϕ/ 2) ≤ 2 sin( ϕ/ 4) , we obtain 
+
+|Ψy (Re)| sin 
+
+( ϕ
+
+4
+
+)
+
+≤ | a| ≤ 2|Ψy (Re)| sin 
+
+( ϕ
+
+4
+
+)
+
+,
+
+|b| ≤ 4 sin 2(ϕ/ 4) 
+
+αm .
+
+Since a and b scale with sin( ϕ/ 4) and sin 2(ϕ/ 4) , respec-tively, both ‖er ‖2 and Ψ( Re) depend quadratically on 
+
+sin( ϕ/ 4) . Therefore, by combining the above inequalities 10 
+
+and using the constants A and B as defined in (21), we conclude that A‖er ‖2 ≤ Ψ( Re) ≤ B‖er ‖2.(ii) The attitude error vector er can be rewritten as 
+
+er = (1 − Ψy (Re)) C + Ψ x(Re)D, where 
+
+C := 
+
+(
+
+(Re − R⊤ 
+
+> e
+
+)∨
+
+2√1 + tr( Re)
+
+)
+
+, D := 
+
+> n
+
+∑
+
+> i=1
+
+(
+
+(R⊤ 
+
+> e
+
+gd)×yi
+
+αδ 
+
+)
+
+.
+
+Differentiating er with respect to time yields 
+
+˙er = − ˙Ψy C + (1 − Ψy ) ˙C + ˙ΨxD + Ψ x ˙D. (22) moreover, taking the time derivative of C yields 
+
+˙C = ( ˙Re − ˙R⊤ 
+
+> e
+
+)∨
+
+2√1 + tr( Re) − (Re − R⊤ 
+
+> e
+
+)∨ ˙tr( Re)4(1 + tr( Re)) 3/2 .
+
+Using the skew-symmetric property, we obtain ( ˙Re −
+
+˙R⊤ 
+
+> e
+
+)∨ =
+
+(
+
+Ree× 
+
+> ω
+
++ e× 
+
+> ω
+
+R⊤
+
+> e
+
+)∨
+
+. Consequently, the derivative of the trace is given by ˙tr( Re) = −e⊤ 
+
+> ω
+
+(Re − R⊤ 
+
+> e
+
+)∨. Taking the time derivative of D yields 
+
+˙D =
+
+> n
+
+∑
+
+> i=1
+
+(
+
+(R⊤ 
+
+> e
+
+gd)×yig⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+e× 
+
+> ω
+
+yi
+
+αδ 2 − (R⊤ 
+
+> e
+
+e× 
+
+> ω
+
+gd)×yi
+
+αδ 
+
+)
+
+.
+
+Therefore, ˙er follows directly by substituting the expres-sions for ˙C and ˙D into (22), noting that the scalar derivatives ˙Ψx(Re) and ˙Ψy (Re) are obtained via the chain rule applied to their respective definitions. This completes the proof. The main result of the paper is stated next. The proposed attitude control law τ : (SO(3)) 2 × (R3)2 → R3
+
+is defined as 
+
+τ := ω×Iω − Ie × 
+
+> ω
+
+R⊤ 
+
+> e
+
+ωd − β4S‖S‖q1−1 − β3S‖S‖p1−1
+
++ IR ⊤ 
+
+> e
+
+˙ωd − β1IDp(er , ˙er ) − γ sgn( S)
+
+− β2I
+
+(
+
+I3×3 + ( q − 1) er e⊤
+
+> r
+
+‖er ‖2
+
+)
+
+‖er ‖q−1 ˙er ,
+
+(23) where β3, β 4 ∈ R>0, 0 < p1 < 1 < q1, γ := sup t∈R≥0 ‖τ d(t)‖ + ([ −ρ ˙ρ]+)/ρ , for λ, γ 0, ε ∈ R>0,
+
+ρ := β1
+
+(‖er ‖2 + ε2)p/ 2 + β2‖er ‖q + λh 
+
+√‖er ‖2 + ε2 ,h := (Ψ max − Ψ( Re)) , and for S := [ S1 S2 S3]⊤,
+
+Dp := 
+
+
+
+εp−1
+
+(
+
+2 − p − (1 − p) ‖er ‖
+
+ε
+
+)
+
+˙er
+
+−(1 − p)εp−2 e⊤ 
+
+> r
+
+˙er
+
+‖er ‖ er , 0 < ‖er ‖ < ε, 
+
+(
+
+I3×3 + ( p − 1) er e⊤
+
+> r
+
+‖er ‖2
+
+)
+
+‖er ‖p−1 ˙er , ‖er ‖ ≥ ε, 
+
+(2 − p)εp−1 ˙er , er = 0,
+
+the componentwise sign function is defined as sgn( S) := [sgn( S1) sgn( S2) sgn( S3)] with 
+
+sgn( Si) = 
+
+
+
+1, Si > 0; 0, Si = 0; 
+
+−1, Si < 0.
+
+Theorem 3: Under Assumptions 1 and 2, consider the spacecraft attitude motion governed by (2) and (3), together with the nonsingular geometric fixed-time sliding variable defined in (13) and the compact set E defined in (20). Let the control torque τ be given by (23). Then, the following properties hold: (i) The closed-loop system admits a Filippov solution for all t ∈ R≥0, and the sliding variable S reaches 0 within a prescribed fixed time Tr ∈ R>0.(ii) The admissible set int( M) is the largest positively invariant subset of SO(3) under the closed-loop attitude dynamics. (iii) The state trajectory (R(t), ω(t)) remains in int( M)×
+
+R3 for all t ∈ R≥0, during both the reaching and sliding phases, thereby satisfying the attitude pointing constraints at all times. (iv) The closed-loop error state trajectory (Re(·), eω (·)) 
+
+converges almost globally to the sufficiently small compact set E, within a prescribed fixed time. Consequently, the set 
+
+E is almost-globally fixed-time attractive on (int( Me) ∪L) × R3.Proof: (i) Substituting (23) into (3) and interpreting the discontinuous term in the Filippov sense yields the differential inclusion ˙x(t) ∈ F (x(t), t ), where x : R≥0 →
+
+SO(3) × R3 and F : SO(3) × R3 × R≥0 ⇒ T SO(3) × R3 is the set-valued map defined by 
+
+x(t) := 
+
+[Re
+
+eω
+
+]
+
+, F (x, t ) := 
+
+{[ Ree×
+
+> ω
+
+f ω (x, t, v)
+
+]
+
+: v ∈ Sgn( S)
+
+}
+
+,
+
+with Sgn( S) = Sgn( S1) · Sgn( S2) · Sgn( S3),
+
+Sgn( Si) = 
+
+
+
+{1}, Si > 0; [−1, 1] , Si = 0; 
+
+{− 1}, Si < 0,
+
+f ω (x, t, v) := − I−1β4S‖S‖q1−1 − I−1β3S‖S‖p1−1
+
+− β1Dp(er , ˙er ) − γI−1v + I−1τ d
+
+− β2
+
+(
+
+I3×3 + ( q − 1) er e⊤
+
+> r
+
+‖er ‖2
+
+)
+
+‖er ‖q−1 ˙er .
+
+The map Sgn( ·) is nonempty, compact, convex-valued, and upper semicontinuous, whereas the remaining state-dependent terms in F are continuous on int( Me) × R3.Under Assumption 1, τ d is Lebesgue measurable and essentially bounded. Hence, F (t, ·) is nonempty, compact, convex-valued, locally bounded, and upper semicontinuous on int( Me) × R3 for all t ∈ R≥0, while t 7 → F (t, x)
+
+is measurable for each fixed x. Hence, by the standard existence theorem for differential inclusions (see, e.g., [35, Chapter 2, Section 7]), a local Filippov solution exists for every initial condition Re(0) ∈ int( Me). Let [0 , T max )
+
+denote the maximal interval of existence. Consider the candidate Lyapunov function V2(S) := 12 S⊤S. For almost all t ∈ [0 , T max ) and any γ > ¯τd ≥ sup t∈R≥0 ‖τ d(t)‖, we 11 
+
+obtain 
+
+˙V2 = S⊤I−1 (τ d − β3S‖S‖p1−1 − β4S‖S‖q1−1 − γ sgn( S))
+
+≤ − β3‖S‖p1+1 /l − β4‖S‖q1+1 /l − ‖ S‖ (γ − ¯τd) /l 
+
+≤ − d1V p1+1 2 
+
+> 2
+
+− d2V q1+1 2 
+
+> 2
+
+,
+
+where l := ( λmin (I⊤I)) 0.5, d1 := 2 p1+1 2 β1/l , and d2 := 2 q1+1 2 β2/l . Let us define f (v) := d1v(p1+1) /2 + d2v(q1+1) /2,
+
+v ∈ R≥0. Since S(·) is absolutely continuous and V2 ∈
+
+C1(R3), the composition V2(S(·)) is absolutely continu-ous. Thus, since ˙V2(t) ≤ − f (V2(t)) for almost every t ∈
+
+[0 , T max ), it follows from [37, Corollary 2.4] that V2(t) ≤
+
+V2(0) − ∫ t 
+
+> 0
+
+f (V2(τ )) dτ for all t ∈ [0 , T max ). Consider the comparison system ˙ϕ := −f (ϕ), with ϕ(0) = V2(0) . Then, by [37, Proposition 2.3]), V2(t) ≤ ϕ(t) for all t ∈ [0 , T max ).For ϕ ∈ R>0, the settling time of the comparison system is T (ϕ(0)) = ∫ ϕ(0) 0 [d1ϕ(p1+1) /2 + d2ϕ(q1+1) /2]−1dϕ . Since 
+
+0 < p 1 < 1 < q 1, this integral is bounded independently of ϕ(0) by 
+
+T (ϕ(0)) ≤ Tr = 2
+
+d1(1 − p1) + 2
+
+d2(q1 − 1) .
+
+Hence, ϕ(t) = 0 for all t ≥ Tr . Since 0 ≤ V2(t) ≤ ϕ(t), it follows that V2(t) = 0 , and consequently S(t) = 0, for all 
+
+t ≥ Tr on the maximal interval of existence. Therefore, the sliding variable reaches the manifold S = 0 in fixed time, with Tr , provided the solution exists up to Tr . It remains to show that Tmax = + ∞. This is established in items (ii) and (iii) below. Once global existence is established, the fixed-time estimate above holds for all t ∈ R≥0.(ii) According to Lemma 3, for Re ∈ ∂top Me, either 
+
+tr( Re) = −1 or g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi = cos θi for exactly one index 
+
+i ∈ { 1, 2, . . . , n }. When tr( Re) = −1, we have skew( Re) = 
+
+0 and 1/√1 + tr( Re) → ∞ . Consequently, the geometric attitude error vector er , and hence grad Ψ x(Re) in (6), is undefined at this boundary. Moreover, at an obstacle boundary satisfying g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi = cos θi, the repulsive po-tential Ψy (Re) tends to −∞ , and consequently Ψ( Re) →
+
++∞. Let BS := 12
+
+(‖S‖2 − ρ2). As intially Ψ( Re(0)) <
+
+Ψmax < ∞, it implies h = Ψ max −Ψ( Re(0)) > 0. Moreover, 
+
+λ can be selected such that BS (0) ≤ 0. Substituting eω
+
+from (13) into (18) yields ˙Ψ ≤ r‖S‖ − β1rp+1 − β2rq+1 ,where r = ‖er ‖. For BS ≤ 0, we have ‖S‖ ≤ ρ, and hence 
+
+˙Ψ ≤ rρ − β1rp+1 − β2rq+1 = λrh/ (√r2 + ε2) ≤ λh. 
+
+Thus, ˙h ≥ − λh , which implies h(t) ≥ h(0) e−λt > 0.Hence, Ψ( Re(t)) < Ψmax whenever BS ≤ 0. It remains to establish the forward invariance of BS ≤ 0. Along the Filippov solutions of the S, we get 
+
+˙BS ≤ − β3‖S‖p1+1 − β4‖S‖q1+1 − (γ − ¯τd)‖S‖ − ρ ˙ρ. 
+
+Since γ − ¯τd = [ −ρ ˙ρ]+/ρ , we obtain 
+
+˙BS ≤ − β3‖S‖p1+1 − β4‖S‖q1+1 − (‖S‖/ρ )[ −ρ ˙ρ]+ − ρ ˙ρ. 
+
+On the boundary BS = 0, ‖S‖ = ρ. Using the fact that [−x]+ + x ≥ 0, it follows that ˙BS ≤ − β3‖S‖p1+1 −
+
+β4‖S‖q1+1 ≤ 0 on BS = 0 . Hence, the vector field does not point outward through the boundary, and BS ≤ 0 is for-ward invariant. Combining this result with ˙h ≥ − λh yields 
+
+Ψ( Re(t)) ≤ Ψmax − h(0) e−λt < Ψmax for all t ∈ [0 , T max ).Hence, the level set Ωc := {Re ∈ int( Me) : Ψ( Re) ≤
+
+Ψmax } is forward invariant. Therefore, trajectories starting in Ωc remain in Ωc for all t ∈ [0 , T max ), and hence 
+
+Re(t) ∈ int( Me) for all t ∈ [0 , T max ), establishing positive invariance of int( Me). To prove maximality, suppose there exists a positively invariant set P ⊋ int( Me). Then P
+
+must contain some point R∗ 
+
+> e
+
+/∈ int( Me). At any such point, either Ψ( R∗ 
+
+> e
+
+) = ∞ or grad Ψ( R∗ 
+
+> e
+
+) is undefined, so the closed-loop vector field is not defined at R∗ 
+
+> e
+
+. This contradicts the assumption that P is a valid positively invariant set of the closed-loop system. Hence, no such 
+
+P exists, and int( Me) is the largest positively invariant subset of SO(3) on which the closed-loop dynamics are well defined. By Lemma 2, the mapping Re 7 → R is a diffeomorphism that preserves the closed-loop flow and maps int( Me) bijectively onto int( M). Therefore, positive invariance and maximality of int( Me) carry over directly to int( M), which is the largest positively invariant subset of SO(3) under the closed-loop system. (iii) The attitude error vector can also be expressed as er = (skew(grad Ψ( Re))) ∨ in the sliding variable S.Consequently, eω is always representable as a continuous function of (S, er ), irrespective of whether S = 0 or S 6 = 0 .Substituting this expression for eω into the kinematics 
+
+˙Re = Ree× 
+
+> ω
+
+, ensures that ˙Re ∈ TRe SO(3) throughout both the reaching and sliding phases. The set int( M) has been established as the largest positively invariant subset of SO(3) under the closed-loop dynamics. Consequently, if 
+
+R(0) ∈ int( M), then R(t) ∈ int( M) for all t ∈ [0 , T max ).Suppose now, for contradiction, that Tmax < ∞. The rotational dynamics in (3) define a smooth vector field on 
+
+R3 for the proposed control torque τ , guaranteeing that 
+
+eω (t) or ω(t) remains bounded in R3 for all t ∈ [0 , T max ).Hence, no finite escape of the closed-loop state can occur in this maximal interval. Consequently, (Re(t), eω (t)) 
+
+remains in a compact subset of int( M) × R3 as t → T −
+
+> max
+
+.Since F is locally bounded and upper semicontinuous on this domain, the local existence theorem can be applied to extend the solution beyond Tmax . This contradicts the maximality of Tmax . Hence, Tmax = + ∞. Thus, the Filippov solution exists for all t ∈ R≥0. Therefore, for every initial condition (R(0) , ω(0)) ∈ int( M) × R3, the proposed closed-loop system admits a Filippov solution defined for all t ∈ R≥0. Moreover, the corresponding trajectory remains in int( M) × R3 for all t ∈ R≥0,thereby ensuring that the attitude pointing constraints are satisfied at all times. (iv) It follows from the above that S(t) = 0 for all t ≥ Tr .Moreover, Theorem 2 implies that (Re(t), eω (t)) ∈ E
+
+for all t ≥ Ts, where (I3×3, 0) ∈ int( E). Therefore, the error trajectory (Re(·), eω (·)) enters the sufficiently small compact neighborhood E of (I3×3, 0) within the fixed time 
+
+T = Ts + Tr . Therefore, the set E is almost-globally fixed-time attractive on (int( Me) ∪ L ) × R3. Subsequently, the closed-loop error state trajectory converges to (I3×3, 0).12 
+
+This completes the proof. Remark 3: The parameter δ ∈ R>0 specifies the min-imum clearance from the constraint boundary. For aprescribed safety margin ∆θsafe > 0, selecting δ =cos θi − cos( θi + ∆ θsafe ) ensures ϕi ≥ θi + ∆ θsafe , where 
+
+ϕi = cos −1(g⊤ 
+
+> d
+
+R⊤ 
+
+> e
+
+yi) is the angular separation between 
+
+Regd and the forbidden direction yi. Increasing δ im-proves barrier conditioning and safety clearance, whereas decreasing δ permits closer operation at the cost of larger barrier gradients and control gains. 
+
+V. R ESULTS AND DISCUSSIONS 
+
+Numerical simulations are presented in this section to evaluate the efficacy of the proposed fixed-time ge-ometric sliding mode control approach for spacecraft attitude control subject to multiple attitude point-ing constraints. The inertia matrix of the space-craft is chosen as I = diag (250 , 400 , 300) (kg · m2). The external disturbance torque is considered as 
+
+τ d(t) = [0 .5 sin( πt/ 5) 0.5 cos( πt/ 10) 0.5 sin( πt/ 20)] ⊤
+
+(N · m). Without loss of generality, we assume that the sensitive instrument is mounted in such a way that its normalized boresight vector is aligned with the body-fixed xb axis of the frame FB = {xb, yb, zb}, i.e., gd =
+
+xb = [1 0 0] ⊤. The effectiveness of the proposed control law is evaluated through the following two numerical examples: Example 1: In this example, only one forbidden zone is considered, with the unit vector along the forbidden direction being chosen as y′ 
+
+> 1
+
+= [0 .9276 0.3736 0] ⊤ in 
+
+FN frame. The minimum allowable angle between Rg d
+
+and y′ 
+
+> 1
+
+is chosen as θ1 = 12 ◦. The initial attitude and angular velocity of the spacecraft are chosen as 
+
+R(0) = exp ((π/ 3) e×
+
+> 3
+
+) and ω(0) = [0 .01 0.01 0.01] ⊤
+
+(rad /s), respectively, where e3 = [0 0 1] ⊤. The desired attitude and angular velocity are chosen as Rd = I3×3
+
+and ωd = [0 0 0] ⊤, respectively. Figure 1 illustrates the spacecraft attitude maneuver trajectories under both the constraint-free and constrained simulations. Figure 1(c) illustrates the attitude evolution trajectorries in the absence of constraint, while Fig. 1(a) shows the corresponding motion when geometric attitude constraint is enforced. The shaded cone represents the forbidden pointing zone, within which the body-fixed sensor axis, i.e., gd = xb = [1 0 0] ⊤ is not allowed to enter. In the unconstrained case, the attitude trajectory follows the shortest rotation path to the desired attitude. As a result, the path intersects to the interior of the exclusion cones, since no mechanism prevents the spacecraft from pointing temporarily through these regions. In contrast, the constrained trajectory remains entirely outside the forbidden cones. As the motion approaches a constraint boundary, the controller alters the direction of rotation and steers the attitude around the restricted region before continuing towards the target. This produces a visibly curved and elongated trajectory on the manifold compared with the unconstrained case. Nevertheless, both trajecto-ries eventually reach the same final desired attitude. The plots, therefore, highlight the main effect of the attitude pointing constraint, namely that it reshapes the feasible attitude path by avoiding the exclusion zones while still preserving the final tracking objective. Figure 1(b) illustrates the time history of tr( Re). Since 
+
+tr( Re) = 3 corresponds to perfect attitude alignment, both cases ultimately converge to the same terminal value, confirming fixed-time attitude tracking. However, the transient responses differ significantly. In the un-constrained case, the trace increases gradually, following the shortest rotation path to the desired attitude. When attitude constraints are imposed, the trace rises much more rapidly in the initial phase, but then briefly sat-urates as the controller modifies the rotation to avoid the forbidden region before completing convergence. This behavior indicates that the constrained controller does not always allow direct geodesic motion on SO(3) ; but instead, it enforces a detour that respects the exclusion geometry. Figure 1(e) presents the corresponding configuration error functions. The unconstrained case uses the standard at-titude error potential Ψx, which decreases monotonically as the system follows the shortest feasible path to the equilibrium. In contrast, the constrained case employs a modified potential function Ψ that incorporates the geometric forbidden zone. Initially, Ψ takes a larger value, and its decay is steeper as the controller rapidly drives the state away from the boundary of the exclusion cone. Near the constraint boundary, the rate of decrease temporarily slows, indicating that the controller prioritizes constraint satisfaction before continuing the descent toward the minimum. Ultimately, both error functions converge to zero, showing that constraint enforcement mainly affects the transient evolution of the configuration error while preserving the same desired attitude and guaranteeing stability of the closed-loop attitude control system. The time histories of the angular velocity error vector (eω ) and the control torque vector (τ ) for both the constrained and unconstrained cases are shown in Figs. 1(d) and 1(f), respectively. In the absence of attitude constraints, the angular-velocity errors converge smoothly to zero along a direct rotation path, resulting in small overshoot and modest control effort. In contrast, when attitude constraints are enforced, larger transient de-viations are observed. These excursions arise because the controller modifies the rotation trajectory to remain within the admissible attitude region before completing the maneuver. Consequently, the settling time increases slightly and the angular-velocity profiles exhibit secondary oscillations associated with constraint-avoidance maneu-vers. A similar behavior is observed in the control torques. The unconstrained case generates smooth commands with relatively small magnitudes, whereas the constrained case requires larger peak torques and several corrective actions when the trajectory is steered away from restricted orien-tations. Despite these transient differences, both strategies ultimately drive the tracking error to zero, demonstrating that constraint enforcement primarily affects the transient dynamics and control effort rather than the steady-state 13 0 10 20 30 40                                    
+
+> time (s) (b)
+> 1.8 22.2 2.4 2.6 2.8 3with constraints without constraints 010 20 30 40 0510
+> e x
+> 10 -3 with constraints without constraints 010 20 30 40 -0.02 00.02
+> e
+> y
+> 010 20 30 40
+> time (s) (d)
+> -0.06 -0.04 -0.02 0
+> e z010 20 30 40
+> time (s) (e)
+> 00.1 0.2 0.3 0.4 0.5 0.6
+> , xwith constraints ( )without constraints ( x)010 20 30 40 -2 -1 0xwith constraints without constraints 010 20 30 40 -4 -2 02y010 20 30 40
+> time (s) (f)
+> -20 -10 010 z
+
+# Fixed-Time Geometric Sliding Mode Control for Spacecraft Constrained Reorientation on SO(3) 
+
+Saumitra Barman, Shashi Ranjan Kumar, and Rohit Gupta 
+
+O1 xb = gd (initial) yb (initial) zb (initial) xb = gd (final) 
+
+yb (final) zb (final) Trajectory of xb and gd Trajectory of yb Trajectory of zb
+
+Fig. 1. Simulation results for Example 1: (a) and (c) Attitude orientation trajectories of the body-fixed frame FB = {xb, y b, z b} and the boresight vector gd, (b) Time response of tr( Re), (d) Time response of the angular velocity error vector eω := [ eωx eωy eωz ]⊤
+
+(rad /s), (e) Time responses of Ψ and Ψx, (f) Time response of the control input vector τ := [ τx τy τz ]⊤ (N · m). 
+
+performance. Example 2: In this example, three forbidden zones are prescribed. The unit vectors defining the corresponding forbidden directions are selected as y′ 
+
+> 1
+
+= [−0.7576 −0.5527 0.3473] ⊤,
+
+y′ 
+
+> 2
+
+= [−0.4134 −0.5731 0.7076] ⊤, and y′ 
+
+> 3
+
+=[−0.2603 −0.6040 −0.7533] ⊤, all expressed in the 
+
+FN frame. The minimum allowable angle between Rg d
+
+and y′ 
+
+> i
+
+are chosen as θi = 20 ◦ for all i ∈ {1, 2, 3}.The initial attitude and angular velocity of the spacecraft are chosen as R(0) = exp (3 .1180 e×) and 
+
+ω(0) = [0 .01 0.01 0.01] ⊤ (rad /s), respectively, where 
+
+e = [0 −0.4155 −0.8942] ⊤. The desired attitude and angular velocity are chosen as Rd = exp (0 .5e×) and 
+
+ωd = [0 0 0] ⊤, respectively. Figure 2(c) shows the attitude trajectory for the constraint-free case, while Fig. 2(a) presents the corresponding motion when attitude constraints are enforced; the shaded cones denote the forbidden pointing regions. As discussed in Example 1, the unconstrained motion follows the shortest rotation path and passes through regions inside or near the exclusion cones. In contrast, the proposed constrained controller modifies the trajectory so that it remains outside the forbidden regions in this example as well, despite the presence of multiple attitude-pointing constraints. As a result, the constrained path becomes slightly longer and more curved, yet the spacecraft still reaches the desired final attitude, showing that the constraints reshape only the transient motion without degrading the final tracking performance. Figures 2(b) and 2(e) show the evolution of the trace of the attitude error matrix and the configuration error functions for the constraint-free and constrained cases. In both cases, tr( Re) converges to 3, confirming that the desired attitude is achieved. However, the constrained trajectory exhibits a brief plateau as the controller detours around the forbidden pointing regions, whereas the un-constrained case follows a smoother, direct convergence. A similar trend is observed in the error functions: the unconstrained potential Ψx decreases monotonically along the shortest rotation path, while the constrained potential 
+
+Ψ drops rapidly at first and then decays more slowly near the constraint boundary. Ultimately, both error measures converge to zero, indicating that the constraints mainly influence the transient evolution while preserving the final attitude accuracy. Figures 2(d) and 2(f) show that the con-strained controller introduces larger transient overshoots in the angular velocity compared with the constraint-free case, although both eventually converge to zero. The corresponding control torques exhibit a similar behavior, where the constrained case experiences higher transient peaks as the controller adjusts the attitude to remain outside the forbidden regions. Despite these differences, the overall trends remain consistent with Example 1, and the final tracking performance is preserved. 14 0 10 20 30 40                                    
+
+> time (s) (b)
+> -1 0123with constraints without constraints 010 20 30 40 -0.06 -0.04 -0.02 0
+> e
+> x
+> with constraints without constraints 010 20 30 40 00.05 0.1
+> e y
+> 010 20 30 40
+> time (s) (d)
+> 00.1 0.2
+> e z010 20 30 40
+> time (s) (e)
+> 012345
+> , xwith constraints ( )without constraints ( x)010 20 30 40 -2 02xwith constraints without constraints 010 20 30 40 -10 010 y010 20 30 40
+> time (s) (f)
+> -10 010 20 30 z
+
+# Fixed-Time Geometric Sliding Mode Control for Spacecraft Constrained Reorientation on SO(3) 
+
+Saumitra Barman, Shashi Ranjan Kumar, and Rohit Gupta 
+
+O1, O2, O3 xb = gd (initial) yb (initial) zb (initial) xb = gd (final) 
+
+yb (final) zb (final) Trajectory of xb and gd Trajectory of yb Trajectory of zb
+
+Fig. 2. Simulation results for Example 2: (a) and (c) Attitude orientation trajectories of the body-fixed frame FB = {xb, y b, z b} and the boresight vector gd, (b) Time response of tr( Re), (d) Time response of the angular velocity error vector eω := [ eωx eωy eωz ]⊤
+
+(rad /s), (e) Time responses of Ψ and Ψx, (f) Time response of the control input vector τ := [ τx τy τz ]⊤ (N · m). 
+
+VI. C ONCLUSIONS 
+
+This paper developed an intrinsic geometric fixed-time control framework for constrained spacecraft attitude tracking on SO(3) in the presence of multiple attitude pointing constraints and matched external disturbances. An attitude potential function was constructed on SO(3) ,and its geometric properties, including the existence of a unique nondegenerate minimum and local strong convexity, were established using Riemannian analysis. Based on its Riemannian gradient, a nonsingular fixed-time geometric sliding manifold and the corresponding constrained attitude control law were developed. The closed-loop analysis established invariance of the ad-missible free space and guaranteed convergence of the state to a sufficiently small neighborhood of the desired equilibrium within a prescribed fixed time while satisfying the pointing constraints. Numerical simulations validated the theoretical results and demonstrated the effectiveness of the proposed approach. 
+
+REFERENCES 
+
+[1] G. Singh, G. Macala, E. Wong, R. Rasmussen, G. Singh, G. Macala, E. Wong, and R. Rasmussen, “A constraint monitor algorithm for the cassini spacecraft,” in Guidance, Navigation, and Control Conference, 1997, p. 3526. [2] H. B. Hablani, “Attitude commands avoiding bright objects and maintaining communication with ground station,” Journal of Guidance, Control, and Dynamics, vol. 22, no. 6, pp. 759–767, 1999. [3] J. D. Biggs and L. Colley, “Geometric attitude motion planning for spacecraft with pointing and actuator constraints,” Journal of Guidance, Control, and Dynamics, vol. 39, no. 7, pp. 1672– 1677, 2016. [4] E. Feron, M. Dahleh, E. Frazzoli, and R. Kornfeld, “A random-ized attitude slew planning algorithm for autonomous space-craft,” in Guidance, Navigation, and Control Conference, 2012, p. 4155. [5] H. C. Kjellberg and E. G. Lightsey, “Discretized constrained attitude pathfinding and control for satellites,” Journal of Guidance, Control, and Dynamics, vol. 36, no. 5, pp. 1301–1309, 2013. [6] S. Tanygin, “Fast autonomous three-axis constrained attitude pathfinding and visualization for boresight alignment,” Journal of Guidance, Control, and Dynamics, vol. 40, no. 2, pp. 358–370, 2017. [7] R. Xu, H. Wang, W. Xu, P. Cui, and S. Zhu, “Rotational-path decomposition based recursive planning for spacecraft attitude reorientation,” Acta Astronautica, vol. 143, pp. 212–220, 2018. [8] F. Celani and D. Lucarelli, “Spacecraft attitude motion plan-ning using gradient-based optimization,” Journal of Guidance, Control, and Dynamics, vol. 43, no. 1, pp. 140–145, 2020. [9] C. R. Mclnnes, “Large angle slew maneuvers with autonomous sun vector avoidance,” Journal of guidance, control, and dy-namics, vol. 17, no. 4, pp. 875–877, 1994. [10] Q. Shen, C. Yue, and C. H. Goh, “Velocity-free attitude reorientation of a flexible spacecraft with attitude constraints,” Journal of Guidance, Control, and Dynamics, vol. 40, no. 5, pp. 1293–1299, 2017. [11] M. M. Nicotra, D. Liao-McPherson, L. Burlion, and I. V. Kolmanovsky, “Spacecraft attitude control with nonconvex constraints: An explicit reference governor approach,” IEEE 15 
+
+Transactions on Automatic Control, vol. 65, no. 8, pp. 3677– 3684, 2019. [12] U. Lee and M. Mesbahi, “Feedback control for spacecraft reorientation under attitude constraints via convex poten-tials,” IEEE Transactions on Aerospace and Electronic Systems, vol. 50, no. 4, pp. 2578–2592, 2014. [13] Y. Cheng, D. Ye, Z. Sun, and S. Zhang, “Spacecraft reorienta-tion control in presence of attitude constraint considering input saturation and stochastic disturbance,” Acta Astronautica, vol. 144, pp. 61–68, 2018. [14] Q. Shen, C. Yue, C. H. Goh, B. Wu, and D. Wang, “Rigid-body attitude stabilization with attitude and angular rate constraints,” Automatica, vol. 90, pp. 157–163, 2018. [15] J. Yang, Y. Duan, M. K. Ben-Larbi, and E. Stoll, “Potential field-based sliding surface design and its application in space-craft constrained reorientation,” Journal of Guidance, Control, and Dynamics, vol. 44, no. 2, pp. 399–409, 2021. [16] B. Li, T. Guan, X. Guan, K. Zhang, and K.-F. C. Yiu, “Optimal fixed-time sliding mode control for spacecraft constrained reori-entation,” IEEE Transactions on Automatic Control, vol. 69, no. 4, pp. 2676–2683, 2023. [17] M. Diaz Ramos and H. Schaub, “Kinematic steering law for con-ically constrained torque-limited spacecraft attitude control,” Journal of Guidance, Control, and Dynamics, vol. 41, no. 9, pp. 1990–2001, 2018. [18] V. Utkin, “Variable structure systems with sliding modes,” IEEE Transactions on Automatic control, vol. 22, no. 2, pp. 212–222, 2003. [19] S. P. Bhat and D. S. Bernstein, “Continuous finite-time stabi-lization of the translational and rotational double integrators,” IEEE Transactions on automatic control, vol. 43, no. 5, pp. 678–682, 2002. [20] A. Polyakov, “Nonlinear feedback design for fixed-time stabiliza-tion of linear control systems,” IEEE transactions on Automatic Control, vol. 57, no. 8, pp. 2106–2110, 2011. [21] H. Schaub, J. L. Junkins et al., “Stereographic orientation parameters for attitude dynamics: A generalization of the rodrigues parameters,” Journal of the Astronautical Sciences, vol. 44, no. 1, pp. 1–19, 1996. [22] C. G. Mayhew, R. G. Sanfelice, and A. R. Teel, “Quaternion-based hybrid control for robust global attitude tracking,” IEEE Transactions on Automatic control, vol. 56, no. 11, pp. 2555– 2566, 2011. [23] S. P. Bhat and D. S. Bernstein, “A topological obstruction to continuous global stabilization of rotational motion and the unwinding phenomenon,” Systems & control letters, vol. 39, no. 1, pp. 63–70, 2000. [24] N. A. Chaturvedi, A. K. Sanyal, and N. H. McClamroch, “Rigid-body attitude control,” IEEE control systems magazine, vol. 31, no. 3, pp. 30–51, 2011. [25] T. Lee, “Exponential stability of an attitude tracking control system on SO(3) for large-angle rotational maneuvers,” Systems & Control Letters, vol. 61, no. 1, pp. 231–237, 2012. [26] F. Bullo and R. M. Murray, “Tracking for fully actuated me-chanical systems: a geometric framework,” Automatica, vol. 35, no. 1, pp. 17–34, 1999. [27] D. S. Maithripala and J. M. Berg, “An intrinsic pid controller for mechanical systems on lie groups,” Automatica, vol. 54, pp. 189–200, 2015. [28] T. Lee, “Global exponential attitude tracking controls on SO(3),” IEEE Transactions on Automatic Control, vol. 60, no. 10, pp. 2837–2842, 2015. [29] D. S. Maithripala, J. M. Berg, and W. P. Dayawansa, “Almost-global tracking of simple mechanical systems on a general class of lie groups,” IEEE Transactions on Automatic Control, vol. 51, no. 2, pp. 216–225, 2006. [30] X.-N. Shi, Z.-G. Zhou, and D. Zhou, “Finite-time attitude tra-jectory tracking control of rigid spacecraft,” IEEE Transactions on Aerospace and Electronic Systems, vol. 53, no. 6, pp. 2913– 2923, 2017. [31] S. Barman and M. Sinha, “Almost global and singularity-free fixed-time sliding mode satellite attitude control: A geometric control framework,” IEEE Transactions on Aerospace and Elec-tronic Systems, vol. 61, no. 1, pp. 1135–1145, 2024. [32] S. Kulumani and T. Lee, “Constrained geometric attitude con-trol on SO(3),” International Journal of Control, Automation and Systems, vol. 15, no. 6, pp. 2796–2809, 2017. [33] X. Tan, S. Berkane, and D. V. Dimarogonas, “Constrained at-titude maneuvers on SO(3): Rotation space sampling, planning and low-level control,” Automatica, vol. 112, p. 108659, 2020. [34] D. Y. Lee, R. Gupta, U. V. Kalabić, S. Di Cairano, A. M. Bloch, J. W. Cutler, and I. V. Kolmanovsky, “Geometric mechanics based nonlinear model predictive spacecraft attitude control with reaction wheels,” Journal of Guidance, Control, and Dynamics, vol. 40, no. 2, pp. 309–319, 2017. [35] A. F. Filippov, Differential Equations with Discontinuous Righthand Sides, ser. Mathematics and its Applications. Springer Dordrecht, 1988, vol. 18. [36] J. M. Lee, Introduction to Smooth Manifolds, 2nd ed., ser. Graduate Texts in Mathematics. New York: Springer, 2012, vol. 218. [37] R. Matusik, A. Nowakowski, S. Plaskacz, and A. Rogowski, “Finite-time stability for differential inclusions with applica-tions to neural networks,” SIAM Journal on Control and Optimization, vol. 58, no. 5, pp. 2854–2870, 2020.

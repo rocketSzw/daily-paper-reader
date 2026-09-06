@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-05</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-06</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 4 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-05 22:21:46 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-06 21:53:39 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读4篇论文，聚焦自动驾驶世界模型与安全迁移，但均未精读。</p>
-<p>最值得看的两方向：几何观测下的行动条件JEPA世界模型，及端到端驾驶环视世界-动作模型SV-WAM。</p>
-<p>建议优先精读这两篇7分论文，重点核查其sim-to-real安全性验证与真实点云泛化能力。</p>
+<p>今日速读4篇论文，覆盖航天器姿态控制、机器人策略与无人机全景感知，但无精读深度分析。</p>
+<p>最值得关注的是SO(3)几何固定时间滑模控制（7.0分），解决约束姿态跟踪问题；其次为模块化潜在世界行动栈（6.0分），可压缩机器人策略规模。</p>
+<p>建议优先精读高分控制类论文，后续可补充实验对比与代码复现，验证其在实际约束场景中的鲁棒性。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -89,9 +89,9 @@
     <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Does Latent Planning Survive Point Clouds? Action-Conditioned JEPA World Models for Geometric Observations">Does Latent Planning Survive Point Clouds? Action-Conditioned JEPA World Models for Geometric Observations</span></li><li><span class="dpr-home-dashboard-paper-title" title="Provably Safe Sim-to-Real Transfer">Provably Safe Sim-to-Real Transfer</span></li><li><span class="dpr-home-dashboard-paper-title" title="SV-WAM: An Efficient Surround-View World-Action Model for End-to-End Autonomous Driving">SV-WAM: An Efficient Surround-View World-Action Model for End-to-End Autonomous Driving</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$">Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$</span></li><li><span class="dpr-home-dashboard-paper-title" title="AcrossWAM1.0:A Modular Latent World-Action Stack for Compact Robot Policies">AcrossWAM1.0:A Modular Latent World-Action Stack for Compact Robot Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Multi-Fisheye Sensing to Panoramic Perception: A Parallax-Aware Onboard Platform for Ultra-Low-Altitude UAVs">From Multi-Fisheye Sensing to Panoramic Perception: A Parallax-Aware Onboard Platform for Ultra-Low-Altitude UAVs</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 
