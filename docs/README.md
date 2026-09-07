@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-06</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-07</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 5 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-06 21:53:39 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-07 22:28:10 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读4篇论文，覆盖航天器姿态控制、机器人策略与无人机全景感知，但无精读深度分析。</p>
-<p>最值得关注的是SO(3)几何固定时间滑模控制（7.0分），解决约束姿态跟踪问题；其次为模块化潜在世界行动栈（6.0分），可压缩机器人策略规模。</p>
-<p>建议优先精读高分控制类论文，后续可补充实验对比与代码复现，验证其在实际约束场景中的鲁棒性。</p>
+<p>今日精读+速读共5篇论文，聚焦四旋翼与航天器控制，核心在递归神经网络与Koopman模型预测控制。</p>
+<p>最值得关注的是精读的模块化深度递归神经网络（9.0分），其高效逼近能力适用于四旋翼动态估计；速读中的Koopman鲁棒MPC（7.0分）也值得延伸。</p>
+<p>建议先复现精读模型的轨迹预测效果，再对比Koopman方法在不确定环境下的鲁棒性差异。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Modular Deep Recurrent Neural Network: Application to Quadrotors">Modular Deep Recurrent Neural Network: Application to Quadrotors</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -89,9 +89,9 @@
     <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$">Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$</span></li><li><span class="dpr-home-dashboard-paper-title" title="AcrossWAM1.0:A Modular Latent World-Action Stack for Compact Robot Policies">AcrossWAM1.0:A Modular Latent World-Action Stack for Compact Robot Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Multi-Fisheye Sensing to Panoramic Perception: A Parallax-Aware Onboard Platform for Ultra-Low-Altitude UAVs">From Multi-Fisheye Sensing to Panoramic Perception: A Parallax-Aware Onboard Platform for Ultra-Low-Altitude UAVs</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Koopman-Based Robust Model Predictive Control for Nonlinear Systems with Stochastic Intermittent Measurements">Koopman-Based Robust Model Predictive Control for Nonlinear Systems with Stochastic Intermittent Measurements</span></li><li><span class="dpr-home-dashboard-paper-title" title="Policy Iteration for Domain Randomized Linear Quadratic Systems">Policy Iteration for Domain Randomized Linear Quadratic Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="Physics-based Online Adaptive Koopman Model Predictive Attitude Control for Combined Spacecraft with Dynamic Uncertainties">Physics-based Online Adaptive Koopman Model Predictive Attitude Control for Combined Spacecraft with Dynamic Uncertainties</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
 </section>
 </div>
 
