@@ -1,0 +1,470 @@
+Title: FALCON-S: Fixed-wing ground-effect Aerodynamics Simulator and Flight Control Learning Suite
+
+URL Source: https://arxiv.org/pdf/2609.06046v1
+
+Published Time: Wed, 09 Sep 2026 00:51:14 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+> 1
+
+# FALCON-S: Fixed-wing ground-effect Aerodynamics Simulator and Flight Control Learning Suite 
+
+Matteo El Hariry 1 Pedro Lima 1 Andrej Orsula 1 Matthieu Geist 2 Miguel Olivares-Mendez 1,
+
+Abstract —We present a modular, high-fidelity simulation framework for the development and benchmarking of flight control strategies in fixed-wing aerial robots operating near the ground. Unlike existing simulators that rely on simplified or hover-oriented dynamics, our framework models full 6DoF rigid-body physics, semi-empirical ground-effect aerodynamics, actuator dynamics, sensor noise, and environmental disturbances. This physical realism, combined with modular component de-sign, enables systematic analysis of low-altitude flight behavior under realistic conditions. The simulator supports both CPU and GPU backends via Torch and NVIDIA Warp, enabling high-throughput parallel execution suitable for large-scale re-inforcement learning training and optimal control rollouts. A unified interface accommodates a range of controllers (both RL and optical control algorithms) across tasks such as altitude regulation and trajectory tracking. Cross-validation with X-Plane and JSBSim is also supported to facilitate engineering integration and visual fidelity. 
+
+Index Terms —Robot Learning, Flight Control, Reinforcement Learning, Autonomous Navigation, Control and Dynamics, Mod-eling and Simulation, Wind In Ground Vehicles. 
+
+I. I NTRODUCTION 
+
+The design of autonomous control systems for aerial ve-hicles has increasingly relied on simulation as a primary development and evaluation tool. Across robotics, advances in optimal control, sampling-based methods, and reinforcement learning (RL) have enabled increasingly capable controllers for complex platforms, including quadrotors [1], fixed-wing UAVs [2, 3], satellites [4], and legged robots [5]. Despite this progress, deploying autonomous controllers on aerial vehicles, particularly in low-altitude and near-ground regimes, remains challenging due to discrepancies between simplified simulation models and the physical effects encountered in real flight, such as actuator dynamics, sensing imperfections, and aerodynamic interactions with the environment. Existing simulation environments, including JSBSim [6], X-Plane [7], and Flightmare [8], offer valuable capabilities but are typi-cally optimized for specific use cases. High-fidelity simula-tors emphasize realism and pilot training but are difficult to scale for large-scale algorithmic evaluation, while learning-oriented simulators often prioritize throughput at the expense of aerodynamic fidelity and sub-system level realism. As a result, key phenomena relevant to aerial robotics, such as ground effect, realistic actuator, sensor behavior, and con-trolled variation of physical assumptions, are often difficult to    
+
+> 1Interdisciplinary Centre for Security, Reliability and Trust (SnT), Univer-sity of Luxembourg, L-1855 Luxembourg (e-mail: {matteo.elhariry@uni.lu).
+> 2Earth Speacies Project. This work was supported by the European Union under Grant Agreement No. 101096487. Code will be released upon publication.
+
+Fig. 1: Airship flying in ground effect, rendered in X-Plane. study systematically within a unified framework. This limits the ability to benchmark autonomous flight controllers across different modeling assumptions, task complexities, and control paradigms. In this work, we introduce a modular, physics-grounded simulation benchmark for fixed-wing aerial vehicles, designed to support systematic evaluation of autonomous control meth-ods under realistic low-altitude flight conditions. The bench-mark emphasizes ground-effect aerodynamics, actuator and sensor realism, and full 6DoF dynamics, while remaining compatible with both model-based and learning-based control approaches. Our simulator provides: (1) Scalable multi-backend simulation engine: We imple-ment a GPU-accelerated physics pipeline using NVIDIA Warp [9], alongside a pure-PyTorch implementation of the same dy-namics (validated to single-step numerical parity) and a CPU-compatible fallback, enabling high-throughput simulation for both learning-based and classical control methods. The Warp backend sustains 19 .5 million environment-steps per second at 16 ,384 parallel environments corresponding to a measured 
+
+13 .4× speed-up w.r.t. the current state-of-the-art [10]. (2) Modular architecture for control and benchmarking: 
+
+The framework supports both reinforcement learning and optimal control methods, and includes a library of physically grounded flight tasks (e.g., altitude regulation, trajectory track-ing, attitude-command tracking) defined over five identified airframes, that can be easily extended or modified. (3) Comprehensive physics modeling: Our simulation core incorporates aerodynamic models automatically pre-derived from the aircraft’s geometry, and accounts for ground effect, wind, and atmospheric density, along with configurable sensor and actuator dynamics to support high-fidelity experiments. (4) Cross-platform validation interfaces: We provide vali-dation capabilities with JSBSim, and X-Plane (for closed-loop testing with high-fidelity rendering), broadening applicability across academic and industrial settings. arXiv:2609.06046v1 [cs.RO] 5 Sep 2026 2
+
+TABLE I: Comparison with existing aircraft simulation frameworks. Our platform combines near-ground aerodynamics, modular tasks, advanced controllers, rich sensor and actuator models. [ ✓] full, [*] partial/optional, [–] not supported.                                                        
+
+> Feature Ours NeuralPlane QPlane JSBSim XPlane Open-source ✓✓✓✓–
+> Physics-based FDM ✓(WIG, 6DoF) ✓(fixed-wing only) ✓(JSBSim/XPlane) ✓✓
+> Ground Effect Model ✓(semi-empirical) –* (depends on JSBSim) *✓
+> GPU Acceleration ✓(Warp) ✓(PyTorch) –––
+> Multi-agent Support –✓✓** (via UDP)
+> Multiple Flight Tasks ✓✓✓**
+> Controller Support ✓✓✓**
+> Realism High Medium High (JSBSim/XPlane) High High
+> Visualization Tools ✓* (via FlightGear/Tacview) * (via XPlane/FlightGear) * (via FlightGear) ✓
+> Sim-to-Real Enabling ***✓✓
+
+II. R ELATED WORK 
+
+Simulation of fixed-wing flight dynamics. Simulators such as JSBSim [6], FlightGear [11], and X-Plane [7] have long supported fixed-wing aircraft modeling, but are primarily de-signed for pilot training or certification, and lack native support for reinforcement learning or scalable training. Recent research platforms such as QPlane [12] and NeuralPlane [10] address this limitation by exposing lightweight and configurable inter-faces suitable for policy learning: QPlane wraps X-Plane and JSBSim for Gym-based RL experiments, while NeuralPlane introduces a parallel GPU-based pipeline for efficient large-scale simulation. However, these frameworks either simplify the flight dynamics, omitting ground-effect modeling, sensor and actuator fidelity, and environmental realism, or, in the case of QPlane, cannot efficiently execute multiple simulation environments in parallel. 
+
+Accelerated simulators and learning environments. GPU-accelerated simulators such as IsaacGym [13] and Warp-Drive [14] have become central to robotics research, but few target flight vehicles. Platforms like AirSim [15], RotorS [16], and Flightmare [8] (GPU-accelerated via Unity [17]) have ad-vanced learning-based control for multirotors, yet fixed-wing benchmarks remain scarce due to the complexity of forward-flight dynamics, non-holonomic constraints, and sensitivity to external disturbances [1]. Our Warp-based simulator provides domain-specific GPU acceleration for fixed-wing vehicles with detailed aerodynamics, supporting large-scale training without compromising physical realism. 
+
+Reinforcement learning for fixed-wing flight control. RL has been applied to fixed-wing attitude and altitude control with PPO [2] and DDPG-family methods [18, 19, 20, 21], including recent sim-to-real demonstrations via dynamic ran-domization and control-rate reward shaping [22]. A recent survey of the field [23] identifies two open problems di-rectly motivating this work: the absence of standardization as simulators, airframes, state–action spaces, and metrics differ across papers, making results incomparable, and the fact that most learned controllers never leave simulation. Moreover, existing studies target conventional airframes in free air; none address the near-ground regime where ground effect alters the vehicle dynamics. Our benchmark provides a common, physically grounded evaluation setting for these methods, spanning multiple airframes, tasks, and both on- and off-policy algorithms. 
+
+Unified benchmarking of classical and learned control. 
+
+There is increasing interest in combining optimal control with reinforcement learning [24, 25], yet direct comparisons under identical dynamics remain rare. Table I situates our simulator against widely used frameworks [10, 12, 6, 7]: while these platforms offer high-fidelity dynamics, industry-grade validation, or large-scale parallelism, key phenomena for near-ground autonomous flight such as explicit ground-effect aerodynamics, realistic actuator and sensor model-ing, controlled disturbance injection, and systematic varia-tion of physical assumptions, are difficult to study within a single extensible framework. Our work provides a fully open benchmark combining 6DoF dynamics, semi-empirical ground-effect corrections, actuator and sensor dynamics, wind turbulence, atmospheric effects, and OpenVSP-derived [26] aerodynamic coefficients, with scalable CPU/GPU execution supporting classical baselines (LQR, MPPI) and learning-based policies under consistent, configurable conditions. III. P RELIMINARIES 
+
+We consider the control of a rigid fixed-wing vehicle flying in proximity to the ground, modeled as a six-degrees-of-freedom (6DoF) system with coupled translational and rota-tional dynamics. The vehicle is subject to forces from gravity, aerodynamics, and propulsion, and its motion is described in the body frame. The state vector x ∈ R9 × S 3 (or x ∈ R12 )comprises the position p ∈ R3, orientation (represented as a unit quaternion q ∈ S 3 = {q ∈ H : || q|| = 1 } or Euler angles (ϕ, θ, ψ ) ∈ R3), linear velocity v ∈ R3, and angular velocity ω ∈ R3. Control inputs include throttle and actuator deflections for the elevator, rudder, and ailerons. The equations of motion follow Newton-Euler rigid body dynamics: 
+
+m ˙v = Fg + Fa + Ft − ω × mv, (1) 
+
+J ˙ω = τ a + τ t − ω × Jω, (2) where m is the vehicle mass, J is the inertia tensor, Fg is the gravitational force, Fa and τ a are aerodynamic forces and moments, and Ft and τ t are thrust-generated force and moment vectors. We assume constant mass and neglect gyroscopic effects. Each vehicle is modeled as a rigid body with a body-fixed frame {b} rigidly attached at the centre of mass, and motion is described relative to an inertial north– east–down (NED) frame {I}.3
+
+Fig. 2: Ground-effect fixed-wing simulation architecture. The modular environment models aerodynamics, actuators, ground effect, turbulence, and sensors, while the agent module supports classical and learning-based controllers. Tasks, metrics, and visualization enable extensible benchmarking and training. 
+
+A. Aerodynamic Model 
+
+Aerodynamic forces and moments are computed using semi-empirical models based on the vehicle’s angle of attack α,sideslip β, Reynolds number Re and control surface deflec-tions. The forces and moments take the form: 
+
+Faero = qS 
+
+
+
+−CD
+
+CY
+
+−CL
+
+ , Maero = qS 
+
+
+
+bC l
+
+cC m
+
+bC n
+
+ , (3) where q = 12 ρV 2 
+
+> a
+
+is the dynamic pressure, S is the reference wing area, b and c are the wingspan and chord, and Ci are the aerodynamic coefficients dependent on angle of attack α,sideslip β, and control surfaces δa (ailerons), δe (elevator) and 
+
+δr (rudder). Lift, drag, and side force coefficients are computed from look-up tables or parametric expressions derived from geometric tools such as OpenVSP [26]. 
+
+B. Ground Effect Model 
+
+Our simulator models ground effect, which alters the lift and drag characteristics of the vehicle when flying close to the surface, through the semi-empirical lifting-line corrections of [27]: 
+
+CL = C∞ 
+
+> L
+
+(1 + μL(h/b )) , (4) 
+
+CD = C∞ 
+
+> D
+
+(1 − μD (h/b )) (1 + μL(h/b )) 2 , (5) where C∞ 
+
+> L
+
+, C∞ 
+
+> D
+
+denote the out-of-ground-effect coefficients and μL, μ D are modifiers parameterized by the height-over-span ratio h/b , taper ratio, and aspect ratio (full parameteriza-tion in the open-source repository). The closed-form structure is directly compatible with GPU kernel execution (no panel-method or CFD computation) while capturing the key physical trends of increased lift and reduced induced drag in ground proximity. The correction can be toggled per environment, enabling the controlled ground-effect ablations of Section V-E. Overall, the simulator produces time-continuous dynamics discretized via a configurable integration scheme (e.g., Euler or RK4), exposed through a modular interface with both CPU and GPU implementations, and forming the basis for the environments used to train classical and learning-based controllers. IV. G ROUND -E FFECT FIXED -W ING FLIGHT SIMULATION 
+
+FRAMEWORK 
+
+Our simulation platform, as illustrated in Fig. 2, consists of two primary modules: the agent and the environment . The first module hosts the controllers together with the training and evaluation pipelines that execute them on CPU or GPU. The environment module integrates a high-fidelity 6DoF flight model with realistic actuator dynamics, sensor imperfections, wind turbulence (Dryden), and optional ground effect model-ing, exposed through three interchangeable physics backends (SciPy, PyTorch, and NVIDIA Warp). Both modules are configured via a modular system in which each physical phe-nomenon can be independently toggled, supporting controlled ablation studies across tasks and airframes. 
+
+A. Agent Module 
+
+The agent module supports different control models, includ-ing classical approaches such as Linear Quadratic Regulator (LQR) and Model Predictive Path Integral (MPPI) [28], as well as modern learning-based control policies derived from methods such as PPO [29], SAC [30], and TD3 [31]. These controllers can be executed on either CPU or GPU for both evaluation and large-scale training, enabling both quick de-bugging of simulated flight conditions and heavy-duty batched experiments, where millions of trajectories can be collected to train and evaluate control performance. 
+
+LQR with Integral action : The LQR controller is imple-mented in closed form using discrete-time linearization of the vehicle dynamics around a steady trim condition. The gain matrix K is precomputed using the Riccati equation solution, and the resulting control law u = −Kx is applied 4
+
+at each simulation step. The linearization matrices (A, B )
+
+are precomputed and approximated using numerical Jacobians based on the simulator’s physics model. For LQRI (LQR with integral action) the state vector is augmented with integrator states (e.g., integrated altitude error) before forming (Ad, B d)
+
+and solving the Riccati equation. The controller was tuned using state and input weighting matrices selected to balance tracking accuracy and control effort. The state weighting matrix QLQR , the complete state-feedback gain matrix and the way they have been devised and tuned are provided in details on the open-sourced repository. Since the approach requires a stabilizable linearization about trim, its applicability is airframe-dependent (see Section V). 
+
+MPPI : The Model Predictive Path Integral controller fol-lows a sampling-based trajectory optimization approach. At each control step, the algorithm samples multiple control sequences from a Gaussian distribution centred on the pre-vious action sequence, propagates each action through the dynamics model, and computes an optimal control output from the weighted average of trajectories based on their cumula-tive cost. The implementation supports GPU-based sampling for parallelized inference, using a Warp backend. The cost function is task-specific and includes weighted penalties on tracking error, control effort, and constraint violations. 
+
+Gymnasium interface : The environment exposes a compliant Gymnasium [32] interface through the 
+
+CoreAircraftEnv class and its wrappers. It supports 
+
+reset() , step(action) , and render() methods, and optionally includes info dictionaries with task-specific diagnostics. Observations are exposed as flat NumPy arrays and can be extended with sensor noise or delays via wrapper classes. The action space is continuous (bounded) and directly maps to control surface deflections and throttle values. For high-performance training and evaluation, parallelized variants of the environment are available through the Warp and Torch backends. These wrappers implement the same Gym API but execute dynamics in batched form on GPU, leveraging kernel-level integration and the GPU memory model. 
+
+RL algorithms : We provide vectorized re-implementations of PPO, SAC and TD3 in the style of CleanRL [33], operating directly on the batched GPU environments; the Gymnasium-compliant CPU environment additionally remains compatible with off-the-shelf libraries such as Stable-Baselines3. GPU acceleration is used for both training and evaluation. 
+
+B. Environment Module 
+
+Our environment module supports multiple simulation back-ends and interoperation with external tools, allowing flexibil-ity in simulation fidelity, performance, and controller design workflows. Specifically, we offer three physics backends in Python: one based on SciPy’s numerical integration for eas-ier prototyping, a pure-PyTorch implementation of the same dynamics for GPU execution within standard deep-learning tooling, and one leveraging Warp [9] for large-scale GPU-accelerated simulation. The PyTorch and Warp backends are validated to single-step numerical parity. This multi-backend setup enables practitioners to prototype quickly in Python and validate or deploy controllers using industry-standard tools when necessary. 
+
+Core Physics : The environment simulates full six-degree-of-freedom (6DoF) rigid-body aircraft dynamics, focusing on low-altitude scenarios where physical effects such as ground proximity and turbulence dominate. The physics module is structured around five interconnected components: 
+
+Aerodynamics : Uses precomputed aerodynamic coefficients from OpenVSP. Aerodynamic forces and moments are ad-justed dynamically based on airspeed, angle of attack, sideslip angle, height above ground and control surface deflection. Ground effect corrections are applied using the semi-empirical model described in Section III-B. 
+
+Actuators : Modular design allows the definition of an arbi-trary number and type of motors and control surfaces. Actu-ator systems are modeled as first- or second-order dynamics with configurable time constants and damping ratios, so that latency, saturation, and bandwidth-limited slew behaviour are reproduced: 
+
+H(s) = ω2
+
+> n
+
+s2 + 2 ζω ns + ω2
+
+> n
+
+, (2nd-order) , (6) or 
+
+H(s) = 1
+
+τ s + 1 , (1st-order) , (7) where ωn is the natural frequency, ζ the damping ratio, and 
+
+τ the time constant. Servo-driven aerodynamic surfaces use the second-order form ( ωn = 10 rad/s, ζ = 1 /√2), while propulsion uses the first-order form, with the time constant set by the powerplant class. The commanded input is clipped to 
+
+[−1, 1] , affinely scaled to the physical range, and the integrated state is saturated at the configured deflection and throttle limits (e.g. ±20 ◦ elevator, ±15 ◦ ailerons and rudder, throttle 
+
+∈ [0 , 1] ); both explicit Euler and RK45 integration of the ac-tuator states are supported, and the same equations are shared by the CPU reference and GPU-batched backends. Thrust follows propeller momentum theory, T = 12 ρS pCpVd(Vd −Va)
+
+with slipstream velocity Vd = Va + δt(km − Va), whose constants are identified per airframe: from motor/propeller data for the electric platforms, and from rated shaft power and propeller geometry (static momentum-disk thrust plus power-available cruise thrust) for the piston-engine general-aviation airframes. Powerplant class therefore enters the model both through this identification and through the throttle lag: electric motors respond fast ( τ = 0 .2 s), whereas piston engines are markedly slower ( τ = 3 s), which is the dominant throttle-loop latency for those aircraft. This modeling approach is commonly adopted in aircraft simulation studies [34]. The framework is implemented in a modular, factory-registered manner, so alternative propulsion systems (e.g. turbofans) can be added with minimal structural changes. Asymmetric thrust configurations are supported: per-motor throttle states, mount-ing positions, and rotation directions produce differential yaw and roll moments through r × F and the propeller torque reaction, and can be exploited for control. 
+
+Environmental Effects : Constant wind, Dryden turbulence [35], and International Standard Atmosphere density gradients [36] (ISO 2533 troposphere, equivalent to the 1976 U.S. 5
+
+Standard Atmosphere below 11 km) are injected into the dy-namics, enabling robustness testing under realistic conditions. Constant wind is specified in the inertial frame and rotated into the body frame, where it is summed with the turbulent gusts; the total gust vector perturbs the airspeed used by the aerodynamic model, Va = v − wg , so that angle of attack, sideslip and dynamic pressure all respond to the disturbance. The Dryden model follows MIL-F-8785C and is realized as band-limited white noise passed through the shaping filters of Table II, integrated at the simulation step alongside the rigid-body states. Scale lengths and intensities are re-evaluated every step at the instantaneous altitude and airspeed. For low-altitude flight ( h < 1000 ft), which is the regime of interest here, 
+
+Lu = Lv = h
+
+(0 .177 + 0 .000823 h)1.2 , Lw = h, (8) and 
+
+σu = σv = σw
+
+(0 .177 + 0 .000823 h)0.4 , σw = 0 .1 W20 , (9) while above 1000 ft the isotropic form Lu = Lv = Lw = h
+
+is used. Here h is the altitude in feet and W20 the wind speed at 20 ft, which sets the turbulence severity: the presets very light , light , moderate and severe correspond to W20 = 2 , 15, 30 and 45 kt. Wind and turbulence are disabled by default, so training runs on nominal air unless domain randomization is explicitly requested, and are enabled at evaluation time to quantify disturbance rejection (Section V). The CPU reference and Torch/Warp backends implement the identical model. TABLE II: Dryden turbulence velocity spectral filters.                                     
+
+> Longitudinal Lateral Vertical
+> Filter Gu(s) = σuKu
+> (1 + Tus)2Gv(s) = σvKv(1 + √3Tvs)(1 + Tvs)2Gw(s) = σwKw(1 + √3Tws)(1 + Tws)2
+> Constants Ku=
+> r2Lu
+> πU 0
+> , T u=Lu
+> U0
+> Kv=
+> rLv
+> πU 0
+> , T v=Lv
+> U0
+> Kw=
+> rLw
+> πU 0
+> , T w=Lw
+> U0
+
+Sensors : An onboard sensor model exposes the quantities a flight-control stack actually consumes: GPS position and velocity, vehicle attitude, and body angular rates from the gyroscope. Each channel is configured independently and can be degraded by additive Gaussian noise, constant bias, scale-factor error, clipping to sensor limits, quantization at a finite resolution, reduced sampling rate (zero-order hold between samples), and transport delay (implemented as a timestamped circular buffer, so a measurement is released only after the configured latency has elapsed). Fig. 3 illustrates these effects on sensor outputs compared to the ground-truth signal. The attitude channel is treated specially: only noise and limits are applied and the quaternion is renormalized afterwards, so that the measurement remains a valid rotation. Sensor routing is opt-in: policies observe the ground-truth state by default, and the sensor chain is enabled to quantify degradation under noisy, rate-limited and delayed sensing (Section V), or to match the estimator output available on the target vehicle in preparation for sim-to-real transfer. Each disturbance can be toggled or combined, and the CPU reference and Warp backends implement the identical sensor models. 
+
+Flight Tasks : The agent interacts with the environment through a set of modular task definitions, such as fixed-altitude 
+
+(a) Perfect (b) Noise 
+
+(c) Bias (d) Scaling 
+
+Fig. 3: Illustration of sensor imperfections supported by the simulator, including noise, bias and scaling. keeping, dynamic climbing/descending, 2D path following, full 3D trajectory tracking, and attitude-command tracking (bank angle, climb rate, and airspeed references). These are defined as reward functions and success conditions on top of the raw physics simulation. Each physics component can be independently toggled or simplified, enabling ablation studies under controlled settings. 
+
+Aircraft 3D model : Our framework supports rapid pro-totyping of different airframes via JSON-based configuration files. Each aircraft model (e.g., the Airship V7 and A0S WIG prototypes, Volantex Ranger, Cirrus SR22, or Navion) is described by its geometry, mass, inertia, control surface layout, propulsion system parameters, sensor configuration and environmental settings. Given the aircraft OpenVSP 3D model, using its python API, the aerodynamic coefficients can be computed as a look-up table and then fitted to a N th order polynomial, as a function of control surface deflection, angle of attack and sideslip angle. These models support both simulation and visualization, and their modular design enables easy switching between vehicles and configurations to evaluate control policies. 
+
+C. GPU Backend Performance 
+
+We benchmark the three backends on identical Airship V7 altitude-task dynamics (with same aerodynamics, actuator models, ground effect and time step) on an NVIDIA RTX 4090 and an AMD Ryzen 9 7950X, averaging 10 CUDA-fenced trials after warm-up exclusion (relative standard deviation 
+
+≤ 0.3% ). Table III and Fig. 4 summarize the results. To keep the CPU baseline honest it is parallelized the way CPU RL stacks are, one process per environment: it scales near-ideally to the 16 physical cores and saturates at 10 k env-steps/s, beyond which the aggregate is flat by construction. The Warp backend scales near-linearly across the widths RL training actually uses ( 4k– 16 k environments), reaching 
+
+19 .5M env-steps/s at 16 k (three orders of magnitude above the saturated CPU machine, and 7.5× the parity-validated PyTorch backend) and peaks near 2 × 10 5 environments before becoming bandwidth-bound. At 10 6 environments it sustains 67 .1M env-steps/s, 13 .4× the figure reported for 6
+
+NeuralPlane [10] at the same width. Simulation therefore ceases to be the bottleneck for learning: it accounts for under 
+
+10% of training wall-clock, which is instead set by gradient updates (Section V). Our framework allows a PPO altitude policy to perform 150 million environment steps in under five minutes of wall-clock time, while also supporting efficient sampling for methods such as Model Predictive Path Integral (MPPI) control and large-scale parallel evaluation. TABLE III: Simulation throughput by backend and parallel-environment count (mean over 10 trials).                   
+
+> Backend Envs Env-steps/s Speedup vs. CPU
+> Python/SciPy (CPU) 1589 1×
+> PyTorch (GPU) 16,384 2,586,610 4,390 ×
+> Warp (GPU) 16,384 19,461,717 33 ,029 ×
+> Warp (GPU) 262,144 73,640,000 peak Warp (GPU) 1,048,576 67,070,000 saturated
+
+Fig. 4: Throughput vs. parallel environments for the Warp, PyTorch, and CPU backends (log-log). 
+
+D. Cross-Simulator Validation 
+
+We validate our simulator against two independent environ-ments: X-Plane and JSBSim. 
+
+X-Plane : X-Plane’s flight dynamics are closed, so a term-by-term model comparison is not possible; instead we test con-troller transfer. Through the Python XPlaneConnect API [37], a controller tuned in our simulator is closed around the X-Plane aircraft reading its state and writing elevator, aileron, rudder and throttle commands at run time, from the same configuration and initial conditions. We consider retaining sta-ble tracking under an independent, industry-standard physics engine to be qualitative evidence of robustness rather than a numerical validation. The same interface renders high-fidelity footage of trained agents (available in the open-source repository), allowing for high quality video-feedback. 
+
+JSBSim : For quantitative evidence of physics fidelity, we cross-validate against JSBSim [6] under identical zero-input free-flight conditions at h0 ∈ {1, 10 , 100 } m (Table IV). With ground effect disabled, trajectories agree near-perfectly (Pearson r ≥ 0.999 on altitude and pitch rate throughout), confirming baseline dynamic consistency. Enabling ground effect at h0 = 1 m produces a clear, systematic divergence (physically expected, since JSBSim does not model ground effect) directly isolating our GE correction as a real aero-dynamic phenomenon rather than a numerical artefact; the lower airspeed correlation in this condition ( r = 0 .948 ) reflects precisely the altered drag dynamics JSBSim does not replicate. TABLE IV: Pearson correlations between our simulator and JSBSim under identical zero-input free-flight conditions. GE: ground effect.                        
+
+> Condition Altitude Pitch rate Airspeed
+> h0= 1 m, GE on 0.9999 0.9989 0.9480
+> h0= 1 m, GE off 0.9999 0.9999 0.9999
+> h0= 10 m1.0000 0.9885 0.9997
+> h0= 100 m0.9996 0.9975 0.9973
+
+E. Visualization Tools 
+
+A set of Python-based visualization tools, built primarily on matplotlib [38], supports analysis of simulation outputs: time-domain plots of all model states, aerodynamic forces, moments and coefficients, actuator commands, and ground-effect indicators, alongside animated 3D flight-path renderings with an attitude-resolved aircraft glyph for qualitative assess-ment of maneuvers (videos in the open-source repository). These tools generate the result figures throughout Section V (e.g., maneuver-tracking and learning-curve figures), while the X-Plane interface provides photorealistic renderings such as Fig. 1. V. E XPERIMENTS & R ESULTS 
+
+Our experiments quantify how modelling choices and task conditions affect controller performance, and compare repre-sentative paradigms to provide a usable flight control bench-mark. We evaluate five controllers, two classical (LQR, MPPI) and three learned (PPO, SAC, TD3), on two tasks: holding a commanded altitude after acquiring it from a known offset, and tracking a stream of attitude commands through four different maneuvers. Both tasks run on the same two reference airframes: the Airship V7, the ground-effect prototype the framework was built around, and the Volantex Ranger, a widely used remote-controlled electric RC vehicle. We then expand the experiments to analyse the influence of Ground-Effects on flying at different altitudes (section V-E and tests under environment variations, quantifying how con-trolled flights degrade under sensor noise and turbulence (section V-F). Every cell of every comparison runs on identical conditions, i.e. same airframe configuration, same actuator and sensor models, same reference stream. 
+
+A. Task Definitions 
+
+Each task is a Markov decision process over the 6DoF plant of Section III, integrated at ∆t = 10 ms, with observations normalised by fixed physical scales and clipped, and actions in 
+
+[−1, 1] mapped affinely onto the physical actuator ranges and passed through the servo and motor dynamics of Eqs. (6)–(7). Two task families are used. 7
+
+Altitude keeping. The agent regulates height above the sur-face to a commanded altitude h⋆ while holding trim airspeed. The observation is 
+
+o =
+
+h eh 
+
+> 25
+
+, q 
+
+> 2
+
+, eVa  
+
+> σV
+
+, θπ/ 4 , vz 
+
+> σv
+
+, α 
+
+> 20 ◦
+
+, ¯δe, ˙δe 
+
+> 100
+
+, ¯δt,  
+
+> Reh
+> 10
+
+, ˙href 
+
+> 5
+
+i
+
+∈ R11 ,
+
+(10) clipped elementwise to [−3, 3] , where eh = h − h⋆, eVa =
+
+Va − V ⋆a , q is pitch rate, ¯δe, ¯δt are the normalised elevator and throttle states, and ˙href is the commanded climb rate of the reference. The action is a = [ δe, δ t] ∈ [−1, 1] 2. The reward combines a Gaussian altitude term with airspeed, smoothness and safety shaping, 
+
+r = wh exp   − e2
+
+> h
+
+/2σ2
+
+> h
+
+ − wV |eVa | 
+
+> V⋆a
+
+− wq min( q2, ¯q)
+
+− ws∥∆a∥ ρ(eh) + wh κhκV + bsurv − wo ϕ(eh), (11) where ρ gates the action-rate penalty near the reference, 
+
+κh, κ V are linear tapers on altitude and airspeed error that pay a bonus only inside both bands, bsurv is a per-step survival bonus and ϕ penalises overshoot above the target. An episode terminates on ground contact, on stall ( α beyond 1.5 αstall or 
+
+Va below the stall threshold) or at the horizon. 
+
+Attitude-based tracking. The agent is a low-level executor: it receives a stream of bank, climb-rate and airspeed commands 
+
+(ϕ⋆, ˙h⋆, V ⋆a )( t) and owns all four actuators directly, with no autopilot in between. The observation is 
+
+o = eϕ, e ˙h, e Va , ϕ, θ, p, q, r, α, β, v z , a t−1
+
+ ∈ R15 , (12) scaled and clipped to [−5, 5] , and the action is a =[δe, δ a, δ r , δ t] ∈ [−1, 1] 4. The reward is a sum of Gaussian tracking terms on the three commanded channels, an airspeed-margin penalty and an action-rate penalty, 
+
+r = X 
+
+> i∈{ ϕ, ˙h,V a}
+
+wie−e2   
+
+> i/(2 σ2
+> i)
+
+−wE
+
+ Vsafe − Va
+
+Vsafe 
+
+2
+
+−ws∥∆a∥2.
+
+(13) Commanding climb rate rather than pitch attitude is deliberate: pitch attitude does not determine altitude rate at varying airspeed, so a pitch-tracking executor cannot be composed into an altitude-holding outer loop. 
+
+B. Metrics 
+
+Every rollout is scored with the same set (Table V). Survival 
+
+takes precedence over every error metric: error on a controller that has left the flight envelope is not meaningful, so errors average only the runs that stayed inside, and a cell where none did is left empty. RMSE and time-in-band measure steady-state accuracy, as a magnitude and against the task tolerance. 
+
+Acquisition , settling time and overshoot measure the transient, and exist only because every episode starts a known distance off the reference (Section V-C). 
+
+C. Altitude Acquisition and Hold 
+
+The first task is to reach a commanded altitude and hold it. Each episode is initialized at a distance ∆ ∼ ± U (12 , 18) mfrom the target, for commanded altitudes of 20, 40, 60, 80 and 100 m, and all five controllers follow the identical reference: TABLE V: Evaluation metrics computed from trajectory and control logs. et is the tracking error at step t, and δ the capture band, 1 mon the altitude task.                                
+
+> Metric Formula / description Survival fraction of episodes reaching the horizon without crash or stall termination Acquisition fraction additionally reaching and holding the target to within δ
+> RMSE
+> q1
+> |W|
+> P
+> t∈We2
+> tover the settled window W
+> Time-in-band fraction of scored time with |et|inside the task tolerance Settling time min ts.t. |eτ| ≤ δfor all τ≥t
+> Overshoot max tsgn( h⋆−h0)et, clipped at 0 — the excursion past the target, not max t|et|
+
+a sub-target that ramps to the commanded altitude at the rate limit of the airframe and then holds. The offset initial condition creates the acquisition transient, and therefore makes the metrics of Table V meaningful. Table VI summarizes the n episodes of each cell. Survival and acquisition (with 
+
+δ equal to 1 m) are reported side by side because they are not equivalent: MPPI on the Airship V7 survives 0.93 while acquiring 0.01, and survival alone would credit it with almost the whole task. PPO is the only method that survives and acquires every episode on both airframes. SAC and TD3 lose between 7% and 17% of theirs. SAC on the Airship V7 shows the largest gap between the two rates, surviving 0.83 while acquiring 0.50: half of its runs stay inside the flight envelope while drifting away from the commanded altitude. Accuracy is a separate axis. Where it arrives, the LQR is by far the most precise method, with a settled error of 2.8 × 10 −7 m on the Airship V7 and 1.4×10 −4 m on the Volantex Ranger, five and one order of magnitude below the best learned policy on the same airframe. On a constant reference the task reduces to the linear regulation problem its gains were computed for, and the residual is numerical rather than a control error. The two axes do not order the methods in the same way: that same LQR acquires only half of the episodes on the Volantex Ranger, where the learned policies acquire nearly all. MPPI acquires the target on neither airframe. On the Airship V7 it survives 93% of the episodes and acquires 1%, with a settled error of 30.7 m and an overshoot of 41.5 m against a commanded change of at most 18 m. On the Volantex Ranger it survives 18% and acquires none. The overshoot says that the planner flies through the target instead of stopping at it. Its cost is a weighted sum of absolute position and airspeed errors over a one-second preview, with no term on the vertical speed, so the climb or sink rate it has built up stays invisible until the aircraft is already past the target. The failure lies in the cost and in the preview length rather than in the sampling scheme: the same planner holds three of the four V7 attitude maneuvers of Section V-D below 0.7◦, where the commanded quantity is itself a rate. MPPI also picks its plan by scoring a batch of random candidate control sequences, so each sweep is one draw. On a single Volantex Ranger cell the settled error ranges over 2.6–15.8 m across repetitions of the identical setup, and its row is a mean over three independent sweeps. The learned rows are seed averages, and the spread is as informative as 8
+
+Fig. 5: PPO holding a sequence of altitude targets, Airship V7 (left) and Volantex Ranger (right). Each panel set shows the flight paths, commanded versus achieved altitude for ten episodes, the tracking error over 256 Monte Carlo episodes with its 10–90% band, a side view, and the elevator and throttle traces of one episode. A new target is released only once the current one is held, so each error spike is one acquisition. TABLE VI: Altitude acquisition and hold. Surv. is survival rate, Acq. is successful acquisition, RMSE is altitude error, ts is settling time, and Over. is overshoot. Alg. n Surv. Acq. RMSE (m) ts (s) Over. (m) Airship V7  PPO 200 1.0 ±0.0 1.0 ±0.0 0.3 ±0.0 7.8 ±0.4 0.8 ±0.0 SAC 200 0.8 ±0.2 0.5 ±0.4 3.5 ±3.6 6.9 ±0.7 0.2 ±0.1 TD3 200 0.9 ±0.2 0.9 ±0.2 0.1 ±0.1 8.3 ±1.1 0.6 ±0.4 LQR 50 1.0 1.0 < 0.1 10.0 1.9 MPPI 50 0.9 ±0.0 0.0 ±0.0 30.7 ±0.3 — 41.5 ±0.4 Volantex  PPO 200 1.0 ±0.0 1.0 ±0.0 0.0 ±0.0 7.3 ±0.0 0.7 ±0.0 SAC 200 0.9 ±0.2 0.9 ±0.2 0.0 ±0.0 7.1 ±0.1 0.4 ±0.0 TD3 200 0.9 ±0.1 0.9 ±0.1 0.0 ±0.0 7.1 ±0.1 0.4 ±0.0 LQR 50 0.5 0.5 < 0.1 9.6 1.4 MPPI 50 0.2 ±0.1 0.0 ±0.0 28.1 ±6.6 — 28.6 ±5.1 
+
+the mean. SAC on the Airship V7 acquires 0.50 ± 0.41 with a settled error of 3.52 ± 3.55 m, a standard deviation as large as the mean itself, against 1.00 ± 0.00 and 0.288 ± 0.022 mfor PPO. Scoring a single checkpoint would have placed SAC either above or below PPO depending on the run. Settling time lies between 6.9 and 10.0 s for every method that arrives. It is set by the rate limit of the reference rather than by the controller, so it does not discriminate here, and it is left empty for MPPI, whose acquisition rate is too low for it to mean anything. The results should also be read against the per-airframe design each method requires: gains derived for the acquisition condition and a reference airspeed set to trim for the classical controllers, a single training run from the same configuration file for the learned policies. Figure 5 shows PPO flying a sequence of altitude targets, each released only once the previous one is held. The tracking error collapses inside the 
+
+±1 m capture band after every change of target and remains there, with elevator activity confined to the transients and the throttle carrying the steady-state trim between them. 
+
+D. Attitude-based Maneuvers Tracking 
+
+The second task family evaluates the attitude executor of Section V-A on four maneuvers: a sustained circle, a figure-of-TABLE VII: Maneuver definitions. Each stream uses the air-frame’s own envelope, so ϕmax , turn radius R, and load factor 
+
+n = 1 / cos ϕmax vary between airframes. Commands are identical for all five controllers.                                 
+
+> Airframe Maneuver ϕmax (◦)R(m) n
+> Airship V7 circle 36.0 110 1.23 figure-8 35.8 111 1.23 helix 21.6 202 1.07 s-turn 25.2 170 1.10 Volantex Ranger circle 28.0 43 1.13 figure-8 27.9 43 1.13 helix 16.8 76 1.04 s-turn 19.6 64 1.06
+
+TABLE VIII: Bank-angle RMSE (deg), mean ± standard deviation, with time-in-band (%) in brackets. Out-of-envelope runs are excluded. Alg. Circle Fig.-8 Helix S-turn Airship V7 PPO 1.8 ±0.2 (100) 2.2 ±0.1 (100) 0.8 ±0.2 (100) 2.3 ±0.1 (100) SAC 13.0 ±1.4 (49) 20.9 ±12.8 (47) 7.1 ±2.4 (83) 12.7 ±4.9 (58) TD3 23.6 ±6.4 (18) 18.0 ±5.6 (33) 11.1 ±3.2 (49) 12.1 ±2.1 (49) LQR 10.6 (76) 9.1 (77) 2.0 (100) 5.2 (100) MPPI 4.8 ±6.9 (88) 0.7 ±0.3 (100) 0.3 ±0.2 (100) 0.2 ±0.1 (100) Volantex PPO 1.0 ±0.0 (100) 1.8 ±0.0 (100) 0.4 ±0.0 (100) 2.0 ±0.0 (100) SAC 6.7 ±3.4 (74) 7.2 ±1.8 (77) 3.9 ±1.0 (96) 7.2 ±0.9 (75) TD3 5.3 ±1.3 (88) 5.5 ±0.8 (87) 5.3 ±2.7 (84) 5.9 ±1.3 (85) LQR 2.0 (100) 2.4 (100) 1.6 (100) 2.5 (100) MPPI 0.5 ±0.4 (100) 7.4 ±13.7 (89) 1.6 ±1.8 (97) 19.1 ±14.6 (71) 
+
+eight, a climbing helix and a weaving s-turn. Each maneuver is a command stream (ϕ⋆, ˙h⋆, V ⋆a )( t) rather than a position-space path, so the controllers are scored on the attitude and energy states they reach and not on waypoint tracking. Fig. 6 shows the command interface: bank angles spanning the airframe envelope, and the three command channels of one turn, held for 30 s before levelling out and climbing at 
+
+1 m s −1. Each stream is generated from its own airframe’s envelope. A maneuver name therefore denotes a comparable difficulty, not a comparable geometry (Table VII), and Fig. 8 shows the completed tracks. Each learned method is flown once per training seed and reported as the mean over three 9
+
+Fig. 6: Attitude-command interface for Airship V7 (left pair) and Volantex Ranger (right pair). Left: ground tracks across the commanded bank envelopes, coloured by achieved bank. Right: commanded (dashed) and achieved (solid) channels for the steepest sustained turn, normalised by their respective ranges. 
+
+seeds, matching the altitude protocol of Section V-C. The LQR is deterministic and is flown once. MPPI has no seeds but is flown five times, for the reason given below. PPO is the only method inside the tolerance band on all eight airframe– maneuver cells (Table VIII), at 0.42 –2.28 ◦ of bank RMSE, and it is also the most repeatable: its seed spread never exceeds 
+
+0.21 ◦. One of its three V7 s-turn seeds nonetheless left the flight envelope, the only PPO departure in the sweep. MPPI is the most accurate executor where it converges, holding three of the four V7 maneuvers to 0.2–0.7◦. It does not converge everywhere: 4.8◦ on the V7 circle, 7.4◦ on the Ranger figure-of-eight and 19 .1◦ on the Ranger s-turn, where one draw also left the envelope. The LQR gains are derived about a level trim rather than a banked one. It holds the band on the Ranger, but only 76 % and 77 % of the V7 circle and figure-of-eight. SAC and TD3 never leave the envelope and track an order of magnitude more loosely on the V7, to 23 .6◦ as a seed mean and 38 .9◦ on the worst single seed. This nearly reverses the altitude ordering of Section V-C. The planner that cannot acquire an altitude is the most accurate attitude executor here, where it converges. A bank-RMSE column hides how each method fails, and the per-executor panels of Fig. 7 separate them. On the V7 figure-of-eight SAC under-banks and lags, with a fitted bank gain of 0.54 against a 1.2 s phase lag, and it is the least repeatable of the learned cells at 20 .9 ± 12 .8◦
+
+across seeds. On the circle it over-banks instead, at a gain of 1.28 , and loses half of its time-in-band to a 13 .0◦-RMS tremor about the command. TD3 settles into a limit cycle on the same circle, at a gain of 0.46 , a 0.6 s lag and a time-in-band of 18 % . The LQR holds the command closely between brief departures, where the linearisation about level trim loses the banked state. On shared axes the two off-policy traces cover the other three entirely, hence the facet. The remaining two channels reorder the methods again. Averaged over the four maneuvers, the tremor that costs SAC and TD3 their bank accuracy also costs them the climb channel, 0.61 –1.36 m/s against 0.10 –0.33 m/s for PPO and MPPI. Airspeed goes the other way, and the airframe decides which method pays for it. On the V7, PPO carries the largest airspeed error of any method, 3.5 m/s, as the price of the most accurate learned climb tracking on an airframe with no excess power; on the Ranger it carries the smallest, 1.1 m/s, and TD3 the largest, 
+
+3.1 m/s. The same trade is visible within a single turn in Fig. 6, where the V7 sinks below its commanded climb rate to hold 45 ◦ of bank while the Volantex Ranger loses airspeed instead. Three caveats belong with these numbers. The LQR has no climb-rate channel and receives ˙h⋆ as an integrated altitude reference, which gives it altitude-error feedback the learned rate executors lack. MPPI plans over a one-second preview of the stream, so the comparison is between a planner with lookahead and reactive executors without one. MPPI also picks its plan by scoring a batch of random candidate control sequences, so each flight is one draw rather than a fixed control law. Over five draws of an identical cell the V7 circle ranges over 0.8–18 .5◦ and the Ranger s-turn over 0.3–34 .3◦, the widest spread of any cell in the sweep. 
+
+E. Ground Effect and Thrust demand 
+
+Under a stabilising controller, ground effect changes the thrust required to fly a trajectory rather than the trajectory itself. Table IX and Fig. 9 report that change against height over wing span h/b , the argument of the lifting-line correction. Two measurements are given. The first solves a level-flight trim at each height for the angle of attack, elevator and throttle that null the body forces and the pitching moment, with the correction on and off. It uses no controller, so it covers every airframe at every band, and it measures what the airframe offers. The second is the same thrust change measured while a policy holds the band, and it measures what a controller collects. At h/b = 0 .25 the trim thrust falls by 25 .4 % on the Airship V7, 22 .5 % on the Airship A0S and 16 .6 % on the Volantex Ranger, against predictions of 20 .6 % , 15 .2 % and 
+
+15 .4 % . The measurement exceeds the prediction because the prediction holds the lift coefficient fixed while the aircraft re-trims: ground effect raises lift, the trim angle of attack falls, and drag falls further. Freezing the V7 angle of attack at 10 
+
+Fig. 7: Bank tracking on Airship V7. Rows show the four maneuvers; columns show the five executors. Dashed lines show commanded bank, with the ±8.6◦ tolerance shaded; panels report RMSE and time-in-band. Faceting reveals LQR departures, SAC tremor, and the TD3 limit cycle, which overlap other traces on shared axes. 
+
+its out-of-ground-effect value of 2.14 ◦ leaves 57 .8 N of drag, against 54 .4 N when it is free to re-trim to 1.68 ◦. The closed-loop column follows the same curve without matching it, 
+
+29 .1 % on the V7 and 12 .1 % on the Ranger, because the policy is free to hold the band at its own airspeed. Settled tracking error stays below 0.19 m on the V7 and 0.03 m on the Ranger in both arms. The aircraft flies the same trajectory either way, and what ground effect changes is what that trajectory costs. The A0S rows separate the two questions: the airframe is offered 22 .5 % at h/b = 0 .25 , and its altitude policy does not hold that band at all. 
+
+F. Robustness to Sensing, Latency and Turbulence 
+
+The maneuvers of Section V-D assume a perfect sensor, an instantaneous command path and still air. Table X and Fig. 10 relax each of those in turn on the PPO executor, over four disturbance families at three severities set in physical units: per-channel sensor noise floors, 20 ms to 80 ms of observation latency, 20 ms to 100 ms of command latency, and a Dryden field at σu/V a = 0 .05 to 0.15 . A disturbance corrupts what the policy sees or commands; every metric is computed from the true simulator state. TABLE IX: Ground-effect impact on thrust. ∆T is the thrust change; ∆Tπ is the policy-controlled change; Theory is the lifting-line prediction.                                                                                                                      
+
+> h/b h(m) TGE (N) Tno GE (N) ∆T∆TπTheory Airship V7  0.25 1.25 54.39 72.89 −25 .4%−29 .1%−20 .6%0.50 2.50 66.32 72.89 −9.0%−11 .8%−6.9%1.00 5.00 70.92 72.89 −2.7%−3.6%−2.1%2.00 10.00 72.49 72.89 −0.6%−0.8%−0.5%3.00 15.00 72.81 72.89 −0.1%−0.1%−0.1%6.00 30.00 72.90 72.90 +0 .0%+0 .0%+0 .0%Airship A0S  0.25 0.69 21.53 27.80 −22 .5%—−15 .2%0.50 1.38 25.36 27.80 −8.8%—−5.7%1.00 2.76 27.04 27.81 −2.8%—−1.9%2.00 5.52 27.66 27.81 −0.6%−0.7%−0.4%3.00 8.28 27.79 27.82 −0.1%−0.1%−0.1%6.00 16.56 27.84 27.84 −0.0%−0.0%+0 .0%Volantex Ranger  0.25 0.41 0.76 0.92 −16 .6%−12 .1%−15 .4%0.50 0.81 0.86 0.92 −6.6%−5.1%−6.1%1.00 1.62 0.90 0.92 −2.3%−1.8%−2.1%2.00 3.24 0.91 0.92 −0.5%−0.4%−0.5%3.00 4.86 0.91 0.92 −0.1%−0.1%−0.1%6.00 9.72 0.92 0.92 +0 .0%+0 .0%+0 .0%
+
+The families do not cost the same. Sensor noise is free: bank RMSE holds at 2.0◦ on the Airship V7 and moves from 11 
+
+Fig. 8: Completed maneuvers flown by the attitude executor, rendered from the simulator’s 3D visualisation. Rows are the two airframes, columns the four maneuvers, and the track is coloured by bank angle over ±50 ◦, blue left and red right. Note the axis scales: a maneuver name denotes a comparable difficulty, not a comparable geometry (Table VII). 
+
+Fig. 9: Ground effect versus h/b . Left: thrust change for trim (dash-dot), policy (solid), and theory (dotted). Right: settled altitude error with correction on/off (solid/dashed). Colours denote airframes. A0S has no policy curve below h/b = 2 .
+
+1.3◦ to 1.4◦ on the Volantex Ranger across the whole grid, because the executor reacts to a state it can average rather than to a single sample. Latency is expensive, and the two paths cost the same: 20 .6◦ and 21 .7◦ on the V7 at the severe grid, an order of magnitude above nominal. This is the classical TABLE X: PPO attitude-executor robustness. Entries are Surv./ ϕ
+
+(bank RMSE, ◦); values use the true simulator state.                                      
+
+> Airframe Disturbance Nom. Mild Med. Sev. Airship V7 Sensor noise 1.00/2.0 1.00/2.0 1.00/2.0 1.00/2.0 Sensor delay 1.00/2.0 1.00/7.0 1.00/12.0 1.00/20.6 Action delay 1.00/2.0 1.00/7.2 1.00/14.5 1.00/21.7 Turbulence 1.00/2.0 1.00/7.7 0.75/18.7 1.00/22.0 Volantex Ranger Sensor noise 1.00/1.3 1.00/1.3 1.00/1.3 1.00/1.4 Sensor delay 1.00/1.3 1.00/1.3 1.00/1.3 1.00/9.7 Action delay 1.00/1.3 1.00/1.3 1.00/1.3 1.00/11.7 Turbulence 1.00/1.3 1.00/1.9 1.00/5.5 0.00/—
+
+Fig. 10: Bank RMSE of the PPO executor against disturbance severity, one line per family, for the two airframes. Survival is annotated only where it leaves 1.00. 
+
+dead-time penalty on an attitude loop. Turbulence is the only family that ends a run. The V7 loses one maneuver of four at 
+
+σu/V a = 0 .10 and the Ranger departs on all four at 0.15 . Each wind cell is a single gust realisation, so the V7 recovering to full survival at 0.15 is a draw of the field and not a trend. The airframe matters as much as the disturbance, and not in the direction the nominal table suggests. The Ranger absorbs 12 
+
+both latencies to the medium grid with no measurable loss, 
+
+1.3◦ throughout, while the V7 degrades from the mild grid onward. Yet it is the Ranger that departs first in wind. Re-porting a single disturbance magnitude would have collapsed these three orderings into one number. VI. C ONCLUSIONS 
+
+This paper presented a fixed-wing simulation framework for fixed-wing flight control in which learned and classical controllers can drive different airframe models in a variety of flight regimes. Defining tasks as command streams rather than waypoints evaluates controllers on the states they must continuously maintain. Learned methods are scored over three training seeds on both tracking tasks and reported with their spread. Ground effect is reported as the thrust required to fly, separating what measured GE from a free flying airframe to a policy driven flight, and robustness by disturbance severity over four different parameters. No method orders consistently: MPPI is the most accurate attitude executor where it converges yet acquires neither commanded altitude, the LQR is the most precise regulator yet acquires half the episodes on one airframe, and PPO is the most consistent method. Future work adds a guidance layer above the attitude executor for sim-to-real transfer and consider the ground-effect to fly over water surfaces with waves. REFERENCES 
+
+[1] E. Kaufmann et al. , “Champion-level drone racing using deep reinforcement learning,” Nature , vol. 620, no. 7976, pp. 982– 987, 2023. [2] E. Bøhn et al. , “Deep reinforcement learning attitude control of fixed-wing uavs using proximal policy optimization,” in 
+
+2019 international conference on unmanned aircraft systems (ICUAS) . IEEE, 2019, pp. 523–533. [3] A. De Marco et al. , “A deep reinforcement learning control approach for high-performance aircraft,” Nonlinear Dynamics ,vol. 111, no. 18, pp. 17 037–17 077, 2023. [4] M. El-Hariry et al. , “Drift: Deep reinforcement learning for intelligent floating platforms trajectories,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 14 034–14 041. [5] E. Chane-Sane et al. , “Cat: Constraints as terminations for legged locomotion reinforcement learning,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 13 303–13 310. [6] J. Berndt, “Jsbsim: An open source flight dynamics model in c++,” in AIAA modeling and simulation technologies conference and exhibit , 2004, p. 4923. [7] Laminar Research, “X-Plane Flight Simulator,” https://www. x-plane.com/, 2024, accessed: 2025-09-12. [8] Y. Song et al. , “Flightmare: A flexible quadrotor simulator,” in 
+
+Conference on Robot Learning . PMLR, 2021, pp. 1147–1157. [9] M. Macklin, “Warp: A high-performance python framework for gpu simulation and graphics,” https://github.com/nvidia/warp, March 2022, nVIDIA GPU Technology Conference (GTC). [10] Z. Xue et al. , “Neuralplane: Efficiently parallelizable platform for fixed-wing aircraft control,” in NeurIPS Datasets and Bench-marks , 2024. [11] A. R. Perry, “The flightgear flight simulator,” in Proceedings of the USENIX annual conference , vol. 686, 2004, pp. 1–12. [12] D. J. Richter et al. , “Qplane: An open-source reinforcement learning toolkit for autonomous fixed wing aircraft simulation,” in Proceedings of the 12th ACM Multimedia Systems Confer-ence , 2021, pp. 261–266. [13] V. Makoviychuk et al. , “Isaac gym: High performance gpu-based physics simulation for robot learning,” arXiv preprint arXiv:2108.10470 , 2021. [14] X. Pan et al. , “Warpdrive: Extremely fast end-to-end deep multi-agent reinforcement learning on a gpu,” arXiv preprint arXiv:2108.13976 , 2021. [15] S. Shah et al. , “Airsim: High-fidelity visual and physical simu-lation for autonomous vehicles,” in Field and Service Robotics ,2017. [16] F. Furrer et al. , “Rotors—a modular gazebo mav simulator framework,” in IEEE/RSJ International Conference on Intelli-gent Robots and Systems (IROS) , 2016, pp. 46–51. [17] A. Juliani et al. , “Unity: A general platform for intelligent agents,” arXiv preprint arXiv:1809.02627 , 2018. [18] A. De Marco et al. , “A deep reinforcement learning control approach for high-performance aircraft,” Nonlinear Dynamics ,vol. 111, no. 18, pp. 17 037–17 077, 2023. [19] D. Shukla et al. , “Reinforcement learning-based evolving flight controller for fixed-wing uncrewed aircraft,” IEEE Transactions on Control Systems Technology , 2024. [20] X. Yao et al. , “Physical-constraint-embedded deep reinforce-ment learning approach for flight control of flying-wing vehi-cle,” IEEE Transactions on Automation Science and Engineer-ing , 2026. [21] H. R. Khanzada et al. , “Artificial intelligence in uav flight con-trols: deep reinforcement learning based altitude-hold strategies for fixed-wing uavs,” IEEE Access , 2025. [22] M. Chowdhury et al. , “Interchangeable reinforcement-learning flight controller for fixed-wing uass,” IEEE Transactions on Aerospace and Electronic Systems , 2024. [23] D. J. Richter et al. , “A review of reinforcement learning for fixed-wing aircraft control tasks,” IEEE Access , 2024. [24] F. Berkenkamp et al. , “Safe model-based reinforcement learning with stability guarantees,” NeurIPS , vol. 32, 2019. [25] X. B. Peng et al. , “Sim-to-real transfer of robotic control with dynamics randomization,” in 2018 IEEE ICRA .[26] NASA OpenVSP Team, “Openvsp: Nasa’s open vehicle sketch pad,” https://openvsp.org/, 2025, accessed: 2025-09-12. [27] W. F. Phillips et al. , “Lifting-line predictions for induced drag and lift in ground effect,” Journal of Aircraft , 2013. [28] G. Williams et al. , “Information-theoretic model predictive control: Theory and applications to autonomous driving,” IEEE Transactions on Robotics , vol. 34, no. 6, pp. 1603–1622, 2018. [29] J. Schulman et al. , “Proximal policy optimization algorithms,” 
+
+arXiv preprint arXiv:1707.06347 , 2017. [30] T. Haarnoja et al. , “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning , 2018. [31] S. Fujimoto et al. , “Addressing function approximation error in actor-critic methods,” in International conference on machine learning . PMLR, 2018, pp. 1587–1596. [32] M. Towers et al. , “Gymnasium: A Standard Interface for Reinforcement Learning Environments,” arXiv preprint arXiv:2407.17032 , 2024. [33] S. Huang et al. , “Cleanrl: High-quality single-file implemen-tations of deep reinforcement learning algorithms,” Journal of Machine Learning Research , vol. 23, no. 274, pp. 1–18, 2022. [34] R. C. Nelson, Flight Stability and Automatic Control , 2nd ed., ser. McGraw-Hill Aerospace Science & Technology Series. New York: McGraw-Hill Education, 1998. [35] H. Dryden et al. , Effect of turbulence in wind tunnel measure-ments . US Government Printing Office, 1930, vol. 342. [36] NOAA et al. , U.S. Standard Atmosphere, 1976 . Washington, D.C.: U.S. Government Printing Office, 1976. [37] NASA Ames Research Center, “X-plane connect (xpc),” https: //github.com/nasa/XPlaneConnect, 2025, accessed: 2025-09-12. [38] J. D. Hunter, “Matplotlib: A 2d graphics environment,” Com-puting in Science & Engineering , vol. 9, no. 3, pp. 90–95, 2007.

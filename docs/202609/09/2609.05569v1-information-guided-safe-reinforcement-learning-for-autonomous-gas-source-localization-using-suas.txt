@@ -1,0 +1,796 @@
+Title: Information-Guided Safe Reinforcement Learning for Autonomous Gas Source Localization using sUAS
+
+URL Source: https://arxiv.org/pdf/2609.05569v1
+
+Published Time: Wed, 09 Sep 2026 00:06:20 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Information-Guided Safe Reinforcement Learning for Autonomous Gas Source Localization using sUAS 
+
+Sachin Giri 1, Thomas Zhao 2, Matthew Huynh 3 and YangQuan Chen 4,∗
+
+Abstract — The autonomous localization of fugitive gas emis-sions using small Unmanned Aircraft Systems (sUAS) consti-tutes a fundamentally ill-posed inverse problem. In turbulent atmospheric boundary layers, highly intermittent scalar con-centration fields violate the assumptions of classical gradient-based navigation, causing data-driven estimators to suffer from severe noise and spurious local minima. To address these challenges, we introduce an Information-Guided Safe Reinforcement Learning framework evaluated within a custom, GPU-accelerated 3D simulation environment coupling an Eule-rian wind solver with a Lagrangian puff dispersion model. We identify a critical vulnerability in deterministic information-seeking planners-a Gramian bias where agents act greedily upon flawed early estimates, starving the estimator of spatial diversity. To systematically break this degeneracy, our archi-tecture integrates a classical empirical observability Gramian (EMGR) planner with a learned Soft Actor-Critic (SAC) exploratory policy. A deterministic meta-supervisor actively monitors estimator reliability via Kullback-Leibler (KL) di-vergence, dynamically blending deterministic exploitation with learned exploration to steer the sUAS into high-information zones. Trained via a progressive curriculum and safeguarded by a strictly enforced Robust Control Barrier Function (RCBF), our RL framework achieves nearly 80% localization success on complex, mobile sources—drastically outperforming classical baselines ( ∼30%)—while ensuring zero safety violations. 
+
+Keywords —Safe Reinforcement Learning, Empirical Ob-servability Gramian, Gas Source Localization, sUAS, Robust Control Barrier Functions, GPU-accelerated Sim-ulation. 
+
+I. INTRODUCTION Source seeking utilizing mobile sensor platforms is critical for environmental monitoring, industrial leak detection, and disaster response. The overarching objective is to navigate an autonomous agent to identify the origin of a diffusing substance using sparse, sequential measurements. In realis-tic outdoor conditions, turbulent mixing dominates molec-ular diffusion, creating a highly intermittent scalar field. This intermittency renders classical gradient-ascent methods  
+
+> The authors were supported by the Center for Methane Emission Research and Innovation (CMERI) through the Climate Action Seed Funds grant at University of California, Merced (2023-2026).
+> 1Electrical Engineering & Computer Science Graduate Program, Univer-sity of California, Merced, 5200 N. Lake Rd, Merced, CA 95343, USA
+> R
+
+sachingiri@ucmerced.edu                 
+
+> 2Dept. of Mechanical Engineering, University of Califor-nia, Merced, 5200 N. Lake Rd, Merced, CA 95343, USA
+> R
+
+tzhao26@ucmerced.edu                 
+
+> 3Dept. of Mechanical Engineering, University of Califor-nia, Merced, 5200 N. Lake Rd, Merced, CA 95343, USA
+> R
+
+mhuynh35@ucmerced.edu                 
+
+> 4Dept. of Mechanical Engineering, University of Califor-nia, Merced, 5200 N. Lake Rd, Merced, CA 95343, USA
+> R
+
+ychen53@ucmerced.edu 
+
+(chemotaxis) [1] highly susceptible to local maxima. To overcome these limitations, strategies such as anemotaxis (upwind search) [2], infotaxis (entropy reduction) [3], en-trotaxis [4], and fluxotaxis [5] were developed. However, even advanced probabilistic approaches struggle to precisely estimate the source parameters. Estimating the source location θ ∈ R3 via data-driven methods like Maxi-mum Likelihood Estimation (MLE) is inherently an ill-posed inverse problem [6]. Sensor noise, ambient bias, and extreme signal sparsity conspire to violate Hadamard’s conditions for well-posedness, yielding highly inaccurate early estimates. Prior source-seeking formulations have heavily utilized met-rics like the Cram´ er-Rao Lower Bound (CRLB) [7], [8] and the Fisher Information Matrix (FIM) [9] to guide trajectory planning. We previously demonstrated [10] that trajectory planning guided by the empirical observability Gramian (EMGR) [11], [12] provides superior convergence over CRLB and FIM by directly quantifying the observability of the nonlinear system [13], [14]. However, a critical vulnerability remains: deterministic planners computing trajectories based solely on current parameter estimates are prone to a secondary degeneracy. Acting greedily upon a flawed MLE draws the agent into a stalled state, starving the estimator of the spatial diversity required to correct itself. Recent literature increasingly uses Reinforcement Learn-ing (RL) and domain knowledge to navigate complex plumes [15], [16]. Active inference frameworks for drones have also demonstrated that active sampling drastically reduces param-eter uncertainty [17]. We posit that sequential maximization of information along a trajectory can actively regularize this ill-posed inverse problem if the agent balances deterministic exploitation with spatial exploration. To overcome these limitations, we propose a Residual Safe RL architecture enveloping classical EMGR methods within an RL regularizer governed by a deterministic Meta-Supervisor. By continuously monitoring the Kullback-Leibler (KL) divergence [18] between empirical observations and estimator predictions, this supervisor dynamically blends deterministic EMGR velocities with learned exploratory actions from an off-policy Meta-Soft Actor-Critic (Meta-SAC) policy [19]–[21]. Actively navigating the sUAS to-ward high-information zones systematically breaks the MLE degeneracy and reduces estimator variance. For real-world deployment safety, we integrate Safe RL via Control Barrier Functions (CBFs) [22]–[26]. Advancing beyond data-driven CBF approximations [27], [28], we formulate a kinematic Robust Control Barrier Function (RCBF) [29], [30]. This safety layer solves a Quadratic Program (QP) using a highly arXiv:2609.05569v1 [cs.RO] 4 Sep 2026 optimized operator splitting solver [31] at each timestep, strictly mapping the blended policy into a provably safe action space while accounting for worst-case disturbances. A major supporting contribution is a highly optimized, GPU-accelerated 3D simulation environment built on the NVIDIA Warp framework [32]. By unifying computer graph-ics fluid simulations [33]–[35] with near-field atmospheric puff models [36], we provide a mathematically rigorous testbed for training turbulent source-seeking policies. The remainder of this paper is structured as follows. Sec-tion II details the 3D simulation environment, and Section III formulates the ill-posed inverse problem and EMGR. Section IV presents the Information-Guided Safe RL architecture and RCBF. Finally, Section V discusses simulation results, followed by concluding remarks in Section VI. II. GPU-ACCELERATED 3D SIMULATION ENVIRONMENT To train and evaluate the proposed framework under realistic atmospheric intermittency, we developed a custom simulation environment coupling an Eulerian wind solver with a Lagrangian puff dispersion model. This hybrid ap-proach captures both macroscopic wind dynamics and crucial sub-grid scalar intermittency, leveraging NVIDIA Warp [32] for high-performance GPU execution (Fig. 1).  
+
+> Fig. 1. 3D simulation environment built with NVIDIA Warp, demonstrat-ing the Lagrangian puff dispersion model (color-coded by concentration) navigating around physical obstacles.
+
+A. Eulerian Stable Fluids Solver 
+
+To simulate the wind environment, the domain Ω =[0 , L x] × [0 , L y ] × [0 , L z ] is discretized into a collocated grid. The background wind velocity vector field, denoted as 
+
+u(x, t ) ∈ R3, is governed by the incompressible Navier-Stokes equations [33]: 
+
+∂u
+
+∂t + ( u · ∇ )u = −∇ p + ν∇2u + f , (1) 
+
+∇ · u = 0 , (2) where ∂u 
+
+> ∂t
+
+represents the local acceleration, (u·∇ )u captures the advection of momentum, −∇ p denotes the kinematic pressure gradient, ν∇2u accounts for viscous diffusion, and 
+
+f encapsulates external forcing. To achieve unconditional numerical stability at real-time rendering frame rates, we employ the Stable Fluids method-ology [34], [35], [37] utilizing operator splitting. The advec-tion step computes an intermediate velocity field u∗ via semi-Lagrangian backward particle tracing. To enforce the in-compressibility constraint (2), we apply a Helmholtz-Hodge projection [38], which decomposes the intermediate field into a divergence-free velocity field and a corrective pressure gradient. The resulting discrete Poisson equation is solved efficiently on the GPU using Red-Black Successive Over-Relaxation (RB-SOR) [39]. External forcing f is layered using an Ornstein-Uhlenbeck (OU) stochastic process [40] to mathematically mimic realistic gusty atmospheric boundary layer behavior and turbulence spectra [41]. The wind shear profile follows a power-law with exponent αs = 0 .25 for neutral class D, and Langevin dispersion coefficients ℓα are assigned per Pasquill–Gifford stability class [42]. Boundary conditions are strictly enforced to ensure physi-cal realism. Inside embedded obstacles, velocity is explicitly zeroed ( u = 0). At the ground plane ( z = 0), a no-penetration condition prevents vertical flow ( w = 0 ), while surface friction within the atmospheric boundary layer is modeled via localized proportional drag in the lowest grid cells. During the projection step, solid interfaces dictate a homogeneous Neumann boundary condition ( ∂p ∂n = 0 ) for the Poisson solver, preventing corrective pressure gradients from pushing mass through impermeable surfaces. Conversely, the open domain limits (lateral faces and sky) are treated as free-outflow boundaries with a Dirichlet condition ( p = 0 )[35], [43], ensuring wind and turbulent structures exit cleanly without artificial mass accumulation (Fig. 2(a)). 
+
+B. Lagrangian Gaussian Puff Model 
+
+Using an Eulerian grid to directly track scalar gas concen-trations introduces severe numerical dissipation, artificially smearing the sharp filaments and intermittent bursts charac-teristic of real-world leaks. To preserve this crucial sub-grid intermittency, we transition to a Lagrangian viewpoint [36]. We model the continuous leak at source location θ ∈ R3 as a rapid sequence of discrete gas puffs. A new puff is released every τe seconds, carrying a fixed mass mi = Qτ e, where 
+
+Q is the continuous emission rate. Each puff’s centroid xi is updated using a hybrid two-part kinematic scheme. A second-order Runge-Kutta (RK2) predictor-corrector scheme [44] integrates the macroscopic Eulerian wind, while sub-grid turbulence is modeled via random Langevin noise [45]. The spatial position xi of the 
+
+i-th puff at time step n + 1 is updated via: 
+
+k1 = u(xni ) + abe−cbai ˆz (3) 
+
+k2 = u
+
+
+
+xni + ∆t
+
+2 k1
+
+
+
++ abe−cbai ˆz (4) 
+
+xn+1  
+
+> i
+
+= xni + ∆ tk2 + √∆t
+
+ℓxηx
+
+ℓy ηy
+
+ℓz ηz
+
+ . (5) Here, u(·) is the localized Eulerian wind velocity. The ab
+
+term represents the initial buoyancy acceleration; for methane (ρCH 4 = 0 .657 kg/m 3) relative to air, ab ≈ 4.55 m/s 2. As the puff ages ( ai), mixing diminishes this buoyant advantage, modeled by the empirical entrainment decay constant cb. For the Langevin noise in (5), we utilize independent random draws ηα ∼ N (0 , 1) scaled by intensity coefficients ℓα
+
+derived from Pasquill-Gifford stability classes [46]. The spatial concentration of each puff follows a 3D Gaussian distribution. As a puff ages, turbulence stretches it, causing its anisotropic variance to grow linearly: σ2 
+
+> α
+
+=
+
+σ20 + 2 KD,α ai, where σ0 is the initial size and KD,α is the turbulent eddy diffusivity. The total spatial concentration 
+
+C(r, t ) measured at any sensor position r = ( x, y, z ) is the overlapping sum of all active puffs. To enforce a physical no-flux boundary condition at the earth’s surface ( z = 0 ), we employ the method of images [47], mathematically simulating a mirror-image ghost puff to conserve mass. The final concentration field is computed as:          
+
+> C(r, t ) = X
+> i
+> mi
+> (2 π)3/2σxσyσz
+> exp
+> 
+> −(x−xi)2
+> 2σ2
+> x
+> −(y−yi)2
+> 2σ2
+> y
+> 
+> Gz
+
+(6) where the vertical reflection term is given by: 
+
+Gz = exp 
+
+
+
+− (z − zi)2
+
+2σ2
+
+> z
+
+
+
++ exp 
+
+
+
+− (z + zi)2
+
+2σ2
+
+> z
+
+
+
+. (7)     
+
+> (a) Mean Eulerian wind speed |u|
+> (max 3.7 m/s) around obstacles.
+> (b) Column-integrated Lagrangian concentration C(r,t) at t=12s show-ing intermittent plume structure. Fig. 2. 2D cross-sections of the coupled simulation environment.
+
+By mathematically decoupling the microscopic gas trans-port from the macroscopic grid, this formulation eliminates Eulerian numerical smearing. Preserving these sharp con-centration gradients is critical for the RL agent to navigate realistically (Fig. 2(b)), directly narrowing the reality gap for successful sim-to-real (sim2real) transfer to physical sUAS hardware. III. ILL-POSED ESTIMATION AND OBSERVABILITY 
+
+A. The Ill-Posed Inverse Problem 
+
+Let P ⊂ R3 denote the parameter space of candi-date source locations, θ ∈ P. Along a trajectory R =[r1, . . . , rM ]T , the sUAS collects scalar measurements Y =[y1, . . . , y M ]T :
+
+yk = C(rk, t k; θ) + εk, εk ∼ N (0 , σ 2 
+
+> e
+
+), (8) with C(·) from (6). The nonlinear forward operator F :
+
+P → RM maps [F(θ)] k = C(rk, t k; θ). Recovering θ
+
+from Y is severely ill-posed [6]: spatial sparsity of C(r, t )
+
+renders distinct hypotheses indistinguishable, while small perturbations in εk produce unbounded variations in ˆθ. In 3D turbulent conditions, the concentration gradient ∇rC is dominated by advection and points predominantly downwind ,away from θ, rather than toward it. 
+
+1) Maximum Likelihood Estimation: Over a sliding win-dow of N measurements, let Y ∈ RN be the observation vector and a(θ) ∈ RN the predicted concentrations, aj (θ) = 
+
+C(rj , t j ; θ). The MLE maximizes the mean-subtracted pro-jected correlation: 
+
+ˆθMLE = arg max 
+
+> θ∈P
+
+ YT a − 1 
+
+> N
+
+1T Y · 1T a2
+
+aT a − 1 
+
+> N
+
+(1T a)2 + εmle 
+
+, (9) where 1 ∈ RN is the ones vector and εmle regularizes the denominator. To capture long-range wind dependence in a(θ), the wind history {uk} is preprocessed with aGr¨ unwald–Letnikov fractional filter [48] of order α:
+
+w(α)0 = 1 , w(α) 
+
+> j
+
+= w(α)
+
+> j−1
+
+
+
+1 − α + 1 
+
+j
+
+
+
+, j ≥ 1, (10) yielding filtered wind ˜uk = ( ¯ w(α) ∗ u)k with ℓ1-normalized weights ¯w(α). Since puff advection integrates wind over its travel time, we use α < 0 (fractional integration) to introduce long-memory smoothing. The order α ∈ [−0.9, 0] is selected via grid search over deterministic survey trajectories. 
+
+2) Particle Filter for Hypothesis Diversity: The MLE provides a point estimate and cannot represent multimodal uncertainty. We complement this frequentist perspective with a Bayesian particle filter (PF) maintaining a weighted en-semble {θ(i), w (i)}Np 
+
+> i=1
+
+over P. Upon measurement yk, the importance weights are updated: 
+
+w(i) 
+
+> k
+
+∝ w(i) 
+
+> k−1
+
+· 1
+
+√2π σ e
+
+exp −
+
+ yk − C(rk; θ(i))2
+
+2σ2
+
+> e
+
+!
+
+, (11) followed by normalization. Systematic resampling with jitter is triggered when the effective sample size (ESS), defined as 
+
+ESS k = 1 / P
+
+> i
+
+(w(i) 
+
+> k
+
+)2 [49], falls below a threshold. The ESS quantifies weight degeneracy: when few particles carry most of the mass, ESS k ≪ Np, indicating that the filter’s approximation has collapsed. The PF estimate is ˆθPF =
+
+P 
+
+> i
+
+w(i) 
+
+> k
+
+θ(i), and its entropy Hk = − P 
+
+> i
+
+w(i) 
+
+> k
+
+ln w(i) 
+
+> k
+
+signals convergence. By leveraging both the frequentist MLE and Bayesian PF—competing yet complementary paradigms— we hedge against each method’s weaknesses. 
+
+3) KL Divergence Model-Mismatch Detector: To monitor 
+
+ˆθMLE reliability online, we compare predicted and observed concentrations over a buffer of Nb measurements via the KL divergence [18]. The min-max normalized observed measure-ments cobs ∈ RNb from (8) and predicted concentrations 
+
+cpred ∈ RNb evaluated at ˆθMLE via (6) are converted to distributions through softmax with temperature τ :
+
+qj = ecobs ,j /τ 
+
+P 
+
+> l
+
+ecobs ,l /τ , pj = ecpred ,j /τ 
+
+P 
+
+> l
+
+ecpred ,l /τ , (12) and the mismatch signal is: 
+
+DKL (q ∥ p) = 
+
+> Nb
+
+X
+
+> j=1
+
+qj ln qj
+
+pj
+
+. (13) Large DKL indicates an unreliable ˆθMLE and triggers the exploration mechanism in Section IV. Regardless of the estimator, the quality of ˆθ is bounded by the informational content of R. This motivates the observability analysis next. 
+
+B. Empirical Observability Gramian (EMGR) 
+
+To actively regularize the inverse problem, the trajectory R
+
+must maximize the sensitivity of F(θ) to perturbations in the parameter space. In our previous work [10], we demonstrated that the empirical observability Gramian [12], [50]—which generalizes the classical linear observability Gramian to nonlinear systems using only forward simulations—provides superior trajectory guidance over Cram´ er-Rao Lower Bound (CRLB) and Fisher Information Matrix (FIM) for single-sensor source seeking. We extend this to the 3D turbulent setting. Two complementary Gramian computations are main-tained. The observability Gramian quantifies accumulated information about θ by perturbing the source estimate. At step k, the sensitivity vector ϕεk ∈ R3 is: 
+
+ϕεk,i = C(rk; ˆθ + εei) − C(rk; ˆθ − εei), i = 1 , 2, 3, (14) where ei ∈ R3 are the standard basis vectors and ε
+
+is the perturbation magnitude. The local Gramian and its exponentially-weighted accumulation are [12]: 
+
+Wlocal  
+
+> k
+
+= 14ε2 ϕεk (ϕεk)T , Wk = γw Wk−1 + Wlocal  
+
+> k
+
+,
+
+(15) with W0 = 03×3. Unlike the static 2D setting in [10] where a cumulative sum sufficed, the drifting ˆθ in 3D turbulence necessitates the forgetting factor γw < 1. The reciprocal of the smallest singular value of the Gramian, ς−1min , known as the unobservability index [14], quantifies the worst-case directional observability of θ. For the RL observation vector, introduced in next section, the aggregate accumulated infor-mation is instead summarized by the inverse trace ζ−1 
+
+> k
+
+=1/(tr( Wk) + εW ), a computationally efficient scalar proxy where εW is a small constant to avoid divide by zero error. The planning Gramian guides the deterministic baseline planner by perturbing the sensor position instead. For each candidate position r(j), the planner evaluates: 
+
+ψεj,i = C(r(j) + εei; ˆθ) − C(r(j) − εei; ˆθ), i = 1 , 2, 3,
+
+(16) and selects the candidate minimizing ς−1min of the resulting local Gramian. 
+
+Remark 1 (Gramian Bias): Both Gramians are centered on ˆθ, not the true θ. When ˆθ is inaccurate, the sensitivity fields ϕεk and ψεj are biased, creating an artificial attractive basin around ˆθ. The planner navigates toward the estimate rather than the source, and R loses the spatial diversity re-quired for the estimators to self-correct. This self-reinforcing degeneracy motivates the learned exploration in Section IV. 
+
+Per-Step Execution Pipeline ( k-th step) 
+
+yk → ˆθM LE k , ˆθP F k
+
+| {z }
+
+> Estimation (§III)
+> DKL ,k
+
+−−−−→ ˆθk
+
+|{z} 
+
+> Fusion
+
+→ Wk, vemgr k
+
+| {z }
+
+> EMGR Planning
+
+↓
+
+rk+1 
+
+|{z} 
+
+> Dynamics
+
+← usaf e k
+
+| {z } 
+
+> RCBF
+
+← ublend k
+
+| {z } 
+
+> Blend
+
+← sk → ak
+
+| {z }
+
+> SAC
+
+← ωact k
+
+|{z}    
+
+> Meta
+> Fig. 3. Sequential execution pipeline. Sensor data feeds parallel estimators whose fused estimate drives both the classical EMGR planner and the learned SAC policy. The meta-supervisor allocates blending authority ωact k;the safety layer enforces collision avoidance before actuation.
+
+IV. INFORMATION-GUIDED SAFE RL FRAMEWORK The Gramian bias identified in Remark 1 creates a self-reinforcing degeneracy: the planner navigates toward ˆθ rather than θ, starving the estimators of spatial diversity. To break this cycle, we envelop the EMGR framework within a Rein-forcement Learning architecture where a deterministic meta-supervisor dynamically blends the classical planner with a learned exploratory policy. Fig. 3 summarizes the per-step data flow before we develop each component. Throughout, we write [x]ba = max( a, min( x, b )) for scalar saturation, 
+
+[x]+ = max(0 , x ), ΠΩ for projection onto the admissible domain, and ω (with various superscripts) for determinis-tic blending weights—distinguished from the particle filter weights w(i) 
+
+> k
+
+.
+
+A. Markov Decision Process Formulation 
+
+We formulate source seeking as a discounted Markov Decision Process (S, A, P, R, γ ) with discount factor γ ∈
+
+(0 , 1) .
+
+1) State Space ( S): The agent observes a 15 -dimensional vector sk ∈ R15 :
+
+sk =  ˜rk, ˜uwk , ˜ck, c det k , ˜vemgr k , ˜Dk, ˜Hk, ˜nk, ˜ζ−1
+
+> k
+
+⊤.
+
+(17) The first eight features encode raw perception. ˜rk ∈ [0 , 1] 3
+
+is the position normalized by domain extents. ˜uwk ∈ [0 , 1] 3 is the local wind velocity scaled by uwmax and shifted to [0 , 1] .The scalar ˜ck = [ln(1 + csig k /κ c) / ln(1 + cceil /κ c)] 10 is a log-compressed concentration, where csig k = [ yk − b]+ is the bias-corrected sensor signal, κc is the noise scale, and cceil 
+
+the saturation ceiling. The binary flag cdet k = ⊮[csig k > 3σe]
+
+indicates plume detection above the noise floor. The EMGR planner velocity is injected as a directional hint, attenuated by estimator reliability: 
+
+˜vemgr k = vemgr k
+
+vmax 
+
+· exp  −[DKL ,k − δh]+ (18) where δh is a deadzone threshold. As DKL grows, the exponential decays toward zero, signaling the agent that the planner is unreliable. The remaining features are: the normalized KL alarm ˜Dk = [ DKL ,k /D max ]10; the particle filter Shannon entropy ˜Hk = [Hk/H max ]10 with Hk =
+
+− P 
+
+> i
+
+w(i) 
+
+> k
+
+ln w(i) 
+
+> k
+
+; the void-step counter ˜nk = [ nvoid k /n max ]10(steps since last detection); and ˜ζ−1 
+
+> k
+
+= (1 + ζ−1 
+
+> k
+
+/ζ sc )−1,a sigmoidal compression of the unobservability index from 
+
+tr( Wk).
+
+2) Action Space ( A): Under first-order kinematics the control input to the sUAS is a velocity command. The Soft Actor-Critic policy outputs ak ∈ [−1, 1] 3 via a squashed Gaussian, decoded to velocity as vRL k = vmax · ak. The agent outputs a full 3D velocity vector; blending with the classical planner is handled by the meta-supervisor below. 
+
+3) Transition Dynamics ( P ): The sUAS position evolves as: 
+
+rk+1 = Π Ω
+
+ rk + ∆ t (usaf e k + dk) (19) where usaf e k is the safety-filtered velocity from Section IV-D, dk is a bounded disturbance with ∥dk∥ ≤ dmax , and ΠΩ
+
+enforces domain bounds and altitude constraints. 
+
+B. Deterministic Meta-Supervisor 
+
+The mission executes two phases. In Phase 0 , the sUAS runs a deterministic search—perimeter sweeps then wind-biased L´ evy flights—until the plume is detected and the MLE activates. In Phase 1 , the RL agent augments the EMGR planner via deterministic blending governed by four handover signals. When the particle filter is active, the MLE and particle filter estimates are fused according to their disagreement: 
+
+ˆθk = (1 − ωf use k ) ˆθM LE k + ωf use k ˆθP F k (20) 
+
+ωf use k = max  σ(∥ˆθM LE k − ˆθP F k ∥ − dσ ), ω KL k
+
+ (21) where σ(·) is the logistic sigmoid with midpoint dσ , and 
+
+ωKL k = 1 − exp  −[κkl DKL ,k − bkl ]+ (22) is the KL-triggered exploration signal with sensitivity κkl and bias bkl , directly implementing the mismatch trigger from Section III. Three additional signals govern RL authority. The proximity signal counters Gramian bias near ˆθk, and the 
+
+void signal activates when the plume is lost: 
+
+ωprox k = 1 −
+
+"
+
+∥rk − ˆθk∥ − d0
+
+d1 − d0
+
+#10
+
+(23) 
+
+ωvoid k =
+
+ nvoid k − n0
+
+n1 − n0
+
+10
+
+(24) where d0, d 1 are proximity onset and saturation distances, and n0, n 1 are void-step onset and saturation counts. The composite blending weight and resulting velocity command are: 
+
+ωact k = max  ωf l , ω KL k , c p ωprox k , ω void k
+
+ (25) 
+
+ublend k = (1 − ωact k ) vemgr k + ωact k vRL k (26) where ωf l is a minimum exploration floor and cp scales the proximity term. A stagnation override sets ωact k = 1 for 
+
+nesc steps whenever displacement falls below δstag for nstag 
+
+consecutive steps. 
+
+C. Soft Actor-Critic Policy 
+
+The policy πϕ maximizes the entropy-regularized re-turn [19]: 
+
+J(π) = 
+
+> ∞
+
+X
+
+> k=0
+
+γk Eπ
+
+Rk + η H π(·| sk) (27) where η > 0 is the entropy temperature. The entropy bonus prevents the policy from collapsing to a single trajectory mode. The actor parameterizes a squashed Gaussian: 
+
+ak = tanh  μϕ(sk) + σϕ(sk) ⊙ ϵ, ϵ ∼ N (0, I). (28) Twin Q-networks Qψ1 , Q ψ2 mitigate overestimation via the soft Bellman target: 
+
+Gk = Rk + γ
+
+
+
+min  
+
+> j
+
+Q ¯ψj(sk+1 , ˜a) − η ln πϕ(˜ a|sk+1 )
+
+
+
+(29) for non-terminal transitions, where ˜a ∼ πϕ(·| sk+1 ) and 
+
+¯ψ denotes Polyak-averaged target parameters with rate ρ.The critic minimizes the Huber loss for robustness to large terminal rewards. The temperature η is auto-tuned toward target entropy ¯H = − dim( A)/2 with a hard floor η ≥ ηmin 
+
+to prevent exploration collapse. 
+
+D. Robust Control Barrier Functions 
+
+Let hi(r) be the signed distance to the i-th obstacle ( hi >
+
+0 exterior), inflated by a keepout margin δs as hef f i = hi −
+
+δs. The safe velocity command is obtained via a minimal-correction Quadratic Program [22], [24]: 
+
+uS 
+
+> ∗
+
+= arg min   
+
+> uS, ε s
+> 12
+
+∥uS ∥2 + M ε s
+
+s.t. ∇hTi (ublend k +uS ) ≥−γb hef f i + ∥∇ hi∥ dmax − εs,εs ≥ 0, ∀ i
+
+(30) where γb > 0 is the class-K decay rate, M ≫ 1 penalizes constraint relaxation, and the ∥∇ hi∥ dmax term robustifies against worst-case disturbances [29]. The applied velocity is 
+
+usaf e k = ublend k + uS 
+
+> ∗
+
+, solved via warm-started OSQP [31]. The RL agent trains on the executed safe action usaf e k /v max 
+
+rather than its proposed ak, teaching it to anticipate safety corrections. 
+
+E. Curriculum Training Strategy 
+
+Training directly in the full setting (large domain, sparse plume, mobile source) yields prohibitively slow conver-gence due to reward sparsity. To mitigate this combinatorial difficulty, we adopt a progressive three-stage curriculum, parameterizing the source spawn region Ωspawn ⊆ Ω and velocity bound ∥ ˙θ∥ ≤ vdrif t :1) Stage 1 (Ωspawn ⊂ Ω, vdrif t = 0 ): The static source is restricted to a central sub-domain. High plume encounter rates yield dense rewards, establish-ing core tracking primitives: EMGR gradient ascent, KL-triggered handovers, and CBF anticipation. 2) Stage 2 (Ωspawn = Ω , v drif t = 0 ): The agent fine-tunes the Stage 1 policy across the full domain, re-solving prolonged search phases and attenuated initial concentration signals. 3) Stage 3 (Ωspawn = Ω , ∥ ˙θ∥ ≤ vdrif t ): Stochastic source drift is introduced. This full setting trains ro-bustness to non-stationary targets, demanding continu-ous re-acquisition and active void-step recovery. Letting πi denote the converged policy of stage i, each stage initializes via πi ← πi−1 and trains until the success rate plateaus, systematically circumventing the full task’s combinatorial complexity. 
+
+F. Reward Design and Convergence 
+
+The particle filter posterior shift between steps is measured via the marginal 1-Wasserstein distance: 
+
+RW1 
+
+> k
+
+=
+
+h
+
+μw
+
+∆W1,k − δj
+
++iRmax 
+
+> 0
+
+(31) where ∆W1,k = P3 
+
+> d=1
+
+W1( ˆP (d) 
+
+> k
+
+, ˆP (d)
+
+> k−1
+
+) is the total coordinate-wise Wasserstein shift, δj subtracts resampling jitter, and μw is a scaling gain. A proximity shaping term 
+
+Rprog k = μp
+
+ ∥rk−1 − θ∥ − ∥ rk − θ∥ 1 
+
+> −1
+
+(32) uses the true source position θ as privileged information to accelerate credit assignment in simulation. This potential-based reward shaping [51] provides dense feedback while theoretically guaranteeing the optimal policy remains un-changed. Crucially, θ strictly informs the scalar reward and never enters the agent’s observable state sk (17). During deployment evaluation, θ remains unknown and unaccessed, ensuring real-world applicability. A safety penalty Rsaf e k = −λs∥uS 
+
+> ∗
+
+∥ discourages reliance on the barrier layer. The composite step reward, including time cost ξ < 0, is: 
+
+Rk = RW1 
+
+> k
+
++ Rprog k + ξ + Rsaf e k
+
+ Rcl 
+
+> −Rcl
+
+. (33) Terminal rewards Rterm ∈ { R+, −Ro, −Rc} for success (∥rk − θ∥ < d conv ), timeout, and collision satisfy R+ ≫
+
+Ro > R c > R cl . Because the RCBF layer (30) structurally enforces collision avoidance independently of the reward, the collision penalty acts merely as a soft shaping signal. During training, episode termination is triggered by an oracle proximity check ∥rk − θ∥ < d conv . Like Rprog k , this leverages privileged simulation data to accelerate learning and serves solely as a training surrogate. For onboard de-ployment, we propose a stopping rule leveraging a non-decaying cumulative Gramian Wck = Wck−1 + Wlocal k .Based on physical UGV trials [52], ςmax (Wck) rises sharply near the source, suggesting termination when ςmax (Wck) ≥
+
+ςth ∧ cdet k > 0. While calibrating this sUAS criterion remains ongoing, Section V uniformly applies the oracle threshold 
+
+dconv for evaluation. Finally, timeouts are not treated as true terminal states in the replay buffer; Bellman backups bootstrap from successor states to distinguish environmental termination from artificial time limits [53]. Algorithm 1 details the full execution loop. V. SIMULATION EXPERIMENTS AND RESULTS 
+
+A. Experimental Setup 
+
+The domain is Ω = 256 × 128 × 128 m3 under Pasquill– Gifford stability class D [42], with 3 to 5 randomly placed 
+
+Algorithm 1: Information-Guided Residual SAC Training 
+
+Input: Search budget Ts, horizon Tmax , convergence radius dconv 
+
+Output: Trained policy πϕ, critics Qψ1,2 
+
+> 1
+
+Initialize policy πϕ, critics Qψ1,2 , targets Q ¯ψ1,2 , replay buffer B ← ∅ , temperature η; 
+
+> 2
+
+for e = 1 , . . . , N ep do  
+
+> 3
+
+Sample initial position r0 ∼ ρ0 and source θ ∼ U (Ω) ; 
+
+> 4
+
+Set Wc 
+
+> 0
+
+← 03×3;
+
+// Phase 0: Deterministic Search  
+
+> 5
+
+for k = 0 , . . . , T s − 1 do  
+
+> 6
+
+Acquire measurement yk via (8);  
+
+> 7
+
+if csig k > 3σe then update MLE (9) and PF (11);  
+
+> 8
+
+Compute velocity from perimeter sweep or L´ evy flight;  
+
+> 9
+
+Apply RCBF safety filter (30) and step dynamics (19);  
+
+> 10
+
+if plume detected ∧ estimate availabe then enter Phase 1 ;
+
+// Phase 1: RL-Augmented Tracking  
+
+> 11
+
+for k = 0 , . . . , T max − 1 do  
+
+> 12
+
+Acquire measurement yk and update MLE, PF;  
+
+> 13
+
+Evaluate mismatch DKL ,k (13) and fuse ˆθk (20);  
+
+> 14
+
+Accumulate Gramians Wk , Wck (15);  
+
+> 15
+
+Compute planner velocity vemgr k (16);  
+
+> 16
+
+Evaluate blending weight ωact k (25);  
+
+> 17
+
+Construct state sk (17) and sample ak ∼ πϕ(·| sk ); 
+
+> 18
+
+Set vRL k = vmax ak and blend (26);  
+
+> 19
+
+Apply RCBF (30) and step dynamics (19);  
+
+> 20
+
+Evaluate reward Rk (33);  
+
+> 21
+
+Store (sk , usaf e k /v max , R k , sk+1 ) in B; 
+
+> 22
+
+if |B| ≥ B then update ϕ, ψ, η via SAC;  
+
+> 23
+
+if ∥rk − θ∥ < d conv or collision then apply 
+
+Rterm and break ;
+
+spherical obstacles per episode. The sUAS flies between z ∈
+
+[4 , 60] m at maximum velocity, vmax = 8 m/s with ∆t =0.1 s. Each curriculum stage trains for 500 episodes with a search budget of Ts = 1000 steps and a tracking horizon of 
+
+Tmax = 2000 steps. Stage 1 restricts the static source to a central 80 ×40 m region, roughly 10% of the domain. Stage 2 expands the source domain to 226 × 98 m for random spawn on each episode while keeping the source static. Stage 3 retains the random spawn on same domain as Stage 2 and introduces stochastic source drift via an Ornstein–Uhlenbeck process [40] with θOU = 0 .03 and σOU = 0 .4 m/ √s. All five configurations are evaluated over 100 episodes with identical convergence criteria ∥rk − θ∥ < 5 m. 
+
+B. Results and Discussions                              
+
+> TABLE I LOCALIZATION PERFORMANCE (100 EPISODES ,dconv = 5 M)
+> Method Success Med. Dist. [5th, 95th] Med. Steps
+> MLE+EMGR 30.4% 24.3 [4.7, 135.8] m 1173 MLE+EMGR+PF+KL 32.1% 25.0 [4.8, 159.3] m 2000 Stage 1 (small) 98.8% 4.9 [4.7, 5.0] m 256 Stage 2 (full) 79.3% 4.9 [4.7, 43.8] m 310 Stage 3 (mobile) 78.6% 4.8 [4.5, 59.2] m 276 Fig. 4. Median distance to source with interquartile bands. RL agents converge below dconv = 5 mwithin 300 steps; baselines stagnate due to Gramian bias.
+> Fig. 5. Cumulative success rate over tracking steps.
+
+Table I confirms the central thesis. Both baselines stall around 30% success with median distances above 24 m, demonstrating that the Gramian bias of Remark 1 cannot be resolved by belief diversity alone—the PF+KL ablation exhausts the full 2000-step horizon without meaningful im-provement. The RL agents break this degeneracy decisively. Stage 1 reaches 98.8% success in a median of 256 steps, though this near-perfect rate partly reflects overfitting to the restricted spawn region. Expanding to the larger domain in Stage 2 drops success to 79.3%, quantifying the general-ization gap: the core tracking skill transfers, but the agent must now handle distant sources and weaker initial signals across a seven times larger area. Stage 3 maintains 78.6% despite mobile sources with the fastest median convergence at 276 steps, confirming that the curriculum transfers tracking primitives—EMGR following, KL-triggered handovers, CBF anticipation—rather than memorized trajectories. Fig. 4 shows that all RL stages drive the median distance below dconv within 300 steps while baselines plateau above 20 m. Fig. 5 confirms the RL agents reach their terminal success rates three to four times faster than baselines. Table II reports zero barrier violations across all episodes where plume was detected. The RL agents trigger the RCBF far more frequently—84 to 89% of steps versus 7 to 13% for baselines—due to aggressive exploration near obstacles, yet the minimum barrier margin never drops below 2.54 m. This confirms that the safety guarantee from (30) is structural and independent of the learned policy. Simulation for a random episode after plume is detected (only Phase 1) for each of these methods is uploaded at: https://youtu.be/ etPAydxxQGs . Note that perimeter sweep and L´ evy flights are omitted from this video due to their significantly longer runtimes.                           
+
+> TABLE II RCBF S AFETY STATISTICS
+> Method Active Max Corr. Min h(r)Violations
+> MLE+EMGR 12.9% 4.87 2.54 m 0MLE+EMGR+PF+KL 7.2% 4.84 2.54 m 0Stage 1 88.9% 6.91 3.04 m 0Stage 2 84.3% 5.77 3.04 m 0Stage 3 88.4% 5.59 3.04 m 0
+
+One limitation of the convergence criterion is that it relies on oracle distance, which is unavailable in deployment. Calibrating a deployable Gramian-based stopping rule for sUAS is ongoing work. The 20% failure rate in Stages 2 and 3 stems primarily from boundary sources and occluded plumes that prevent reliable detection within the search budget. VI. CONCLUSION This study presented an Information-Guided Safe Rein-forcement Learning framework for autonomous trace gas lo-calization. Because source estimation in turbulence is inher-ently ill-posed, classical information-seeking strategies often stall in local degeneracies. To overcome this, we enveloped a classical EMGR planner within a curriculum-trained Meta-SAC architecture. Governed by real-time KL divergence monitoring, a meta-supervisor dynamically blends determin-istic planning with learned exploration, actively driving the sUAS into high-information zones to regularize the esti-mates. Validated in a GPU-accelerated 3D simulation with a strict RCBF safety filter, this framework provides a rigorous foundation for robust deployment. Future work includes sim-to-real hardware transfer and multi-source, multi-agent scenarios. REPRODUCIBILITY The code for this environment is provided at GitHub: https://github.com/sachingirime/ Info-guided-safe-RL.git and the trained models for all 3 RL stages are uploaded to Kaggle: https://www.kaggle.com/models/ sachingiri348/info-guided-safe-rl 
+
+REFERENCES [1] E. F. Keller and L. A. Segel, “Model for chemotaxis,” Journal of theoretical biology , vol. 30, no. 2, pp. 225–234, 1971. [2] Y. A. Prabowo, B. R. Trilaksono, E. M. Hidayat, and B. Yuliarto, “Integration of bayesian inference and anemotaxis for robotics gas source localization in a large cluttered outdoor environment,” IEEE Access , vol. 11, pp. 22 705–22 713, 2023. [3] M. Vergassola, E. Villermaux, and B. I. Shraiman, “‘infotaxis’ as a strategy for searching without gradients,” Nature , vol. 445, no. 7126, pp. 406–409, 2007. [4] M. Hutchinson, H. Oh, and W.-H. Chen, “Entrotaxis as a strategy for autonomous search and source reconstruction in turbulent conditions,” 
+
+> Information Fusion , vol. 42, pp. 179–189, 2018.
+
+[5] W. M. Spears and D. F. Spears, Physicomimetics: Physics-based swarm intelligence . Springer Science & Business Media, 2012. [6] A. Golan, Foundations of info-metrics: Modeling, inference, and imperfect information . Oxford University Press, 2017. [7] A. Nehorai, B. Porat, and E. Paldi, “Detection and localization of vapor-emitting sources,” IEEE Transactions on Signal Processing ,vol. 43, no. 1, pp. 243–253, 1995. [8] B. Porat and A. Nehorai, “Localizing vapor-emitting sources by moving sensors,” IEEE Transactions on Signal processing , vol. 44, no. 4, pp. 1018–1021, 1996. [9] D. Ucinski, Optimal measurement methods for distributed parameter system identification . CRC press, 2004. [10] S. Giri, D. Hollenbeck, and Y. Chen, “Optimal robotic mobile sensing of a diffusing source under three different metrics: Crlb, fim and emgr,” in American Control Conference (ACC) , 2025. [11] C. Himpe, “emgr—the empirical gramian framework,” Algorithms ,vol. 11, no. 7, p. 91, 2018. [12] N. Powel and K. A. Morgansen, “Empirical observability gramian for stochastic observability of nonlinear systems,” arXiv preprint arXiv:2006.07451 , 2020. [13] D. Hollenbeck, “Digital twin enabled collective sensing and steering for source determination problems,” Ph.D. dissertation, eScholarship, University of California, 2023. [14] A. J. Krener and K. Ide, “Measures of unobservability,” in Proceedings of the 48h IEEE Conference on Decision and Control (CDC) held jointly with 2009 28th Chinese Control Conference . IEEE, 2009, pp. 6401–6406. [15] T. Wiedemann, C. Vlaicu, J. Josifovski, and A. Viseras, “Robotic information gathering with reinforcement learning assisted by domain knowledge: An application to gas source localization,” IEEE Access ,vol. 9, pp. 13 159–13 172, 2021. [16] M. Rando, M. James, A. Verri, L. Rosasco, and A. Seminara, “Q-learning with temporal memory to navigate turbulence,” Elife , vol. 13, p. RP102906, 2025. [17] A. van Hove, K. Aalstad, and N. Pirk, “Actively inferring methane sources with drones,” 2026. [18] S. Kullback and R. A. Leibler, “On information and sufficiency,” The annals of mathematical statistics , vol. 22, no. 1, pp. 79–86, 1951. [19] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” International conference on machine learning , pp. 1861–1870, 2018. [20] C. Finn, P. Abbeel, and S. Levine, “Model-agnostic meta-learning for fast adaptation of deep networks,” in International conference on machine learning . PMLR, 2017, pp. 1126–1135. [21] K. Rakelly, A. Zhou, C. Finn, S. Levine, and D. Quillen, “Efficient off-policy meta-reinforcement learning via probabilistic context variables,” in International conference on machine learning . PMLR, 2019, pp. 5331–5340. [22] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: Theory and applications,” in 2019 18th European control conference (ECC) . IEEE, 2019, pp. 3420–3431. [23] S.-C. Hsu, X. Xu, and A. D. Ames, “Control barrier function based quadratic programs with application to bipedal robotic walking,” in 
+
+2015 American Control Conference (ACC) . IEEE, 2015, pp. 4542– 4548. [24] R. Cheng, G. Orosz, R. M. Murray, and J. W. Burdick, “End-to-end safe reinforcement learning through barrier functions for safety-critical continuous control tasks,” in Proceedings of the AAAI conference on artificial intelligence , vol. 33, no. 01, 2019, pp. 3387–3395. [25] G. Dalal, K. Dvijotham, M. Vecerik, T. Hester, C. Paduraru, and Y. Tassa, “Safe exploration in continuous action spaces,” arXiv preprint arXiv:1801.08757 , 2018. [26] Y. Emam, G. Notomista, P. Glotfelter, Z. Kira, and M. Egerstedt, “Safe reinforcement learning using robust control barrier functions,” IEEE Robotics and Automation Letters , vol. 10, no. 3, pp. 2886–2893, 2022. [27] C. Folkestad, Y. Chen, A. D. Ames, and J. W. Burdick, “Data-driven safety-critical control: Synthesizing control barrier functions with koopman operators,” IEEE Control Systems Letters , vol. 5, no. 6, pp. 2012–2017, 2020. [28] W. A. Manzoor, S. Rawashdeh, and A. Mohammadi, “Vehicular applications of koopman operator theory—a survey,” IEEE Access ,vol. 11, pp. 25 917–25 931, 2023. [29] X. Xu, P. Tabuada, J. W. Grizzle, and A. D. Ames, “Robustness of con-trol barrier functions for safety critical control,” IFAC-PapersOnLine ,vol. 48, no. 27, pp. 54–61, 2015. [30] Y. Emam, P. Glotfelter, and M. Egerstedt, “Robust barrier functions for a fully autonomous, remotely accessible swarm-robotics testbed,” in 
+
+2019 IEEE 58th Conference on Decision and Control (CDC) . IEEE, 2019, pp. 3984–3990. [31] B. Stellato, G. Banjac, P. Goulart, A. Bemporad, and S. Boyd, “Osqp: An operator splitting solver for quadratic programs,” Mathematical Programming Computation , vol. 12, no. 4, pp. 637–672, 2020. [32] NVIDIA, “Warp: A high-performance python framework for gpu simulation and graphics,” https://github.com/NVIDIA/warp, 2022. [33] N. Foster and D. Metaxas, “Realistic animation of liquids,” Graphical models and image processing , vol. 58, no. 5, pp. 471–483, 1996. [34] J. Stam, “Stable fluids,” in Seminal Graphics Papers: Pushing the Boundaries, Volume 2 , 2023, pp. 779–786. [35] R. Bridson, Fluid simulation for computer graphics . AK Peters/CRC Press, 2015. [36] M. Jia, R. Fish, W. S. Daniels, B. Sprinkle, and D. Hammerling, “A fast and lightweight implementation of the gaussian puff model for near-field atmospheric transport of trace gasses,” Scientific Reports ,vol. 15, no. 1, p. 18710, 2025. [37] J. Stam, “Stable fluids,” Proceedings of the 26th annual conference on Computer graphics and interactive techniques , pp. 121–128, 1999. [38] A. J. Chorin, “Numerical solution of the navier-stokes equations,” 
+
+Mathematics of computation , vol. 22, no. 104, pp. 745–762, 1968. [39] D. M. Young, Iterative Solution of Large Linear Systems . Academic Press, 1971. [40] G. E. Uhlenbeck and L. S. Ornstein, “On the theory of the brownian motion,” Physical review , vol. 36, no. 5, p. 823, 1930. [41] R. B. Stull, An Introduction to Boundary Layer Meteorology . Kluwer Academic Publishers, 1988. [42] NOAA Air Resources Laboratory, “Pasquill stability classes,” https: //www.ready.noaa.gov/READYpgclass.php, 2026. [43] R. Fedkiw, J. Stam, and H. W. Jensen, “Visual simulation of smoke,” in Proceedings of the 28th annual conference on Computer graphics and interactive techniques , 2001, pp. 15–22. [44] W. H. Press, Numerical recipes 3rd edition: The art of scientific computing . Cambridge university press, 2007. [45] D. J. Thomson, “Criteria for the selection of stochastic models of particle trajectories in turbulent flows,” Journal of Fluid Mechanics ,vol. 180, pp. 529–556, 1987. [46] F. A. Gifford, “Use of routine meteorological observations for esti-mating atmospheric dispersion,” Nuclear Safety , vol. 2, pp. 47–51, 1961. [47] J. M. Stockie, “The mathematics of atmospheric dispersion modeling,” 
+
+SIAM review , vol. 53, no. 2, pp. 349–372, 2011. [48] R. Scherer, S. L. Kalla, Y. Tang, and J. Huang, “The gr¨ unwald– letnikov method for fractional differential equations,” Computers & Mathematics with Applications , vol. 62, no. 3, pp. 902–917, 2011. [49] M. S. Arulampalam, S. Maskell, N. Gordon, and T. Clapp, “A tutorial on particle filters for online nonlinear/non-gaussian bayesian tracking,” 
+
+IEEE Transactions on signal processing , vol. 50, no. 2, pp. 174–188, 2002. [50] S. Lall, J. E. Marsden, and S. Glavaˇ ski, “Empirical model reduction of controlled nonlinear systems,” IFAC Proceedings Volumes , vol. 32, no. 2, pp. 2598–2603, 1999. [51] A. Y. Ng, D. Harada, and S. Russell, “Policy invariance under reward transformations: Theory and application to reward shaping,” in Icml ,vol. 99. Citeseer, 1999, pp. 278–287. [52] S. Giri, B. LiWang, A. Kuang, D. Hollenbeck, and Y. Chen, “A low-cost autonomous diffusing gas source detection system with a UGV and empirical observability Gramian,” in 2025 11th International Conference on Mechanical and Electronics Engineering (ICMEE) ,Shenzhen, China, Dec. 2025, to be published. [53] F. Pardo, A. Tavakoli, V. Levdik, and P. Kormushev, “Time limits in reinforcement learning,” in International Conference on Machine Learning . PMLR, 2018, pp. 4045–4054.

@@ -1,0 +1,1774 @@
+Title: AirAnchor: Bridging Local and Global Spatial Information for Zero-Shot Aerial Vision-and-Language Navigation
+
+URL Source: https://arxiv.org/pdf/2609.08442v1
+
+Published Time: Wed, 09 Sep 2026 03:52:25 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+# AirAnchor: Bridging Local and Global Spatial Information for Zero-Shot Aerial Vision-and-Language Navigation 
+
+Shanwei Fan 1,2 , Bin Zhang 1,2 , Zhiwei Xu 3, Yingxuan Teng 1,2 
+
+Siqi Dai 1,2 , Lin Cheng 1,2 , Guoliang Fan 1,2 
+
+> 1
+
+National Key Laboratory of Cognition and Decision Intelligence for Complex Systems, Institute of Automation, Chinese Academy of Sciences, Beijing, China 
+
+> 2
+
+School of Artificial Intelligence, University of Chinese Academy of Sciences, Beijing, China 
+
+> 3
+
+School of Artificial Intelligence, Shandong University, Jinan, Shandong, China  
+
+> {fanshanwei2024,zhangbin2020,tengyingxuan2024}@ia.ac.cn {daisiqi2025,chenglin2025,guoliang.fan}@ia.ac.cn zhiwei_xu@sdu.edu.cn
+
+Abstract 
+
+Aerial Vision-and-Language Navigation re-quires drones to follow natural-language in-structions and navigate through complex ur-ban environments. Accurate navigation relies on both local and global spatial information, which support immediate action grounding and long-horizon path planning, respectively. How-ever, existing zero-shot methods typically op-erate at a single spatial scale, relying either on local representations constructed online from current observations or on global memories built offline from historical experience. To ad-dress this limitation, we propose AirAnchor, a new paradigm that bridges local and global spatial information through spatial anchors and integrates both into a shared navigation frame-work, enabling comprehensive spatial ground-ing for decision-making. AirAnchor consists of three core components: (1) Query-Driven Spatial Anchor Grounding, which identifies decision-relevant anchors from visual obser-vations and organizes them into local spatial representations; (2) Persistent Object Spatial Memory, which incrementally maintains an ob-ject knowledge base as persistent global spatial memory and retrieves landmark-related spatial priors; and (3) a Spatially-Informed Navigation Agent, which explicitly integrates both local and global spatial information into an agen-tic framework for decision-making. Extensive experiments on AerialVLN demonstrate that AirAnchor substantially outperforms existing zero-shot baselines, validating the effectiveness and efficiency of the proposed paradigm. 
+
+1 Introduction 
+
+Aerial Vision-and-Language Navigation (Aerial VLN) (Liu et al., 2023b; Gao et al., 2025; Wang et al., 2025a,b) has emerged as a novel and chal-Local  Spatial  Info  
+
+> Env
+> Agent
+> Global S patial Info
+> Env
+> Agent
+> …
+> Env
+> Agent
+> Update
+
+## +  
+
+> (a) (b) (c)
+
+Figure 1: Comparison of three spatial representation paradigms in zero-shot methods: (a) the local-centric paradigm, (b) the global-centric paradigm, and (c) our anchor-centric paradigm, which bridges spatial informa-tion across both scales. 
+
+lenging embodied AI task that requires an un-manned aerial vehicle (UAV) to follow natural-language instructions and navigate through com-plex 3D aerial environments. Recent advances in multimodal large language models (MLLMs) have inspired a series of zero-shot methods for Aerial VLN (Chen et al., 2026; Wang et al., 2025a). Compared with learning-based approaches, these methods require neither task-specific navigation training nor large-scale annotated trajectories, of-fering a promising path toward more generalizable UAV navigation. However, generic MLLMs re-main limited in their ability to infer precise metric and directional relations directly from visual ob-servations (Zhang et al., 2025b). Zero-shot Aerial VLN therefore requires explicit and interpretable spatial representations to ground model reasoning in environmental geometry and support accurate navigation decisions (Xia et al., 2026). As illustrated in Figure 1, existing zero-shot methods typically represent spatial information on either a local or global scale. Local-centric meth-ods construct structured spatial representations on-1arXiv:2609.08442v1 [cs.CV] 8 Sep 2026 line from visual observations, such as 2D semantic maps (Gao et al., 2024) or depth-aware geomet-ric cues (Hu et al., 2025; Zheng et al., 2026). In contrast, global-centric methods organize historical experience into large-scale memory graphs (Zhang et al., 2025a) or landmark knowledge bases (Ning et al., 2026), which are accessed through graph search or knowledge retrieval. However, relying on either scale alone is inherently limiting. Lo-cal spatial information provides the geometric evi-dence required to ground immediate actions in the surrounding environment, whereas global spatial information provides scene-level priors that align long-horizon path planning with instructions, par-ticularly when instruction-relevant landmarks lie beyond the UAV’s current field of view. A straight-forward way to combine their strengths is to model the two scales independently and fuse their repre-sentations during decision-making. However, such separation overlooks their inherent compositional relationship: locally grounded spatial evidence can naturally evolve into persistent global knowledge. Maintaining the two scales separately makes such cross-scale accumulation indirect and requires the decision model to reconcile heterogeneous spatial representations at decision time, complicating their effective integration. These limitations motivate us to design a shared spatial primitive that retains the complementary benefits of local and global spatial representations while enabling locally grounded ev-idence to be progressively accumulated into global memory and allowing both scales to be jointly ex-ploited for navigation. To this end, we introduce AirAnchor, a new paradigm that bridges local spatial grounding and global spatial memory within an MLLM-powered navigation agent through structured prompts. Our key insight is that Aerial VLN does not require an exhaustive spatial representation of the environ-ment. Instead, decision-relevant spatial informa-tion can be distilled into a sparse set of semanti-cally meaningful references, which we term spatial anchors. We define two types of anchors: object anchors, which represent specific objects and their spatial attributes, and directional anchors, which encode spatial cues associated with particular di-rections. Anchors constructed from real-time ob-servations can be organized into local spatial rep-resentations, while object anchors can be persis-tently accumulated to form global spatial repre-sentations. To realize this idea, we design a UAV navigation system with a modular architecture com-prising three main components: (1) Query-Driven Spatial Anchor Grounding queries the MLLM to identify decision-relevant object and directional anchors in the current observation, computes their spatial cues from the corresponding depth map, and organizes them into an Egocentric Anchor Graph (EAG) as the local spatial representation. (2) Per-sistent Object Spatial Memory maintains an ob-ject knowledge base as the global spatial represen-tation for retrieving landmark priors. During nav-igation, landmarks extracted from the instruction are used as queries to retrieve candidate objects from the knowledge base. The MLLM then se-lects the candidate that best matches the referenced landmark. Meanwhile, newly acquired object an-chors are either merged with existing instances or inserted as new entries through similarity-based matching. (3) A Spatially-Informed Navigation Agent is an MLLM-based agentic framework that integrates subtask management, skill selection, and progress reflection into a closed-loop decision-making pipeline. It jointly aligns the UAV’s current observation and user instruction with the local and global spatial information provided by the EAG and landmark priors, enabling comprehensive spatial grounding for navigation. Extensive experiments on AerialVLN (Liu et al., 2023b) demonstrate that AirAnchor consistently improves the performance of zero-shot agents, validating the effectiveness of our paradigm. The contributions of our method are summarized as follows: (1) We introduce AirAnchor, a novel paradigm that bridges local spatial grounding and global spatial memory through spatial anchors, al-lowing information from both scales to be jointly utilized within a navigation framework. (2) To im-plement AirAnchor, we develop a modular system consisting of three components: Query-Driven Spa-tial Anchor Grounding, Persistent Object Spatial Memory, and the Spatially-Informed Navigation Agent. (3) Extensive experiments demonstrate that AirAnchor outperforms existing zero-shot base-lines. Further ablation studies validate the effec-tiveness of designed components. 
+
+2 Related Works 
+
+Vision-and-Language Navigation. Vision-and-Language Navigation (VLN), introduced with the Room-to-Room (R2R) benchmark (Ander-son et al., 2018), was later extended to continu-ous environments with low-level control by R2R-2CE (Krantz et al., 2020). Early methods fo-cused on cross-modal representation learning (Hao et al., 2020; Hong et al., 2021) and history model-ing (Chen et al., 2021b), while recent advances in MLLMs have enabled vision-language-action mod-els (Wang et al., 2026), fast–slow dual-system ar-chitectures (Wei et al., 2026), and zero-shot agentic frameworks (Zhou et al., 2024; Chen et al., 2024). Aerial VLN (Liu et al., 2023b) further ex-tends VLN to continuous 3D aerial environments. Learning-based methods use trajectory supervision, with improvements from temporal history model-ing (Gao et al., 2025), map-aware action predic-tion (Zhao et al., 2025), and multi-task learning (Xu et al., 2026). Zero-shot methods instead exploit MLLM reasoning through structured local spatial representations (Gao et al., 2024; Zheng et al., 2026; Hu et al., 2025), global memory (Zhang et al., 2025a; Ning et al., 2026), and fine-grained modu-lar design (Shao et al., 2026). AirAnchor follows the zero-shot paradigm but differs from prior meth-ods by bridging local spatial grounding and global spatial memory through spatial anchors and jointly exploiting both within an agentic framework. 
+
+Spatial Representations for VLN. Spatial repre-sentations ground navigation decisions in the en-vironment. Early VLN methods implicitly encode spatial context through recurrent states or multi-modal histories (Anderson et al., 2018; Chen et al., 2021b). Later approaches introduce explicit local geometry using egocentric or top-down semantic maps (Georgakis et al., 2022; Gao et al., 2024) and bird’s-eye-view structures (Liu et al., 2023a) for action grounding. Global representations fur-ther accumulate navigation experience for long-horizon reasoning, typically through topological graphs (Chen et al., 2021a, 2022; Zhang et al., 2025a) or compact landmark memories (Ning et al., 2026). However, local and global information is usually represented and maintained separately, making cross-scale information exchange and accu-mulation indirect. AirAnchor instead adopts object anchors as shared primitives across both scales, al-lowing spatial evidence grounded online to support immediate decisions while being naturally accumu-lated as persistent global knowledge. 
+
+3 Method 
+
+In this section, we introduce the AirAnchor paradigm for zero-shot Aerial VLN. As illustrated in Figure 2, at each decision step, Query-Driven Spatial Anchor Grounding identifies decision-relevant anchors from the current observation and organizes their spatial cues into an Egocentric An-chor Graph (EAG) as the local spatial representa-tion. Persistent Object Spatial Memory consoli-dates observed object anchors into a Spatial Object Knowledge Base (SOKB) and retrieves instruction-relevant landmarks as global spatial priors. Finally, the Spatially-Informed Navigation Agent jointly exploits the local EAG and global priors within an MLLM-powered agentic framework for skill-level planning and progress reflection. 
+
+3.1 Task Formulation 
+
+In Aerial VLN, a UAV agent receives a natural-language instruction I and navigates in a 3D urban environment. At timestep t, it observes an ego-centric RGB-D observation (It, D t) and its pose 
+
+pt. The UAV can execute eight discrete actions: 
+
+Move Forward , Turn Left , Turn Right , Ascend , De-scend , Move Left , Move Right , and Stop (Liu et al., 2023b). Navigation is successful if the UAV stops within a predefined distance threshold of the target destination. In our paradigm, rather than invok-ing the MLLM for every low-level action decision, AirAnchor performs high-level skill selection and delegates skill execution to a motion planner. 
+
+3.2 Query-Driven Spatial Anchor Grounding 
+
+Aerial environments are large, open, and inherently 3D. Consequently, dense geometric maps are ex-pensive to construct and maintain, whereas 2D grid maps or graphs may discard altitude information and fine-grained spatial relations. Our key insight is that, given the semantic reasoning capabilities of MLLMs, grounding the local spatial context does not require an exhaustive geometric representation. Instead, it is sufficient to expose the geometry of a sparse set of scene elements that are relevant to the current decision. We term these semantic-geometric references spatial anchors .
+
+Query-Driven Anchor Selection. Let Ct =(sn, γ t, π t) denote the navigation context, where 
+
+sn, γt, and πt represent the current subtask, naviga-tion progress, and plan, respectively. Conditioned on It and Ct, the MLLM queries 
+
+At = MLLM query (It, Ct) = Aot ∪ A dt , (1) where Aot and Adt denote object anchors and di-rectional anchors, respectively. Object anchors identify important objects through semantic labels, 3RGB 
+
+> Depth
+> UAV Pose
+> x, y, z
+> Navigation
+> Instruction
+> 𝜙, 𝜃, 𝜓
+
+Inputs 
+
+Spatially -Informed  Navigation Agent 
+
+Query -Driven Spatial Anchor Grounding  Persistent Object Spatial Memory                  
+
+> Subtask Manager
+> Instruction
+> Decomposition Go straight through the gray building until you reach the bridge .
+> Current Subtask
+> Landmark Query
+> Skill Selection
+> Pixel Navigation
+> Altitude Adjustment
+> View Rotation
+> Skill
+> Execution
+> gray building , bridge
+> Subtasks:
+> S1, S2, …
+> Landmarks:
+> L1, L2, … Path Backtracking
+> Progress Reflection
+> Episode
+> History
+> Next
+> State
+> Env
+> Transition
+> Subtask Progress
+> Next Step Planning
+> t
+> t + k
+> at : t+k
+> Local Spatial Info
+> Visual Prompting
+> Ego -Anchor Graph
+> 12
+> 3
+> Anchor Query
+> Task:
+> Which
+> anchors
+> matter?
+> Object Anchor:
+> grey building
+> Directional Anchor:
+> [331, 218], [340, 371]
+> Parsed Subtasks
+> Grounding
+> Raw Anchors
+> Grounded
+> SAM
+> Obj. Dir.
+> Computation
+> Spatial Cues
+> Spatial
+> Object KB Type 1
+> Instance 1 Inst. 2 …
+> …Type 2
+> …
+> Hierarchical Storage
+> Query
+> Retrieve Candidates
+> gray building: candidate 1…
+> bridge: candidate 1, c2, … Global Priors
+> Best Candidate
+> Object
+> Anchors
+> Update
+
+Figure 2: AirAnchor consists of three key modules. Query-Driven Spatial Anchor Grounding identifies spatial anchors and constructs the local spatial representation. Persistent Object Spatial Memory maintains the global spatial representation, supporting online updates and prior knowledge retrieval. Spatially-Informed Navigation Agent integrates the local spatial representation and global spatial priors within an agentic framework to enable closed-loop and spatially grounded navigation decisions. 
+
+whereas directional anchors specify ray-casting di-rections through pixel coordinates. This query-driven design enables the MLLM to actively iden-tify key elements in It whose spatial information is most relevant to the current navigation decision. 
+
+Spatial Cue Grounding. For each queried an-chor ai, we derive its spatial cues from the depth 
+
+Dt. Specifically, for a directional anchor, we back-project its pixel coordinate and depth value to ob-tain the corresponding reference point in the world frame. For an object anchor, an open-vocabulary detector based on Grounded SAM (Ren et al., 2024) first localizes and segments the object, after which the corresponding depth pixels are back-projected to obtain its 3D point cloud. To compactly charac-terize its geometry, we represent the object using a 2.5D spatial extent gi = ( Ri, z min 
+
+i , z max 
+
+i ), where 
+
+Ri denotes its horizontal footprint and [zmin 
+
+i , z max 
+
+i ]
+
+denotes its vertical extent. The object center ci is computed from gi and used as its reference point. We then characterize the spatial cues of each anchor 
+
+ai by computing the relative geometry between its reference point and the UAV pose: 
+
+rt,i = ( ϕt,i , ∆zt,i , d xy t,i , d 3Dt,i ), (2) where ϕt,i denotes the relative bearing, ∆zt,i the relative height difference, and dxy t,i and d3Dt,i the hor-izontal and Euclidean distances, respectively. 
+
+Egocentric Anchor Graph. We organize the grounded anchors into an Egocentric Anchor Graph (EAG), denoted by Gt = ( Vt, Et), where the node set Vt and edge set Et are defined as 
+
+Vt = {vut } ∪ { vi | ai ∈ A t},
+
+Et = {(vut , v i) | ai ∈ A t}. (3) Here, vut and vi denote the UAV node and anchor node, respectively. Each anchor node stores its semantic and geometric attributes, while each UAV-anchor edge encodes the corresponding spatial cue 
+
+rt,i . In addition, we annotate the anchors in It with visual prompts to obtain I′
+
+t, explicitly aligning the structured EAG with the visual observation. Through the design of spatial anchors, we con-struct a lightweight and interpretable local spatial representation that provides explicit local ground-ing for MLLM-based navigation decisions. Imple-mentation details are provided in the Appendix A.1. 
+
+3.3 Persistent Object Spatial Memory 
+
+Long-horizon Aerial VLN often refers to land-marks beyond the UAV’s current field of view, re-quiring global spatial representations to guide path planning. In this setting, an object-centric knowl-edge base provides an efficient representation for 4Spatial           
+
+> Object KB Type
+> Instance
+> Label
+> Visual Emb.
+> Pos. Conf. Geom.
+> new instance
+> Update
+> Retrieve
+> new type
+> fail succ .
+> merge
+> Instance
+> Matcher Attribute Similarity
+> A1V1G1
+> A2V2G2
+> Score
+> >τ?
+> Sim.
+> Type
+> Matcher
+> fail
+> succ .
+> Retrieval
+> Semantic
+> Similarity
+> candidates
+> Distance
+> Filtering
+> Spatial
+> Computation
+> MLLM
+> Selector
+> best
+> candidate
+> Subtask
+> Directions
+> Geometry
+> Gate
+> Label
+
+Figure 3: Overview of Persistent Object Spatial Mem-ory. Centered on the SOKB, it maintains the global spatial representation to support reliable landmark-prior retrieval and online object knowledge updates. 
+
+large urban scenes. However, urban scenes exhibit complex and diverse object semantics and visual appearances, making robust object association and memory maintenance challenging. Therefore, we design our memory around a Spatial Object Knowl-edge Base (SOKB), which adopts a hierarchical storage structure together with coarse-to-fine object association and knowledge retrieval mechanisms. 
+
+Hierarchical Structure. As shown in Figure 3, the SOKB M adopts a type-instance hierarchy: 
+
+M = {T m}NT
+
+> m=1
+
+, Tm = ( BTm, Om),
+
+Om = {oj }Nm
+
+> j=1
+
+, o j = ( BAj , BVj , gj , cj , q j ). (4) Here, each type Tm represents an object category and Om contains the distinct object instances be-longing to that category. We employ bounded banks to store category labels BTm, appearance labels BAj , and visual embeddings BVj , respec-tively mitigating synonymous category expres-sions, diverse object appearances, and substantial viewpoint-dependent visual variations in Aerial VLN. For each instance oj , gj denotes its geomet-ric extent, cj its 3D center, and qj its confidence score. This hierarchy supports efficient organiza-tion and coarse-to-fine association and retrieval. 
+
+Object Association. A newly observed object an-chor aoi is first matched against object types accord-ing to semantic similarity. Candidate instances un-der compatible types are then filtered by a geometry gate to remove spatially implausible matches. For each remaining instance oj , we compute a weighted association score: 
+
+SM (i, j ) = wGSG(i, j ) + wS SS (i, j )+ wV SV (i, j ), (5) where SG measures geometric consistency be-tween spatial extents, SS captures category- and appearance-level semantic similarity, and SV mea-sures visual similarity using DINOv2 (Oquab et al., 2024) embeddings. If the highest association score exceeds a predefined threshold, the incoming an-chor is fused with the matched instance by merging their spatial extents and updating the semantic and visual banks; otherwise, a new instance is created. 
+
+Landmark Prior Retrieval. For each active sub-task sn, its referenced landmarks Ln are used to re-trieve candidate instances from the SOKB based on semantic similarity SS and a distance filter, yield-ing a candidate set Cℓ for each landmark ℓ ∈ L n.We define Rt,ℓ = {(oj , rt,j ) | oj ∈ C ℓ} as the can-didate instances together with their UAV-relative spatial cues. The MLLM is then employed for candidate selection: 
+
+ˆOn = MLLM ret 
+
+ sn, {(ℓ, Rt,ℓ ) | ℓ ∈ L n}, (6) where ˆOn = {ˆoℓ | ℓ ∈ L n} contains the best can-didate ˆoℓ selected for each landmark. The MLLM disambiguates semantically similar candidates by matching their spatial cues with the spatial relations implied by the instruction to identify the referred landmark. The selected instances and their corre-sponding spatial cues are organized into the global landmark prior Pt = {(ˆ oℓ, rt, ˆoℓ ) | ℓ ∈ L n}.Overall, our memory design enables efficient maintenance and online updates while providing reliable landmark priors for long-horizon naviga-tion. Detailed object association, merging, and retrieval procedures are provided in Appendix A.2. 
+
+3.4 Spatially-Informed Navigation Agent 
+
+To integrate spatial information across local and global scales for robust and spatially grounded nav-igation, we introduce a Spatially-Informed Navi-gation Agent that combines subtask management, skill-level planning, and progress reflection in a closed-loop framework, while seamlessly incorpo-rating spatial representations at both scales through structured prompts. 5Subtask Management. At the beginning of each episode, the instruction is decomposed into an or-dered sequence of subtasks: 
+
+{(sn, Ln)}Nn=1 = MLLM dec (I), (7) where sn denotes a subtask and Ln its referenced landmarks. This allows the agent to focus on one subtask at a time, reducing the burden of long-horizon instruction tracking. 
+
+Skill-Level Planning. We employ the MLLM as a high-level planner that performs skill-level decision making. Let σt = kt(ηt) denote a parameterized skill, where kt specifies the skill type and ηt its parameters. The planning process is formulated as 
+
+(σt, ξ t) = MLLM nav 
+
+ I′
+
+> t
+
+, Ct, Gt, Pt
+
+ , (8) where ξt denotes the rationale for the selected skill. We define four skills tailored to Aerial VLN: 
+
+Pixel Navigation specifies a target waypoint using a designated image coordinate and depth value; Al-titude Adjustment controls vertical displacement; 
+
+View Rotation determines a turning angle from panoramic observations; and Path Backtracking 
+
+recovers from navigation errors by returning to a previous waypoint. The selected skill σt is con-verted into a target pose and executed by a low-level motion planner. Further details of skill-level planning are provided in Appendix A.3.2. 
+
+Progress Reflection. Reliable reasoning about nav-igation progress often depends on changes in spa-tial relations rather than solely on textual or visual semantics, such as when determining whether the UAV has passed or flown over a landmark. We therefore explicitly incorporate spatial context into the reflection process. Specifically, after execut-ing skill σt for k low-level actions, the UAV moves from pt to pt+k. We retain the anchors in Gt and re-compute their spatial cues relative to pt+k, yielding 
+
+eGt+k, which encodes the spatial relations between the current pose and the anchors in Gt. We then summarize the reflection inputs into a semantic context Csem  
+
+> t
+
+= ( Ct, I ′
+
+> t
+
+, I ′
+
+> t+k
+
+, σ t, ξ t) and a spatial context Cspa  
+
+> t
+
+= ( Gt, eGt+k). The reflection process is formulated as 
+
+(γt+k, b t+k, π t+k) = MLLM ref (Csem  
+
+> t
+
+, Cspa  
+
+> t
+
+), (9) where γt+k denotes the updated assessment of navi-gation progress, bt+k is a binary variable indicating whether the current subtask has been completed, and πt+k specifies the plan for the next step. Overall, the agent integrates local and global spatial information into an agentic framework, en-abling efficient and spatially grounded navigation. 
+
+4 Experiments 
+
+4.1 Experimental Setup Dataset. We evaluate AirAnchor on the AerialVLN-S dataset of the challenging Aeri-alVLN (Liu et al., 2023b) benchmark. The bench-mark comprises 8,446 flight trajectories collected from experienced UAV pilots across 25 diverse city-scale environments built in Unreal Engine 4, covering more than 870 categories of urban objects. AerialVLN-S is a small-scale variant of AerialVLN consisting of 17 compact scenes. 
+
+Metrics. Following AerialVLN, we report four evaluation metrics: Success Rate (SR), Oracle Success Rate (OSR), Navigation Error (NE), and Success weighted by normalized Dynamic Time Warping (SDTW). SR measures the percentage of episodes in which the agent stops within 20 meters of the target, whereas OSR considers an episode successful if any point along the predicted trajec-tory enters the 20 m success radius. NE is the Eu-clidean distance between the agent’s final position and the target. SDTW jointly measures navigation success and trajectory fidelity with respect to the reference path. 
+
+Baselines. We compare AirAnchor with three groups of baselines. Statistical methods include Random and Action Sampling. Learning-based methods include Seq2Seq (Anderson et al., 2018), CMA (Krantz et al., 2020), and LAG (Liu et al., 2023b), which learn navigation policies from task-specific trajectory supervision. For zero-shot meth-ods , we include indoor VLN agents NavGPT (Zhou et al., 2024) and MapGPT (Chen et al., 2024), as well as Aerial VLN agents TypeFly (Chen et al., 2023), PIVOT (Nasiriany et al., 2024), SPF (Hu et al., 2025), and FineCog-Nav (Shao et al., 2026). 
+
+Implementation Details. We implement AirAn-chor with Qwen3.6-Plus (Alibaba Cloud, 2026) as the MLLM backbone via its online API. A ∗
+
+search (Hart et al., 1968) serves as the low-level motion planner, generating feasible paths from the current pose to the target pose. Each scene starts with an empty SOKB, which is updated online and retained across episodes within the same scene. All zero-shot Aerial VLN baselines are reproduced us-ing the same MLLM backbone. 6Category Method Validation Seen Validation Unseen SR ↑ OSR ↑ SDTW ↑ NE ↓ SR ↑ OSR ↑ SDTW ↑ NE ↓
+
+Statistical Random 0.0 0.0 0.0 109.6 0.0 0.0 0.0 149.7 Action Sampling 0.9 5.7 0.3 213.8 0.2 1.1 0.1 237.6 Learning-Based Seq2Seq 4.8 19.8 1.6 146.0 2.3 11.7 0.7 218.9 CMA 3.0 23.2 0.6 121.0 3.2 16.0 1.1 172.1 LAG 7.2 15.7 2.4 90.2 5.1 10.5 1.4 127.9 Zero-Shot Indoor NavGPT 0.0 0.0 0.0 163.5 0.0 0.0 0.0 82.1 
+
+MapGPT 2.1 4.7 0.8 124.9 0.0 0.0 0.0 107.0 Aerial TypeFly 1.8 5.5 0.4 136.8 1.4 4.3 0.3 166.4 PIVOT 3.2 12.4 0.9 116.3 2.6 10.2 0.7 139.6 SPF 5.7 14.4 2.1 103.8 5.1 12.2 1.7 116.0 FineCog-Nav 6.9 16.8 2.7 97.5 6.2 15.3 2.3 107.0 
+
+AirAnchor (Ours) 9.6 23.1 4.0 80.5 9.2 22.0 3.5 84.6 
+
+Table 1: Overall performance comparison on the AerialVLN-S benchmark. Bold and underline indicate the best and second-best results, respectively. 
+
+Module Ablation Variant SR ↑ SDTW ↑ NE ↓
+
+– AirAnchor 9.6 4.0 80.5 
+
+Anchor w/o Dir. Anchor 9.3 3.7 84.7 w/o Obj. Anchor 8.7 3.5 87.6 Memory Flat KB 8.4 3.4 90.8 w/o MLLM Selector 9.0 3.6 86.9 Agent w/o Subtask 8.7 3.5 88.6 Action-Level Planning 9.0 3.3 85.6 w/o EAG 7.8 2.9 93.8 w/o Landmark Prior 8.1 3.2 94.5 w/o Spatial Reflection 8.4 3.3 89.0 
+
+Table 2: Ablation study of different modules. 
+
+Setting Pixel Alt. View Back. SR ↑ SDTW ↑ NE ↓
+
+Full ✓ ✓ ✓ ✓ 9.6 4.0 80.5 
+
+− Alt. ✓ × ✓ ✓ 9.0 3.6 85.8 
+
+− View ✓ ✓ × ✓ 8.6 3.4 87.8 
+
+− Back. ✓ ✓ ✓ × 9.3 3.8 83.1 Pixel Only ✓ × × × 8.1 3.1 91.6 
+
+Table 3: Ablation of the navigation skill set. 
+
+4.2 Overall Performance 
+
+Table 1 summarizes the overall results on AerialVLN-S. AirAnchor performs strongly on both validation splits and outperforms all learning-based baselines on Validation Unseen, demonstrat-ing robust zero-shot generalization across aerial environments. In contrast, indoor zero-shot agents such as NavGPT and MapGPT achieve nearly zero success when directly transferred to aerial environ-ments. This suggests that ground-based zero-shot VLN methods do not transfer effectively to Aerial 0 40 80 120       
+
+> Average stored instances
+> Flat KB Ours
+> 74.6 81.9
+> 31.9 15.3
+> 8.3 6.2
+> 121.8
+> dup. 26.2%
+> 96.4
+> dup. 8.6%
+> (a) Memory composition
+> Correct & unique Duplicate Incorrect
+> Flat KB Ours
+> 050 100
+> Accuracy (%)  71.4 84.7
+> (b) Retrieval accuracy ↑
+> Flat KB Ours
+> 0510
+> Avg. count  8.2 3.8
+> (c) Candidate set size ↓
+
+Figure 4: Comparison of object knowledge base design. We compare the proposed SOKB with a flat KB in terms of (a) memory composition, (b) landmark retrieval ac-curacy, and (c) candidate-set size. 
+
+VLN, where dedicated spatial reasoning mecha-nisms are required to handle large-scale 3D aerial environments. Among zero-shot aerial methods, AirAnchor consistently outperforms all baselines across both validation splits. Compared with the strongest zero-shot aerial baseline, FineCog-Nav, AirAnchor achieves relative improvements of 39.1% / 48.4% in SR, 37.5% / 43.8% in OSR, and 48.1% / 52.2% in SDTW on Seen / Unseen, while reducing NE by 17.4% / 20.9%, respectively. The substantial im-provements in OSR and NE are consistent with the complementary use of local metric grounding and persistent landmark priors, which provides more re-7liable spatial guidance toward instruction-relevant regions, including those beyond the current field of view. Meanwhile, the gains in SR and SDTW sug-gest that spatially informed skill-level planning and progress reflection more effectively translate spatial knowledge into successful and trajectory-aligned navigation. Notably, AirAnchor exhibits minor degradation from Validation Seen to Unseen, high-lighting its robustness across diverse aerial scenes. 
+
+4.3 Ablation Study 
+
+To comprehensively evaluate AirAnchor, we con-duct ablation studies on its key components. All ablation experiments are performed on the valida-tion "Seen" split of the AerialVLN-S benchmark. 
+
+Effect of Spatial Anchors. As shown in Table 2, removing directional anchors reduces SR by 3.1%, while removing object anchors causes larger drops in SR and SDTW (9.4% and 12.5%) and increases NE by 7.1 m. This confirms that directional anchors provide useful ray-based geometry, while object anchors additionally ground instruction-relevant landmarks with semantic and metric cues. 
+
+Effect of Persistent Object Memory. Replacing SOKB with Flat KB , which indexes objects by la-bels and merges same-label observations using a fixed spatial threshold (Ning et al., 2026), reduces SR by 12.5% and increases NE by 10.3 m. Replac-ing the MLLM selector with semantic-nearest re-trieval results in a smaller degradation, confirming the benefit of spatially informed landmark disam-biguation. Figure 4 further shows that SOKB stores 20.9% fewer instances while preserving 9.8% more correct unique objects, reduces duplicate instances by 74.0%, and improves retrieval accuracy by 18.6%. It also reduces the candidate-set size by 53.7%, indicating more efficient retrieval over the object knowledge. These results demonstrate more reliable and compact spatial memory. 
+
+Effect of Agent Design. Table 2 shows that remov-ing subtask management degrades long-horizon navigation, while action-level planning reduces SR by 6.3% and SDTW by 17.5%, supporting skill-level decision making. Removing EAG yields the largest SR and SDTW drops (18.8% and 27.5%), whereas removing landmark priors causes the largest NE increase (14.0 m), highlighting the com-plementary roles of local geometry and global spa-tial guidance. Removing spatial context from re-flection further reduces SR and SDTW by 12.5% and 17.5%, respectively, confirming the benefit of explicit spatial context for progress reasoning. Fi-nally, Table 3 shows that all specialized skills are beneficial, with View Rotation having the largest impact, followed by Altitude Adjustment and Path Backtracking ; using Pixel Navigation alone reduces SR by 15.6% and increases NE by 11.1 m. 
+
+4.4 Case Analysis 
+
+Figure 5 illustrates how AirAnchor coordinates lo-cal and global spatial information within a long-horizon episode. At Step 10, the EAG grounds a directional anchor whose endpoint is about 30 m below the UAV. The agent uses this metric cue to se-lect Altitude Adjustment and descend 28 m toward street level, showing how local anchors support precise 3D control. At Step 50, when the instruc-tion refers to the black machine, the SOKB re-trieves a previously observed instance and provides a prior locating it 20 .2◦ to the right and 17.8 m away. The agent then selects Pixel Navigation to-ward the landmark. This example illustrates the complementary roles of local metric grounding and persistent global guidance during navigation. 
+
+5 Conclusion 
+
+In this work, we introduced AirAnchor, a zero-shot Aerial VLN paradigm that bridges local grounding and global memory through spatial anchors within an MLLM-powered agentic framework. AirAnchor grounds spatial anchors into an Egocentric Anchor Graph for local spatial reasoning, while persistently consolidating object anchors into a Spatial Object Knowledge Base to retrieve global spatial priors. A Spatially-Informed Navigation Agent further inte-grates both representations into a closed-loop pro-cess. The experimental results demonstrate the efficacy and robustness of our method. 
+
+6 Limitations 
+
+Despite its effectiveness, AirAnchor has several limitations. First, spatial anchors are grounded from RGB-D observations and UAV poses with open-vocabulary perception models. Errors in depth estimation, object localization, or geometric grounding can therefore propagate into the EAG and subsequently affect navigation decisions. For object anchors, incorrect association may further be accumulated in the persistent SOKB and influence later retrieval. Second, the benefit of global spatial memory de-pends on previously accumulated scene knowledge. When entering a new environment, instruction-8Instruction:  Turn right and go down to street and then take right. Turn left at black car and go to restaurant. Turn right and go to the b lac k machine.                            
+
+> Step 1
+> Step 56
+> Step 10 Step 23
+> Step 44Step 36
+> Step 31
+> Step 50
+> 1
+> EAG
+> MLLM Agent
+> -……
+> -Dir. Anchor 1:
+> The endpoint ... 30
+> m below the UAV
+> in elevation ...
+> -……
+> Thought: I am 30 m
+> above the street and
+> need to descend until I
+> am close to the ground.
+> Skill :Altitude
+> Adjustment
+> (descend 28m )
+> Instruction:
+> … pass over
+> the black
+> machine …
+> Previous Episodes
+> Obs .
+> Machine ?
+> (a)
+> Memory
+> (b)(c)
+> MLLM Agent
+> Retrieved Prior: A black
+> machine is 20.2 °to your
+> right , at a horizontal
+> distance of 17.8 m .
+> Skill: Pixel
+> Navigation
+> ([410,256] )
+> (forward 15m )
+
+Figure 5: Visualization of a successful navigation episode. (a) Key steps throughout the episode. (b) Local spatial grounding at Step 10. (c) Global prior guidance at Step 50. 
+
+relevant landmarks may not yet exist in the SOKB, and the agent must rely primarily on local obser-vations until sufficient object knowledge has been collected. Improving cold-start exploration and uncertainty-aware memory updates would make persistent spatial reasoning more robust. Third, the current navigation agent employs a predefined set of four skills together with an A ∗
+
+low-level planner. Although this design provides an effective abstraction for AerialVLN-S, more com-plex maneuvers or dynamic environments may re-quire adaptive or learned skill composition. Finally, our evaluation is limited to simulated AerialVLN-S environments, and the robustness of AirAnchor to real-world sensing noise and dynamic environ-ments remains to be validated. Moreover, the cur-rent system relies on multiple foundation models, including an online MLLM, introducing additional computational and communication overhead. Fu-ture work should investigate more efficient imple-mentations and the robustness of AirAnchor across different MLLM backbones. 
+
+References 
+
+Alibaba Cloud. 2026. Qwen3.6-Plus. Alibaba Cloud Model Studio. Model version: qwen3.6-plus-2026-04-02. Peter Anderson, Qi Wu, Damien Teney, Jake Bruce, Mark Johnson, Niko Sünderhauf, Ian Reid, Stephen Gould, and Anton Van Den Hengel. 2018. Vision-and-language navigation: Interpreting visually-grounded navigation instructions in real environ-ments. In 2018 IEEE/CVF conference on computer vision and pattern recognition , pages 3674–3683. IEEE. Guojun Chen, Xiaojing Yu, Neiwen Ling, and Lin Zhong. 2023. Typefly: Flying drones with large language model. arXiv preprint arXiv:2312.14950 .Hanxuan Chen, Jie Zheng, Siqi Yang, Tianle Zeng, Siwei Feng, Songsheng Cheng, Ruilong Ren, Hanzhong Guo, Shuai Yuan, Xiangyue Wang, and 1 others. 2026. Vision-and-language navigation for uavs: Progress, challenges, and a research roadmap. 
+
+arXiv preprint arXiv:2604.13654 .Jiaqi Chen, Bingqian Lin, Ran Xu, Zhenhua Chai, Xi-aodan Liang, and Kwan-Yee Wong. 2024. Mapgpt: Map-guided prompting with adaptive path planning for vision-and-language navigation. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 9796–9810. Kevin Chen, Junshen K Chen, Jo Chuang, Marynel Vázquez, and Silvio Savarese. 2021a. Topological planning with transformers for vision-and-language navigation. In 2021 IEEE/CVF Conference on Com-puter Vision and Pattern Recognition (CVPR) , pages 11271–11281. IEEE. Shizhe Chen, Pierre-Louis Guhur, Cordelia Schmid, and Ivan Laptev. 2021b. History aware multimodal transformer for vision-and-language navigation. Ad-vances in neural information processing systems ,34:5834–5847. Shizhe Chen, Pierre-Louis Guhur, Makarand Tapaswi, Cordelia Schmid, and Ivan Laptev. 2022. Think global, act local: Dual-scale graph transformer for vision-and-language navigation. In 2022 IEEE/CVF Conference on Computer Vision and Pattern Recog-nition (CVPR) , pages 16516–16526. IEEE. Yunpeng Gao, Chenhui Li, Zhongrui You, Junli Liu, Zhen Li, Pengan Chen, Qizhi Chen, Zhonghan Tang, Liansheng Wang, Penghui Yang, and 1 oth-ers. 2025. Openfly: A comprehensive platform for aerial vision-language navigation. arXiv preprint arXiv:2502.18041 .Yunpeng Gao, Zhigang Wang, Pengfei Han, Linglin Jing, Dong Wang, and Bin Zhao. 2024. Exploring spatial representation to enhance llm reasoning in aerial vision-language navigation. arXiv preprint arXiv:2410.08500 .Georgios Georgakis, Karl Schmeckpeper, Karan Wan-choo, Soham Dan, Eleni Miltsakaki, Dan Roth, and 
+
+9Kostas Daniilidis. 2022. Cross-modal map learn-ing for vision and language navigation. In 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , pages 15439–15449. IEEE. Weituo Hao, Chunyuan Li, Xiujun Li, Lawrence Carin, and Jianfeng Gao. 2020. Towards learning a generic agent for vision-and-language navigation via pre-training. In Proceedings of the IEEE/CVF Confer-ence on Computer Vision and Pattern Recognition ,pages 13137–13146. Peter E Hart, Nils J Nilsson, and Bertram Raphael. 1968. A formal basis for the heuristic determination of min-imum cost paths. IEEE transactions on Systems Sci-ence and Cybernetics , 4(2):100–107. Yicong Hong, Qi Wu, Yuankai Qi, Cristian Rodriguez-Opazo, and Stephen Gould. 2021. Vln bert: A recur-rent vision-and-language bert for navigation. In Pro-ceedings of the IEEE/CVF conference on Computer Vision and Pattern Recognition , pages 1643–1653. Chih Yao Hu, Yang-Sen Lin, Yuna Lee, Chih-Hai Su, Jie-Ying Lee, Shr-Ruei Tsai, Chin-Yang Lin, Kuan-Wen Chen, Tsung-Wei Ke, and Yu-Lun Liu. 2025. See, point, fly: A learning-free vlm framework for universal unmanned aerial navigation. In Conference on Robot Learning , pages 4697–4708. PMLR. Jacob Krantz, Erik Wijmans, Arjun Majumdar, Dhruv Batra, and Stefan Lee. 2020. Beyond the nav-graph: Vision-and-language navigation in continuous envi-ronments. In European Conference on Computer Vision , pages 104–120. Springer. Zehan Li, Xin Zhang, Yanzhao Zhang, Dingkun Long, Pengjun Xie, and Meishan Zhang. 2023. Towards general text embeddings with multi-stage contrastive learning. arXiv preprint arXiv:2308.03281 .Rui Liu, Xiaohan Wang, Wenguan Wang, and Yi Yang. 2023a. Bird’s-eye-view scene graph for vision-language navigation. In 2023 IEEE/CVF Interna-tional Conference on Computer Vision (ICCV) , pages 10934–10946. IEEE. Shubo Liu, Hongsheng Zhang, Yuankai Qi, Peng Wang, Yanning Zhang, and Qi Wu. 2023b. Aerialvln: Vision-and-language navigation for uavs. In Pro-ceedings of the IEEE/CVF International Conference on Computer Vision , pages 15384–15394. Soroush Nasiriany, Fei Xia, Wenhao Yu, Ted Xiao, Jacky Liang, Ishita Dasgupta, Annie Xie, Danny Driess, Ayzaan Wahid, Zhuo Xu, and 1 others. 2024. Pivot: Iterative visual prompting elicits actionable knowledge for vlms. arXiv preprint arXiv:2402.07872 .Yuwei Ning, Ganlong Zhao, Yipeng Qin, Si Liu, Yang Liu, Liang Lin, and Guanbin Li. 2026. Lookasidevln: direction-aware aerial vision-and-language naviga-tion. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 32441–32450. Maxime Oquab, Timothée Darcet, Théo Moutakanni, Huy V. Vo, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez, Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, Mido Assran, Nicolas Ballas, Wojciech Galuba, Russell Howes, Po-Yao Huang, Shang-Wen Li, Ishan Misra, Michael Rabbat, Vasu Sharma, and 7 others. 2024. DINOv2: Learning Robust Visual Features Without Supervision. Trans-actions on Machine Learning Research .Tianhe Ren, Shilong Liu, Ailing Zeng, Jing Lin, Kun-chang Li, He Cao, Jiayu Chen, Xinyu Huang, Yukang Chen, Feng Yan, and 1 others. 2024. Grounded sam: Assembling open-world models for diverse visual tasks. arXiv preprint arXiv:2401.14159 .Dian Shao, Zhengzheng Xu, Peiyang Wang, Like Liu, Yule Wang, Jieqi Shi, and Jing Huo. 2026. Finecog-nav: Integrating fine-grained cognitive modules for zero-shot multimodal uav navigation. arXiv preprint arXiv:2604.16298 .Xiangyu Wang, Donglin Yang, Hohin Kwan, Jinyu Chen, Hongsheng Li, Yue Liao, Si Liu, and 1 others. 2025a. Towards realistic uav vision-language navi-gation: Platform, benchmark, and methodology. In 
+
+International Conference on Learning Representa-tions , volume 2025, pages 7292–7310. Xiangyu Wang, Donglin Yang, Yue Liao, Wenhao Zheng, wenjun wu, Bin Dai, Hongsheng Li, and Si Liu. 2025b. Uav-flow colosseo: A real-world benchmark for flying-on-a-word uav imitation learn-ing. In Advances in Neural Information Processing Systems , volume 38, Main Conference. Curran Asso-ciates, Inc. Yunheng Wang, Yuetong Fang, Taowen Wang, Lusong Li, Kun Liu, Junzhe Xu, Zizhao Yuan, Yixiao Feng, Jiaxi Zhang, Wei Lu, and 1 others. 2026. What lim-its vision-and-language navigation? arXiv preprint arXiv:2605.13328 .Meng Wei, Chenyang Wan, Peng Peng, Xiqian Yu, Yuqiang Yang, Delin Feng, Wenzhe Cai, Chenming Zhu, Tai Wang, Jiangmiao Pang, and 1 others. 2026. Ground slow, move fast: A dual-system foundation model for generalizable vision-language navigation. In International Conference on Learning Representa-tions , volume 2026, pages 12380–12396. Xingyu Xia, Lekai Zhou, Yujie Tang, Xiaozhou Zhu, Hai Zhu, and Wen Yao. 2026. Vision-language nav-igation for aerial robots: Towards the era of large language models. arXiv preprint arXiv:2604.07705 .Huilin Xu, Zhuoyang Liu, Yixiang Luomei, and Feng Xu. 2026. Aerial vision-language navigation with a unified framework for spatial, temporal and embod-ied reasoning. IEEE Transactions on Circuits and Systems for Video Technology .Weichen Zhang, Chen Gao, Shiquan Yu, Ruiying Peng, Baining Zhao, Qian Zhang, Jinqiang Cui, Xinlei Chen, and Yong Li. 2025a. Citynavagent: Aerial 
+
+10 vision-and-language navigation with hierarchical se-mantic planning and global memory. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 31292–31309. Weichen Zhang, Zile Zhou, Xin Zeng, Liu Xuchen, Jian-jie Fang, Chen Gao, Jinqiang Cui, Yong Li, Xinlei Chen, and Xiao-Ping Zhang. 2025b. Open3d-vqa: A benchmark for embodied spatial concept reason-ing with multimodal large language model in open space. In Proceedings of the 33rd ACM International Conference on Multimedia , pages 12784–12791. Ganlong Zhao, Guanbin Li, Jia Pan, and Yizhou Yu. 2025. Aerial vision-and-language navigation with grid-based view selection and map construction. 
+
+arXiv preprint arXiv:2503.11091 .Guiyong Zheng, Yueting Ban, Mingjie Zhang, Juepeng Zheng, and Boyu Zhou. 2026. Onfly: Onboard zero-shot aerial vision-language navigation toward safety and efficiency. arXiv preprint arXiv:2603.10682 .Gengze Zhou, Yicong Hong, and Qi Wu. 2024. Navgpt: Explicit reasoning in vision-and-language naviga-tion with large language models. In Proceedings of the AAAI Conference on Artificial Intelligence ,volume 38, pages 7641–7649. 
+
+11 A Implementation Details 
+
+This section provides additional implementation details of AirAnchor. 
+
+A.1 Query-Driven Spatial Anchor Grounding A.1.1 Anchor Query 
+
+At decision step t, the anchor-query MLLM re-ceives the current egocentric RGB observation It
+
+and navigation context Ct = ( sn, γ t, π t). We query exactly K = 3 spatial anchors, 
+
+At = Aot ∪ A dt , (10) where the relative numbers of object and direc-tional anchors are determined by the MLLM ac-cording to the current navigation context. Object anchors provide a category label ℓTi and an appear-ance description ℓAi , whereas directional anchors specify an image coordinate ui = ( ui, v i). Direc-tional anchors are transient local references and are never inserted into the persistent SOKB. The query is explicitly conditioned on the active navi-gation objective: the MLLM is instructed to select complementary anchors whose geometry is use-ful for resolving the current spatial decision rather than exhaustively describing visually salient scene elements. Object-anchor bounding boxes, masks, and detector confidence are not predicted by the MLLM; they are obtained by the grounding module described below. 
+
+A.1.2 Depth Back-Projection 
+
+Let K denote the camera intrinsic matrix and 
+
+Twc t = [ Rwc t , twc t ] the camera-to-world transfor-mation in this z-up frame. For a pixel u = ( u, v )
+
+with homogeneous coordinate eu = ( u, v, 1) ⊤, we first define the unit camera ray 
+
+brc(u) = K−1 eu
+
+∥K−1 eu∥2
+
+. (11) For perspective depth d(u), the corresponding world-coordinate point is therefore 
+
+qw(u, d ) = Rwc t [d(u)brc(u)] + twc t . (12) The ray normalization in Eq. 11 is required because the depth value measures distance along the projec-tion ray rather than planar camera-axis depth. We use a maximum reliable depth Dmax =100 m . Depth values beyond Dmax are not inter-preted as accurate metric surface measurements. Instead, they indicate that the corresponding view-ing ray remains unobstructed beyond the reliable sensing range. For a directional anchor adi , we compute the median positive depth within a 5 × 5 neighborhood 
+
+N (ui):
+
+¯di = median {Dt(u) | u ∈ N (ui), D t(u) > 0} .
+
+(13) If no positive depth is available in the neighbor-hood, the anchor is discarded. Otherwise, we de-fine 
+
+bdi = min( ¯di, D max ), f far  
+
+> i
+
+= 1[ ¯di > D max ],
+
+(14) and obtain its reference point as 
+
+qwi = qw(ui, bdi). (15) When f far  
+
+> i
+
+= 1 , the point at 100 m is only a capped geometric reference ; it is not interpreted as a physi-cal surface. 
+
+A.1.3 Object-Anchor Geometry 
+
+For an object anchor aoi , the landmark detector 
+
+LD (·), implemented with Grounded SAM (Ren et al., 2024), localizes the queried object. Among valid detections, we retain the highest-confidence mask Mi and its bounding box. If the selected mask contains no pixel with positive depth, the object anchor is discarded because neither its far-depth ratio nor its metric geometry is defined. Long-range masks require special treatment be-cause a large fraction of their pixels may lie beyond the reliable metric range. For a mask with at least one positive-depth pixel, we define the far-depth ratio 
+
+ρfar  
+
+> i
+
+=
+
+P 
+
+> u
+
+1[Mi(u) = 1 ∧ Dt(u) > D max ]
+
+P 
+
+> u
+
+1[Mi(u) = 1 ∧ Dt(u) > 0] .
+
+(16) If 
+
+ρfar  
+
+> i
+
+> τ far , τfar = 0 .5, (17) more than half of the observed object support lies beyond the reliable range, making its spatial extent unreliable. We therefore degrade the object an-chor into a directional anchor located at the mask centroid uci . The resulting directional anchor is grounded using Eqs. 13–15 and is not written into the SOKB. This preserves useful directional in-formation without introducing inaccurate object geometry into persistent memory. 12 Otherwise, only mask pixels satisfying 0 <Dt(u) ≤ Dmax are back-projected: 
+
+Qi = qw(u, D t(u)) | Mi(u) = 1 ,
+
+0 < D t(u) ≤ Dmax . (18) If Qi = ∅ after reliable-depth filtering, the anchor is discarded. Otherwise, the temporary 3D points are compressed into the 2.5D geometry 
+
+gi = ( Ri, z min  
+
+> i
+
+, z max  
+
+> i
+
+), (19) where 
+
+Ri = ConvHull (Π xy (Qi)) , (20) 
+
+zmin  
+
+> i
+
+= min 
+
+> q∈Q i
+
+qz , zmax  
+
+> i
+
+= max 
+
+> q∈Q i
+
+qz . (21) Its reference center is 
+
+ci =
+
+
+
+Centroid( Ri)x
+
+Centroid( Ri)y
+
+(zmin  
+
+> i
+
++ zmax  
+
+> i
+
+)/2
+
+ . (22) The temporary point cloud is discarded after con-structing gi.For a valid object anchor, we associate its de-tector confidence with the reliability of its metric observation: 
+
+qi = qdet 
+
+> i
+
+
+
+1 − ρfar 
+
+> i
+
+
+
+, (23) where qdet  
+
+> i
+
+is the Grounded-SAM detection confi-dence. Thus, partially far-range observations can still contribute to memory, but receive lower relia-bility. 
+
+A.1.4 Spatial Cue Computation 
+
+To avoid conflating the scalar observation reliability 
+
+qi with geometric points, we use the appendix-local notation pref  
+
+> i
+
+for the world-coordinate reference point of an anchor: 
+
+pref  
+
+> i
+
+=
+
+(
+
+ci, ai ∈ A ot ,
+
+qwi , ai ∈ A dt . (24) Let the UAV world position be xt =(xt, y t, z t)⊤ with heading ψt, and write 
+
+pref  
+
+> i
+
+= ( px,i , p y,i , p z,i )⊤. Define 
+
+∆xt,i = px,i − xt, (25) 
+
+∆yt,i = py,i − yt, (26) 
+
+∆zt,i = pz,i − zt. (27) Because the equations operate in the z-up world frame, ∆zt,i > 0 means that the anchor lies above the UAV. We compute 
+
+dxy t,i =
+
+q
+
+∆x2 
+
+> t,i
+
++ ∆ y2
+
+> t,i
+
+, (28) 
+
+d3Dt,i =
+
+q
+
+(dxy t,i )2 + ∆ z2
+
+> t,i
+
+, (29) and the relative bearing 
+
+ϕt,i = wrap [−π,π ) [atan2(∆ yt,i , ∆xt,i ) − ψt] .
+
+(30) Hence, 
+
+rt,i = ( ϕt,i , ∆zt,i , d xy t,i , d 3Dt,i ), (31) which is shared by object and directional anchors. 
+
+A.1.5 EAG Representation 
+
+Each anchor node in Gt = ( Vt, Et) is represented together with the relative spatial cue encoded on its UAV-anchor edge. For an object anchor, the corresponding edge is described, for example, as                   
+
+> Anchor 1[Object: gray building]: The object center is 24.6 degrees to your left, 3.2 mabove the UAV, at ahorizontal distance of 18.5 m and a 3D distance of 18.8 m.
+
+For a directional anchor, the corresponding edge is described as                  
+
+> Anchor 2[Direction]: Free travel distance along this direction: 35.0 m. The ray-cast endpoint is 12.4 degrees to your right, 6.8 mbelow the UAV, at ahorizontal distance of 34.3 m.
+
+For a capped far-range directional anchor, we use         
+
+> Anchor 3[Direction]: Free travel distance along this direction exceeds 100 m. The geometric reference is capped at 100 m and lies 12.4 degrees to your right, 8.5 m below the UAV.
+
+The same anchor indices are overlaid on the RGB observation It to obtain I′
+
+> t
+
+, explicitly aligning the EAG with its visual evidence. 
+
+A.2 Persistent Object Spatial Memory A.2.1 SOKB Representation 
+
+The SOKB follows the type-instance hierarchy de-fined in the main paper: 
+
+M = {T m}NT
+
+> m=1
+
+,
+
+Tm = ( BTm, Om),
+
+Om = {oj }Nm
+
+> j=1
+
+,oj = ( BAj , BVj , gj , cj , q j ).
+
+(32) 13 BTm contains alternative category expressions of object type Tm. BAj stores appearance descriptions and BVj stores normalized DINOv2 (Oquab et al., 2024) features for instance oj . gj is its persistent 2.5D geometry, cj its derived center, and qj ∈ [0 , 1] 
+
+its current reliability. The center cj is retained as a cached quantity for efficient retrieval, but it is not independently fused: after every geometry update it is recomputed deterministically from gj using the same rule as Eq. 22. 
+
+A.2.2 Type-Level Matching 
+
+We use GTE-small (Li et al., 2023) to obtain text embeddings. Let E(·) denote its ℓ2-normalized embedding. For an incoming category label ℓTi , the similarity to type Tm is 
+
+ST (i, m ) = max 
+
+> ℓ∈B Tm
+
+E(ℓTi )⊤E(ℓ). (33) Candidate types are defined as 
+
+CTi = {m | ST (i, m ) ≥ τT } . (34) If CTi = ∅, a new type and its first instance are initialized directly from aoi . Otherwise, we define the best compatible type 
+
+m∗ = arg max 
+
+> m∈C Ti
+
+ST (i, m ), (35) which is used whenever the incoming observation is not associated with an existing instance. 
+
+A.2.3 Geometry Gate 
+
+For incoming BEV footprint Ri and stored foot-print Rj , their minimum horizontal separation is 
+
+dBEV  
+
+> ij
+
+=
+
+
+
+0, Ri ∩ Rj̸ = ∅,
+
+min 
+
+> x∈Ri,y∈Rj
+
+∥x − y∥2, otherwise .
+
+(36) Instances satisfying 
+
+dBEV  
+
+> ij
+
+> D G (37) are removed before fine-grained matching. We use 
+
+DG = 20 m. Equivalently, the gated candidate set is 
+
+Ji = j m(j) ∈ C Ti , d BEV  
+
+> ij
+
+≤ DG , (38) where m(j) denotes the parent type of oj .
+
+A.2.4 Fine-Grained Object Association 
+
+For candidates passing the geometry gate, geo-metric similarity combines observation-to-memory footprint coverage and horizontal distance: 
+
+Scov (i, j ) = Area( Ri ∩ Rj )Area( Ri) + ϵ , ϵ = 10 −6,
+
+(39) 
+
+Sdist (i, j ) = exp − dBEV 
+
+> ij
+
+σG
+
+!
+
+, (40) and 
+
+SG(i, j ) = λGScov (i, j ) + (1 − λG)Sdist (i, j ).
+
+(41) The coverage term in Eq. 39 is intentionally asym-metric: it measures how much of the newly ob-served footprint Ri is explained by the persistent footprint Rj . This is preferable to a symmetric IoU here because a single aerial observation may cover only a partial region of a large object whose per-sistent geometry has already accumulated multiple views. When a non-empty appearance description ℓAi
+
+and at least one stored appearance description are available, appearance-level semantic similarity is 
+
+SA(i, j ) = max 
+
+> ℓ∈B Aj
+
+E(ℓAi )⊤E(ℓ). (42) The semantic score is then 
+
+SS (i, j ) = λS ST (i, m (j)) + (1 − λS )SA(i, j ).
+
+(43) If the incoming object has no intrinsic appearance attribute, or if BAj is empty, the unavailable ap-pearance term is omitted and we set SS (i, j ) = 
+
+ST (i, m (j)) . This convention avoids embedding an empty string while preserving the category score as the complete semantic signal. For visual matching, let vi denote the normal-ized DINOv2 embedding of the current object crop. We compute 
+
+SV (i, j ) = max 
+
+> v∈B Vj
+
+v⊤ 
+
+> i
+
+v. (44) The final association score is 
+
+SM (i, j ) = wGSG(i, j ) + wS SS (i, j )+ wV SV (i, j ), (45) where wG + wS + wV = 1 . The best gated candi-date is 
+
+j∗ = arg max 
+
+> j∈J i
+
+SM (i, j ). (46) 14 If SM (i, j ∗) ≥ τM , the incoming anchor is fused with oj∗ ; otherwise, a new instance is created under the best compatible type Tm∗ from Eq. 35. If Ji =
+
+∅, the fine-grained match is skipped and a new instance is also created under Tm∗ .
+
+A.2.5 Geometry and Attribute Fusion 
+
+When aoi is associated with oj , the persistent geom-etry is updated as 
+
+Rj ← ConvHull( Rj ∪ Ri), (47) 
+
+zmin  
+
+> j
+
+← min( zmin  
+
+> j
+
+, z min  
+
+> i
+
+), (48) 
+
+zmax  
+
+> j
+
+← max( zmax  
+
+> j
+
+, z max  
+
+> i
+
+). (49) The center cj is then recomputed using Eq. 22. The instance confidence jointly incorporates the reliability of the new observation and its association consistency: 
+
+qj ← (1 − αq)qj + αq [qiSM (i, j )] . (50) A newly created instance is initialized with qj = qi.Thus, a high-confidence observation that is strongly consistent with the stored object reinforces the per-sistent instance, whereas a marginal association produces only a small update. The category bank BTm(j), appearance bank BAj ,and visual bank BVj are all bounded. Each stored bank entry retains the reliability of the observation that produced it solely for bank replacement; for an entry b, q(b) denotes this inherited reliability. Whenever a new entry causes a bank to exceed its capacity, we compute 
+
+U (b) = λB q(b) + (1 − λB ) min  
+
+> b′̸=b
+
+1 − sim( b, b ′)
+
+(51) for every entry in the temporarily expanded bank and remove the entry with the lowest utility. We use cosine similarity of GTE-small embeddings for the category/appearance banks and cosine similar-ity of normalized DINOv2 features for the visual bank. This update requires no separate redundancy threshold: near-identical repeated observations nat-urally receive low diversity utility, while reliable evidence from distinct aerial viewpoints is retained. For a successful association, the incoming category expression, non-empty appearance description, and visual feature are respectively considered for BTm(j),
+
+BAj , and BVj using the same bounded-bank rule. 
+
+A.2.6 Landmark Prior Retrieval 
+
+For landmark ℓ in the active subtask, we represent its category and appearance description as ℓT and 
+
+ℓA. Define the category compatibility 
+
+STR (ℓ, o j ) = max 
+
+> l∈B Tm(j)
+
+E(ℓT )⊤E(l). (52) When ℓA is non-empty and BAj contains at least one appearance description, define 
+
+SAR (ℓ, o j ) = max 
+
+> l∈B Aj
+
+E(ℓA)⊤E(l), (53) and use 
+
+SR(ℓ, o j ) = λRSTR (ℓ, o j ) + (1 − λR)SAR (ℓ, o j ).
+
+(54) If no appearance constraint is present in the in-struction, or if the instance has no stored appear-ance description, the unavailable appearance term is omitted and SR(ℓ, o j ) = STR (ℓ, o j ).We use the stored instance reliability to softly calibrate candidate ranking: 
+
+eSR(ℓ, o j ) = SR(ℓ, o j ) [ βq + (1 − βq)qj ] . (55) Because βq is close to one, semantic compatibility remains the dominant signal; confidence acts only as supporting evidence between otherwise compa-rable instances. Candidates satisfy 
+
+SR(ℓ, o j ) ≥ τR, dxy t,j ≤ DR. (56) The top-KR instances according to eSR form Cℓ.For each candidate, its UAV-relative spatial cue rt,j 
+
+is recomputed from its persistent center. We define 
+
+Rt,ℓ = {(oj , rt,j , q j ) | oj ∈ C ℓ} . (57) The MLLM selector jointly reasons over the active subtask and the candidate sets Rt,ℓ for all ℓ ∈ L n,and may select one instance or return None for each landmark. Once selected, the identity of a landmark remains fixed within the active subtask, while its relative cue is recomputed as the UAV moves. The selected instances and current cues constitute the global prior Pt.
+
+A.2.7 Memory Lifecycle During Evaluation 
+
+AirAnchor adopts a scene-level online-persistent memory protocol. A separate SOKB is maintained for each environment scene, implemented as a dic-tionary indexed by the scene identifier. The SOKB of a scene is initialized as empty when the first evaluation episode from that scene is encountered and is subsequently updated using object anchors acquired during navigation. 15 Unless otherwise specified, all experiments fol-low the canonical episode order provided by the corresponding AerialVLN-S split. Episodes are not regrouped by scene. A separate SOKB is main-tained for each scene; when evaluation later re-turns to a previously encountered scene, its accu-mulated SOKB is restored and continues to be up-dated. Accordingly, each episode can access only object knowledge accumulated from earlier eval-uated episodes of the same scene under the cur-rent episode ordering. No information from future episodes is available. All online memory updates use only object anchors obtained from RGB-D ob-servations and UAV poses actually collected by the agent. 
+
+A.3 Spatially-Informed Navigation Agent A.3.1 Subtask Management 
+
+At the beginning of each episode, MLLM dec de-composes the complete instruction into 
+
+{(sn, Ln, Un)}Nn=1 . (58) Each sn preserves the original execution order and relational language, while Ln contains the land-marks used to query the SOKB. Only one subtask is active at a time, and landmark retrieval is re-peated when the agent advances to a new subtask. Each subtask is further decomposed into a non-empty ordered list of subgoals Un, used only to compute the automatic-backtracking threshold 
+
+Bn = λstep |U n|, λstep = 3 . (59) The controller counts agent-loop iterations for the active subtask since its start or most recent back-tracking. If this count exceeds Bn while the sub-task remains incomplete, it automatically triggers Path Backtracking, subject to a shared limit of two backtracking executions per subtask for both agent-selected and automatic recovery. The local iteration counter is reset after backtracking; the backtrack-ing count is reset only for a new subtask. Once the backtracking limit is reached, further backtracking is disabled. 
+
+A.3.2 Skill-Level Planning 
+
+A parameterized skill is denoted by 
+
+σt = kt(ηt). (60) The navigation MLLM predicts (σt, ξ t) from the visually prompted observation, navigation context, EAG, and global landmark priors. The skill param-eters are produced in the same navigation call; no additional MLLM call is used to separately predict Pixel-Navigation distance or Altitude-Adjustment magnitude. We implement four skills tailored to aerial navigation. 
+
+Pixel Navigation. Pixel Navigation follows the image-space waypoint formulation of SPF (Hu et al., 2025). Its parameter is 
+
+ηpix  
+
+> t
+
+= ( ut, v t, d t), (61) where (ut, v t) is an image-space waypoint and dt
+
+is its metric travel depth. AirAnchor explicitly provides metric anchor cues, allowing the MLLM to predict dt in meters. Let 
+
+brct = K−1(ut, v t, 1) ⊤
+
+∥K−1(ut, v t, 1) ⊤∥2
+
+(62) be the normalized camera ray. Its world-frame direction is 
+
+brwt = Rwc t brct . (63) The target position is 
+
+x∗ 
+
+> t
+
+= xt + dtbrwt . (64) 
+
+Altitude Adjustment. Altitude Adjustment re-ceives a signed metric vertical displacement 
+
+ηalt  
+
+> t
+
+= ∆ ht, (65) and produces 
+
+x∗ 
+
+> t
+
+= ( xt, y t, z t + ∆ ht)⊤. (66) Because all spatial computation uses the z-up world frame, ∆ht > 0 denotes ascent and ∆ht < 0
+
+denotes descent. 
+
+View Rotation. View Rotation performs an in-place panoramic observation to support fine-grained heading estimation beyond the current field of view. The UAV position remains fixed, and the heading at the beginning of the scan is retained as the reference heading. Eight RGB observations are acquired at uniformly distributed relative yaw offsets: 
+
+{δψ m}7 
+
+> m=0
+
+= {0◦, 45 ◦, 90 ◦, 135 ◦, 180 ◦,
+
+− 135 ◦, −90 ◦, −45 ◦}. (67) The resulting panoramic observation is 
+
+Ipan  
+
+> t
+
+=
+
+n 
+
+I(m) 
+
+> t
+
+, δψ m
+
+o 7 
+
+> m=0
+
+. (68) 16 The discrete views serve as panoramic visual references rather than candidate actions. Given the eight observations and their signed yaw offsets, the MLLM first identifies the coarse direction that best supports the active subtask and then performs fine-grained angular reasoning between the observed directions. It predicts a target relative yaw 
+
+∆ψpred  
+
+> t
+
+∈ [−180 ◦, 180 ◦], (69) which is not restricted to the eight sampled yaw offsets. Because the environment provides a 15 ◦ rotation primitive, the predicted angle is converted to the closest executable rotation: 
+
+∆ψexec  
+
+> t
+
+= 15 ◦ round ∆ψpred 
+
+> t
+
+15 ◦
+
+!
+
+. (70) The UAV then rotates from the scan-reference head-ing by ∆ψexec  
+
+> t
+
+. View Rotation changes only the UAV heading and does not invoke the local A ∗
+
+planner. 
+
+Path Backtracking. Path Backtracking operates exclusively on the execution history of the current subtask. Directional anchors are not retained in history because they represent transient geometry useful only for the decision at which they were grounded. Let 
+
+Got ⊆ G t (71) denote the EAG obtained by retaining only the UAV node, object-anchor nodes, and correspond-ing UAV–object edges. The current-subtask history is organized as a path chain 
+
+Hn = ( VHn , EHn ). (72) Each history node is 
+
+hj =  pj , Cj , χ j , Goj
+
+ , (73) where χj is a concise scene caption generated in the same MLLM call as the corresponding skill-level decision. The edge between two consecutive history nodes is 
+
+ej = ( σj , ξ j , ∆pj ) , (74) where the realized displacement is 
+
+∆pj = ( xj+k − xj , wrap( ψj+k − ψj )) . (75) Thus, an edge records both the skill-level deci-sion and the motion that was actually executed. Path Backtracking can be selected by the agent or triggered automatically when the subtask iteration count exceeds its threshold, with at most two ex-ecutions per subtask in total. In either case, the MLLM receives the current subtask and serialized history chain Hn and selects 
+
+jb = MLLM back (sn, Hn). (76) The executor then retraces the previously executed path-chain transitions from the current state back to node hjb . Since these transitions have already been traversed in the same scene, backtracking reuses the stored transition sequence and does not invoke the local A ∗ planner. 
+
+A.3.3 Local A ∗ Execution 
+
+A∗ (Hart et al., 1968) is invoked only for Pixel Nav-igation and Altitude Adjustment . It does not access a preconstructed scene map, simulator navigation graph, or reference trajectory. Instead, a tempo-rary local free-space representation is constructed solely from the depth observation associated with the selected skill. Consistent with Appendix A.1.2, all depth mea-surements are capped at 
+
+bD(u) = min( D(u), D max ). (77) For a viewing ray br(u), its locally observed free segment is 
+
+F(u) = xt + s br(u)
+
+0 < s < max  0, bD(u) − δsafe 
+
+ .
+
+(78) When the original depth exceeds Dmax , the ray is therefore regarded as free only up to the reli-able sensing boundary rather than being assumed obstacle-free indefinitely. For Pixel Navigation, the local representation is constructed from the current egocentric depth Dt,and the commanded metric depth is constrained by 
+
+dexec  
+
+> t
+
+= max 
+
+
+
+0, min 
+
+
+
+dt, bDt(ut, v t) − δsafe 
+
+ 
+
+.
+
+(79) If dexec  
+
+> t
+
+= 0 , the translational request is treated as locally infeasible. Otherwise, A ∗ searches the temporary local action lattice toward the resulting waypoint. For Altitude Adjustment, we obtain an upward-facing depth observation when ascending and a downward-facing depth observation when descending, and construct the local free-space rep-resentation in the same manner. View Rotation is 17 executed directly through yaw rotations, whereas Path Backtracking retraces the stored history chain and does not invoke A ∗.If no feasible local path is found, the executor does not substitute an oracle waypoint. The failed transition is recorded in the navigation context and control returns to the high-level planner for a new closed-loop decision. 
+
+A.3.4 Progress Reflection 
+
+Suppose skill σt executes k primitive actions and moves the UAV from pt to pt+k. The world-coordinate reference point pref  
+
+> i
+
+of every anchor in the decision-time EAG Gt is retained until re-flection. Its relative cue is recomputed at the new pose: 
+
+ert+k,i = Rel 
+
+
+
+pt+k, pref 
+
+> i
+
+
+
+, (80) where Rel( ·) denotes the same relative-geometry computation used in Appendix A.1. The recentered graph is 
+
+eGt+k = ( eVt+k, eEt+k),
+
+eVt+k = {vut+k} ∪ { vi | ai ∈ A t},
+
+eEt+k = (vut+k, v i, ert+k,i ) ai ∈ A t .
+
+(81) Thus, Gt and eGt+k contain the same anchor identi-ties but express their relations to the UAV before and after skill execution. Their comparison explic-itly exposes changes such as approaching, passing, crossing, or flying above a landmark. Following the notation in the main paper, 
+
+Csem  
+
+> t
+
+= ( Ct, I ′
+
+> t
+
+, I ′
+
+> t+k
+
+, σ t, ξ t), (82) 
+
+Cspa  
+
+> t
+
+= ( Gt, eGt+k). (83) The reflection MLLM predicts 
+
+(γt+k, b t+k, π t+k) = MLLM ref (Csem  
+
+> t
+
+, Cspa  
+
+> t
+
+).
+
+(84) If bt+k indicates completion, the agent advances to the next subtask and retrieves its corresponding landmark priors. To avoid carrying the completed subtask state into the next one, the progress variable is reset to N OT STARTED and the plan is initialized from the newly active subtask text, without using its auxiliary subgoals. Completion of the final subtask triggers S TOP ; otherwise, the episode terminates when the global budget of 20 agent-loop iterations is exhausted. 
+
+A.4 Hyperparameter Settings 
+
+Table 4 summarizes the hyperparameters used in AirAnchor. 
+
+A.5 Pseudocode 
+
+Algorithm 1 summarizes the complete naviga-tion pipeline, and Algorithm 2 details incremen-tal SOKB maintenance. Here, ℓ counts all agent-loop iterations, c counts iterations since the cur-rent subtask began or last backtracked, and r
+
+counts backtracking executions within that sub-task. The skill set St constrains the available choices without changing the subtask input. If retrieval returns no candidates, the global prior is empty. Skill execution follows Appendix A.3.2, including panoramic reasoning with global priors, history-based recovery-node selection, and the lo-cal planner where applicable. The automatic trig-ger is checked before the next skill execution after 
+
+c > B n; completion and the global budget take precedence over recovery. 
+
+B Additional Experimental Results 
+
+B.1 Additional Quantitative Analysis 
+
+All experiments in this subsection are conducted on the AerialVLN-S Validation Seen split under the same evaluation protocol as the main experiments. 
+
+B.1.1 Impact of the Number of Spatial Anchors 
+
+We analyze how the number of spatial anchors af-fects navigation performance. A small K provides insufficient spatial references, whereas an exces-sively large K may introduce redundant or less relevant information: the anchor query gradually covers less decision-relevant objects, detection and spatial grounding introduce additional noisy cues, and the enlarged EAG increases the structured con-text presented to the MLLM, potentially diluting its attention to critical spatial information. As shown in Table 5, using only one anchor reduces SR from 9.6 to 8.4 and increases NE by 9.7 m, indicating that a single reference is often insufficient to cap-ture complementary object-level and directional geometry. Increasing K to six also degrades per-formance, despite grounding more scene elements. We therefore set K = 3 , which provides a com-pact set of complementary spatial references while avoiding excessive redundancy and noise in the EAG. 
+
+B.1.2 Memory Construction Mechanism 
+
+We further compare practical strategies for con-structing the scene-level global object memory. Besides the default online-persistent SOKB, we 18 Module Parameter Value Description 
+
+Observation RGB resolution 512 × 512 Resolution of RGB observations. Depth resolution 512 × 512 Resolution of depth observations. Anchor Queried anchors K 3 Number of spatial anchors per decision step. Directional depth window 5 × 5 Neighborhood used for directional depth aggregation. Reliable depth Dmax 100 m Maximum depth. Far-object threshold τfar 0.50 Object-to-directional fallback threshold in Eq. 17. Grounded-SAM box / text threshold 0.30 /0.25 Open-vocabulary object-grounding thresholds. Memory Bank capacities 3/3/3 Type-label / appearance-label / visual-feature capacities. Type threshold τT 0.55 Minimum similarity for compatible object types. Geometry gate DG 20 m Maximum BEV separation for instance association. 
+
+λG, σ G 0.5, 10 m Observation-coverage / distance geometric-similarity. 
+
+λS 0.5 Category–appearance semantic trade-off. 
+
+(wG, w S , w V ) (0 .40 , 0.35 , 0.25) Geometry / semantics / vision association weights. Match threshold τM 0.65 Minimum score for merging an incoming anchor. Confidence rate αq 0.20 Instance-reliability update rate. Bank utility weight λB 0.50 Reliability-diversity trade-off for bank replacement. Retrieval semantic weight λR 0.50 Category and appearance trade-off. Confidence floor βq 0.80 Confidence calibration strength for retrieval ranking. Retrieval threshold τR 0.50 Minimum semantic compatibility for landmark retrieval. Retrieval radius DR 80 m Maximum horizontal distance of retrieval candidates. Retrieval top-KR 3 Maximum candidates per landmark. Agent λstep 3 Multiplier for the automatic-backtracking threshold Backtracking limit 2 Maximum number of backtracking attempts per subtask. Episode agent-loop budget 20 Maximum number of agent-loop iterations per episode. Pixel travel range [5 , 50] m Metric travel-distance range for Pixel Navigation. Safety margin δsafe 2 m Clearance from observed depth surfaces. Maximum altitude change 30 m Maximum magnitude of one Altitude Adjustment. 
+
+Table 4: Implementation settings of AirAnchor. 
+
+K SR ↑ SDTW ↑ NE ↓
+
+1 8.4 3.3 90.2 
+
+3 9.6 4.0 80.5 
+
+6 9.2 3.6 85.4 
+
+Table 5: Impact of the number of spatial anchors. 
+
+construct a pre-rendered initialization inspired by offline scene-memory construction (Ning et al., 2026). For each scene, we uniformly sample 32 collision-free aerial poses from valid simulator free space using a fixed sampling procedure. At each pose, four RGB-D observations are rendered at yaw offsets of 0◦, 90 ◦, 180 ◦, and 270 ◦, yielding 128 ob-servations per scene. Since no navigation context is available during pre-rendering, the MLLM receives only the RGB observation and proposes up to three persistent, spatially stable, and visually distinctive landmark candidates. Their geometry is obtained from the corresponding depth observations, and the resulting object anchors are consolidated using the same grounding, reliability estimation, and SOKB association mechanisms as online AirAnchor ob-servations. 
+
+Memory Construction SR ↑ SDTW ↑ NE ↓
+
+Pre-rendered Init. (Frozen) 8.7 3.4 88.7 Online Persistent (Ours) 9.6 4.0 80.5 Pre-rendered Init. + Update 9.9 4.2 78.9 
+
+Table 6: Comparison of memory construction protocols. 
+
+We compare three settings: Pre-rendered Init. (Frozen) uses the pre-rendered SOKB throughout evaluation without test-time updates; Online Per-sistent is the default AirAnchor setting, where the SOKB of each scene starts empty and incre-mentally accumulates query-driven object anchors across episodes from that scene; and Pre-rendered Init. + Online Update initializes the SOKB from the pre-rendered observations and subsequently en-ables the same online updates as AirAnchor. As shown in Table 6, the default Online Persis-tent memory outperforms the frozen pre-rendered memory despite starting from an empty SOKB. Specifically, online construction improves SR from 8.7 to 9.6 and SDTW from 3.4 to 4.0, while re-ducing NE by 8.2 m. This result indicates that the usefulness of global memory depends not only 19 Algorithm 1 AirAnchor Navigation 
+
+Require: Instruction I, scene identifier sid , scene-indexed memory store M
+
+Ensure: Navigation trajectory T and updated memory store M
+
+1: M ← M[sid] if available; otherwise M ← ∅
+
+2: {(sn, Ln, Un)}Nn=1 ← MLLM dec (I)
+
+3: t ← 0; ℓ ← 0; initialize T with the initial UAV pose 4: for n = 1 , . . . , N do 
+
+5: if ℓ = 20 then 
+
+6: break 
+
+7: end if 
+
+8: Bn ← 3|U n|; c ← 0; r ← 0; Hn ← ∅
+
+9: γt ← NOT STARTED ; initialize πt from sn; Ct ← (sn, γ t, π t)
+
+10: Read current pose; retrieve candidates for Ln and select identities with MLLM ret if non-empty 11: while ℓ < 20 do 
+
+12: Observe (It, D t, pt); construct Pt by recentering the selected landmark priors at pt
+
+13: At ← MLLM query (It, Ct)
+
+14: (Gt, I ′
+
+> t
+
+, Ao, valid  
+
+> t
+
+) ← GROUND ANCHORS (At, D t, pt, D max )
+
+15: for all aoi ∈ A o, valid  
+
+> t
+
+do 
+
+16: M ← UPDATE SOKB (M, a oi )
+
+17: end for 
+
+18: St ← available skills; exclude Path Backtracking if r = 2 or no previous recovery node exists 19: (σt, ξ t, χ t) ← MLLM nav (I′
+
+> t
+
+, Ct, Gt, Pt; St)
+
+20: if c > B n and Path Backtracking ∈ S t then 
+
+21: σt ← PATH BACKTRACKING (∅); ξt ← automatic subtask-threshold trigger 22: end if 
+
+23: Record decision node ht = ( pt, Ct, χ t, Got ) in Hn
+
+24: Execute σt as specified in Appendix A.3.2; obtain (It+k , pt+k )
+
+25: Append (σt, ξ t, ∆pt) to Hn and the executed path to T
+
+26: eGt+k ← RECENTER (Gt, pt+k )
+
+27: (γt+k , b t+k , π t+k ) ← MLLM ref (Csem  
+
+> t
+
+, Cspa  
+
+> t
+
+)
+
+28: ℓ ← ℓ + 1 ; c ← c + 1 
+
+29: if σt is Path Backtracking then 
+
+30: r ← r + 1 ; c ← 0
+
+31: end if 
+
+32: t ← t + k; Ct ← (sn, γ t, π t)
+
+33: if bt = COMPLETED then 
+
+34: break ▷ Advance to the next subtask, if any 35: end if 
+
+36: end while 
+
+37: end for 
+
+38: Execute S TOP ; M[sid] ← M 
+
+39: return T and M
+
+on scene coverage, but also on which objects are retained and whether their representations can be refined during navigation. The frozen initializa-tion provides broader scene-level coverage from the beginning, but its observations are navigation-agnostic and therefore may include objects that are visually distinctive yet irrelevant to the instruc-tions encountered during evaluation. Moreover, once constructed, erroneous or weakly observed instances cannot be corrected. In contrast, AirAnchor constructs object an-chors conditioned on the active subtask, naviga-tion progress, and current plan. Consequently, the objects entering the SOKB are biased toward land-marks and spatial references that are directly useful for navigation. Repeated observations from subse-quent episodes further refine their geometry, seman-tic descriptions, and visual evidence through the same coarse-to-fine association mechanism. The simultaneous improvement in SDTW and NE there-fore suggests that online memory contributes not only to identifying instruction-relevant landmarks, but also to providing more useful spatial priors for maintaining accurate long-horizon navigation. The Pre-rendered Init. + Online Update setting achieves the best overall performance, but its gain over Online Persistent is comparatively small: SR increases by only 0.3 points, SDTW by 0.2, and NE decreases by 1.6 m. This pattern suggests that offline initialization is mainly beneficial during the cold-start stage, when few task-relevant landmarks have yet been accumulated. Once online navigation experience provides sufficient coverage, continued context-conditioned updates become the dominant source of useful memory information. Therefore, the results support the central design of AirAn-20 Algorithm 2 Incremental SOKB Update                                                                                                      
+
+> Require: Memory M, valid object anchor aoi
+> Ensure: Updated M
+> 1: Compute ST(i, m )for all types 2: CTi← { m:ST(i, m )≥τT}
+> 3: if CTi=∅then
+> 4: Create a new type and initialize its first instance from
+> aoi
+> 5: return M
+> 6: end if
+> 7: m∗←arg max m∈C TiST(i, m )
+> 8: Ji←∅
+> 9: for all ojwith m(j)∈ C Tido
+> 10: if dBEV
+> ij ≤DGthen
+> 11: Ji← J i∪ { j}
+> 12: end if
+> 13: end for
+> 14: if Ji=∅then
+> 15: Create a new instance under Tm∗
+> 16: return M
+> 17: end if
+> 18: for all j∈ J ido
+> 19: Compute SG(i, j ),SS(i, j ), and SV(i, j )
+> 20: Compute SM(i, j )using Eq. 45 21: end for
+> 22: j∗←arg max j∈J iSM(i, j )
+> 23: if SM(i, j ∗)≥τMthen
+> 24: Merge the persistent 2.5D geometry and recompute
+> cj∗
+> 25: Update BTm(j∗),BAj∗, and BVj∗using Eq. 51 26: Update qj∗using Eq. 50 27: else
+> 28: Create a new instance under Tm∗
+> 29: end if
+> 30: return M
+
+chor: global spatial knowledge is most effective when it is progressively constructed from the same task-relevant object anchors used for local spatial grounding, rather than maintained as a static scene representation. 
+
+B.1.3 Robustness to Episode Ordering 
+
+The default AirAnchor evaluation follows the canonical episode order provided by AerialVLN-S. To examine whether scene-persistent memory depends on this ordering, we additionally evaluate three independent random permutations of all Vali-dation Seen episodes. For each run, all scene mem-ories are initialized as empty, and each episode can access only the SOKB accumulated from earlier episodes of the same scene under that permutation. All other settings are unchanged. As shown in Table 8, randomizing the episode order causes little change in SR and SDTW, which remain close to the canonical results. This indi-cates that the benefit of persistent memory does not rely on a favorable evaluation sequence. The larger variation in NE reflects the expected cold-start ef-fect: changing the order changes which same-scene landmarks have already been accumulated when an episode is encountered, thereby affecting the accuracy of long-range spatial priors and final ap-proach. This limited order sensitivity follows from AirAnchor’s object-centric memory construction. Object anchors are associated through semantic, vi-sual, and geometric consistency rather than episode identity, allowing repeated landmarks observed from different trajectories to be consolidated re-gardless of when they are encountered. As same-scene experience accumulates, different episode orders therefore recover largely overlapping task-relevant spatial knowledge. Overall, episode order-ing mainly affects when useful landmark priors be-come available, rather than the persistent-memory benefit itself. 
+
+B.1.4 MLLM Efficiency Analysis 
+
+Table 7 reveals different efficiency–performance characteristics among the three methods. SPF has the lowest MLLM workload, requiring only 30.3 calls and 21,725 tokens per episode. This follows directly from its lightweight reactive design: each invocation maps the current visual observation to a single spatial waypoint, with little additional struc-tured reasoning or persistent state involved. Such a compact control loop is highly efficient, but each prediction is primarily grounded in the current ob-servation. Consequently, long-horizon instruction following and spatial relations that extend beyond the current field of view receive limited explicit support, which is reflected in its lower SR of 5.7. FineCog-Nav exhibits the opposite behavior. Al-though its average per-call input size is only 691 to-kens, close to that of SPF, its primitive-action cogni-tive loop repeatedly invokes perception, reasoning, decision, and memory-related modules through-out navigation. As a result, the workload accumu-lates to 513.4 calls and 390,697 tokens per episode. This dense cognitive processing provides frequent closed-loop reassessment, but also repeatedly re-processes closely related visual and textual context at a fine control granularity. The resulting compu-tational overhead is therefore driven primarily by the frequency of MLLM reasoning rather than by unusually large individual prompts. AirAnchor occupies a different operating point. Its average input per call is larger (1,418 tokens) because a high-level decision explicitly incorpo-rates compact local spatial anchors, persistent land-21 Method Calls ↓ Input / Call ↓ Output / Call ↓ Total Tokens ↓ SR ↑                                     
+
+> SPF 30.3 681 36 21,725 5.7 FineCog-Nav 513.4 691 70 390,697 6.9 AirAnchor 45.8 1,418 68 68,059 9.6
+> Table 7: Comparison of MLLM workload. Calls denotes the average number of MLLM invocations per episode;
+> Input / Call and Output / Call indicate the average numbers of input and output tokens per invocation, respectively; and Total Tokens denotes the average token consumption per episode.
+> Episode Order SR ↑SDTW ↑NE ↓
+> Canonical 9.6 4.0 80.5 Random Shuffle 9.5 ±0.2 4.0 ±0.1 82.4 ±3.8
+> Table 8: Robustness to episode ordering. Random Shuf-fle reports mean and standard deviation over three inde-pendent episode permutations.
+
+mark priors, and spatial evidence for progress re-flection. However, these richer reasoning calls are performed at the skill level and are amor-tized over multiple primitive actions. AirAnchor therefore requires only 45.8 calls and 68,059 to-kens per episode—substantially closer to SPF than to FineCog-Nav in invocation frequency—while achieving the highest SR of 9.6. Relative to FineCog-Nav, it reduces MLLM invocations by 
+
+91 .1% and total token consumption by 82 .6% .These results highlight the efficiency advantage of AirAnchor’s design: rather than minimizing rea-soning as in a purely reactive waypoint policy, or repeatedly invoking multiple cognitive modules at every primitive action, AirAnchor concentrates MLLM computation on a small number of spatially informed high-level decisions. The anchor-based representation further allows local geometry and persistent global knowledge to be communicated in a compact, structured form. This enables sub-stantially stronger navigation performance without the dense MLLM interaction required by primitive-action cognitive agents. 
+
+B.2 Additional Qualitative Analysis B.2.1 Additional Successful Cases 
+
+Additional successful trajectories from different scenes are shown in Figure 6. These cases demon-strate that AirAnchor can successfully navigate across diverse scene types and instruction condi-tions, highlighting the generalization and robust-ness of our method. 
+
+B.2.2 Failure Modes 
+
+Despite the benefits of cross-scale spatial reasoning, AirAnchor retains three limitations inherent to its design. 
+
+Sparse grounding bottleneck. AirAnchor grounds only a small set of decision-relevant an-chors. If a critical landmark or motion direction is omitted during anchor selection, its geometry is unavailable to all subsequent reasoning in that deci-sion step. This limitation is amplified at long range, where objects with unreliable depth are degraded to directional anchors. Although this prevents inac-curate geometry from entering the SOKB, it also temporarily removes object identity and leaves the agent with only coarse directional evidence. 
+
+Persistent memory error propagation. The SOKB reuses accumulated object anchors across navigation episodes, making association errors more consequential than transient perception errors. Visually similar urban structures may be incorrectly merged, while strong viewpoint changes may split one landmark into multiple instances; either case can bias later landmark retrieval. Moreover, land-marks that have not yet been observed provide no global prior. Thus, the effectiveness of persistent spatial memory depends jointly on reliable object association and sufficient online scene coverage. 
+
+Ambiguous spatial completion. Progress reflec-tion compares the same anchors before and af-ter skill execution, but linguistic relations such as “near”, “past”, “across”, and “around” do not cor-respond to fixed geometric thresholds. Incomplete or inaccurate anchor evidence can therefore cause premature or delayed subtask completion. Since completion directly controls subtask transition and the final S TOP decision, such errors can propagate into substantial trajectory deviations near the desti-nation. 
+
+C Prompt Templates 
+
+The following templates specify the task instruc-tions provided to the MLLM in each AirAnchor 22 Instruction:  Turn right and follow the water way. Pass two bridges and turn left down the first road. Go to the end of the road and stop i n f ront                                    
+
+> of the red building on the other side.
+> Instruction: Take off, turn right, and descend to a position above the park. Fly over the park, then turn right and proceed toward the gra y
+> building.
+> Instruction: Turn left and proceed to the intersection. Then turn right to face the green building and ascend. Move toward the green build ing ,
+> then turn left to face the gray building.
+> Step 1
+> Step 1
+> Step 6Step 35
+> Step 1
+> Step 44 Step 49 Step 63 Step 74
+> Step 10Step 15Step 21 Step 34 Step 39 Step 44
+> Step 5Step 11Step 16Step 24 Step 33 Step 36
+
+Figure 6: Visualization of key navigation steps from additional successful trajectories across different scenes. 
+
+module. Runtime observations and structured nav-igation states are inserted into the corresponding placeholders. 
+
+C.1 Instruction Decomposition Prompt 
+
+Role. 
+
+Decompose an aerial navigation instruction into an ordered sequence of executable subtasks, extract the landmarks referenced by each subtask, and further decompose each subtask into ordered subgoals solely for computing its automatic-backtracking threshold. 
+
+Input. 
+
+Navigation instruction: 
+
+<INSTRUCTION> 
+
+Definitions. 
+
+A subtask is a coherent segment of the instruction describing an intermediate navigation objective. The ordered subtasks must collectively preserve the complete execution semantics of the original instruction. A subgoal is a minimal instruction-supported navigation objective within a subtask. Return at least one subgoal per subtask, preserving the original action order and spatial relations without adding low-level actions or arbitrarily splitting a single objective. Only the number of subgoals is used by the controller, which sets the automatic-backtracking threshold to three times that number. The complete subtask text remains the navigation MLLM input; these auxiliary subgoals are not used to initialize the plan. A landmark is a persistent scene object explicitly referenced by the instruction. Its category describes the intrinsic object type, while attributes contain only intrinsic visual properties explicitly stated in the instruction, such as color, material, shape, or structural appearance. Spatial or temporal expressions such as left, right, above, below, before, after, behind, across, around, and pass describe navigation relations. They must remain in the subtask text and must not be encoded as landmark attributes. 
+
+Reasoning Procedure. 
+
+1. Read the complete instruction and identify its ordered navigation objectives. 2. Group actions that jointly describe one coherent intermediate objective into the same subtask while preserving their original execution order. 3. For each subtask, identify every explicitly referenced landmark and extract its category and stated intrinsic appearance attributes. 4. Preserve all spatial and temporal relations required to execute the instruction correctly. 5. Further decompose each subtask into a non-empty ordered list of minimal subgoals. Keep the complete subtask text unchanged and preserve all of its navigation requirements in the subgoal list. 6. Do not introduce objects, attributes, actions, or relations that are not supported by the instruction. 
+
+Output. 
+
+Return JSON only: 
+
+23 {"subtasks": [ {"id": "S1", "text": "...", "subgoals": ["..."], "landmarks": [ {"id": "L1", "category": "...", "attributes": ["..."] }]}]}
+
+If no intrinsic appearance attribute is explicitly given for a landmark, return an empty attributes list. 
+
+C.2 Spatial Anchor Query Prompt 
+
+Role. 
+
+Select three visual references whose metric spatial information would be most useful for the UAV’s next navigation decision. 
+
+Inputs. 
+
+Current 512 × 512 egocentric RGB observation: 
+
+<IMAGE> 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Current navigation progress: 
+
+<PROGRESS> 
+
+Current next-step plan: 
+
+<PLAN> 
+
+Input Meaning. 
+
+The current subtask specifies the active instruction objective. The navigation progress summarizes which parts of that subtask have already been achieved. The next-step plan specifies the immediate objective that the next navigation decision should accomplish. The RGB observation is the UAV’s current forward-facing view. 
+
+Anchor Types. Object anchor. A clearly visible and spatially persistent object whose relative location would help execute the current subtask. For an object anchor, return only its intrinsic object 
+
+category and visible attributes . Object localization, segmentation, confidence, distance, bearing, and height are obtained by the external grounding and depth modules and must not be estimated here. 
+
+Directional anchor. An image direction whose depth-supported range and relative geometry would help determine the next movement. Represent a directional anchor by an integer pixel coordinate [u,v] . The image origin is at the top-left; 
+
+u ∈ [0 , 511] increases to the right and v ∈ [0 , 511] 
+
+increases downward. 
+
+Reasoning Procedure. 
+
+1. Identify the immediate action implied by the current subtask, progress, and next-step plan. 2. Determine which object locations or movement directions require explicit metric information to resolve that action. 3. Select exactly three anchors that provide the most useful and complementary spatial evidence. 4. Prefer instruction-relevant objects and decision-relevant directions over visually salient but navigation-irrelevant content. 5. Avoid redundant anchors that would provide nearly identical spatial information. 6. Do not infer metric distance, bearing, or height directly from RGB. 
+
+Output. 
+
+Return JSON only: 
+
+{"anchors": [ {"id": "A1", "type": "object", "category": "building", "attributes": ["gray", "rectangular"] }, {"id": "A2", "type": "direction", "pixel": [u, v] }]}
+
+The anchors list must contain exactly three entries. Any combination of object and directional anchors is allowed. 
+
+C.3 Landmark Prior Selection Prompt 
+
+Role. 
+
+Resolve the landmarks referenced by the current subtask against candidate object instances retrieved from persistent scene memory. 
+
+Inputs. 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Referenced landmarks: 
+
+<LANDMARKS> 
+
+Retrieved candidate sets: 
+
+<CANDIDATE_SETS> 
+
+Input Meaning. 
+
+Each referenced landmark has a unique landmark_id , an object category, and any appearance attributes specified by the instruction. The candidate set for a landmark contains persistent object instances that have already passed coarse semantic and spatial retrieval. Each candidate contains: • a unique candidate and persistent instance ID; • stored category and appearance descriptions; • a memory reliability score; • its bearing relative to the current UAV; 
+
+24 • whether and how far it lies above or below the UAV; • horizontal distance to the UAV; • 3D distance to the UAV. These spatial quantities are computed from the stored object geometry and the current UAV pose. They should be used as metric spatial evidence, while the memory reliability indicates how strongly the stored instance is supported by previous observations. 
+
+Reasoning Procedure. 
+
+For each referenced landmark: 1. Compare its category and appearance description with those of its candidate instances. 2. Interpret the spatial relations expressed by the current subtask and determine what approximate landmark configuration those relations imply. 3. Compare each candidate’s UAV-relative spatial information with the configuration implied by the instruction. 4. When several landmarks occur in the same subtask, jointly use their relative ordering and spatial constraints to disambiguate otherwise similar candidates. 5. Use memory reliability only as supporting evidence; do not choose an instance solely because it has the highest reliability. 6. Select at most one candidate for each landmark. If the semantic and spatial evidence is insufficient or contradictory, return null rather than forcing a match. 
+
+Output. 
+
+Return JSON only: 
+
+{"matches": [ {"landmark_id": "L1", "instance_id": "O3", "reason": "concise semantic and spatial evidence" }, {"landmark_id": "L2", "instance_id": null, "reason": "insufficient evidence" }]}
+
+Return one entry for every referenced landmark and preserve their input order. 
+
+C.4 Skill-Level Navigation Prompt 
+
+Role. 
+
+Select one high-level navigation skill and its required parameters to best advance the current aerial-navigation subtask. 
+
+Inputs. 
+
+Current 512 × 512 RGB observation with anchor indices overlaid: 
+
+<IMAGE> 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Current navigation progress: 
+
+<PROGRESS> 
+
+Current next-step plan: 
+
+<PLAN> 
+
+Local Egocentric Anchor Graph (EAG): 
+
+<EAG> 
+
+Global landmark priors: 
+
+<GLOBAL_PRIOR> 
+
+Navigation-State Meaning. 
+
+The current subtask specifies the active instruction objective. The navigation progress summarizes what has already been achieved, and the next-step plan specifies the immediate objective for the next action. The Egocentric Anchor Graph (EAG) is a compact local spatial representation constructed from the current RGB-D observation. It contains the UAV and the spatial anchors selected for the current decision. Each anchor is associated with the same numbered marker in the RGB observation. An object anchor represents a visible object and contains its semantic description. Its spatial relation to the UAV includes relative bearing, relative height, horizontal distance, and 3D distance. A directional anchor represents a queried image direction. Its spatial information describes the relative direction and the depth-supported visible range along that camera ray. If the measured range exceeds the reliable depth limit, the anchor explicitly indicates that the reference has been capped rather than treating the capped point as a physical surface. The global landmark priors contain persistent memory instances selected as likely matches for landmarks referenced by the current subtask. Their positions are recomputed relative to the current UAV pose. A prior can therefore provide directional and distance information about an instruction-relevant landmark even when that landmark is outside the current field of view. Use the explicit metric spatial information in the EAG and global priors rather than re-estimating precise geometry from RGB. 
+
+Available Skills. Pixel Navigation 
+
+Move toward an image-space direction visible in the current RGB observation. Parameters: 
+
+{"pixel":[u,v], "distance_m":d} 
+
+The pixel must satisfy u, v ∈ [0 , 511] . It may be any pixel in the current image and does not need to coincide with an anchor marker. The intended travel distance must satisfy 5 ≤ d ≤ 50 
+
+meters. Use this skill when the required translational direction can be determined from the current view. 
+
+Altitude Adjustment 
+
+Perform an explicit vertical displacement while maintaining the current horizontal position. Parameter: 
+
+{"delta_h_m":h} 
+
+Positive values mean ascending and negative values mean descending, with |h| ≤ 30 meters. Use this skill when the instruction or current geometry requires a change in altitude before further navigation. 
+
+View Rotation 
+
+25 Reorient the UAV when the required navigation direction cannot be determined reliably from the current field of view. Return an empty parameter object. Eight observations covering the surrounding panorama will subsequently be acquired at 45 ◦ intervals, and a dedicated panoramic reasoning module will infer a fine-grained target yaw that is not restricted to the sampled viewing angles. Use this skill when an instruction-relevant landmark, expected route, or required heading lies outside the current view or remains directionally ambiguous. 
+
+Path Backtracking 
+
+Return along the previously executed path of the current subtask. Return an empty parameter object. A dedicated history reasoning module will subsequently select the previous path node to which the UAV should return. Use this skill only when the available evidence indicates that previous navigation has deviated from the intended subtask and continuing from the current state is unlikely to recover efficiently. 
+
+Reasoning Procedure. 
+
+1. Identify the immediate navigation objective from the current subtask, progress, and next-step plan. 2. Use global landmark priors, when available, to determine the long-range landmark or direction relevant to that objective. 3. Use the current RGB observation and EAG to determine what movement is supported by the currently observed local geometry. 4. Decide whether the objective requires translation, vertical adjustment, additional viewing coverage, or recovery from a previous navigation error. 5. Select exactly one skill that most directly advances the immediate objective. 6. If Pixel Navigation or Altitude Adjustment is selected, determine the corresponding metric parameters from the available spatial evidence. 7. Do not determine whether the current subtask is complete. Completion is evaluated only after skill execution by the progress-reflection module. Also produce a concise scene_caption describing only the navigation-relevant visual state. It is stored in the current-subtask history for possible backtracking. 
+
+Output. 
+
+Return JSON only: 
+
+{"skill": "Pixel Navigation", "parameters": { "pixel": [u, v], "distance_m": d }, "reason": "concise spatial evidence for the selected skill", "scene_caption": "concise navigation-relevant scene description" }
+
+The skill field must be exactly one of "Pixel Navigation" , "Altitude Adjustment" , "View Rotation" , or "Path Backtracking" .For View Rotation and Path Backtracking, return 
+
+"parameters": {} .
+
+C.5 Panoramic View Reorientation Prompt 
+
+Role. 
+
+Determine the concrete yaw rotation that best reorients the UAV for continuing the current navigation subtask. 
+
+Inputs. 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Current navigation progress: 
+
+<PROGRESS> 
+
+Current next-step plan: 
+
+<PLAN> 
+
+Global landmark priors: 
+
+<GLOBAL_PRIOR> 
+
+Eight RGB observations captured at the same UAV position: 
+
+<VIEW_0> , <VIEW_1> , . . . , <VIEW_7> 
+
+Input Meaning. 
+
+The current subtask specifies the active navigation objective. The progress summarizes what has already been achieved, and the next-step plan describes the immediate objective that the new heading should support. The global landmark priors describe instruction-relevant landmarks retrieved from persistent memory. When available, they provide each landmark’s current relative direction, relative height, and distance from the UAV and can therefore help determine which panoramic region should contain the desired route or landmark. 
+
+Panoramic View Definition. 
+
+The eight images are captured at the same UAV position and jointly form a sparse 360 ◦ panoramic observation. Their yaw offsets are defined relative to the heading before the panoramic scan: 
+
+VIEW_0: 0 deg VIEW_1: 45 deg VIEW_2: 90 deg VIEW_3: 135 deg VIEW_4: 180 deg VIEW_5: -135 deg VIEW_6: -90 deg VIEW_7: -45 deg 
+
+Positive yaw means turning right and negative yaw means turning left. The eight views are visual references, not discrete action choices. The desired heading may lie between two sampled views. 
+
+Turning-Direction Definition. 
+
+Use the following coarse directional regions: • Right : a target heading on the right side, with 
+
+0◦ < yaw_delta_deg ≤ 135 ◦.• Left : a target heading on the left side, with 
+
+−135 ◦ ≤ yaw_delta_deg < 0◦.• Around : a target heading primarily behind the UAV, with 135 ◦ < |yaw_delta_deg | ≤ 180 ◦. Either rotation direction may be used according to which better aligns with the desired heading. The final yaw is not restricted to multiples of 45 ◦ or to the eight sampled view directions. 
+
+26 Reasoning Procedure. 
+
+1. Identify the heading required to advance the current subtask from the current progress and next-step plan. 2. Use any global landmark prior to estimate the coarse direction of the relevant landmark or route. 3. Examine all eight views jointly and identify the panoramic region that best supports the required heading. 4. Classify the required reorientation as left , right , or 
+
+around using the angular definitions above. 5. Within that region, compare neighboring views and infer the fine-grained heading. The target may lie between the sampled yaw directions. 6. Output a signed yaw rotation in [−180 ◦, 180 ◦] relative to the heading before the scan. Choose the smallest rotation that correctly aligns the UAV with the immediate navigation objective. 
+
+Output. 
+
+Return JSON only: 
+
+{"turning_direction": "right", "yaw_delta_deg": 70, "reason": "concise visual and spatial evidence for the target heading" }
+
+The turning_direction field must be one of "left" ,
+
+"right" , or "around" and must be consistent with the sign and magnitude of yaw_delta_deg .
+
+C.6 Backtracking Node Selection Prompt 
+
+Role. 
+
+Select the previous path-history node to which the UAV should return after agent-selected recovery or an automatic subtask-step trigger. 
+
+Inputs. 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Current-subtask path history: 
+
+<HISTORY_CHAIN> 
+
+History Definition. 
+
+The path history contains only states and executed transitions from the current subtask and is ordered chronologically. Each history node contains: • a unique node ID; • the UAV pose at that decision state; • the navigation state recorded at that time; • a concise scene caption; • object-anchor spatial information observed at that state. The object-anchor information records visible persistent objects and their relative bearing, relative height, horizontal distance, and 3D distance to the UAV at that history node. Each history transition records the navigation skill executed from the preceding node, the reason for that decision, and the actual UAV displacement produced by the execution. Directional anchors are not retained in the path history because they are transient references associated with individual decisions. 
+
+Reasoning Procedure. 
+
+1. Trace the history in chronological order and compare the recorded navigation states with the objective of the current subtask. 2. Identify the earliest transition after which the trajectory appears to have deviated from the intended objective. 3. Find the latest node immediately before that deviation where the subtask grounding and movement direction were still reliable. 4. Prefer the most recent valid recovery point rather than returning farther than necessary. 5. Select only a node ID that exists in the provided history. 
+
+Output. 
+
+Return JSON only: 
+
+{"node_id": 4, "reason": "concise evidence identifying the last reliable state" }
+
+C.7 Progress Reflection Prompt 
+
+Role. 
+
+Evaluate how the most recently executed navigation skill changed the progress of the current subtask and determine whether that subtask is complete. 
+
+Inputs. 
+
+Current subtask: 
+
+<SUBTASK> 
+
+Progress before execution: 
+
+<PREVIOUS_PROGRESS> 
+
+Plan before execution: 
+
+<PREVIOUS_PLAN> 
+
+RGB observation before execution: 
+
+<IMAGE_BEFORE> 
+
+RGB observation after execution: 
+
+<IMAGE_AFTER> 
+
+Executed skill and its parameters: 
+
+<EXECUTED_SKILL> 
+
+Reason for selecting the skill: 
+
+<DECISION_REASON> 
+
+Decision-time Egocentric Anchor Graph: 
+
+<EAG_BEFORE> 
+
+Recentered Egocentric Anchor Graph: 
+
+<RECENTERED_EAG> 
+
+Navigation-State Meaning. 
+
+The current subtask specifies the active instruction objective. The previous progress summarizes which parts of that subtask had already been achieved before the most recent skill was executed. The previous plan describes the immediate navigation objective that the executed skill was intended to accomplish. 
+
+27 The two RGB observations show the scene immediately before and after execution of that skill. 
+
+EAG Definition. 
+
+The Egocentric Anchor Graph (EAG) is a compact spatial representation constructed at the decision state before skill execution. It contains the UAV and the decision-relevant spatial anchors grounded from the pre-execution RGB-D observation. An object anchor represents a visible object. Its reference point is the grounded object center. A directional anchor represents a selected image direction. Its reference point is obtained from the depth-supported point along that camera ray. If its depth exceeds the reliable sensing range, the reference is capped and explicitly marked as a far-range directional reference rather than a physical surface. For every anchor, its relation to the UAV contains: • relative bearing; • relative height; • horizontal distance; • 3D distance. The decision-time EAG records these relations before skill execution. The recentered EAG contains exactly the same anchor identities and world reference points. It is not a newly perceived or re-detected graph. After the UAV moves, only each anchor’s relation to the new UAV pose is recomputed. Therefore, changes between the decision-time and recentered EAGs directly describe how the UAV moved relative to the same spatial references. 
+
+Reasoning Procedure. 
+
+1. From the current subtask, previous progress, and previous plan, identify what the executed skill was intended to achieve. 2. Check whether the executed skill and its parameters are consistent with that intended action. 3. Compare the before/after RGB observations to determine the semantic effect of the execution. 4. Compare each shared anchor between the decision-time and recentered EAGs. Use changes in bearing, relative height, horizontal distance, and 3D distance to determine the corresponding spatial effect. 5. For relational objectives such as approaching, passing, crossing, moving behind, or flying above/below a landmark, require the observed spatial changes to be consistent with that relation. Do not infer completion from visual similarity alone when explicit spatial evidence contradicts it. 6. Integrate the semantic and spatial evidence to update the current subtask progress. 7. Mark the subtask as COMPLETED only when all navigation conditions required by the current subtask are sufficiently supported. Otherwise mark it as ONGOING .8. If the status is ONGOING , provide a concise next-step plan that addresses the remaining part of the current subtask. 9. If the status is COMPLETED , do not infer or plan the next subtask, because no next-subtask information is provided in this call. Return an empty next_plan ; the navigation controller will initialize the next subtask separately. 
+
+Output. 
+
+Return JSON only: 
+
+{"progress": "concise updated description of current-subtask progress", "status": "ONGOING", "next_plan": "concise next action for the current subtask" }
+
+The status field must be either "ONGOING" or 
+
+"COMPLETED" .If status is "COMPLETED" , return: 
+
+"next_plan": "" 
+
+C.8 Navigation-Agnostic Object Query Prompt 
+
+This prompt is used only for the pre-rendered memory-construction experiment. 
+
+Role. 
+
+Select objects from the current scene that are suitable for persistent spatial landmark memory. 
+
+Input. 
+
+Current 512 × 512 RGB observation: 
+
+<IMAGE> 
+
+Landmark-Memory Criterion. 
+
+A suitable memory object should be: • spatially persistent rather than transient; • clearly visible in the current observation; • sufficiently distinctive to support recognition from later aerial viewpoints. Examples include distinctive buildings, bridges, towers, large facilities, and other stable urban structures. For each selected object, the category describes its intrinsic object type and attributes describe only intrinsic visible properties such as color, material, shape, or structural appearance. Object localization, segmentation, confidence, and metric geometry are computed by the same external grounding pipeline used for online anchors and must not be estimated here. 
+
+Reasoning Procedure. 
+
+1. Examine the current image for clearly visible persistent scene objects. 2. Prefer objects that are visually distinctive enough to be re-identified from different aerial viewpoints. 3. Avoid transient objects and generic structures when more distinctive persistent landmarks are available. 4. Select at most three objects. 5. Return only their semantic category and intrinsic visible attributes. 
+
+Output. 
+
+Return JSON only: 
+
+28 {"objects": [ {"category": "bridge", "attributes": ["gray", "arched"] }]}
+
+The objects list may contain zero to three entries. 
+
+29

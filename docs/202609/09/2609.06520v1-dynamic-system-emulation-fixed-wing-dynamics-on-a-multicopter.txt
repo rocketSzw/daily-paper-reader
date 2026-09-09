@@ -1,0 +1,677 @@
+Title: Dynamic System Emulation: Fixed Wing Dynamics on a Multicopter
+
+URL Source: https://arxiv.org/pdf/2609.06520v1
+
+Published Time: Wed, 09 Sep 2026 01:16:00 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Dynamic System Emulation: Fixed Wing Dynamics on a Multicopter 
+
+Abdelhakim Amer 1 and Andriy Sarabakha 1
+
+Abstract — This work presents a control framework that enables a multicopter equipped with a two-axis gimbal to emulate the flight dynamics of a fixed-wing aircraft. The goal is to provide an operationally simple platform for training and simulation that avoids the aerodynamic constraints of fixed-wing vehicles, such as minimum airspeed and nonholonomic constraints. A state-input mapping between the two platforms is derived using dynamic feedback linearization. The framework is evaluated on representative fixed-wing manoeuvres. Results show high-fidelity emulation under nominal conditions. While evaluations are conducted in simulation, the approach estab-lishes a practical path toward hardware deployment for pilot training, autonomy research, and controller benchmarking. 
+
+I. I NTRODUCTION 
+
+Mimicking the behaviour of one dynamic system with another, broadly termed emulation, is a powerful tool in engineering and research. These approaches can be classified into a taxonomy based on their connection to the real world. The first category is virtual simulation, in which a computer model replicates a system’s dynamics and sensory environment [1], [2]. While valuable for training algorithms, these systems suffer from the well-known “sim-to-real” gap, as models trained on simulated data often fail when deployed in the real world [3], [4]. The second category is pilot-in-the-loop (PIL) simulation, which combines physical motion platforms with virtual environments, primarily for human op-erator training. Such systems [5], [6], provide realistic motion cues to pilots while rendering either computer-generated vi-suals or pre-recorded imagery. However, PIL systems remain fundamentally limited for algorithm validation: they cannot provide real-time sensor data that responds dynamically to the system’s current state and actions. This work proposes a third paradigm: physical-to-physical system emulation. In this approach, one highly manoeu-vrable, low-cost physical system, i.e a multicopter equipped with a camera on a gimbal, is controlled to dynamically replicate both the motion and camera viewpoint of another, more constrained system, a fixed-wing aircraft. Fixed-wing aircraft are operationally demanding due to aerodynamic constraints such as minimum airspeed requirements and stall risks. In contrast, a multicopter offers affordability and superior maneuverability (including hover and vertical takeoff), making it an ideal emulation platform. This ap-proach is particularly valuable for validating algorithms at lower technology readiness levels [7] and enables flexible,        
+
+> This research was supported by the Aarhus University Research Founda-tion.
+> 1Abdelhakim Amer and Andriy Sarabakha are with the Department of Electrical and Computer Engineering, Aarhus University, Denmark.
+
+{abdelhakim, andriy }@ece.au.dk 
+
+repeatable data collection for perception tasks by providing real-time sensory data in real-world environments. However, achieving this emulation, sometimes is not straightforward. The dynamics of fixed-wing aircraft and multicopters differ fundamentally: fixed-wing systems ex-hibit nonholonomic constraints, aerodynamic stall behaviors, and actuation models that have no direct analogue in multi-copter dynamics [8], [9]. This raises two critical questions: Is mimicry theoretically possible given these fundamental differences? And if so, what control techniques can realize it in practice? Addressing the first question requires formal analysis of feasibility. Recent work has introduced similarity frameworks that define homeomorphic maps to transform system trajectories, quantifying emulation fidelity via cost functions [10]. This concept of similarity degree provides a formal method for determining whether mimicry is theo-retically achievable and how well it can be approximated. Once mimicry feasibility is established, the second question remains: mapping these disparate behaviors from the fixed-wing (primary) system to the multicopter (secondary) system requires sophisticated control techniques. While model pre-dictive control (MPC) is a popular approach for handling constraints [11], [12], its high computational cost can be prohibitive for high degrees of freedom, real-time appli-cations on embedded hardware. An alternative and highly effective strategy is dynamic feedback linearization (DFL). DFL transforms complex nonlinear system dynamics into a simpler, linear form, often by dynamically extending the state space. This allows for systematic and computationally efficient trajectory tracking, making it a powerful tool for managing systems with complex relative degrees, as is the case in the emulation problem [13]. The objective of this work is to bridge the gap be-tween theoretical similarity and practical implementation by designing and validating a DFL-based framework that enables a multicopter with a two-axis gimbal to emulate the dynamics and sensor viewpoint of a fixed-wing aircraft. Specifically, the contributions of this work are: (1) a proof of the multicopter-gimbal’s camera-pose controllability and mimicry capability; (2) the design of DFL-based control laws to mimic fixed-wing camera pose trajectories; and (3) validation of the complete framework through simulations of increasingly complex manoeuvres. This manuscript is organized as follows. Section II sum-marizes the preliminary information about the aircraft mod-els. Section III provides the controllability and mimicry proofs. Section IV details the proposed DFL-based imi-tation method. Section V provides validation results, and Section VI concludes the work. arXiv:2609.06520v1 [eess.SY] 6 Sep 2026 II. P RELIMINARIES 
+
+Quaternions q ∈ H1 are scalar-first, their conjugate are 
+
+¯q ∈ H1, and R(q) ∈ SO (3) denotes the corresponding rotation matrix. Also, let FW be the inertial world frame. 
+
+A. Fixed-Wing Aircraft Dynamics 
+
+Fixed-wing aircraft (in Fig. 1) are underactuated dynamic systems. Let FA be the aircraft’s body frame. The aircraft’s pose is given by its position pA = xA yA zA
+
+⊤ ∈ R3
+
+in FW and a quaternion qA ∈ H1 mapping FA → F W with 
+
+ϕA, θA and ψA being roll, pitch and yaw angles, respectively. Aircraft’s linear and angular velocities in FA are vA ∈ R3
+
+and ωA ∈ R3, respectively. The aircraft’s state is 
+
+xA = pA qA vA ωA
+
+⊤ , (1) while the output is 
+
+yA = p⊤ 
+
+> A
+
+q⊤
+
+> A
+
+ . (2) Commonly, the control input to a fixed-wing aircraft is 
+
+uA = F δa δe δr
+
+⊤ , (3) where F is the thrust generated by the engines, δa, δe, and 
+
+δr are aileron, elevator, and rudder deflections. Aerodynamic forces acting on a fixed-wing aircraft defined in the wind frame FV are faero = −D Y L⊤, with D ∝ v2 is drag, Y is side force, L ∝ v2 is lift, and v is airspeed. The total force acting on the fixed-wing aircraft in FA is 
+
+fA = R(α)faero + F 0 0⊤ + R (qA)⊤ 0 0 −g⊤,where α is the angle of attack, and g is the gravitational constant. The total torque acting on the fixed-wing aircraft in FA is τ A = Bτ
+
+δa δe δr
+
+⊤, where Bτ is the control-effectiveness map. Using the Newton-Euler equations, the kinematics and dynamics of a fixed-wing aircraft are: 
+
+fA :
+
+
+
+˙pA = R (qA) vA
+
+˙qA = 12 G (qA) ωA
+
+˙vA = −ωA × vA + 1 
+
+> mA
+
+fA
+
+˙ωA = − (JA)−1 ωA × (JAωA) + ( JA)−1 τ A
+
+,
+
+(4) Ԧ𝐳 A
+
+Ԧ𝐲 A
+
+𝛿 𝑟 
+
+𝐹 
+
+𝛿 𝑒  Ԧ𝐳 W
+
+𝐱 W Ԧ𝐲 W
+
+𝐱 A
+
+𝐩 A
+
+𝐪 A
+
+ℱA, ℱV
+
+ℱW
+
+𝐱 V
+
+𝛼  𝐭 AC  Ԧ𝐲 AC 
+
+𝐱 AC 
+
+ℱAC 
+
+Ԧ𝐳 AC 
+
+𝛿 𝑎  
+
+> Fig. 1. Fixed-wing aircraft shown with its reference frames, control inputs (in red) and output variables (in blue).
+
+in which G (q) ∈ R4×3 is the quaternion kinematics matrix, 
+
+mA is aircraft’s mass, and JA ∈ R3×3 is matrix of inertia. 
+
+B. Multicopter with 2-Axis Gimbal Dynamics 
+
+Multicopters (in Fig. 2) are also underactuated dy-namic systems. Let FM be the multicopter’s body frame. The multicopter’s pose is given by its position pM =xM yM zM
+
+⊤ ∈ R3 in FW and a quaternion qM ∈ H1
+
+mapping FM → FW with ϕM, θM and ψM being roll, pitch and yaw angles, respectively. Multicopter’s linear and angular velocities in FM are vM ∈ R3 and ωM ∈ R3,respectively. The multicopter is equipped with a camera mounted on a 2-axis roll-pitch gimbal with joint angles ϕG
+
+and θG and quaternion qMC = qx(ϕG)⊗qy (θG) ∈ H1, which maps from the multicopter’s camera frame FMC to FM. Let the camera lever arm in FM be tG ∈ R3. The state of a multicopter with a two-axis gimbal is 
+
+xM = pM qM vM ωM qG
+
+⊤ , (5) while the output is the camera’s pose: 
+
+yMC =
+
+h
+
+p⊤ 
+
+> M
+
++ ( R (qM) tG)⊤ (qM ⊗ qG)⊤i
+
+. (6) Commonly, the control input to a multicopter is 
+
+uM = T τϕ τθ τψ
+
+⊤ , (7) where T is total thrust, τϕ, τθ , and τψ are torques around x-, 
+
+y- and z-axes, respectively. Control inputs to the gimbal are 
+
+uG =  ˙θG ˙ψG
+
+⊤ . (8) The total force acting on the multicopter in FM is fM =0 0 T ⊤ + R (qM)⊤ 0 0 −g⊤; while the total torque in FM is τ M = τϕ τθ τψ
+
+⊤. So, the kinematics and dynamics of a multicopter with a gimbal are: 
+
+fM :
+
+
+
+˙pM = R (qM) vM
+
+˙qM = 12 G (qM) ωM
+
+˙vM = −ωM × vM + 1 
+
+> mM
+
+fM
+
+˙ωM = − (JM)−1 ωM × (JMωM) + ( JM)−1 τ M
+
+˙qMC = 12 G (qMC ) uG
+
+,
+
+(9) in which mM is the mass of multicopter with gimbal, and 
+
+JM ∈ R3×3 is matrix of inertia. Ԧ𝐲 M
+
+𝜏 𝜓 
+
+𝑇 
+
+𝜏 𝜑 
+
+𝜏 𝜃 
+
+Ԧ𝐳 W
+
+𝐱 W Ԧ𝐲 W
+
+𝐱 M
+
+> 𝐩 M
+> 𝐪 M
+
+𝜔 𝛽  𝜔 𝛼 
+
+> 𝐭 G
+> 𝐪 G
+
+Ԧ𝐲 MC 
+
+ℱM
+
+ℱW
+
+ℱMC 
+
+Ԧ𝐳 M
+
+Ԧ𝐳 MC 
+
+𝐱 MC 𝐩 MC  
+
+> 𝐪 MC
+> Fig. 2. Multicopter with two-axis gimbal shown with its reference frames, control inputs (in red) and output variables (in blue).
+
+III. C AMERA -P OSE CONTROLLABILITY AND MIMICRY ON SE (3) 
+
+Assume the fixed-wing carries a camera that is body-aligned and located at a fixed lever arm tAC ∈ R3 expressed in FA. Then, the fixed-wing camera pose is 
+
+yAC = p⊤ 
+
+> AC
+
+q⊤
+
+> AC
+
+ =
+
+h pA + R (qA) tAC 
+
+⊤ q⊤
+
+> A
+
+i
+
+. (10) We expose (i) a translational “virtual” input aMC ∈ R3
+
+realized by the standard SE (3) inner loop (third line of (9)), and (ii) rotational inputs ˙ΘMC =  ˙ϕG ˙θG ˙ψM
+
+⊤ consisting of gimbal roll and pitch rates and the multicopter’s free body yaw rate around ⃗ zM, which does not alter the thrust direction. From (6), the position of the multicopter’s camera in the 
+
+FW is 
+
+pMC = pM + R(qM)tG, (11) while the rotation is 
+
+qMC = qM ⊗ qG. (12) Then, by (11) 
+
+¨pMC = aM + ∆(pMC , qM, ωM, ˙ωM), (13) where ∆(pMC , qM, ωM, ˙ωM) collects the known lever-arm coupling terms, and by (12) 
+
+˙qMC = 12 G(qMC )ωMC , (14) where ωMC = S(ϕG, θ G) ˙ΘMC with the input-twist matrix 
+
+S(ϕ, θ ) = 
+
+
+
+1 0 − sin θ cos ϕ
+
+0 1 − sin ϕ
+
+0 0 cos θ cos ϕ
+
+ , (15) whose determinant is 
+
+det S(ϕ, θ ) = cos θ cos ϕ. (16) 
+
+Remark 1: Singularities for a 2-axis gimbal occur at 
+
+cos ϕG cos θG = 0 .
+
+Assumption 1 (Non-Singularity): The multicopter gimbal attitude stays away from the singular set: ϕG̸ = ± π 
+
+> 2
+
+∧ θG̸ =
+
+± π 
+
+> 2
+
+.
+
+Remark 2: This assumption can be relaxed by using a planner which will avoid the singular set. 
+
+A. Output Full Actuation & STLC on SE (3) 
+
+Consider the block-triangular Jacobian from inputs to camera acceleration and twist: 
+
+ ¨pMC 
+
+ωMC 
+
+
+
+=
+
+I3 00 S(ϕG, θ G)
+
+| {z }
+
+> J
+
+ aMC 
+
+˙ΘMC 
+
+
+
++
+
+∆0
+
+
+
+. (17) 
+
+a) Translational rank: Thrust vectoring yields aMC =
+
+−ge3 + TmM b3; variations δaMC = δT mM b3 + TmM δb3 span R3.Hence, aMC 7 → ¨pMC is locally surjective. 
+
+b) Rotational rank: By (16), rank( S) = 3 , whenever 
+
+cos ϕG cos θG̸ = 0 .Therefore, rank( J) = 6 almost everywhere, and the camera pose is output fully actuated and small-time locally controllable (STLC) on SE (3) .
+
+Remark 3: With a 3-axis gimbal ( S ≡ I3), the result holds globally. 
+
+B. Camera-Pose Mimicry 
+
+Now we show that multicopter and gimbal control inputs exist so that 
+
+yMC (t) ≡ yAC (t) ∀t. (18) 
+
+Assumption 2 (Authority): Thrust and torque of the mul-ticopter, as well as gimbal angle/rate limits, are not violated along the trajectories of interest. 
+
+a) Position matching: Equality of camera positions, 
+
+pM + R(qM)tG = pA + R(qA)tAC , is realised by command-ing the multicopter position to the lever-arm-compensated target 
+
+pM = pA + R(qA)tAC − R(qM)tG. (19) Taking two derivatives gives the desired multicopter’s accel-eration 
+
+aM = ¨ pA + d2R(qA)
+
+dt 2 tAC − d2R(qM)
+
+dt 2 tG, (20) which the SE (3) inner loop (third line of (9)) can track so that pM + R(qM)tG → pA + R(qA)tAC .
+
+b) Orientation matching: We require qM ⊗ qG = qA.Decompose the multicopter attitude into free yaw and tilt: 
+
+qM = qz (ψM) ⊗ qtilt , (21) where qtilt sets the thrust direction dictated by aM, and ψM
+
+is the free yaw about ⃗ zM. Define relative camera quaternion 
+
+qrel = ¯ qM ⊗ qA = ¯ qtilt ⊗ qz (−ψM) ⊗ qA. (22) To cancel the yaw, choose 
+
+¯ψM = yaw (¯ qtilt ⊗ qA) . (23) Then, qrel has zero yaw and, therefore, lies in the roll-pitch submanifold. Hence, there exist (ϕG, θ G) such that 
+
+qG = qx(ϕG) ⊗ qy (θG) = qrel . (24) This yields qM ⊗ qG = qA, so camera orientations match exactly. Under Assumptions 1 and 2, the multicopter with a 2-axis gimbal is output fully actuated and STLC on SE (3) for the camera pose, and control inputs exist which realise 
+
+yMC (t) ≡ yAC (t) for any feasible fixed-wing camera tra-jectory. With identical intrinsics, the rendered image streams are indistinguishable to the viewer. IV. P ROPOSED METHOD 
+
+Given the fixed-wing camera trajectory yAC (t) in (10), we want to compute multicopter and gimbal inputs, 
+
+uMC =
+
+uM
+
+uG
+
+
+
+, (25) such that the multicopter camera pose yMC (t) in (6) satisfies 
+
+yMC (t) ≡ yAC (t) ∀t.To enable multicopter tracking aggressive manoeuvres, non-linear control techniques must be used. Dynamic feed-back linearization (DFL) could be designed to achieve better convergence and robustness. Through a change of variables, DFL transforms a nonlinear system into an equivalent linear, controllable and observable one. Given a non-linear system 
+
+(
+
+˙x = f (x) + g(x)uy = h(x), (26) where x is the system state, u is the system input, y is the system output, f (x), g(x) and h(x) are vector fields in Rn.The task of feedback linearization is to identify a static state feedback control law of the following form: 
+
+u = α(x) + β(x)v, (27) where v is an new control input, α(x) and β(x) are smooth functions defined in a neighbourhood of some point x0 ∈ Rn
+
+and β(x0)̸ = 0 , such that the closed-loop system composed of (26) and (27) behaves as a linear and completely accessi-ble system. For system (26), let NI be the number of inputs, 
+
+NO be the number of outputs, r = r1 · · · rNO
+
+ be the vector relative degree. Then, let’s define 
+
+∆( x) = 
+
+
+
+Lg1 Lr1−1 
+
+> f
+
+h1(x) · · · LgNI Lr1−1 
+
+> f
+
+h1(x)
+
+... . . . ...
+
+Lg1 LrNO −1 
+
+> f
+
+hNO (x) · · · LgNI LrNO −1 
+
+> f
+
+hNO (x)
+
+
+
+(28) and 
+
+b(x) = 
+
+h
+
+Lr1 
+
+> f
+
+h1(x) · · · LrNO 
+
+> f
+
+hNO (x)
+
+iT
+
+, (29) where Lrf h denotes the r-th Lie derivative of the function 
+
+h with respect to the vector field f . The main result about the input-output decoupling problem is that this problem is solvable if and only if the matrix ∆( x) is non-singular. In that case, the static state feedback (27) with 
+
+(
+
+α(x) = − (∆( x)) −1 b(x)
+
+β(x) = (∆( x)) −1 (30) renders the closed-loop system linear and decoupled from an input-output point of view. To feedback linearize a system, the necessary and suffi-cient condition for the solvability of the state space exact linearization problem is [14]: 
+
+> NO
+
+X
+
+> i=1
+
+ri = N, (31) where N is the system’s rank. For the system (9), it can be shown that r =2 2 2 1 1 1, and N = 14 [15]. Since, P6 
+
+> i=1
+
+ri =9̸ = 14 , the condition (31) is not satisfied. Therefore, the input-output decoupling problem is not solvable for the system (9) by means of a static state feedback control law. In fact, ∆( xM) is singular for any xM and is not invertible. So, the system (9) can not be transformed into an equivalent linear and controllable one by static state feedback. This is due to the fact that aM is affected only by thrust T
+
+and not by other control inputs. In order to get ∆( x) non-singular, the appearance of T should be delayed to higher order derivatives of aM. This can be achieved by a dynamic compensator which incorporates an additional set of state variables χ to achieve higher relative degrees [16]. By setting 
+
+T equal to the output of an auxiliary dynamic system driven by a new reference input ˆT . The simplest way in which this result can be achieved is to set this auxiliary dynamic system equal to a double integrator. In this case, χ = χ1 χ2
+
+⊤.So, T is set equal to the output of a double integrator driven by ¨T . The other input variables in (25) are unchanged. Now, 
+
+T is not any-more an input for the system (9), but becomes the internal state for the new dynamical system 
+
+ˆfM :
+
+
+
+˙pM = R (qM) vM
+
+˙qM = 12 G (qM) ωM
+
+˙vM = −ωM × vM + 1
+
+> mM
+
+h
+
+0 0 χ
+
+i⊤
+
+˙ωM = − (JM)−1 ωM × (JMωM) + ( JM)−1 τ M
+
+˙qMC = 12 G (qMC ) uG
+
+¨χ = ¨T.
+
+(32) The new control inputs to the system (32) are 
+
+ˆuMC =  ¨T τϕ τθ τψ ˙θG ˙ψG
+
+⊤ . (33) The input-output decoupling problem is solvable for the system (9) by means of a dynamic feedback control law, if it is solvable via static feedback for the extended system (32). Since the extended system has ˆr = 4 4 4 2 1 1
+
+and ˆN = 16 , the condition (31) is satisfied. Thus, the input-output decoupling problem is solvable for the system (32) by means of a dynamic feedback control law as in (27): 
+
+ˆuMC = α(ˆ xMC ) + β(ˆ xMC )vMC , (34) where α(ˆ xMC ) and β(ˆ xMC ) are computed using (30), and 
+
+vMC = p⊤ 
+
+> AC
+
+˙p⊤ 
+
+> AC
+
+¨p⊤
+
+> AC
+
+... 
+
+p ⊤
+
+> AC
+
+.... 
+
+p ⊤ 
+
+> AC
+
+q⊤ 
+
+> A
+
+˙q⊤ 
+
+> A
+
+¨q⊤
+
+> A
+
+ .
+
+(35) An overview of the proposed framework is shown in Fig. 3.       
+
+> fA(xA)ˆf−1
+> M(ˆ xM)ˆfM(ˆ xM)
+> uAyAC
+> vMC
+> ˆuMC yMC
+> ˆxM
+> Fig. 3. Overview of the proposed framework.
+
+V. V ALIDATION RESULTS 
+
+To validate the proposed DFL controller for camera-pose mimicry, we simulate a multicopter equipped with a 2-axis gimbal tracking the flight of a Red Bull Edge 540 [17] aerobatic aircraft. The Edge 540 was selected for its aggres-sive maneuvering capabilities, providing a challenging test case for the controller. The multicopter chosen is the Freefly Alta-X platform [18], featuring a high thrust-to-weight ratio necessary for tracking high-speed trajectories while main-taining control authority as required by Assumption 2. The parameters are provided in Table I. Two distinct flight scenarios are examined: (1) a level flight trajectory, and (2) an aerobatic loop manoeuvre testing the controller’s ability to handle aggressive dynamics. For both scenarios, we evaluate the system’s ability to achieve the mimicry condition yMC (t) ≡ yAC (t) established in Section III. 
+
+TABLE I VEHICLE PARAMETERS 
+
+Fixed-Wing (Redbull Edge 540) 
+
+Mass 530 kg Moments of inertia (2419, 2133, 4552) kg·m² Wingspan 7.40 m Wing Area 9.10 m² Mean Chord 1.23 m Max Speed 118 m/s Lift 0.20, 4.0, 0.0, -0.36 Drag 0.03, 0.04, 0.0, 0.0, 0.0 Pitch Moment -0.01, -0.5, -3.6, -0.5 Side Force -0.98, 0.0, 0.0, 0.0, -0.17 Rolling -0.12, -0.26, 0.14, 0.08, 0.105 Yaw Moment 0.25, 0.022, -0.35, 0.06, -0.032 
+
+Multicopter (Freefly Alta-X) 
+
+Mass 10.6 kg Moments of inertia (0.48, 0.48, 0.41) kg·m² 
+
+A. Trajectory 1: Level Flight 
+
+The level flight trajectory serves as a baseline validation of the controller’s tracking performance under quasi-steady conditions. The fixed-wing aircraft maintains level flight with a constant elevator deflection of δe = −0.05 rad to counteract gravity. Fig. 4 provides detailed tracking performance across all six degrees of freedom. The position plots (top panels) confirm that the gimbal camera position tracks the fixed-wing reference with negligible error, validating the translational component of the mimicry condition. The orientation plots 
+
+Fig. 5. 3D trajectories of the fixed-wing aircraft (red), multicopter position (blue), and gimbal camera position (3-D axis) for level flight. Time (s)                     
+
+> 0123
+> x (m)
+> 050 100 150 xM
+> xA
+> xM C
+> Time (s)
+> 0123
+> y (m)
+> -1 -0.5 00.5 1
+> yM
+> yA
+> yM C
+> Time (s)
+> 0123
+> z (m)
+> 99.85 99.9 99.95 100 100.05 100.1
+> zM
+> zA
+> zM C
+> Time (s)
+> 0123
+> ? (deg)
+> -1 -0.5 00.5 1
+> ?M
+> ?A
+> ?M C
+> Time (s)
+> 0123
+> 3 (deg)
+> -30 -25 -20 -15 -10 -5 03M
+> 3A
+> 3M C
+> Time (s)
+> 0123
+> A (deg)
+> -1 -0.5 00.5 1
+> AM
+> AA
+> AM C
+
+Fig. 4. Position and orientation tracking during level-flight. (bottom panels) reveal the key insight of the proposed approach: while the multicopter body (blue) pitches to angles reaching 30° to generate the forward thrust required to match the fixed-wing’s speed, the gimbal (green) actively compensates by counter-rotating, ensuring that the camera orientation precisely follows the fixed-wing’s attitude (red). This behavior directly demonstrates the pose matching strat-egy presented in Section IV, where the control dynamic feedback control ˆuMC is computed via Eq. (34) to satisfy 
+
+qM ⊗ qG = qA.The rapid gimbal response and absence of steady-state error confirm that the system operates well within the non-singular region defined by Assumption 1 ( cos ϕG cos θG̸ = 0 ), maintaining full actuation authority throughout the trajectory. 
+
+B. Trajectory 2: Aerobatic Loop 
+
+To stress-test the DFL controller under highly dynamic conditions, we command the fixed-wing aircraft to perform a vertical loop with a constant elevator deflection of δe =
+
+−0.25 rad. This maneuver generates rapid variations in posi-tion, velocity, and orientation, with the aircraft experiencing significant changes in airspeed and load factor throughout the loop. As evident in Fig. 7, the multicopter-gimbal system suc-cessfully completes the loop maneuver with the camera trajectory (green) closely following the fixed-wing path (red). The three-dimensional visualization demonstrates the controller’s ability to handle rapid directional changes and varying gravitational loads throughout the vertical plane maneuver. Fig. 6 shows the full complexity of the tracking task. During the loop, the multicopter body orientation (blue) 
+
+Fig. 7. 3D trajectories of the fixed-wing aircraft (red), multicopter position (blue), and gimbal camera position (3-D axis) for loop manoeuvres. Time (s)                            
+
+> 02468
+> x (m)
+> 010 20 30 40 50 60 70 80 xM
+> xA
+> xM C
+> Time (s)
+> 02468
+> y (m)
+> -1 -0.8 -0.6 -0.4 -0.2 00.2 0.4 0.6 0.8 1
+> yM
+> yA
+> yM C
+> Time (s)
+> 02468
+> z (m)
+> 100 110 120 130 140 150 160 170 180 190 zM
+> zA
+> zM C
+> Time (s)
+> 02468
+> ? (deg)
+> -1 -0.8 -0.6 -0.4 -0.2 00.2 0.4 0.6 0.8 1
+> ?M
+> ?A
+> ?M C
+> Time (s)
+> 02468
+> 3 (deg)
+> -80 -60 -40 -20 020 40 60 80 3M
+> 3A
+> 3M C
+> Time (s)
+> 02468
+> A (deg)
+> -1 -0.8 -0.6 -0.4 -0.2 00.2 0.4 0.6 0.8 1
+> AM
+> AA
+> AM C
+
+Fig. 6. Position and orientation tracking during the loop manoeuvre. Despite the aggressive dynamics, the gimbal camera position and orientation (green) accurately follow the fixed-wing reference (red), while the multicopter (blue) exhibits a large pitch necessary to maintain the required thrust vectoring. undergoes extreme pitch variations, exceeding 60° at the top of the loop, as the controller commands the thrust vector to track the aircraft’s curved trajectory while counteracting changing gravitational forces. Simultaneously, the gimbal executes rapid compensatory motions to decouple the camera orientation from these aggressive multicopter body rotations. The result is that the gimbal camera orientation (green) re-mains tightly coupled to the fixed-wing reference (red), with tracking errors remaining bounded despite the challenging dynamics. The position tracking (top panels of Fig. 6) shows brief transients during the highest-acceleration phases of the loop, but the controller maintains stability and convergence throughout. This performance validates the feedback lin-earization approach developed in Section IV, where the dynamic compensator (Eq. (32)) extends the relative degree to enable exact input-output decoupling. The linearized dy-namics allow the controller to compute the required thrust derivatives ¨T and torques τ M that drive the tracking errors to zero. 
+
+C. Discussion 
+
+The simulation results validate the theoretical frame-work presented in Sections III and IV. The multicopter-gimbal system successfully achieves camera-pose mimicry 
+
+yMC (t) ≡ yAC (t) for both steady and aggressive trajectories, confirming output full actuation on SE (3) , effective attitude decoupling, and the efficacy of the DFL controller with dynamic compensation in achieving precise tracking of the nonlinear, coupled multicopter-gimbal dynamics. The high-amplitude pitch oscillations observed in the multicopter body orientation during both trajectories, especially pronounced in the loop maneuver, highlight the inherent challenge of fixed-wing mimicry, where the multicopter must continuously reorient its thrust vector to follow the aircraft’s velocity profile. The gimbal’s ability to maintain smooth camera orientation despite these aggressive motions demonstrates the practical value of the proposed architecture. VI. C ONCLUSIONS AND FUTURE WORK 
+
+This work has designed and validated a control framework for physical-to-physical emulation, demonstrating that a mul-ticopter equipped with a two-axis gimbal can dynamically replicate the camera viewpoint and flight dynamics of a fixed-wing aircraft. Our approach, based on DFL, provides a practical method for achieving high-fidelity mimicry of a primary system’s key observables. This capability enables algorithm validation and operator training in real-world conditions at a negligible cost and with significantly re-duced operational risk compared to deploying the high-value fixed-wing planes. Furthermore, the principles developed can be generalized to other classes of dissimilar dynamic systems, such as ground or underwater vehicles, opening new paradigms for cross-system validation. REFERENCES [1] S. Shah, D. Dey, C. Lovett, and A. Kapoor, “Airsim: High-fidelity visual and physical simulation for autonomous vehicles,” in Field and service robotics: Results of the 11th international conference .Springer, 2017, pp. 621–635. [2] A. Amer, O. ´ Alvarez-Tu˜ n´ on, H. ˙ I. U˘ gurlu, J. L. F. Sejersen, Y. Brod-skiy, and E. Kayacan, “Unav-sim: A visually realistic underwater robotics simulator and synthetic data-generation framework,” in 2023 21st International Conference on Advanced Robotics (ICAR) , 2023, pp. 570–576. [3] Y. Gao, J. Lin, and F. Wu, “The reality gap: A survey of sim-to-real transfer in robotics,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) , 2020, pp. 5678–5684. [4] E. Aljalbout, J. Xing, A. Romero, I. Akinola, C. R. Garrett, E. Heiden, A. Gupta, T. Hermans, Y. Narang, D. Fox et al. , “The reality gap in robotics: Challenges, solutions, and best practices,” arXiv preprint arXiv:2510.20808 , 2025. [5] O. Stroosma, M. Van Paassen, and M. Mulder, “Using the simona research simulator for human-machine interaction research,” in AIAA modeling and simulation technologies conference and exhibit , 2003, p. 5525. [6] S. Edvani, E. va, S. Bettendorf, S. Edvani, E. va, and S. Bettendorf, “Simona-a reconfigurable and versatile research facility,” in Modeling and Simulation Technologies Conference , 1997, p. 3809. [7] J. Smith and B. Anderson, “A review of dynamic emulation for validation of autonomous systems,” Journal of Field Robotics , vol. 39, no. 2, pp. 145–168, 2022. [8] X. Yuan, J. Xu, and S. Li, “Design and simulation verification of model predictive attitude control based on feedback linearization for quadrotor uav,” Applied Sciences , vol. 15, no. 9, p. 5218, 2025. [9] H. Wu, Z. Wang, Z. Zhou, and R. Wang, “Modeling and simulation for multi-rotor fixed-wing uav based on multibody dynamics,” Journal of Northwestern Polytechnical University , vol. 37, no. 5, pp. 928–934, 2019. [10] X. Wang, Y. Li, and Y. Han, “Similarity between two dynamical systems,” 2023. [Online]. Available: https://arxiv.org/abs/2310.03383 [11] A. Amer, M. Mehndiratta, J. le Fevre Sejersen, H. X. Pham, and E. Kayacan, “Visual tracking nonlinear model predictive control method for autonomous wind turbine inspection,” in 2023 21st In-ternational Conference on Advanced Robotics (ICAR) . IEEE, 2023, pp. 431–438. [12] A. Amer, M. Mehndiratta, Y. Brodskiy, and E. Kayacan, “Empow-ering autonomous underwater vehicles using learning-based model predictive control with dynamic forgetting gaussian processes,” IEEE Transactions on Control Systems Technology , 2025. [13] A. Pshuniak, C. Korpela, and V. Mohyla, “Relative degree and DFL-based control of a UAV with a suspended load,” Journal of Intelligent & Robotic Systems , vol. 90, no. 1, pp. 201–219, 2When018. [14] A. Isidori, C. H. Moog, and A. D. Luca, “A sufficient condition for full linearization via dynamic state feedback,” in 1986 25th IEEE Conference on Decision and Control , 1986, pp. 203–208. [15] A. Sarabakha, “Data-driven identification of observed relative degrees for nonlinear systems,” in 2025 European Control Conference (ECC) .IEEE, 2025, pp. 813–818. [16] V. Mistler, A. Benallegue, and N. M’Sirdi, “Exact linearization and noninteracting control of a 4 rotors helicopter via dynamic feedback,” in Proceedings 10th IEEE International Workshop on Robot and Hu-man Interactive Communication. ROMAN 2001 (Cat. No.01TH8591) ,2001, pp. 586–593. [17] D. C. Eyre, “Zivko edge 540 — aircraft model,” 2010, “Encyclopedia of Aircraft” web article, wingspan = 7.62 m, wing area =9.10 m2, rate of roll = 420°/s, etc. [Online]. Available: https: //aeropedia.com.au/content/zivko-edge-540/ [18] F. Systems, “Alta x — technical specifications,” 2025, unfolded diameter 1.415 m (frame), max gross take-off weight 34.9 kg, max payload 15.9 kg. [Online]. Available: https://freeflysystems.com/alta-x/specs
