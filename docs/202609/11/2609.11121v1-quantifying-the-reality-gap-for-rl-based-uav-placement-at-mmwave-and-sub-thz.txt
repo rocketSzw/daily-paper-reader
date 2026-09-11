@@ -1,0 +1,412 @@
+Title: Quantifying the Reality Gap for RL-Based UAV Placement at mmWave and Sub-THz
+
+URL Source: https://arxiv.org/pdf/2609.11121v1
+
+Published Time: Fri, 11 Sep 2026 00:47:05 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Quantifying the Reality Gap for RL-Based UAV Placement at mmWave and Sub-THz 
+
+Abdullateef Almohamad 1, Mostafa Ibrahim 1, Sabit Ekin 1, Khalid Qaraqe 2
+
+> 1
+
+Department of Electrical & Computer Engineering, Texas A&M University, College Station, TX, USA 
+
+> 2
+
+College of Science and Engineering, Hamad Bin Khalifa University, Doha, Qatar Email: abdullateef.almhd@tamu.edu 
+
+Abstract—Reinforcement learning (RL) policies for un-manned aerial vehicle (UAV) placement in mmWave and sub-terahertz networks are typically trained on simplified analytical channels. We quantify the resulting sim-to-real gap on a real urban map of Doha, Qatar, at carriers {28 , 140 , 183 , 300 } GHz and altitudes {50 , 75 , 100 , 125 } m, evaluating three channel pipelines: an analytical model (FSPL + atmospheric absorption 
+
++ cuboid LoS), full Monte-Carlo ray tracing in Sionna RT with ITU-R P.676-13 absorption, and a deterministic-LoS hybrid that reuses Sionna’s mesh under a closed-form path-gain expression. We formalize the gap on the spatial SNR distribution via four metrics, namely bias, RMSE, Jensen– Shannon divergence, and optimum-deployment displacement. Three findings emerge: at 28 /140 GHz, ∼ 70% of the apparent 
+
+−5.6/−4.8 dB Sionna bias is Monte-Carlo undersampling and shrinks to −1.7/−1.5 dB after mitigation; at 183 GHz a −9.2 dB residual isolates the atmospheric absorption–ITU-R P.676 line-shape disagreement; at 300 GHz the stochastic ray tracer agrees with the analytical model only coincidentally, with a +3 .8 dB structural offset exposed by the deterministic-LoS pipeline. Across all carriers the linear-domain regret of the analytical-trained policy stays ≥ 0.93 , indicating practical near-optimality but with a carrier-resolved SNR bias that warrants explicit reporting. Index Terms—UAV networks, SAG networks, reinforcement learning, ray tracing, terahertz communications, sim-to-real, reality gap, Sionna, ITU-R P.676. 
+
+I. Introduction Space–air–ground (SAG) integrated networks are a core architectural element of the 6G vision, with unmanned aerial vehicles (UAVs) and high-altitude platforms po-sitioned as agile relays between dense low-Earth-orbit constellations and ground users [1]. As 6G services move beyond millimetre-wave (mmWave, 30 GHz to 100 GHz )into the sub-terahertz (sub-THz, 100 GHz to 300 GHz )regime [2], [3], the propagation channel becomes both highly directional and strongly carrier-selective. The same urban geometry that yields broad quasi-omnidirectional coverage at 28 GHz collapses into a thin line-of-sight (LoS) service shell at 300 GHz , where atmospheric absorption can reach 10 dB km −1 to 50 dB km −1 [4] and dominates the link budget. Where to place the relay is therefore a per-carrier optimization problem with substantial topographic structure. Closed-form altitude and 3-D placement analyses under probabilistic LoS [1], [5], [6], and convex relaxations for multi-UAV cases [7], predate the learning-based approach but typically assume frequency-flat channels and do not extend cleanly to sub-THz, where absorption is strongly frequency-selective and structured by atmospheric reso-nances. Reinforcement learning (RL) has since emerged as a flexible tool for UAV placement and trajectory [8], [9], but training requires channel evaluations at volumes that real measurements or full-wave ray tracing cannot supply. The customary trade-off is to train on a simplified analytical channel and validate the learned policy on a higher-fidelity reference; most prior RL works train and evaluate within the same simulator, so any disagreement with a physics-grade channel is silent. This disagreement is the wireless analogue of the well-studied sim-to-real or reality gap in robotics [10], [11]: when the optima of the training and validation channels disagree, the policy fails to transfer. Three observations motivate this work. First, quan-titative reality-gap studies for THz UAV networks are scarce. Existing work either compares analytical models against one another, restricts ray tracing to a fixed transmit position, or considers a single carrier. Second, the open release of Sionna RT [12], a GPU-accelerated, differentiable Monte-Carlo ray tracer with ITU-R P.676-13 atmospheric absorption [4], now makes large-scale carrier-aware urban ray tracing tractable, allowing the same RL evaluation to be replayed on a physics-grade channel. Third, the simplified 100 –450 GHz Kokkoniemi– Lehtomäki absorption fit [13] commonly used in analytical THz models, six Lorentzian resonances plus a polyno-mial water-vapour continuum, is accurate to within afew dB per kilometre away from strong lines but can deviate materially from ITU-R P.676-13 in the imme-diate neighborhood of the 183 GHz water-vapor and 
+
+325 GHz oxygen resonances; furthermore, the standard Monte-Carlo ray-tracing pipeline introduces a non-trivial sampling artifact that, if uncorrected, masquerades as a physical disagreement and inflates the apparent gap by an order of magnitude. Our objective is to deliver a quantitative, per-carrier characterization of the reality gap incurred by an analytically-trained RL UAV-placement policy when de-ployed against ray-traced channels, and to disentangle arXiv:2609.11121v1 [eess.SY] 10 Sep 2026 0500 1000 1500 2000 2500 3000 3500                 
+
+> x (m)
+> 0250 500 750 1000 1250 1500 1750
+> y (m)  35 30 25 20 15 10 505
+> SNR (dB) (a) Analytical M(FSPL +absorption loss
+> +merged-cuboid LoS). 0500 1000 1500 2000 2500 3000 3500
+> x (m)
+> 0250 500 750 1000 1250 1500 1750
+> y (m)  35 30 25 20 15 10 505
+> SNR (dB)
+> (b) Deterministic-LoS L(Sionna mesh +
+> FSPL +ITU-R P.676-13). 0500 1000 1500 2000 2500 3000 3500
+> x (m)
+> 0250 500 750 1000 1250 1500 1750
+> y (m)  35 30 25 20 15 10 505
+> SNR (dB)
+> (c) Stochastic ray-traced S(Sionna RT,
+> D=1 specular reflections, ITU-R P.676-13).
+
+Fig. 1. Ground-plane SNR coverage at z = 100 m , fc = 28 GHz , rendered against each pipeline’s building geometry and physics. 
+
+Monte-Carlo sampling artifacts from genuine physics disagreement so that practitioners know which compo-nent of the simulation stack to upgrade for a given carrier. To this end, this paper makes four contri-butions. (i) A reproducible reality-gap benchmark for RL-driven UAV placement over a real urban map, at four carriers { 28 , 140 , 183 , 300 } GHz and four altitudes {50 , 75 , 100 , 125 } m. (ii) a position-distributed reality-gap framework based on the per-deployment SNR dis-tribution, with four operational metrics, namely bias, RMSE, Jensen–Shannon (JS) divergence, and optimum-deployment displacement, that decouple systematic offset, distributional spread, and decision-level error, comple-mented by a linear-domain regret ratio that quantifies the policy-transfer cost directly. (iii) a deterministic-LoS pipeline that reuses Sionna’s mesh geometry under a closed-form path-gain expression, enabling an exact decomposition of the apparent Monte-Carlo gap into a sampling-induced and a physics-induced component. (iv) a characterization of when a policy trained on the analytical channel transfers to ray tracing, sampling-dominated at 
+
+28 /140 GHz , absorption-model dominated at 183 GHz ,and structurally different despite a coincidentally small bias at 300 GHz .The remainder of the paper is organized as follows. Section II formalizes the three channel pipelines and the placement MDP; Section III describes the RL training, Sionna processing, and the reality-gap framework; Sec-tion IV reports numerical results; and Section V concludes. II. System Model A single rotary-wing UAV hovers at a fixed altitude z
+
+over a dense urban area and provides broadband downlink coverage to ground users uniformly distributed across the served area. Isotropic single-antenna terminals are assumed on both ends. The latter two assumptions can be relaxed for an extended version of this study. The UAV operates at a single carrier fc ∈{28 , 140 , 183 , 300 } GHz , spanning mmWave to sub-THz, and at one of the altitudes z ∈ {50 , 75 , 100 , 125 } m.Because blockage and absorption are strongly carrier-dependent, the optimal hover position varies with fc,so a multi-band UAV would still solve four independent placement problems which we treat with a dedicated RL agent each (§II-D). The operator’s task is to choose the hover position pu = ( ux, u y , z ) that maximizes the aggregate signal quality delivered to the ground-user population, where aggregating over users is the fairness-agnostic coverage objective standard in UAV placement. The remainder of this section formalizes the geometry, the three channel pipelines, and the per-position SNR distribution that drives both the RL reward and the reality-gap analysis. A. Geometry and Building Model The served area is a 3.75 km × 1.98 km section of central Doha, Qatar, discretized on a uniform Cartesian grid G = {(x, y ) : 0 ≤ x < G x, 0 ≤ y < G y } with 
+
+Gx = 375 , Gy = 198 , and cell size ∆ = 10 m . The UAV operates at one of four altitudes Z = {50 , 75 , 100 , 125 } m,indexed by z. Building geometry is extracted from atriangulated 3-D mesh (STL) and pre-processed into axis-aligned cuboids whose footprints are iteratively merged when contiguous and of comparable height (within 1 m )to reduce the number of buildings and computation cost; the resulting per-cell height map h : G → R≥0 admits only positions with h(x, y ) < z as deployable, defining the safe-deployment set 
+
+Pz = {pu = ( ux, u y , z ) : h(ux, u y ) < z }, (1) Carriers are indexed by f ∈ { 0, 1, 2, 3} corresponding to 
+
+fc ∈ { 28 , 140 , 183 , 300 } GHz .B. Three Channel Pipelines For UAV position pu and ground cell pr = ( rx, r y , 0) 
+
+with link distance d ≜ ∥pu − pr ∥2, we evaluate three chan-nel pipelines, namely analytical ( M), Sionna stochastic RT (S) and Sionna deterministic ( L), each producing a linear path gain gi(pu, pr , f c) for i ∈ I ≜ {M , S, L} .1) Analytical pipeline (M): The analytical pipeline expresses the link gain as a product of three factors, free-space path loss (FSPL), molecular absorption, and a geometric LoS indicator: 
+
+gM(pu, pr , f c) = 
+
+( c
+
+4πf cd
+
+)2
+
+︸ ︷︷ ︸
+
+> FSPL
+
+· e− 12 d ΣK(fc)
+
+︸ ︷︷ ︸
+
+> absorption
+
+· 1[ LoS cube (pu, pr ) ]︸ ︷︷ ︸
+
+> LoS
+
+,
+
+(2) where c is the speed of light. The absorption coeffi-cient ΣK(fc) is the simplified 100 –450 GHz Kokkoniemi– Lehtomäki molecular-absorption fit [13], comprising six Lorentzian resonance lines 183 .3, 325 .2, 380 .4, 439 .5, and 
+
+448 .2 GHz , and a polynomial water-vapor continuum, evaluated at the standard atmosphere T = 293 .15 K ,
+
+p = 1013 hPa , and relative humidity ϕ = 0 .5. The LoS predicate LoS cube is a 2.5-D rooftop-projection blockage test against a merged axis-aligned cuboid building repre-sentation; non-LoS cells receive zero linear gain, i.e. no reflections or scattering. 2) Stochastic ray-traced pipeline ( S): The stochastic pipeline replaces the closed-form simplicity of M with a physics-grade evaluation of gS on the actual mesh geometry. Sionna RT [12] performs Monte-Carlo path tracing with Ns = 10 5 rays per UAV position, maximum bounce depth D = 1 , and specular reflection only (no diffraction or scattering), on a closed-mesh triangular building representation derived from the same dataset; the omission of diffraction and diffuse scattering under-states non-LoS energy near building edges. Atmospheric absorption follows ITU-R P.676-13 [4] parameterized by (T , p, water-vapour density ρw = 12 g m −3); material elec-trical properties (εr , σ ) are taken from the ITU-R P.2040 database [14]. Atmospheric attenuation is applied per ground-cell distance after the ray-tracing call. 3) Deterministic-LoS pipeline ( L): To isolate sampling-induced effects from genuine modeling differences, we introduce a third pipeline that re-uses Sionna’s mesh geometry under a deterministic LoS test. The path gain is computed in closed form as 
+
+gL(pu, pr , f c) = 
+
+( c
+
+4πf cd
+
+)2
+
+e− 12 d γ ITU (fc) 1[ LoS mesh (pu, pr ) ],
+
+(3) where LoS mesh is the deterministic ray-AABB (Axis-Aligned Bounding Box) occlusion test implemented in Mitsuba [15], and γITU (fc) is the ITU-R P.676-13 spe-cific attenuation coefficient. By construction, L shares geometry and absorption physics with S but exposes neither Monte-Carlo variance nor multi-bounce reflections; it is therefore a clean ablation point that decouples the two sources of disagreement between M and S, namely geometry/physics and sampling effects. 4) Per-position aggregate path loss: For each pipeline 
+
+i ∈ I the aggregate path loss at UAV position pu is 
+
+PL i(pu, f c) = −10 log 10 
+
+(
+
+1
+
+|G| 
+
+∑ 
+
+> pr∈G
+
+gi(pu, pr , f c)
+
+)
+
+[dB] ,
+
+(4) which describes the mean linear gain provided by the UAV to a uniformly distributed ground-user population. Because (4) is invariant to transmit power, the three pipelines are calibrated identically and any disagreement reflects channel modeling rather than link-budget choices. C. Per-Position SNR and Deployment Distribution Given a generic carrier-dependent link budget 
+
+(Pt, G t, G r , η, B (fc)) , the per-position receive SNR under pipeline i ∈ I is 
+
+SNR i(pu, f c) = Pt + Gt + Gr − PL i(pu, f c) − N 0(fc), (5) with thermal noise floor N0(fc) = −174 + 10 log 10 B(fc) + 
+
+η dBm . Treating the UAV position as a uniform ran-dom variable over Pz , we obtain the empirical position-distributed SNR 
+
+Φiz,f ≜ {SNR i(pu, f c) : pu ∈ P z
+
+}, (6) which is the central object of our reality-gap analysis. D. UAV Deployment as a Markov Decision Process We cast deployment as a finite-horizon MDP 〈X , A, P, r, γ rl 
+
+〉 on the discretised grid. The state xt ∈
+
+[0 , 1] 9 encodes normalised UAV position, four-direction oc-clusion ray-cast distances, the local signal quality, and the time remaining; the action set A = {hover , ±x, ±y, ±z}
+
+has cardinality 7; transitions P are deterministic; the discount is γrl = 0 .995 ; and the per-step reward is 
+
+rt = ws st + wc ct
+
+︸ ︷︷ ︸  
+
+> rquality ∈[0 ,1]
+
++ α (qt − qt−1) 1[at̸ = hover] 
+
+︸ ︷︷ ︸
+
+> rshape
+
++ β q T 1[t = T ]
+
+︸ ︷︷ ︸
+
+> rterminal
+
+, (7) with ws = 0 .6, wc = 0 .4, α = 0 .5, β = 5 , episode horizon 
+
+T = 500 , and quality proxy qt = wsst + wcct. The signal proxy st ∈ [0 , 1] is the min-max normalisation of PL M over 
+
+Pz ; the coverage proxy ct ∈ [0 , 1] is the LoS fraction over 
+
+G; building collisions terminate the episode with reward 
+
+−10 .III. Methodology A. RL Training For each carrier we train an independent PPO agent [16] on the analytical channel of (2) using Stable-Baselines3 [17]. Hyperparameters: Ne = 8 parallel environ-ments, Ttot = 3 ×10 6 environment steps, linearly annealed learning rate 3×10 −4 → 1×10 −5, GAE λ = 0 .95 , clip range 0.2, mini-batch size 512 , entropy coefficient 0.01 ,and a 2×128 -tanh MLP policy. Reward is normalised by a running estimator; observations are not (they are already in [0 , 1] 9). Each policy converges in ≈ 4 h on a single RTX-class GPU. The trained policies are then evaluated under the three channel pipelines without further fine-tuning. B. Sionna Pre-computation Calling the ray tracer at every RL step is computation-ally intractable. We instead pre-compute the four-tensor 
+
+PL S ∈ R4×4×Gx×Gy on a strided sub-grid (stride σ = 5 
+
+along x and y) and bilinearly interpolate to full resolution. After building height masking via (1), this yields |P z | ≈ 
+
+1.6×10 4 deployable positions per altitude. Each Sionna call invokes RadioMapSolver with the parameters of §II-B2; ITU-R P.676-13 absorption is applied per ground-cell distance after the ray-tracing step, ensuring consistent treatment across the grid. Total pre-computation time is 
+
+∼ 3 h per carrier on a Colab L4 GPU. C. Sampling-Induced Bias and the Deterministic-LoS Construct The stochastic Sionna pipeline marks a ground cell as covered only if at least one ray reaches it. Since the 
+
+Ns = 10 5 rays are launched over 4π steradians, a ground cell of area ∆2 at link distance d subtends a solid angle 
+
+≈ ∆2z/d 3 and receives an expected ray-hit count of 
+
+¯n(d) ≈ Ns∆2z/4πd 3, so under a Poisson approximation cells beyond the critical distance dc = (Ns∆2z/ 4π)1/3,at which ¯n = 1 , are missed with probability approach-ing one. At z = 100 m , dc ≈ 430 m : the well-sampled disk around the UAV spans only ≈ 7% of the served area, consistent with the empirical LoS coverage of S of 
+
+≈ 0.06 versus ≈ 0.70 for M, and the dc ∝ z1/3 scaling reproduces the altitude trend of Table I. We stress that the sampling/physics decomposition of §III-E is measured directly from the empirical S–L comparison and does not rely on this model. To separate this Monte-Carlo artifact from genuine modeling differences, we evaluate the deterministic-LoS pipeline of (3), casting one ray to every ground-cell centre, testing occlusion against the Mitsuba scene graph, and constructing the full PL L tensor in closed form from the deterministic LoS map, FSPL, and ITU-R P.676 absorption, with no Monte-Carlo variance at a fraction of the stochastic compute. D. Reality-Gap Framework Let Φiz,f denote the empirical position-distributed SNR (6) under pipeline i ∈ I , and let T ∈ { S, L} index a ray-traced target. We quantify the disagreement between the analytical reference M and T via four reality-gap metrics that decouple systematic offset, distributional spread, and decision-level error: the mean bias (8) captures the systematic dB offset; the position-wise RMSE (9) captures the pointwise spread around the bias; the Jensen– Shannon divergence (10) captures the population-level distributional disagreement; and the optimum-deployment displacement (11) captures the decision-level error between per-pipeline argmaxes. A linear-domain regret ratio (12) converts the displacement into an operational SNR cost. 
+
+bias T 
+
+> f,z
+
+≜ Epu∼U (Pz )
+
+[SNR T − SNR M], (8) 
+
+RMSE T 
+
+> f,z
+
+≜
+
+√
+
+Epu
+
+[( SNR T − SNR M)2], (9) 
+
+DT 
+
+> JS
+
+≜ 12 DKL 
+
+(ΦM ∥ ¯Φ) + 12 DKL 
+
+(ΦT ∥ ¯Φ), (10) 
+
+δT 
+
+> f,z
+
+≜ ∥∥pT ⋆u − pM⋆u
+
+∥∥2, (11) 
+
+ρT 
+
+> f,z
+
+≜ snr T
+
+> lin
+
+(pM⋆u
+
+)
+
+snr T
+
+> lin
+
+(pT ⋆u
+
+) ∈ (0 , 1] , (12) with ¯Φ = (Φ M + Φ T )/2, DKL the Kullback–Leibler di-vergence over 80 -bin empirical histograms with shared support (DJS ∈ [0 , ln 2] , in nats), and pi⋆ u ≜
+
+arg max pu∈P z SNR i(pu, f c). The dB metrics (8)–(10) and the regret (12) are invariant to the link-budget offset 
+
+Pt + Gt + Gr − N 0(fc), so comparisons across pipelines reflect channel modelling rather than link-budget choices; 
+
+δT is in metres. E. Decomposition into Sampling and Physics Components Comparing the bias against the two targets {S, L} yields a clean decomposition: 
+
+bias S
+
+> f,z
+
+︸ ︷︷ ︸ 
+
+> apparent gap
+
+= (bias S 
+
+> f,z
+
+− bias L
+
+> f,z
+
+)︸ ︷︷ ︸
+
+> sampling component
+
++ bias L
+
+> f,z
+
+︸ ︷︷ ︸ 
+
+> physics component
+
+, (13) in which the first term captures Monte-Carlo undersam-pling (since S and L share geometry and absorption physics and differ only in sampling and reflections), and the second term captures the residual disagreement be-tween M and a deterministic ray-traced reference. As we show in §IV, this decomposition is the operative diagnostic that distinguishes carriers requiring physics upgrades from carriers requiring only sampling upgrades. IV. Results A. Setup Unless stated otherwise, results are reported at al-titude z = 100 m , where |P z | ≈ 1.39 ×10 4. The link budget assumes Pt = 30 dBm , Gt = Gr = 0 dBi 
+
+(isotropic), η = 8 dB , T0 = 290 K , and per-carrier bandwidth B(fc) ∈ { 200 , 1000 , 2000 , 5000 } MHz for fc ∈{28 , 140 , 183 , 300 } GHz . All bias, RMSE, DJS and ρ values are link-budget-invariant; only the absolute SNR values shift with the link-budget offset. B. LoS Coverage Table I reports the mean LoS fraction over Pz for the three pipelines. Two observations follow. (i) The stochastic Sionna LoS fraction is an order of magnitude below the analytical model at every altitude, e.g. 0.057 
+
+vs. 0.700 at z = 100 m , in line with the Monte-Carlo undersampling analysis of §III-C. (ii) The deterministic-LoS pipeline recovers a substantially larger LoS fraction (e.g., 0.283 at 100 m ) but does not reach the analytical TABLE I. Mean LoS coverage over Pz (frequency-independent).                   
+
+> Altitude Analytical MSionna stoch. SSionna-LoS L
+> 50 m 0.679 0.035 0.160 75 m 0.703 0.049 0.230 100 m 0.700 0.057 0.283 125 m 0.712 0.063 0.325
+
+value. The remaining gap reflects a genuine geometric difference between MATLAB’s merged-cuboid building model and Sionna’s closed-mesh representation. As shown below, this geometric discrepancy translates only to a small ( ∼ 1.7 dB ) PL bias at 28 GHz because the cells that are LoS in MATLAB but not in Sionna sit at long distances from the UAV and contribute negligible linear gain. C. Position-Distributed SNR Fig. 2 overlays the empirical CDFs of ΦM, ΦS, ΦL at 
+
+z = 100 m across the four carriers, and Fig. 3 shows the corresponding spatial maps with per-pipeline argmax markers. We highlight three carrier-specific phenomena:  
+
+> •
+
+At 28 and 140 GHz , ΦS lies ≈ 5–6 dB below ΦM, but 
+
+ΦL is only ≈ 1.5–1.7 dB below: most of the apparent gap is sampling-induced.  
+
+> •
+
+At 183 GHz , both ΦS and ΦL are heavily shifted relative to ΦM (by −13 .2 and −9.2 dB , respectively); the JS divergence saturates at ln 2 ≈ 0.693 in both cases, indicating practically disjoint distributions.  
+
+> •
+
+At 300 GHz , ΦS is nearly aligned with ΦM (bias 
+
++0 .5 dB , DJS = 0.046 ). The deterministic-LoS pipeline, however, exposes a +3 .8 dB structural offset (ΦL above ΦM) and DJS = 0.62 . The stochastic agreement at this carrier is therefore coincidental rather than physical. D. Reality-Gap Quantification Table II reports the four reality-gap metrics (8)–(11) and the regret ratio (12) at z = 100 m for both ray-traced targets, and Fig. 4 gives the corresponding side-by-side bar chart. Three regimes emerge. a) Sampling-dominated regime (28 , 140 GHz ): The bias against stochastic Sionna is bias S ∈{− 5.58 , −4.80 } dB ; mitigation reduces this to bias L ∈{− 1.69 , −1.47 } dB . The decomposition (13) attributes 
+
+∼ 3.9 dB at 28 GHz (resp. ∼ 3.3 dB at 140 GHz ) to Monte-Carlo undersampling and the residual ∼ 1.5 dB to genuine geometric/material differences. The JS divergence collapses from 0.683 /0.681 to 0.164 /0.181 , indicating near-overlapping distributions. The optimum-deployment dis-placement contracts dramatically, from 768 m to 230 m at 
+
+28 GHz (−70% ), and the regret improves from 0.850 to 
+
+0.956 .b) Absorption-dominated regime (183 GHz ): The 
+
+183 .31 GHz water-vapour resonance is represented in the analytical pipeline, it appears as the second Lorentzian                                                             
+
+> TABLE II. Reality-gap metrics at z= 100 m for the two ray-traced targets.
+> Target Carrier Bias ( dB )RMSE ( dB )DJS δ(m) ρ
+> Sstoch.
+> 28 GHz −5.58 6.51 0.683 768 0.850 140 GHz −4.80 5.02 0.681 674 0.885 183 GHz −13 .20 13 .22 0.693 864 0.880 300 GHz +0 .50 1.25 0.046 757 0.887
+> Ldet.
+> 28 GHz −1.69 4.26 0.164 230 0.956 140 GHz −1.47 2.44 0.181 230 0.954 183 GHz −9.19 9.22 0.693 768 0.957 300 GHz +3 .84 4.05 0.615 198 0.967
+
+(˜ν2 = 6 .11 cm −1) of the Kokkoniemi–Lehtomäki fit [13], but a single Lorentzian under-predicts the peak amplitude and wing tails of the full ITU-R P.676-13 line tables, and this discrepancy compounds over the multi-cell aggregate of (4). Mitigation reduces bias S = −13 .2 dB only to 
+
+bias L = −9.2 dB , and DJS remains saturated at ln 2 
+
+in both cases: the two SNR distributions are practically disjoint. The displacement contracts modestly ( 864 m →
+
+768 m ). c) Coincidental-agreement regime (300 GHz ): Stochastic Sionna agrees with the analytical model (bias S = +0 .50 dB , DSJS = 0 .046 , ρS = 0 .887 ), suggesting at first sight that the analytical channel is sufficient. The deterministic-LoS pipeline, however, reveals bias L =+3 .84 dB and DLJS = 0 .615 . By (13), the apparent +0 .5 dB 
+
+bias decomposes into a −3.3 dB sampling component and a +3 .8 dB physics component that almost exactly cancel. Inspecting the spatial maps (Fig. 3, bottom row) confirms the mechanism: the M map exhibits high-spatial-frequency speckle absent from both ray-traced pipelines, traceable to the position-dependent absorption polyno-mial; the smooth L map is dominated by the geometric-LoS gradient; and stochastic Sionna averages the two effects into accidental alignment. E. Implications for RL Policy Transfer The optimum-displacement and regret columns of Ta-ble II are the operational quantities for sim-to-real trans-fer. Although δ ranges from 198 m to 864 m , the linear-domain regret ρL ≥ 0.93 at every carrier, so the analytical-optimal deployment never costs more than ∼ 7% in linear SNR relative to the deterministic ray-traced optimum. Op-erationally, ρ bounds the SNR sacrificed by deploying at the analytical optimum ( ≤ 0.3 dB here), while δ shows the optimum’s location transfers far less reliably than its value. Three operational conclusions follow. At 28 /140 GHz the analytical channel is sufficient for placement: residual bias is within link-budget margin ( ∼ 1.5 dB ) and regret is ≥ 0.95 . At 183 GHz an absorption-grade upgrade (Kokkoniemi → ITU-R P.676) is necessary; LoS modelling alone does not close the gap, and DJS saturation indicates that the analytical and ray-traced SNR distributions are operationally inequivalent. At 300 GHz , although the 30 20 10 0SNR (dB) 0.0 0.2 0.4 0.6 0.8 1.0 CDF over deployable UAV positions  28 GHz, 100 m                
+
+> MATLAB Sionna (stoch.) Sionna-LoS (det.)
+> 40 30 20 10 0SNR (dB)
+> 140 GHz, 100 m
+> MATLAB Sionna (stoch.) Sionna-LoS (det.)
+> 50 40 30 20 10 0SNR (dB)
+> 183 GHz, 100 m
+> MATLAB Sionna (stoch.) Sionna-LoS (det.)
+> 60 50 40 30 20 10 0SNR (dB)
+> 300 GHz, 100 m
+> MATLAB Sionna (stoch.) Sionna-LoS (det.)
+> SNR CDF (3-way): MATLAB vs Sionna stochastic vs Sionna-LoS
+
+Fig. 2. Empirical CDFs of the position-distributed SNR ΦM, ΦS, ΦL at z = 100 m .050 100 150                        
+
+> 28 GHz y (cells)
+> MATLAB Sionna (stoch.) Sionna-LoS (det.)
+> 050 100 150
+> 140 GHz y (cells)
+> 050 100 150
+> 183 GHz y (cells)
+> 050 100 150 200 250 300 350
+> x (cells)
+> 050 100 150
+> 300 GHz y (cells)
+> 050 100 150 200 250 300 350
+> x (cells)
+> 050 100 150 200 250 300 350
+> x (cells)
+> 30
+> 20
+> 10
+> SNR (dB)
+> 40
+> 35
+> 30
+> SNR (dB)
+> 45
+> 40
+> 35
+> SNR (dB)
+> 50
+> 48
+> 46
+> 44
+> SNR (dB)
+
+Fig. 3. Spatial SNR maps over Pz at z = 100 m . Red stars denote per-pipeline argmaxes. 28 140 183 300 Carrier (GHz) 12.5          
+
+> 10.0
+> 7.5
+> 5.0
+> 2.5
+> 0.0 2.5
+> Bias (dB)
+> vs Sionna (stoch.) vs Sionna-LoS (det.)
+> 28 140 183 300 Carrier (GHz) 0246810 12
+> RMSE (dB)
+> vs Sionna (stoch.) vs Sionna-LoS (det.)
+> 28 140 183 300 Carrier (GHz) 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> JS divergence (nats)
+> vs Sionna (stoch.) vs Sionna-LoS (det.)
+> 28 140 183 300 Carrier (GHz) 0200 400 600 800
+> Opt. displacement (m)
+> vs Sionna (stoch.) vs Sionna-LoS (det.)
+> Reality-gap mitigation via deterministic LoS at 100 m
+
+Fig. 4. Reality-gap metrics at z = 100 m grouped by target pipeline. 
+
+deterministic-LoS comparison reveals a +3 .8 dB structural offset, the regret ratio remains 0.967 : the analytical model is still adequate for placement decisions despite being structurally inequivalent in the absolute SNR sense. V. Conclusion We presented a quantitative reality-gap analysis for an RL-controlled UAV relay across four carriers spanning mmWave to sub-THz, using a real urban map and apublicly reproducible Sionna pipeline. The disagreement between a simplified geometric channel and ray tracing is sharply carrier dependent: at 28 /140 GHz the apparent bias is dominated by Monte-Carlo undersampling and is re-moved by deterministic-LoS recomputation; at 183 GHz aresidual bias persists, tracing to the absorption-line model; and at 300 GHz the stochastic ray tracer coincidentally agrees with the analytical model while the deterministic-LoS pipeline exposes a structural offset. The optimum-deployment displacement is on the order of hundreds of metres but the linear-domain regret ratio remains ≥ 0.93 
+
+across all carriers, suggesting that policies trained on simplified channels remain useful but should be fine-tuned on ray tracing for line-adjacent carriers. The study is limited to a single city, single-seed stochastic runs, static single-UAV placement with isotropic antennas, a fairness-agnostic mean-gain objective, and D=1 specular ray tracing without diffraction. Future work will extend the framework to multi-UAV, realistic user distribution settings and to differentiable fine-tuning that uses the analytical model as a prior and ray tracing as the high-fidelity oracle. Acknowledgment 
+
+This publication was made possible in part by by NPRP14C-0909-210008 from the Qatar Research, Development and Innovation (QRDI) Fund (a member of Qatar Foundation) and by research funding from Hamad Bin Khalifa University under the Thematic Research Grant Program Cycle 3, in part by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Early Career Research Program under Award Number DE-SC0023957, and in part by the National Science Foundation under Grant No. 2549088. 
+
+References 
+
+[1] M. Mozaffari, W. Saad, M. Bennis, Y.-H. Nam, and M. Debbah, “A tutorial on uavs for wireless networks: Applications, chal-lenges, and open problems,” IEEE Communications Surveys & Tutorials, vol. 21, no. 3, pp. 2334–2360, 2019. [2] T. S. Rappaport, Y. Xing, O. Kanhere, S. Ju, A. Madanayake, S. Mandal, A. Alkhateeb, and G. C. Trichopoulos, “Wireless communications and applications above 100 ghz: Opportunities and challenges for 6g and beyond,” IEEE Access, vol. 7, pp. 78 729–78 757, 2019. [3] I. F. Akyildiz, J. M. Jornet, and C. Han, “Terahertz band: Next frontier for wireless communications,” Physical Communication, vol. 12, pp. 16–32, 2014. [4] ITU-R, “Recommendation ITU-R P.676-13: Attenuation by Atmospheric Gases and Related Effects,” International Telecom-munication Union, 2022. [5] A. Al-Hourani, S. Kandeepan, and S. Lardner, “Optimal LAP altitude for maximum coverage,” IEEE Wireless Communica-tions Letters, vol. 3, no. 6, pp. 569–572, 2014. [6] E. Kalantari, H. Yanikomeroglu, and A. Yongacoglu, “On the number and 3D placement of drone base stations in wireless cellular networks,” in IEEE VTC-Fall, 2016. [7] J. Lyu, Y. Zeng, R. Zhang, and T. J. Lim, “Placement opti-mization of uav-mounted mobile base stations,” IEEE Commu-nications Letters, vol. 21, no. 3, pp. 604–607, 2017. [8] H. Bayerlein, P. de Kerret, and D. Gesbert, “Trajectory opti-mization for autonomous flying base station via reinforcement learning,” in IEEE SPAWC, 2018. [9] X. Liu, Y. Liu, Y. Chen, and L. Hanzo, “Trajectory design and power control for multi-uav assisted wireless networks: A machine learning approach,” IEEE Transactions on Vehicular Technology, vol. 68, no. 8, pp. 7957–7969, 2019. [10] J. Tobin, R. Fong, A. Ray, J. Schneider, W. Zaremba, and P. Abbeel, “Domain randomization for transferring deep neural networks from simulation to the real world,” in IEEE/RSJ IROS, 2017. [11] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-real transfer of robotic control with dynamics random-ization,” in IEEE ICRA, 2018. [12] J. Hoydis, S. Cammerer, F. Ait Aoudia, A. Vem, N. Binder, G. Marcus, and A. Keller, “Sionna: An open-source library for next-generation physical layer research,” arXiv preprint arXiv:2203.11854, 2023. [13] J. Kokkoniemi, J. Lehtomäki, and M. Juntti, “A line-of-sight channel model for the 100 –450 gigahertz frequency band,” EURASIP J. Wireless Communications and Networking, vol. 2021, no. 88, 2021. [14] ITU-R, “Recommendation ITU-R P.2040-2: Effects of Building Materials and Structures on Radiowave Propagation,” Interna-tional Telecommunication Union, 2021. [15] M. Nimier-David, D. Vicini, T. Zeltner, and W. Jakob, “Mitsuba 2: A retargetable forward and inverse renderer,” Transactions on Graphics (Proceedings of SIGGRAPH Asia), vol. 38, no. 6, Dec. 2019. [16] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” arXiv preprint arXiv:1707.06347, 2017. [17] A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dormann, “Stable-Baselines3: Reliable reinforcement learn-ing implementations,” Journal of Machine Learning Research, vol. 22, no. 268, pp. 1–8, 2021.

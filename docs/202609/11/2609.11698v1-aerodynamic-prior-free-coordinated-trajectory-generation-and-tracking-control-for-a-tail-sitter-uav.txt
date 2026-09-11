@@ -1,0 +1,1023 @@
+Title: Aerodynamic Prior-Free Coordinated Trajectory Generation and Tracking Control for a Tail-Sitter UAV
+
+URL Source: https://arxiv.org/pdf/2609.11698v1
+
+Published Time: Fri, 11 Sep 2026 01:36:22 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+> 1
+
+# Aerodynamic Prior-Free Coordinated Trajectory Generation and Tracking Control for a Tail-Sitter UAV 
+
+Erchao Rong , Zihao Liu , Junning Liang , Jianguo Wang , Xiao Jie , Haoran Fu , Ziliang Chen ,Ximin Lyu 
+
+Abstract —This paper presents a coordinated trajectory gener-ation and tracking control framework for a tail-sitter unmanned aerial vehicle (UAV), which does not require aerodynamic priors identified for a specific airframe while addressing the challenge of flight control under highly nonlinear aerodynamics across the full flight envelope. The core innovation lies in employing phase-specific aerodynamic modeling strategies for planning and track-ing, tailored to their distinct functional characteristics, without requiring airframe-specific aerodynamic priors. Specifically, the 
+
+ϕ-theory model under coordinated flight is employed to derive an analytic differential flatness mapping, and a simplified but locally accurate model is established for predictive control to en-able real-time aerodynamic parameter estimation. The proposed framework is evaluated extensively through both simulation and challenging real-world flight tests under mild wind conditions, showing high-precision tracking and adaptability across the tested aerodynamic conditions. To the best of our knowledge, this is the first real-world demonstration of accurate trajectory tracking over tested flight regimes spanning the full envelope of a tail-sitter UAV without relying on aerodynamic identification campaigns. The source code of our framework is available at: https://github.com/SYSU-HILAB/AP-PnC. 
+
+Index Terms —Differential flatness, VTOL, MPC, model-free, trajectory planning, motion control 
+
+I. I NTRODUCTION 
+
+# TAil-sitter UAVs are characterized by their mechanical simplicity and lightweight structure, compared to other hybrid vertical take-off and landing (VTOL) UAVs. However, the large attitude shifts required for transition cause signifi-cant variations in the angle of attack (AoA). Such complex and nonlinear aerodynamics render trajectory planning and tracking control exceptionally challenging, thereby limiting the widespread application of tail-sitter UAVs. Current high-performance studies [1, 2] in tail-sitter control have been largely built upon high-fidelity aerodynamic models.   
+
+> This work was supported in part by the National Key Research and Development Program of China under Grant 2023YFB4706600, in part by the National Natural Science Foundation of China under Grant 62303495, in part by the Major Key Project of PCL (PCL2025A02), and in part by the Young Talent Support Project of Guangzhou Association for Science and Technology under Grant QT-2025-004. (Erchao Rong and Zihao Liu contributed equally to this work.) (Corresponding author: Ximin Lyu.) Erchao Rong, Zihao Liu, Junning Liang, Jianguo Wang, Xiao Jie, and Haoran Fu are with the School of Intelligent Systems Engineering, Sun Yat-sen University, Guangzhou 510275, China (e-mail: rongerch@outlook.com; liuzh297@gmail.com; gordonliang27@foxmail.com; jgw 2022@163.com; jiexiao 2025@163.com; fu.haoran@outlook.com). Ziliang Chen is with Pengcheng Laboratory, Shenzhen 518055, China (e-mail: c.ziliang@yahoo.com). Ximin Lyu is with the School of Intelligent Systems Engineering, Sun Yat-sen University, Guangzhou 510275, China, Pengcheng Laboratory, Shenzhen 518055, China, and the Differential Robotics Technology Company, Ltd., Hangzhou 311100, China (e-mail: lvxm6@mail.sysu.edu.cn).
+
+While these approaches have demonstrated impressive perfor-mance, their practical deployment often faces several hurdles: 1) controllers are optimized for a specific airframe, hinder-ing portability; 2) accurate aerodynamic estimation typically entails sophisticated software and hardware setups; 3) identifi-cation of a reliable aerodynamic model is a resource-intensive process. To streamline deployment, this work introduces an integrated flight framework that obviates costly aerodynamic model identification, enabling broader tail-sitter adoption. Standard tail-sitter tracking controllers typically employ a cascaded architecture with an outer position loop and an inner attitude loop. The primary challenge lies in reactively mapping the desired acceleration to an attitude command. Early methods [3, 4] empirically tuned predefined angular velocity profiles to balance flight feasibility and performance, necessitating extensive manual effort. To automate this pro-cess, later optimization approaches [5]–[7] explicitly model aerodynamic forces to compute feasible attitude commands. Yet, a trade-off exists: high-fidelity models are computa-tionally prohibitive [5], while efficient low-fidelity models often lack sufficient accuracy [6, 7]. To free the control design from this efficacy-portability dilemma, sensor-based paradigms have been explored. Incremental nonlinear dynamic inversion (INDI) techniques [8]–[10] and a linear acceler-ation model [11, 12] were introduced to compensate for modeling errors using real-time sensor estimates, offering a more lightweight identification burden regarding aerodynamics and actuators. Such instantaneously estimated aerodynamic forces from accelerometers are only utilized reactively, without predictive exploitation. To transition from reactive compensation to proactive adap-tation, model predictive control (MPC) employs online explicit optimization over receding short horizons, whereas learning-based methods implicitly encode foresight priors into a re-active policy via offline training [13]. For racing drones, which also suffer from complex aerodynamic effects, re-cent works utilizing model-free learning [14], model-based learning [15], and differentiable physics [16] have demon-strated impressive performance. While their success hinges on high-fidelity simulators and elaborate learning pipelines to bridge the sim-to-real gap, such infrastructures remain largely unavailable for tail-sitter platforms. Consequently, the tail-sitter community continues to rely predominantly on MPC-based solutions grounded in explicitly formulated aerodynamic models. Yet, the real-time onboard optimization precludes the direct use of a full nonlinear aerodynamic model. To address this issue, Lu et al. [1, 2] linearize the system dynamics along a reference trajectory to derive a time-varying error-arXiv:2609.11698v1 [cs.RO] 10 Sep 2026 2
+
+state model. Crucially, their linearization process necessitates a high-fidelity aerodynamic model to establish the reference trajectory via differential flatness. To date, achieving predictive control performance without requiring advance aerodynamic characterization remains an open challenge. Beyond tracking control, trajectory planning remains heav-ily dependent on high-fidelity aerodynamic models. Trajectory planning without differential flatness for winged aircraft often relies on optimization within the joint state-control space. Common approaches include direct transcription methods [17], discretization via motion primitives [18, 19], or the use of population-based metaheuristics [20, 21]. However, these methods struggle to balance optimality and computational tractability as the problem scales up. Alternatively, Wang et al. [22] proposed a trajectory planning framework in the flat output space, which achieves a linear computational complex-ity relative to the number of trajectory segments. Building on this, Yu et al. [23] leveraged a closed-form differential flatness to enable the parallel generation of all segments, thereby achieving constant-time complexity. While winged aircraft in coordinated flight are proven to be differentially flat [24], mapping these flat outputs to body-frame angular velocity remains a bottleneck. This process requires solving for the AoA through aerodynamic models, which generally leads to two compromises: 1) Numerical dependency : Using a high-fidelity model often necessitates an optimization sub-routine to determine the AoA [1]. Rather than allowing for point-wise algebraic mapping, this approach requires strictly serial optimization. The dependency of each time step on its predecessor prevents the use of parallel computing. 2) 
+
+Model simplification : Existing algebraic solutions often rely on restrictive assumptions that limit their applicability. The derivation in [24] is confined to stability-frame angular ve-locity. Other methods employ low-alpha approximations [25], 2-D planar dynamics [26], or a reduced ϕ-theory model valid for a limited range of AoA [27]. Furthermore, Tal et al. [28] utilized a ϕ-theory model assuming negligible lateral forces to generate uncoordinated maneuver trajectories. While effective for their specific platform, this assumption does not hold for general tail-sitters, where lateral aerodynamics play a critical role during such maneuvers. Therefore, a versatile trajectory planning method free of such dependencies remains absent. This deficiency, combined with the restrictive reliance on models in tracking control, highlights the lack of a fully integrated flight framework that operates without airframe-specific aerodynamic priors. To tackle this challenge, we present an integrated method-ology with the following contributions: 1) An analytic expression for the differential flatness map-ping for tail-sitters under coordinated flight, based on the full ϕ-theory model without simplification. This formu-lation can be leveraged to generate feasible trajectories and accurate reference states without requiring advance aerodynamic characterization. 2) A novel nonlinear MPC with real-time aerodynamic parameter estimation. This controller continuously iden-tifies and adapts to the aircraft’s aerodynamic charac-teristics in flight, thereby obviating costly aerodynamic fax
+
+fay
+
+faz
+
+vz
+
+vx
+
+v y
+
+v     
+
+> Fig. 1. Coordinate frames: the inertial world frame W, body frame Band stability frame S
+
+model identification. 3) Open-source code to facilitate further validation and investigation by the community. To our knowledge, this is the first method to achieve sub-meter position RMSE over the tested flight regimes without relying on aerodynamic identification campaigns. The framework as-sumes wind-free conditions, with failure modes characterized in Sec. V-B. In the following sections, Sec. II first outlines the flight dynamics and system framework. Subsequently, Sec. III leverages the ϕ-theory model to derive differential flatness for trajectory planning, which is then tracked by our proposed MPC in Sec. IV. We validate the effectiveness and robustness of the entire framework via experiments in Sec. V and conclude the work in Sec. VI. II. S YSTEM OVERVIEW 
+
+A. Coordinate Frames 
+
+In this paper, we use ex = [1 , 0, 0] T, ey = [0 , 1, 0] T, and ez =[0 , 0, 1] T to represent the standard unit vectors along the x-, y-, and z-axes of a 3-D Cartesian coordinate system, respectively. An entity vector r, represented in a specific coordinate frame 
+
+F, is denoted by F r. The components of r in the frame are given by F rx = ex · F r, F ry = ey · F r, and F rz = ez · F r . A rotation matrix F0 RF1 represents the orientation of the frame 
+
+F1 relative to the frame F0. For brevity, the left superscript is omitted for quantities in the inertial frame. The coordinate frames are shown in Fig. 1. The inertial world frame W follows the north-east-down (NED) conven-tion, with orthonormal basis {xw, yw, zw}. The body-fixed frame B has its origin at the center of mass, with xb pointing forward and yb toward the right wing tip. The stability frame 
+
+S is obtained by rotating B about yb by −α, where the AoA 
+
+α is defined as 
+
+α = atan2  Bvz , Bvx
+
+ . (1) The relation between the attitude of the stability frame RS and the attitude of the body frame RB is characterized as follows: 
+
+RB = RS S RB. (2) 3
+
+As illustrated in Fig. 1, the S RB is defined as  
+
+> S
+
+RB =
+
+
+
+cos α 0 sin α
+
+0 1 0
+
+− sin α 0 cos α
+
+ . (3) Substituting (3) into (2) will yield 
+
+[xs | ys | zs] = [ xb cos α+zb sin α | yb | − xb sin α+zb cos α].
+
+(4) The position of the tail-sitter is denoted as p and its deriva-tives, velocity, acceleration and jerk as v, a, j, respectively. 
+
+B. Kinematics 
+
+The translational kinematics are described by 
+
+˙p = v,
+
+˙v = a = g + ap, (5) where ap = a − g is the proper acceleration produced by the thrust force fT and aerodynamic force fa, and it is given by 
+
+ap = fa + fT
+
+m . (6) The rotational kinematics are written as 
+
+˙RB = RB⌊BΩb⌋, (7a)  
+
+> B
+
+˙Ωb = J−1 BM − ⌊ BΩb⌋J BΩb
+
+
+
+, (7b) where J is the inertia matrix of the aircraft, BΩb denotes the body-frame angular velocity. The notation ⌊·⌋ denotes the map that transforms a vector to a skew-matrix, such that ⌊a⌋b =
+
+a × b, ∀a, b ∈ R3. BM is the total moment acting on the vehicle, produced by the aerodynamic moment BMa and the thrust moment BMT .We define the nominal state of our system x as 
+
+x =
+
+
+
+p, v, RB, BΩb
+
+
+
+∈ R3 × R3 × SO(3) × R3. (8) The aerodynamic moment BMa is treated as a disturbance in this paper, and compensated by a low-level controller. The dynamical modeling of fa, fT , and BMT is handled differently during planning and tracking control. 
+
+C. System Framework 
+
+To accurately achieve an aerodynamic prior-free trajectory tracking, it is critical to recognize that the trajectory planning phase requires a simplified, feasibility-oriented model in long-term horizons, whereas the tracking phase demands a locally valid model in short-term horizons. Specifically, the key lies in a subtle yet deliberate modeling of the tail-sitter’s full-flight-envelope fa in the two phases. Particularly in this paper, we extend the differential flatness property of the coordinated vehicle model [24] to dynamics-dependent terms—the body-frame angular velocity BΩb and the thrust acceleration aT —leveraging the ϕ-theory aerodynamic model [29]. Building on this flatness property and the flatness-based trajectory planning framework in [22], we formulate an aerodynamic prior-free trajectory planning optimization problem by parameterizing the ϕ-theory model using a single flat-plate drag coefficient Hovering Point 
+
+# Optimizer MPC     
+
+> IMU RTK Augmented State
+> Estimator Low Level Controller
+> Trajectory
+> Actuate Feed
+> Actuate Feed Translation-Invariant Shape Initialize
+> Trajectory
+> Segment
+> Vehicle State
+> Augmentation Coordinated
+> Flight Strategy Aerodynamic
+> Adaptation
+> Reference Trajectory Predicted Trajectory
+> Fig. 2. System framework.
+
+CD, flat , with a value of 1.28. As for trajectory tracking, our MPC incorporates only a single nonlinear longitudinal aerodynamic parameter. This parameter is estimated online during flight and used to predict aerodynamic force variations over the prediction horizon. The framework of our aerodynamic prior-free trajectory planning and tracking control is shown in Fig. 2. As detailed in Sec. III, a dynamically feasible trajectory is first gener-ated offline by our trajectory planner. The reference position, velocity and lateral axis vectors are extracted based on the differential flatness property of the tail-sitter, and then fed into the MPC. With an augmented state estimate, the MPC solves a receding-horizon optimal control problem online. The next predicted state BΩb and Bapx will be used to command a low-level controller. Finally, a low-level controller transforms 
+
+> B
+
+Ωc 
+
+> b
+
+and Bac 
+
+> px
+
+commands to actuate the vehicle. The proposed framework operates under two central con-straints:  
+
+> •
+
+Wind-free condition: The aircraft velocity is assumed equal to the airspeed, meaning no wind-induced aero-dynamic disturbances are present.  
+
+> •
+
+Coordinated flight: The MPC maintains coordination by tracking lateral-axis references, thereby suppressing sideslip; sustained sideslip maneuvers (e.g., severe cross-wind highspeed tracking) lie outside the framework’s design scope. Within these constraints, Bcx, Bcy , and Bcz denote mass-normalized aerodynamic coefficients with units of m−1. The implementation follows a lean modeling strategy that pre-serves only Bcz : the axial coefficient Bcx acts as a matched disturbance along the thrust axis xb and is compensated by the low-level controller as in [11]; the lateral coefficient Bcy
+
+vanishes under this coordination assumption; the aerodynamic moment is neglected because the tail-sitter’s inclined motor layout provides sufficient control authority [1]. The dominance of Bcz is confirmed by the aerodynamic stiffness analysis in Sec. V-A; it is therefore the only parameter proactively estimated online. Violating either constraint introduces un-modeled aerodynamic disturbances that exceed the compen-4
+
+sation capacity of the single-parameter online estimator; the quantitative operational boundaries under wind disturbances are characterized in Sec. V-B. III. T RAJECTORY GENERATION 
+
+In this section, we establish the differential flatness of the tail-sitter by combining the kinematic structure of coordinated flight with the aerodynamic dynamics described by the ϕ-theory model. We then formulate trajectory planning as an optimization problem based on the resulting flatness map. 
+
+A. Differential Flatness 
+
+Differential flatness allows state and control-input con-straints to be handled directly during trajectory planning without explicitly integrating the system dynamics. An al-gebraic flatness map therefore facilitates efficient trajectory generation [22]. Our derivation combines two complemen-tary descriptions: the coordinated-flight model establishes the kinematic structure, while the ϕ-theory model provides the aerodynamic force relations that close the dynamics-dependent part of the map. 
+
+1) Coordinated Flight Model: When in coordinated flight, the sideslip angle β = asin( Bvy /V ) of the vehicle is zero, which implies that Bvy = 0 . This means that the axis xs is aligned with v. Given the absence of aerodynamic side force in coordinated flight (i.e., Bfay = S fay = 0 ), the second term of S ap vanishes, i.e., S apy = 0 .Under this assumption, Hauser and Hindman [24] prove that if p is chosen as the flat output, S ap, S ˙ap and S Ωs can be expressed in terms of p and its time derivatives up to the third order. This differential flatness map must satisfy the following condition: 
+
+ I − (vv T)/V 2 ap ∈ (0 , +∞). (9) The axes of the stability frame S are given by 
+
+xs = v
+
+∥v∥ , zs = −
+
+ I − xs xT
+
+> s
+
+ ap
+
+∥(I − xs xT 
+
+> s
+
+) ap∥ , ys = zs × xs. (10) The remaining two components of the proper acceleration S ap
+
+are then determined as  
+
+> S
+
+apx = xs · ap, S apz = zs · ap. (11) According to [24], the jerk j of the vehicle is related to the stability-frame angular velocity S Ωs and the derivative of S ap,denoted by S ˙ap. The S Ωs is given by  
+
+> S
+
+Ωsx = ( S apx 
+
+> S
+
+Ωsz − ys · j)/ S apz , (12a)  
+
+> S
+
+Ωsy = −(zs · a)/V, (12b)  
+
+> S
+
+Ωsz = ( ys · g)/V. (12c) Since the S ˙apy = 0 , the S ˙ap is given by  
+
+> S
+
+˙apx = xs · j − S Ωsy 
+
+> S
+
+apz , S ˙apz = zs · j + S Ωsy 
+
+> S
+
+apx . (13)          
+
+> Fig. 3. Geometric relationship among forces during coordinated flight, viewed in the longitudinal plane. Given a apand an aerodynamic model Bfa(α),states αand BfTxcan be determined.
+
+2) ϕ-theory Model: The dynamics-dependent part of the flatness map requires the AoA α to be determined from an aerodynamic model valid across the full flight envelope. As illustrated in Fig. 3, decomposing (6) into the longitudinal plane, which is perpendicular to the axis yb and ys, yields:  
+
+> S
+
+apx cos α − S apz sin α = Bapx =
+
+BfTx + Bfax (α)
+
+
+
+/m, 
+
+(14a)  
+
+> S
+
+apz cos α + S apx sin α = Bapz = Bfaz (α)/m. (14b) For complex aerodynamic maps Bfax (α) and Bfaz (α), a closed-form solution for α in the equations (14) is generally unavailable [1, 6]. Nevertheless, when modeled using the ϕ-theory [29], the aerodynamic force Bfa is expressed as 
+
+> B
+
+fa =
+
+
+
+> B
+
+fax
+
+> B
+
+fay
+
+> B
+
+faz
+
+ =
+
+
+
+ϕ11 0 ϕ13 
+
+0 ϕ22 0
+
+ϕ31 0 ϕ33 
+
+
+
+cos α
+
+0sin α
+
+ mV 2. (15) Each ϕij is a mass-normalized aerodynamic coefficient with units of m−1; the factor m converts the modeled aerodynamic acceleration to force. By substituting the third row of (15) into (14b), the AoA α can be analytically solved as 
+
+α = atan2  ϕ31 V 2 − S apz , S apx − ϕ33 V 2 . (16) Once α is solved, the rotation matrix RB can be determined from RS using (2). By substituting the first row of (15) into (14a) and rearranging terms, we derive 
+
+aT =  ϕ11 V 2 + S apx
+
+ cos α +  ϕ13 V 2 − S apz
+
+ sin α, (17) where aT represents the thrust acceleration. It is assumed to be completely aligned with the axis xb.Up to this point, the attitude RB and thrust acceleration aT
+
+can be analytically determined. Furthermore, one can derive the body-frame angular velocity BΩb by incorporating the jerk 
+
+j. Taking the derivative of (2) yields: 
+
+⌊BΩb⌋ = ⌊BRS S Ωs⌋ + ⌊ ˙α ey ⌋. (18) 5
+
+Since the map ⌊·⌋ is linear and bijective, (18) uniquely gives 
+
+> B
+
+Ωb as follows: 
+
+> B
+
+Ωbx = S Ωsx cos α − S Ωsz sin α, (19a) 
+
+> B
+
+Ωby = S Ωsy + ˙ α, (19b) 
+
+> B
+
+Ωbz = S Ωsx sin α + S Ωsz cos α, (19c) where ˙α is the time derivative of α. What remains to fully determine BΩb is to determine ˙α. By taking the derivative of (16), we can obtain 
+
+˙α = ϕ31 γ1 + ϕ33 γ2 +  S apz 
+
+> S
+
+˙apx − S apx 
+
+> S
+
+˙apz
+
+ S apx − ϕ33 V 22 +  ϕ31 V 2 − S apz
+
+2 , (20) where γ1 and γ2 are respectively written as 
+
+γ1 = 2 V S apx 
+
+> S
+
+ax − V 2 S ˙apx ,γ2 = −2V S apz 
+
+> S
+
+ax + V 2 S ˙apz . (21) For now, we have established the flatness map that is necessary to formulate the trajectory optimization problem. At any time τ along a trajectory, we can define the differential flatness forward propagation DF as follows: 
+
+S ax(τ ), BΩb(τ )
+
+
+
+= DF (p(1:3) (τ )) . (22) To establish an aerodynamic prior-free trajectory planner, the ϕ-theory model is restricted in the zb axis, and defined solely by ϕ33 = 0 .5ρSC D, flat /m , where ρ is the air density; S
+
+is the wing area. The actual planning implementation retains only ϕ33 , which is equivalent to ignoring Bcx in the flatness mapping. 
+
+B. Spatial-temporal Trajectory Generation 
+
+We parameterize the trajectory using the state-of-the-art polynomial splines trajectory representation TMINCO [22]. The coefficients of TMINCO are parameterized by intermediate way-points Q and time allocation T , given initial position vector 
+
+p0, terminal position vector pf . The expression is: 
+
+TMINCO = p(t) : [0 , T ] → R3 | C = C(Q, T ; p0, pf ),
+
+Q ∈ R3×(M −1) , T ∈ RM
+
+> ++
+
+o
+
+.
+
+where M represents the number of the piecewise polyno-mial trajectory segments. The duration of each segment is denoted by ti and the endpoint of each segment (except the last segment), referred to as an intermediate waypoint, is represented by q1, . . . , qM −1, respectively. The intermediate waypoints, denoted by Q = ( q1, . . . , qM −1), and the time allocation, denoted by T = ( t1, . . . , t M ) are decision vari-ables during trajectory optimization. The coefficient collection 
+
+C = ( c1, c2, . . . , cM ), where each ci represents the coefficient of the i-th trajectory segment. We employ 7th-order polynomial splines within the TMINCO 
+
+trajectory representation to ensure C3 continuity across the entire trajectory [22], where the polynomial basis is β(s) = (1 , s, . . . , s 7). Let τ0 = 0 and τi = Pik=1 tk denote the cumulative endpoint time of segment i, for i = 1 , . . . , M ,
+
+Algorithm 1 Aerodynamic Prior-Free Trajectory Planning  
+
+> 1:
+
+Given: initial intermediate waypoints Q0, initial time allocation T 0, the minimum rate of decrease of the cost function δ and translation-invariant shape G for each Qi,where i = 1 , · · · , M − 1. 
+
+> 2:
+
+k ← 0, B ← I, ∥∇J PLN ∥ ← ∞  
+
+> 3:
+
+while ∥∇J PLN ∥ > δ do  
+
+> 4:
+
+p(0:4) (t) ← TMINCO (Qk, T k)  
+
+> 5: S
+
+ax(t), BΩb(t) ← DF (p(1:3) (t))  
+
+> 6:
+
+∇J feas ← DB
+
+S ax(t), BΩb(t), p(1) (t)
+
+ 
+
+> 7:
+
+∇J gcopter ← GCOPTER (p(0:4) (t), G) [22]  
+
+> 8:
+
+∇J PLN ← ∇J gcopter + ∇J feas  
+
+> 9:
+
+dk ← − Bk ∇J PLN  
+
+> 10:
+
+Qk+1 , T k+1 ← LINE SEARCH (Qk, T k, dk) [30]  
+
+> 11:
+
+Bk+1 ← L-BFGS [31]  
+
+> 12:
+
+k ← k + 1  
+
+> 13:
+
+end while  
+
+> 14:
+
+return TMINCO (Q∗, T ∗)
+
+so that τM = Tf . The complete trajectory is then evaluated piecewise as 
+
+p(τ ) = ci · β(τ − τi−1), τ ∈ [τi−1, τ i]. (23) Building upon DF and TMINCO , we formulate the trajectory optimization problem as 
+
+min 
+
+> Q,T
+
+Z Tf
+
+> 0
+
+p(4) (τ ) 2
+
+dτ + ρT f , (24a) 
+
+s. t. p(t) = TMINCO (Q, T ; p0, pf ), Tf =
+
+> M
+
+X
+
+> i=1
+
+ti, (24b) 
+
+qi ∈ Q i, i = 1 , . . . , M − 1, (24c) 
+
+∥v(t)∥ ≤ Vmax , (24d) 
+
+−S ax, min ≤ S ax(t) ≤ S ax, max , (24e) 
+
+−BΩb, max ≤ BΩb(t) ≤ BΩb, max , (24f) where ρ > 0 is the penalty weight for the total flight time 
+
+Tf , Q1 × Q 2 × · · · × Q M −1 is the allowable region for the intermediate waypoints Q to freely move, Vmax denotes the maximum velocity, BΩb, max denotes the maximum body-frame angular velocity, and S ax, max and S ax, min represent the maximum and minimum tangential acceleration, respectively. The constraints (24d)–(24f) are set for dynamically feasible trajectory planning. Notably, the forward and backward transi-tion times are directly regulated by the tangential acceleration limits, S ax, max and S ax, min , respectively. The optimization problem (24) aims to find a dynamically feasible trajectory, with the decision variables being the inter-mediate waypoints Q and the time allocation T . This formula-tion is based on GCOPTER [22], a versatile trajectory planning framework that excels at managing constraints on intermediate waypoints within flight corridors and total time allocation. By leveraging the TMINCO representation, GCOPTER trans-forms these complex spatial and temporal trajectory planning requirements into an unconstrained nonlinear programming 6
+
+problem (NLP). Consequently, constraints (24b) and (24c) are inherently satisfied within this formulation, while the constraint violation terms for (24d)–(24f) are incorporated into the GCOPTER-transformed cost function using a quadratic ex-terior penalty method. The cost function of the unconstrained NLP, denoted as JPLN , consists of two components. The first component, Jgcopter , includes the original cost function (24a) and the constraint violation penalty terms for (24b) and (24c). The gradient of the corresponding terms for Jgcopter is properly addressed in [22]. The second component, Jfeas , represents the penalty terms for violating constraints in (24d)-(24f). The crucial part of this NLP lies in the gradient backpropagation associated with the penalty terms for the constraint violations in (24e) and (24f). The corresponding gradient terms for (24e) and (24f) are composed of two parts as follows: 
+
+∂
+
+S ax(t), BΩb(t)
+
+
+
+∂ (Q, T ) =
+
+∂
+
+S ax(t), BΩb(t)
+
+
+
+∂ p(1:3) 
+
+∂ p(1:3) 
+
+∂ (Q, T ) . (25) The second part, ∂ p(1:3) /∂ (Q, T ), has been resolved in [22]. To avoid the cumbersome and error-prone symbolic derivation of the first part ∂
+
+S ax(t), BΩb(t)
+
+
+
+/∂ p(1:3) , we obtain this using the forward mode automatic differentiation method, as described in [32]. The constraint violations from (24d) to (24f) are checked at uniformly spaced samples along the entire trajectory. When a sample violates these constraints, the corresponding penalty gradient terms are backpropagated to the decision variables using the chain rule. This process is referred to as differential flatness backpropagation, denoted as DB. To achieve an appropriate gradient descent step and direction, we further integrate the gradient terms of the NLP within a line search framework that satisfies the weak Wolfe condition [30], alongside the L-BFGS quasi-Newton gradient method [31]. The whole aerodynamic prior-free trajectory planning algorithm is seen in Alg. 1. IV. T RAJECTORY TRACKING CONTROL 
+
+Under the modeling strategy established in Sec. II-C, we develop an innovative aerodynamic prior-free MPC. By in-corporating an online estimated aerodynamic parameter, the MPC achieves high-accuracy tracking of coordinated flight trajectories. 
+
+A. Prediction Model 
+
+Using the mass-normalized aerodynamic coefficients Bcx,
+
+> B
+
+cy , and Bcz defined in Sec. II-C, we set Bcy = 0 , Bcx = 0 ,and Ma = 0. The aerodynamic effects in the MPC are thus modeled as 
+
+fa = m Bcz V 2zb, Ma = 0, (26) In the aerodynamic model described by (26), the effects are assumed to depend solely on the parameter Bcz . Since the model only needs to remain locally valid over the MPC’s short prediction horizon, we can effectively implement adaptive control by treating this parameter as a time-varying state. Specifically, we augment the nominal state x with the aerody-namic parameter Bcz for online estimation, defining the Bcz
+
+dynamics as  
+
+> B
+
+˙cz = κ ˙α, (27) where κ is a fixed gain tuned for performance. This linear model (27) allows the MPC to know that pitch down typically (BΩby < 0) causes the magnitude of Bfaz to decrease, and pitch up typically ( BΩby > 0) causes the magnitude of Bfaz
+
+to increase. The ˙α can be obtained by rewriting (19b) and expanding the expression of (12b) using (4) into the frame B
+
+as follows: 
+
+˙α = BΩby + zs · a
+
+V = BΩby +
+
+> B
+
+az cos α − Bax sin αV . (28) Note that the ˙α calculated from (28) depends entirely on the longitudinal motion of the tail-sitter, and is independent of the lateral motion that is characterized by BΩbx , BΩbz , and Bay .There are four motors in the tail-sitter, and the thrust force 
+
+fT and thrust moment are modeled as 
+
+
+
+> B
+
+fTx
+
+> B
+
+MTx
+
+> B
+
+MTy
+
+> B
+
+MTz
+
+ =
+
+
+
+1 1 1 1
+
+cM , cM −cM −cM
+
+dz −dz dz −dz
+
+−dy −dy dy dy
+
+
+
+fT1
+
+fT2
+
+fT3
+
+fT4
+
+ , (29) where dy and dz are the motor displacements, cM is the propeller torque constant. The control thrust force fc is defined to be the four actuators’ forces vector, i.e., fc =[fT1 , f T2 , f T3 , f T4 ]T ∈ R4. We further augment the nominal state x with fc and the MPC control input u is defined as follows: 
+
+u = [ ˙fT1 , ˙fT2 , ˙fT3 , ˙fT4 ]T ∈ R4 (30) This augmentation allows us to constrain the control force and moment generated by the actuators. Overall, in linear acceleration prediction, we simplify (6) as 
+
+ap = aT xb + Bcz V 2 zb. (31) Here, aT = BfTx /m is the thrust acceleration, so both terms in (31) have units of acceleration. In angular acceleration prediction, we ignore the aerodynamic moment and simplify (7b) as  
+
+> B
+
+˙Ωb = J−1 BMT − ⌊ BΩb⌋J BΩb
+
+
+
+. (32) The augmented state is defined as s =  x, Bcz , fc
+
+. By combining (5), (7a), (27), (28), (29), (30), (31) and (32), the state transfer function can be expressed compactly as 
+
+˙s = fMPC (s, u). (33) The proposed prediction model not only retains the most significant aerodynamic effect in a controller’s perspective but also is locally valid within the full flight envelope. 7
+
+B. MPC Optimization Problem Formulation 
+
+The prediction model (33) is designed for and highly effective in coordinated flight, but loses validity under sig-nificant sideslip aerodynamics. To address this limitation, we propose a coordinated flight strategy that exploits the flatness in Sec. III-A, and is deeply integrated with the MPC. Given a C3 continuous reference position trajectory pref (t)
+
+by the coordinated-flight planner in Sec. III, the trajectories 
+
+vref (t), aref (t), and yref  
+
+> b
+
+(t) can be obtained using the flatness in Sec. III-A. We first assume the pref (t) is accurately tracked, in the prediction horizon [t0, t f ] of the MPC, we have 
+
+v(τ ) = vref (τ ), ap(τ ) = aref  
+
+> p
+
+(τ ), τ ∈ [t0, t f ]. (34) Therefore, accurately tracking the trajectory pref (t) implies 
+
+yb(v(τ ), ap(τ )) − yref  
+
+> b
+
+(vref (τ ), aref  
+
+> p
+
+(τ )) = 0 , τ ∈ [t0, t f ].
+
+(35) This hard constraint (35) is softened into the cost function of the MPC as follows: 
+
+JMPC =
+
+Z tf
+
+> t0
+
+
+
+pref − p 2 
+
+> Qp
+
++ vref − v 2
+
+> Qv
+
+| {z }
+
+> trajectory tracking cost
+
++ yref  
+
+> b
+
+− yb
+
+> 2
+> Qyb
+
+| {z }
+
+> coordinated flight cost
+
++ ∥u∥2
+
+> Ru
+
+| {z } 
+
+> control effort cost
+
+
+
+d τ. 
+
+(36) The Qp, Qv , Qyb , Ru are all positive-definite diagonal ma-trices. The control effort cost in (36) is used to penalize the rate of control thrust force fc to ensure dynamic feasibility. According to (29) and (32), the dynamics of fc dominates those of BΩb and aT . Consequently, the control effort cost inherently and consistently penalizes high-frequency compo-nents in ac 
+
+> T
+
+and BΩc
+
+> b
+
+, leading to a steady control behavior. To ensure dynamical feasibility and controllability of the low-level controller, we further impose the following con-straints on the augmented state and control input within the MPC prediction horizon: 
+
+−BΩb ≤ BΩb ≤ BΩb (37a) 
+
+0 ≤ fc ≤ fc (37b) 
+
+−u ≤ u ≤ u (37c) The constraints (37a) and (37b) are dictated by the physical actuator limits. Meanwhile, the constraint (37c) and the control effort cost in (36) are jointly tuned to constrain the bandwidth of the commands sent to the low-level controller. The continuous-time MPC problem is transcribed into a NLP and solved via sequential quadratic programming (SQP). The resulting QP subproblems are solved in real time by HPIPM [33], the state-of-the-art interior-point method QP solver tailored for MPC problems. The implementation is facil-itated by acados [34] and CasADi [35]. The MPC parameters used in both simulation and field experiments are summarized in Table I, except Qpz set to 5 in field experiments due to noisy height estimates. Notably, the weight Qyb is set to be highest, consistent with our coordinated flight assumption.                                 
+
+> TABLE I MPC C ONFIGURATION PARAMETERS
+> Parameter Value State weight (Qp;Qv;Qyb)diag(15 ,15 ,10; 1 ,1,1; 52 .5,52 .5,126)
+> Control effort weight Rdiag(0 .03 ,0.03 ,0.03 ,0.03)
+> Thrust rate upper bound udiag(5 ,5,5,5) m/s 3(mass-normalized) Bodyrate upper bound BΩbdiag(1 .5,2.5,1.5) rad/s
+
+C. Augmented State Estimation 
+
+As part of the standard procedure, the nominal state com-ponents of the augmented state— p, v, RB, and BΩb—are typically obtained using a standard state estimator such as an extended Kalman filter (EKF). In this section, we will focus on the estimation of the augmented components fc and Bcz .Rather than estimating fc from motor-speed measurements, which demands extra hardware (e.g., Bidirectional DShot or optical encoders [9]) and a pre-identified propeller model, we note that the faster inner loop handles fc transients and that u
+
+is already rate-limited in (37c); we therefore simply initialize 
+
+fc to the last MPC result. To estimate Bcz , we subtract the thrust acceleration fT /m from the proper acceleration, project the result onto zb, and divide by V 2, yielding: 
+
+> B
+
+cz =
+
+
+
+ap − fT
+
+> m
+
+
+
+· zb
+
+V 2 =
+
+> B
+
+apz
+
+V 2 . (38) The second equality follows from fT · zb = 0 because the thrust force is aligned with xb. Following (38), the estimated 
+
+> B
+
+cz is computed from filtered acceleration measurements using a small denominator offset and clamping to prevent singularities and over-estimation. V. E XPERIMENTS 
+
+In this section, we evaluate the proposed aerodynamic prior-free flight framework through a series of simulation and field experiments. In simulation, we evaluate the efficacy of the proposed approach by benchmarking it against a diverse set of state-of-the-art controllers. We also investigate the framework’s operational boundaries under wind disturbances. Subsequently, field experiments validate the complete pipeline through standard tracking tasks and aggressive fast transitions. Notably, the vehicle maintains precise trajectory execution without aerodynamic priors, even under aggressive conditions with a peak velocity of 13.3 m/s and roll and pitch angles reaching 48 ◦ and 78 ◦. For better visualization, please refer to https://youtu.be/H4pDQo8YX98. 
+
+A. Benchmark under Various Aerodynamic Conditions 
+
+The goal of this benchmark is twofold: 1) to evaluate whether the aerodynamic prior-free framework can achieve robust performance across diverse aerodynamic conditions without prior knowledge; 2) to quantify the performance gap between the proposed method and prior-based approaches. To achieve these objectives, simulations were performed in a high-fidelity Gazebo/PX4 co-simulation environment under 8Low-AoA Regime High-AoA Regime  
+
+> Fig. 4. Longitudinal aerodynamic stiffness characteristics evaluated at trim conditions spanning flight velocities from 1 to 14 m/s. The results indicate that the low-AoA regime is highly sensitive to attitude perturbations, while the high-AoA regime is significantly less sensitive. The two regimes are shaded qualitatively for illustrative purposes.
+
+wind-free conditions. Three aerodynamic models served as virtual plants to represent diverse real-world scenarios: wind-tunnel-identified models from Ma et al. [36] and Lyu et al. [4], and an idealized ϕ-theory model [29]. As shown in Fig. 4, these aerodynamic models are scaled to produce comparable effects. Both ∂ Bfaz /∂α and ∂ Bfax /∂α are moderate in the high-AoA regime; as a result, aerodynamic modeling errors may not contribute as significantly to translational tracking error in hovering and slow-speed flight phases. Accordingly, the MPC prediction model retains only Bcz for two reasons. First, in the low-AoA regime where aerodynamic effects most significantly impact tracking, ∂ Bfaz /∂α substantially exceeds 
+
+∂ Bfax /∂α , making Bcz estimation the dominant factor in translational accuracy. Second, the residual Bcx-induced force acts as a matched disturbance along the fully actuated xb axis and is suppressed by the low-level controller as in [11]. To assess performance across these aerodynamic regimes, we designed circular trajectory tracking experiments spanning velocities from 8 to 14 m/s. Each trajectory comprises three phases: forward transition, level flight, and backward transi-tion. We evaluate these experiments using position root mean square error (RMSE) and maximum absolute error (MaxAE) during transition and level-flight phases, and sideslip angle β
+
+during level flight. These metrics indicate average accuracy, worst-case behavior, and coordinated flight quality, respec-tively. The baseline controllers selected for this comparison include:  
+
+> •
+
+Cascaded-PID [7, 27], which represents a flatness-based cascaded control architecture where the attitude command is synthesized by combining the differential flatness map-ping described in Sec.III-A with the AoA obtained via an optimization subroutine solving (14b) based on high-fidelity aerodynamic models.  
+
+> •
+
+ϕ-theory MPC, an MPC-based baseline utilizing the same simplified aerodynamic model employed during the trajectory planning phase.  
+
+> •
+
+High-fidelity MPC [1], which linearizes the system dy-namics along a reference trajectory using a high-fidelity aerodynamic model to derive a time-varying error-state model. As illustrated in Fig. 5(a), both the cascaded-PID con-troller and the ϕ-theory MPC exhibit higher tracking errors than the other tested methods. Under 12 m/s, the ϕ-theory MPC demonstrates performance comparable to the prior-based cascaded-PID, while maintaining crash-free operation across all test cases. Such behavior validates the simplified aerody-namic model adopted in our planning phase, establishing a reasonable lower bound for the proposed framework. However, the MaxAE of the ϕ-theory MPC exceeds 1.5 m under realistic aerodynamic conditions, which reveals the limitations of the 
+
+ϕ-theory model over the tested flight regimes. Overall, the high-fidelity MPC outperforms the proposed method across all metrics, confirming its role as a performance upper bound. Nevertheless, the proposed MPC consistently achieves less than 0.2 m absolute RMSE difference from the high-fidelity MPC across all tested aerodynamic conditions, even at the maximum tested velocity of 14 m/s (Fig. 5(b)). This demonstrates that the proposed method serves as an effective initial controller that delivers competitive tracking accuracy without airframe-specific aerodynamic priors. However, the MaxAE degrades substantially in the high-speed regime where aerodynamic forces dominate. As shown in Fig. 5(c), the worst-case relative MaxAE difference exceeds 100 % under the Ma et al. aerodynamic condition and 200 % under the Lyu et al. condition at 14 m/s. These results indicate that at very high speeds, where aerodynamic sensitivity is extreme (Fig. 4), high-fidelity aerodynamic modeling further reduces worst-case tracking error. 
+
+B. Operational Boundaries 
+
+To characterize the empirical tracking-performance bound-ary of the proposed aerodynamic prior-free flight framework, we conducted extensive wind-disturbance simulation sweeps. In each simulation trial, the vehicle tracked a consistent full-envelope trajectory at a maximum velocity of 12 m/s, subject to varying longitudinal and crosswind disturbances. As shown in Fig. 6, the interplay between the wind-free assumption and the simplified estimation (38) produces direction-dependent empirical tracking limits. This performance asymmetry stems from how wind direc-tion shifts the vehicle’s aerodynamic operating point between the two characteristic regimes identified in Sec. V-A (Fig. 4). Headwinds force the vehicle into the low-AoA regime, where high aerodynamic stiffness induces rapid force variations that challenge the fidelity of the model (26) and the accuracy of the simplified estimation (38). Tailwinds shift equilibria to the high-AoA regime, where sufficient control authority enables stable flight. Additionally, crosswinds induce sideslip, violat-ing the MPC’s coordination constraint (35) and potentially invalidating the internal formulation for optimal coordinated trajectory tracking. Collectively, the proposed flight framework is most sensitive to combined headwind and crosswind. 9(a) (b) (c)   
+
+> Fig. 5. Quantitative comparison of tracking performance over the tested flight regimes. (a) Position RMSE, MaxAE, and maximum sideslip angle. During transition phases, the sideslip angle may exceed reported values as the coordinated flight constraint is enforced via an exterior penalty method. The table compares the proposed method against three baseline controllers: the Cascaded-PID (reactive aerodynamic prior-based), the ϕ-theory MPC (lower bound), and the high-fidelity MPC (upper bound). (b) Absolute RMSE difference between the proposed method and the high-fidelity MPC upper bound. (c) Relative MaxAE difference between the proposed method and the high-fidelity MPC upper bound, quantifying worst-case performance degradation. Note that MaxAE for both the proposed method and the upper bound occurs within the transition phase, where nonlinear aerodynamic effects are most severe.
+
+−4 −2 0 2 4Crosswind [m/s] 
+
+−505Longitudinal Wind [m/s] 
+
+0.31.03.09.0MaxAE [m] 1     
+
+> Failure Cases Tailwind Estimated Crosswind Boundary Headwind Crosswind
+> Fig. 6. Wind disturbance experiment under Lyu et al. aerodynamic condition. The empirical tracking-performance boundary (dashed line), estimated via a Gaussian process classifier, delineates the tested wind region where the controller maintains MaxAE ≤1m; it is not a formal safety or reachability guarantee. Outside this boundary, aerodynamic force misprediction gradually decouples the predicted state from the true plant while the vehicle continues following the reference trajectory; the growing mismatch eventually prevents the optimization from converging and causes the solver to fail.
+
+C. Field Experiments 1) Experimental Setup: The tail-sitter is equipped with four SZ-SPEED 2312-1000 KV motors and 9450 self-tightening propellers. It weighs 2.0 kg and has a wingspan of 110 cm. Moreover, it is equipped with an onboard computer Intel N100 (4 cores, 1.8–3.2 GHz, 6W TDP) and a Pixhawk 6X autopilot. A separate Holybro H-RTK F9P Helical module is mounted to provide positioning data. The vehicle state is estimated by an EKF running on the autopilot. Raw three-axis acceleration readings are filtered using second-order low-pass Butterworth filters with a 10 Hz cutoff to estimate Bcz . The experiments were conducted outdoors under light-wind conditions (wind speed below 2 m/s) without an airspeed sensor. These tests therefore evaluate practical performance under mild deviations from, rather than strict satisfaction of, the wind-free modeling assumption. The proposed trajectory planner and controller are implemented on the N100. Trajectory planning runs offline, while the MPC operates at 50 Hz and the low-level controller at 400 Hz. The MPC optimization takes an average of 2 ms and a maximum of around 5 ms. The low-level loop, realized as simple PID controllers per [11], tracks the reference Bapx and 
+
+> B
+
+Ωb. These commands are provided by the MPC’s predicted next state. The resulting control outputs are then mapped to four DSHOT-600 motor commands via a standard quadcopter mixer. 
+
+2) Typical Maneuvers in Field Environments: To demon-strate the trajectory tracking performance of the proposed framework, we evaluate two types of trajectories: circular and ∞-shaped. Both trajectories consist of three phases: forward transition, level flight, and backward transition. Fig. 7 and Fig. 8 show the circular and ∞-shaped trajectories, respectively, and their corresponding tracking flight data. As illustrated in both figures, the tail-sitter first performs a forward transition (Phase I) with significant linear acceleration and a large negative BΩby to gain velocity for level flight (Phase II). After level flight, the tail-sitter executes a backward transition (Phase III) with substantial linear deceleration and a large positive BΩby to reduce velocity and achieve hovering. It is observed that the position, velocity, and lateral axis estimates closely track the reference values throughout the flight. Because no airspeed sensor is installed, panel (f) reports a ground-velocity-based sideslip proxy ˆβg rather than the true aerodynamic sideslip angle β. For nearly the entire level-flight duration in both the circular and ∞-shaped trajectories, 
+
+| ˆβg | remains within 10 ◦, indicating close alignment between the ground-velocity direction and the body longitudinal plane. This ground-track alignment is maintained using the low-level control method from [11] without yawing torque compensa-tion. For the circular trajectory shown in Fig. 7, the position RMSE and MaxAE are 0.39 m and 0.66 m, respectively. In contrast, the ∞-shaped trajectory, shown in Fig. 8, exhibits slightly higher errors, with an average of 0.42 m and a maxi-mum of 0.73 m. The position tracking error δp throughout the entire flight is shown in Fig. 7(e) and Fig. 8(e). These results 10 s/m0.0.Fs/m5.9.Es/m3.31.Ds/m8.21.Cs/m4.7.Bs/m0.0.A
+
+ⅢⅡⅠⅢⅡⅠⅢⅡⅠ  
+
+> 14 2110 8624
+
+[m/s] V
+
+[m] Y 20 60 40 001−
+
+10 020 −
+
+20 0 [m] X
+
+1
+
+> ∥bΩ
+> B
+> ∥ZYX
+> [rad/s] bΩB
+
+2101−
+
+2−
+
+Time [s] (g) 
+
+15 10 50
+
+> [deg] β
+
+20 10 010 −
+
+20 −
+
+Time [s] (f) 
+
+15 10 50
+
+> ∥pδ∥ZYX
+> [m] pδ
+
+0.15.00.05.0−
+
+0.1−
+
+Time [s] (e) 
+
+15 10 50
+
+> θϕψ
+> Angles [deg]
+
+180 −
+
+90 −
+
+090 180 
+
+(d) 
+
+15 10 50
+
+> [m/s] V
+
+15 10 50
+
+(c) 
+
+15 10 50
+
+> ZYX
+> [m] p
+
+50 25 025 −
+
+(b) 
+
+15 10 50
+
+> [m] Z
+
+(a) 
+
+> A (F) BCDE
+
+Fig. 7. Flight data of the circular flight in 13 m/s: (a) trajectory illustration; (b) position; (c) flight speed; (d) lateral axis angles ( ψ and ϕ) and pitch angle; (e) position error; (f) ground-velocity-based sideslip proxy ˆβg (labeled β in the plot); and (g) body-frame angular velocity. Flight phases from I to III, divided by shaded areas, indicate the forward transition, level-flight, and backward transition. s/m0.0.Fs/m5.7.Es/m3.31.Ds/m8.21.Cs/m5.6.Bs/m0.0.A
+
+ⅢⅡⅠⅢⅡⅠⅢⅡⅠ
+
+[m/s] V
+
+> 14 12 10 8642
+
+[m] Y
+
+[m] X
+
+010 −
+
+10 10 10 −
+
+060 40 20 0
+
+1
+
+> ∥bΩ
+> B
+> ∥ZYX
+> [rad/s] bΩB
+
+2101−
+
+2−
+
+Time [s] (g) 
+
+15 10 50
+
+> [deg] β
+
+20 10 010 −
+
+20 −
+
+Time [s] (f) 
+
+15 10 50
+
+> ∥pδ∥ZYX
+
+0.15.00.05.0−
+
+0.1−
+
+Time [s] (e) 
+
+15 10 50
+
+> θϕψ
+> Angles [deg]
+
+180 −
+
+90 −
+
+090 180 
+
+(d) 
+
+15 10 50
+
+> [m/s] V
+
+15 10 50
+
+(c) 
+
+15 10 50
+
+> ZYX
+> [m] p
+
+50 25 0
+
+(b) 
+
+15 10 50
+
+> Z [m]
+> δp [m]
+
+(a) 
+
+> A (F) BCDE
+
+Fig. 8. Flight data of the ∞-shaped flight in 13 m/s: (a) trajectory illustration; (b) position; (c) flight speed; (d) lateral axis angles ( ψ and ϕ) and pitch angle; (e) position error; (f) ground-velocity-based sideslip proxy ˆβg (labeled β in the plot); and (g) body-frame angular velocity. Flight phases from I to III, divided by shaded areas, indicate the forward transition, level-flight, and backward transition. 
+
+are surprisingly accurate, given the absence of aerodynamic priors and the maximum tilt angle exceeding 80 ◦.
+
+3) Fast Transitions: To assess the framework under ag-gressive operating conditions, we conducted rapid transition experiments in comparison to a conventional linear transition baseline [4]. To ensure a fair comparison, both methods utilize the same low-level controller. The level-flight speed is set to 12 m/s with a nominal 15 ◦ pitch angle, requiring a minimum of 75 ◦ pitch motion during transition. Note that the baseline [4] utilizes aerodynamic priors and regulates altitude, whereas the proposed method achieves 3D position control without aerodynamic priors. Fig. 9 illustrates the forward and backward transition results. By tuning the tangential accel-eration constraint (24e) progressively, our method completes the forward transition in just 2.0 s. Furthermore, it executes a sharp pitch motion for rapid deceleration, completing the backward transition in only 1.8 s. Most notably, even during this most aggressive transition, our prior-free method achieves a significantly lower height MaxAE. Specifically, our method reduces height errors to 0.54 m (forward) and 0.25 m (back-ward), consistently outperforming the baseline (1.15 m and 1.00 m) in both aggressiveness and precision. VI. C ONCLUSION AND FUTURE WORK 
+
+In this work, we present a trajectory planning and track-ing framework for coordinated tail-sitter flights that does not require airframe-specific aerodynamic priors. Simulations confirm that the proposed method closely tracks the high-fidelity MPC upper bound over the tested flight regimes, while real-world field experiments further validate the framework’s efficacy. At extreme speeds, however, high-fidelity aerody-namic modeling remains important for reducing worst-case tracking errors. Since the approach does not require airframe-specific aerodynamic priors, it can be readily adapted to 11 0 1 2 3 4 5
+
+(a) 
+
+0100 
+
+> Pitch [deg]  Linear transition Proposed-1 Proposed-2 Proposed-3
+
+0 1 2 3 4 5
+
+(b) 
+
+0510 15 
+
+> V [m/s]
+
+0 1 2 3 4 5
+
+(c) 
+
+−10
+
+> δpz [m]
+
+0 1 2 3 4 5
+
+(d) Time [s] 
+
+0100 
+
+> Pitch [deg]
+
+0 1 2 3 4 5
+
+(e) Time [s] 
+
+0510 15 
+
+> V [m/s]
+
+0 1 2 3 4 5
+
+(f) Time [s] 
+
+01
+
+> δpz [m]
+
+Forward Transition Backward Transition 
+
+1
+
+> 0.539 m 1.146 m 0.254 m 1.003 m
+
+Fig. 9. Comparison of rapid transition performance between the proposed method and the linear transition method [4]. (a)–(c) show the pitch angle, flight speed, and altitude tracking error during the forward transition, and (d)–(f) for the backward transition. Proposed-1 to Proposed-3 correspond to the results with increasing levels of transition aggressiveness. The dashed lines in (a) and (d) indicate the reference profiles of the linear transition method; in contrast, the proposed MPC directly commands the pitch rate without a pitch angle reference. 
+
+various configurations and easily deployed. Additionally, it can serve as a reliable initial controller for collecting high-quality flight data, facilitating the subsequent design of high-fidelity model-based planning and tracking. Wind-disturbance simulations further characterize the framework’s empirical operating range. Over the tested con-ditions, the framework maintains MaxAE ≤ 1 m under mod-erate tailwinds but degrades under even mild headwind and crosswind disturbances. The worst degradation occurs under combined headwind and crosswind, where the vehicle enters the low-AoA high-stiffness regime while sideslip simultane-ously violates the coordinated-flight constraint. Future work will extend the framework to be wind-aware while retaining its aerodynamic prior-free design. REFERENCES [1] G. Lu, Y. Cai, N. Chen, F. Kong, Y. Ren, and F. Zhang, “Trajectory generation and tracking control for aggressive tail-sitter flights,” Int. J. Robot. Res., vol. 43, no. 3, pp. 241–280, 2024. [2] G. Lu, Y. Ren, F. Zhu, H. Li, R. Xue, Y. Cai, X. Lyu, and F. Zhang, “Autonomous tail-sitter flights in unknown environments,” IEEE Trans. Robot., vol. 41, pp. 1098–1117, 2025. [3] S. Verling, B. Weibel, M. Boosfeld, K. Alexis, M. Burri, and R. Siegwart, “Full attitude control of a VTOL tailsitter UAV,” in Proc. IEEE Int. Conf. Robot. Autom., 2016, pp. 3006–3012. [4] X. Lyu, H. Gu, J. Zhou, Z. Li, S. Shen, and F. Zhang, “Simulation and flight experiments of a quadrotor tail-sitter vertical take-off and landing unmanned aerial vehicle with wide flight envelope,” Int. J. Micro Air Vehicles, vol. 10, no. 4, pp. 303–317, 2018. [5] J. Zhou, X. Lyu, Z. Li, S. Shen, and F. Zhang, “A unified control method for quadrotor tail-sitter UAVs in all flight modes: Hover, transition, and level flight,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst., 2017, pp. 4835–4841. [6] R. Ritz and R. D’Andrea, “A global controller for flying wing tailsitter vehicles,” in Proc. IEEE Int. Conf. Robot. Autom., 2017, pp. 2731–2738. [7] Q. Quan, S. Wang, and W. Gao, “Lifting-wing quadcopter modeling and unified control,” J. Guid. Control Dyn., vol. 48, no. 3, pp. 689–699, 2025. [8] E. J. J. Smeur, M. Bronz, and G. C. H. E. de Croon, “Incremental control and guidance of hybrid aircraft applied to a tailsitter unmanned air vehicle,” J. Guid. Control Dyn., vol. 43, no. 2, pp. 274–287, 2020. [9] E. Tal and S. Karaman, “Global incremental flight control for agile maneuvering of a tailsitter flying wing,” J. Guid. Control Dyn., vol. 45, no. 12, pp. 2332–2349, 2022. [10] D. Rohr, O. Andersson, N. Lawrance, T. Stastny, and R. Siegwart, “Unified guidance and jerk-level dynamic inversion for accurate position control of hybrid uavs,” IEEE Trans. Robot., vol. 41, pp. 708–728, 2025. [11] W. Xu and F. Zhang, “Learning pugachev’s cobra maneuver for tail-sitter UAVs using acceleration model,” IEEE Robot. Autom. Lett., vol. 5, no. 2, pp. 3452–3459, 2020. [12] Z.-H. Cheng and H.-L. Pei, “Transition analysis and practical flight control for ducted fan fixed-wing aerial robot: Level path flight mode transition,” IEEE Robot. Autom. Lett., vol. 7, no. 2, pp. 3106–3113, 2022. [13] Y. Song, A. Romero, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Reach-ing the limit in autonomous racing: Optimal control versus reinforcement learning,” Science Robotics, vol. 8, no. 82, p. eadg1462, 2023. [14] E. Kaufmann, L. Bauersfeld, A. Loquercio, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Champion-level drone racing using deep reinforcement learning,” Nature, vol. 620, no. 7976, pp. 982–987, 2023. [15] A. Verraest, S. Bahnam, R. Ferede, G. de Croon, and C. De Wagter, “Skydreamer: Interpretable end-to-end vision-based drone racing with model-based reinforcement learning,” arXiv preprint arXiv:2510.14783, 2025. [16] Y. Zhang, Y. Hu, Y. Song, D. Zou, and W. Lin, “Learning vision-based agile flight via differentiable physics,” Nature Machine Intelligence, vol. 7, no. 6, pp. 954–966, 2025. [17] A. J. Barry, T. Jenks, A. Majumdar, H.-T. Lin, I. G. Ros, A. A. Biewener, and R. Tedrake, “Flying between obstacles with an autonomous knife-edge maneuver,” in Proc. IEEE Int. Conf. Robot. Autom., 2014, pp. 2559–2565. [18] J. M. Levin, M. Nahon, and A. A. Paranjape, “Real-time motion planning with a fixed-wing UAV using an agile maneuver space,” Auton. Robots, vol. 43, no. 8, pp. 2111–2130, 2019. [19] D. H. Lee, C.-J. Kim, M. J. Heo, J. W. Hwang, H. G. Lyu, and J. Y. Lee, “Development of real-time maneuver library generation technique for implementing tactical maneuvers of fixed-wing aircraft,” Int. J. Aerosp. Eng., vol. 2020, pp. 1–12, 2020. [20] S. Aslan, S. Demirci, T. Oktay, and E. Yesilbas, “Percentile-based adaptive immune plasma algorithm and its application to engineering optimization,” Biomimetics, vol. 8, no. 6, p. 486, 2023. [21] S. Aslan and T. Oktay, “Path planning of an unmanned combat aerial vehicle with an extended-treatment-approach-based immune plasma algorithm,” Aerospace, vol. 10, no. 5, p. 487, 2023. [22] Z. Wang, X. Zhou, C. Xu, and F. Gao, “Geometrically constrained trajectory optimization for multicopters,” IEEE Trans. Robot., vol. 38, no. 5, pp. 3259–3278, 2022. [23] J. Yu, N. Chen, G. Liu, C. Xu, F. Gao, and Y. Cao, “Top: Trajectory op-timization via parallel optimization towards constant time complexity,” IEEE Robot. Autom. Lett., vol. 10, no. 12, pp. 13 153–13 160, 2025. [24] J. Hauser and R. Hindman, “Aggressive flight maneuvers,” in Proc. IEEE Control Decis. Conf., 1997, pp. 4186–4191. [25] T. Liu, M. Wang, Y. Niu, J. Li, and H. Zhou, “Low-cost differential flatness identification for trajectory planning and tracking of small fixed-wing UAVs in dense environments,” in Proc. Int. Conf. Unmanned Aircr. Syst., Jun 2024, pp. 905–910. [26] K. McIntosh, J. Reddinger, S. Mishra, and D. Zhao, “Optimal trajectory generation for transitioning quadrotor biplane tailsitter using differential flatness,” in Proc. Vert. Flight Soc. 77th Annu. Forum, 2021, pp. 1–9. 12 
+
+[27] S. Wang, W. Gao, and Q. Quan, “Differential flatness of lifting-wing quadcopters subject to drag and lift for accurate tracking,” IEEE Trans. Ind. Electron., vol. 71, no. 10, pp. 12 664–12 673, 2024. [28] E. Tal, G. Ryou, and S. Karaman, “Aerobatic trajectory generation for a VTOL fixed-wing aircraft using differential flatness,” IEEE Trans. Robot., vol. 39, no. 6, pp. 4805–4819, 2023. [29] L. R. Lustosa, F. Defa¨ y, and J.-M. Moschetta, “Global singularity-free aerodynamic model for algorithmic flight control of tail sitters,” J. Guid. Control Dyn., vol. 42, no. 2, pp. 303–316, 2019. [30] A. S. Lewis and M. L. Overton, “Nonsmooth optimization via quasi-Newton methods,” Mathematical Programming, vol. 141, no. 1-2, pp. 135–163, 2013. [31] D. C. Liu and J. Nocedal, “On the limited memory BFGS method for large scale optimization,” Mathematical Programming, vol. 45, no. 1-3, pp. 503–528, 1989. [32] A. M. M. Leal, “Autodiff, a modern, fast and expressive C++ library for automatic differentiation,” https://autodiff.github.io ,2018. [Online]. Available: https://autodiff.github.io [33] G. Frison and M. Diehl, “HPIPM: a high-performance quadratic programming framework for model predictive control,” IFAC-PapersOnLine, vol. 53, no. 2, pp. 6563–6569, 2020. [34] R. Verschueren, G. Frison, D. Kouzoupis, J. Frey, N. v. Duijkeren, A. Zanelli, B. Novoselnik, T. Albin, R. Quirynen, and M. Diehl, “Acados—a modular open-source framework for fast embedded optimal control,” Mathematical Programming Computation, vol. 14, no. 1, pp. 147–183, 2022. [35] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi: A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation, vol. 11, no. 1, pp. 1–36, 2019. [36] Z. Ma, E. J. J. Smeur, and G. C. H. E. de Croon, “Wind tunnel tests of a wing at all angles of attack,” Int. J. Micro Air Veh., vol. 14, 2022, art. no. 17568293221110931. 
+
+Erchao Rong received the B.Eng. degree in Intelli-gent Science and Technology (2022) and the M.Eng. degree in Control Science and Engineering (2025) from Sun Yat-sen University, Guangzhou, China. During his master’s studies, he focused on trajectory planning and control of VTOL UAVs. He is currently working on bringing agentic autonomous flight to aerial vehicles. 
+
+Zihao Liu received the B.Eng. degree in intelligent science and technology from Sun Yat-sen University, Guangzhou, China, in 2025. He is currently pursuing the M.S. degree in control science and engineering at the same university. His research interests include planning and control of VTOL UAVs and learning-based UAV flight control. 
+
+Junning Liang received the M.Eng. degree in Me-chanical Engineering from Sun Yat-sen University, Guangzhou, China, in 2024. He is currently pur-suing the Ph.D. degree at Sun Yat-sen University, Guangzhou, China. His research interests include flight control of aerial robots. 
+
+Jianguo Wang received the B.Eng. degree in au-tomation from the School of Control Science and Engineering, Shandong University, Jinan, China, in 2024. He is currently pursuing an M.Eng. degree with the School of Intelligent Systems Engineering, Sun Yat-sen University, Guangzhou, China. His re-search interests include the control and trajectory planning of robotic systems. 
+
+Xiao Jie obtained the B.Eng. degree from the School of Intelligent Systems Engineering, Sun Yat-sen University, Guangzhou, China in 2025. She is currently pursuing an M.Sc. degree at the Faculty of Engineering at the University of Hong Kong, with research interests in the motion control of VTOL UAVs and air-ground coordination. 
+
+Haoran Fu received the B.S. degree in Robotics En-gineering from Northeastern University, Shenyang, China, in 2022. She is currently a master’s student at the School of Intelligent Systems Engineering, Sun Yat-sen University, Guangzhou, China. Her research interests focus on UAV planning and control. 
+
+Ziliang Chen is an Assistant Researcher at Pengcheng Laboratory, Shenzhen, China. He re-ceived the Ph.D. degree in Computer Science and Technology from Sun Yat-sen University, Guangzhou, China, in 2021, and the B.S. degree in Mathematics from Sun Yat-sen University in 2010. 
+
+Ximin Lyu received his B.Eng. and M.Phil. degrees in Aircraft Manufacturing from Harbin Institute of Technology, Harbin, China, in 2012 and 2014, respectively. He received his Ph.D. in Electronic and Computer Engineering from the Hong Kong University of Science and Technology, Hong Kong, China, in 2019. In 2018, he served as a Senior Flight Control Researcher at Da Jiang Innovation (DJI) Technology Company in China. Since 2021, he has been an Associate Professor with the Department of Intelligent Systems Engineering, Sun Yat-sen Uni-versity, Guangzhou, China. His research interests encompass robotics and controls, with a specific focus on UAV/UGV design, control, and planning.
