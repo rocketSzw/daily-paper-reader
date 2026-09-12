@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-11</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-12</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-11 21:20:37 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-12 21:02:43 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-11 日报：7 篇机器人策略与无人机控制论文，精读 1 篇、速读 6 篇。最值得看的是精读 8.0 分的 HaWMPO，用&quot;幻觉感知世界模型&quot;优化通用机器人策略，另可关注空中机械臂接触式增量 MPC 与尾座式无人机无先验轨迹控制。普通读者可先读 HaWMPO 摘要，再按兴趣挑一篇速读。</p>
+<p>今日速读3篇（精读0篇），均6.0分，聚焦人形机器人预测运动、动态环境长时导航与游戏地图生成。</p>
+<p>最值得看人形运动中的“预测状态空间模型”和动态环境下的长时目标导航，两者都指向更稳的自主移动。</p>
+<p>普通读者可先读摘要判断场景相关性，若关注机器人落地，优先跟踪这两类工作的后续实验验证。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">1 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HaWMPO: Hallucination-Aware World Model-based Policy Optimization for Generalist Robot Policy">HaWMPO: Hallucination-Aware World Model-based Policy Optimization for Generalist Robot Policy</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Contact-Aware Incremental Model Predictive Control for an Underactuated Aerial Manipulator">Contact-Aware Incremental Model Predictive Control for an Underactuated Aerial Manipulator</span></li><li><span class="dpr-home-dashboard-paper-title" title="Aerodynamic Prior-Free Coordinated Trajectory Generation and Tracking Control for a Tail-Sitter UAV">Aerodynamic Prior-Free Coordinated Trajectory Generation and Tracking Control for a Tail-Sitter UAV</span></li><li><span class="dpr-home-dashboard-paper-title" title="WorldAgen: Unified State-Action Prediction with Test-Time World Model Training">WorldAgen: Unified State-Action Prediction with Test-Time World Model Training</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="RoboDreamer: Anticipatory Humanoid Locomotion with Predictive State-Space Models">RoboDreamer: Anticipatory Humanoid Locomotion with Predictive State-Space Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmniNav: Robust Long-Horizon Target Navigation in Dynamic Environments">OmniNav: Robust Long-Horizon Target Navigation in Dynamic Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Valerant: An Automatic Navigable Game Map Generator via Action-Conditioned World Model Exploration">Valerant: An Automatic Navigable Game Map Generator via Action-Conditioned World Model Exploration</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
 </section>
 </div>
 
