@@ -41,7 +41,7 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-12</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-13</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 3 篇</strong>
@@ -51,7 +51,7 @@
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-12 21:02:43 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-13 21:12:36 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读3篇（精读0篇），均6.0分，聚焦人形机器人预测运动、动态环境长时导航与游戏地图生成。</p>
-<p>最值得看人形运动中的“预测状态空间模型”和动态环境下的长时目标导航，两者都指向更稳的自主移动。</p>
-<p>普通读者可先读摘要判断场景相关性，若关注机器人落地，优先跟踪这两类工作的后续实验验证。</p>
+<p>今日速读3篇机器人协作与控制方向论文，涵盖多机器人安全控制、人本目标跟踪导航及空中集群平台。可重点关注隐蔽执行器攻击下的分布式安全学习控制，以及融合地图约束的人本跟踪导航思路。普通读者若感兴趣，建议先从空中集群开源软硬件平台SwarmNxt入手，门槛相对友好。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -89,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="RoboDreamer: Anticipatory Humanoid Locomotion with Predictive State-Space Models">RoboDreamer: Anticipatory Humanoid Locomotion with Predictive State-Space Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmniNav: Robust Long-Horizon Target Navigation in Dynamic Environments">OmniNav: Robust Long-Horizon Target Navigation in Dynamic Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Valerant: An Automatic Navigable Game Map Generator via Action-Conditioned World Model Exploration">Valerant: An Automatic Navigable Game Map Generator via Action-Conditioned World Model Exploration</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Distributed Secure Learning Control for Large-scale Multirobots under Stealthy Actuator Attacks">Distributed Secure Learning Control for Large-scale Multirobots under Stealthy Actuator Attacks</span></li><li><span class="dpr-home-dashboard-paper-title" title="Human-Aware Target Tracking and Navigation: Fusing Kinematic State Estimation with Structural Map Constraints">Human-Aware Target Tracking and Navigation: Fusing Kinematic State Estimation with Structural Map Constraints</span></li><li><span class="dpr-home-dashboard-paper-title" title="SwarmNxt: Open-source Software-Hardware Platform for Fast and Agile Aerial Swarms">SwarmNxt: Open-source Software-Hardware Platform for Fast and Agile Aerial Swarms</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 
