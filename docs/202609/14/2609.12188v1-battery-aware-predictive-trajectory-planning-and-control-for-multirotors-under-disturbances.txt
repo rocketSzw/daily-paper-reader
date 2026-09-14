@@ -1,0 +1,980 @@
+Title: Battery-Aware Predictive Trajectory Planning and Control for Multirotors Under Disturbances
+
+URL Source: https://arxiv.org/pdf/2609.12188v1
+
+Published Time: Mon, 14 Sep 2026 00:22:12 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Battery-Aware Predictive Trajectory Planning and Control for Multirotors Under Disturbances 
+
+Krishna Bhavithavya Kidambi 1
+
+Abstract — This paper presents a battery-aware predictive trajectory-planning and control framework for multirotors op-erating under spatially localized disturbances. Candidate trajec-tories are evaluated through closed-loop vehicle–motor–battery propagation, allowing disturbance-induced control demand, electrical energy, battery evolution, and terminal-voltage-dependent actuator capability to enter the planning process. A reduced-order battery model is numerically benchmarked against an independently implemented Simscape equivalent-circuit reference, with a power NRMSE of 0.64% and acumulative-energy discrepancy below 0.7% . In a 150 -s, 640 -m mission containing three disturbance regions, the selected trajectory reduces electrical energy consumption by 7.46% and position-tracking RMSE by approximately 72% relative to the disturbance-aware fixed-reference baseline. Planner ablations show that battery-dependent terms are nonbinding at nominal SOC but alter the selected trajectory under a depleted-battery stress condition. Execution with multiple feedback controllers further demonstrates that controller selection changes the tradeoff among tracking accuracy, energy consumption, and actuator utilization. The results demonstrate the benefit of accounting for predicted closed-loop energetic and battery– actuator consequences during trajectory selection. 
+
+I. INTRODUCTION Multirotor unmanned aerial vehicles (UAVs) are increas-ingly expected to perform sustained autonomous missions in uncertain and disturbance-prone environments [1], [2]. For battery-powered multirotors, however, mission performance is fundamentally constrained by the finite onboard energy supply and the propulsion demand required to execute the prescribed trajectory. Environmental disturbances can sub-stantially increase feedback-control effort and rotor demand, accelerating battery discharge and reducing the terminal voltage available to the propulsion system. Consequently, as a mission progresses, the trajectory, disturbance exposure, closed-loop control demand, battery state, and available actuator authority become increasingly coupled. Accounting for this interaction during trajectory planning is therefore important for maintaining both energetic and closed-loop feasibility during demanding multirotor missions. Reliable multirotor operation depends not only on the feedback controller used to regulate the vehicle, but also on the trajectory supplied to the closed-loop system. A wide range of linear and nonlinear control strategies have been developed for multirotor trajectory tracking, including PID and linear-quadratic methods, feedback linearization [3], sliding-mode control [4], adaptive control [5], and robust               
+
+> 1Kidambi, K.B is with department of Mechanical and Aerospace Engineering at University of Dayton, Dayton, OH.
+
+kkidambi1@udayton.edu 
+
+nonlinear control [6]. These methods have improved distur-bance rejection and robustness to uncertain vehicle dynamics, enabling increasingly aggressive flight [7]. More recently, learning-based approaches have been investigated to estimate unmodeled dynamics and disturbances online and adapt the closed-loop response to operating conditions that are difficult to characterize a priori [8], [9]. Despite these advances, feedback control is fundamentally tasked with realizing a prescribed reference. Consequently, its performance and required control effort remain strongly influenced by the trajectory supplied to the closed-loop system. Trajectory planning provides a complementary mechanism for improving multirotor performance by determining how the vehicle interacts with its environment before the resulting reference is executed by the feedback controller. Recent approaches have moved beyond conventional collision-free trajectory generation to account explicitly for dynamic feasi-bility, computational efficiency, sensing requirements, actua-tor limitations, and environmental uncertainty. Optimization-based methods have exploited the full multirotor dynamics to generate time-optimal trajectories for aggressive flight, while probabilistic inference methods have been developed to generate smooth and safe trajectories under limited onboard computational resources [10], [11]. Physical and sensing con-straints have also been incorporated directly into the planning problem, including motor saturation and actuator degradation [12], as well as localization uncertainty and perception quality [13]. Environmental disturbances have similarly been considered during trajectory generation. Stochastic wind in-formation has been incorporated into trajectory optimization to reduce thrust-related costs [14], while learned disturbance models have been embedded within predictive control to adapt motion plans to uncertain wind and interaction-induced effects [15]. Collectively, these approaches demonstrate that trajectory planning can proactively account for dynamic, actuator, sensing, and environmental constraints rather than leaving their consequences entirely to the feedback controller during execution. However, these formulations generally do not explicitly propagate the complete closed-loop coupling by which trajectory-dependent disturbance exposure alters feedback-control and rotor demand, the resulting electrical load affects battery terminal voltage, and the evolving ter-minal voltage subsequently changes the actuator authority available during candidate-trajectory evaluation. The finite onboard energy available to battery-powered multirotors introduces a planning constraint that cannot be characterized solely by flight time or geometric path length [16], [17]. The electrical power required for flight arXiv:2609.12188v1 [cs.RO] 10 Sep 2026 depends on the vehicle operating condition, including thrust, velocity, acceleration, payload, and environmental effects such as wind [18]. Accordingly, physics-based and data-driven approaches have been developed to estimate multiro-tor power consumption and predict battery discharge during flight [19], [20]. More detailed energy-aware formulations have coupled multirotor dynamics with lithium-ion battery and powertrain models, allowing quantities such as state of charge (SOC), terminal voltage, current, and polariza-tion effects to evolve with propulsion demand [21], [22]. These developments provide important models for predicting energy consumption and battery evolution; however, they generally do not incorporate the complete closed-loop in-teraction among trajectory-dependent disturbance exposure, feedback-control and rotor demand, battery terminal-voltage evolution, and the resulting actuator authority directly within candidate-trajectory evaluation. This distinction is important because the control actions required to execute a trajectory determine the electrical load, while the evolving battery terminal voltage can constrain the propulsion capability available to realize that trajectory later in the mission. Consequently, trajectories with comparable geometric length or flight time can differ not only in energy consumption, but also in their closed-loop tracking and actuator feasibility as the battery evolves. The focus of the present work is therefore to incorporate this closed-loop trajectory–control– battery–actuator interaction directly into predictive trajectory selection under environmental disturbances. Motivated by these considerations, this paper develops a battery-aware predictive trajectory planning framework for multirotors operating under environmental disturbances. The central premise is that trajectory planning, closed-loop control, and battery dynamics should not be treated indepen-dently: the selected trajectory determines disturbance expo-sure and control demand, the resulting electrical load governs battery evolution, and the battery terminal voltage in turn constrains the available propulsion authority. Accordingly, the main contributions of this paper are: 1) A coupled closed-loop prediction framework that prop-agates vehicle and propulsion dynamics together with battery SOC, terminal voltage, electrical demand, and voltage-dependent rotor authority during candidate-trajectory evaluation. 2) A battery-aware predictive trajectory planner that uses the coupled prediction to modify disturbance exposure while accounting for closed-loop tracking, mission energy, battery operating requirements, and battery-dependent actuator constraints. 3) A closed-loop numerical evaluation over a 150 -s, 640 -m mission containing three localized disturbance re-gions, including comparison with the nominal tra-jectory, planner-ablation studies, a low-SOC actuator-stress case, and an execution-sensitivity study using four feedback-control architectures. II. S YSTEM MODELING AND PROBLEM FORMULATION 
+
+A. Multirotor Dynamics 
+
+The multirotor is modeled as a rigid body with six degrees of freedom. Let FI = {e1, e2, e3} denote the inertial frame and FB = {b1, b2, b3} denote the body-fixed frame at-tached to the vehicle center of mass. The inertial position and velocity of the vehicle are denoted by p = [ x, y, z ]⊤ ∈ R3
+
+and v = [ vx, v y , v z ]⊤ ∈ R3, respectively. The body-fixed angular velocity is defined as ω = [ p, q, r ]⊤ ∈ R3, and 
+
+R ∈ SO(3) denotes the rotation matrix from FB to FI .The attitude is parameterized by the ZYX Euler-angle vector 
+
+Θ = [ ϕ, θ, ψ ]⊤ ∈ R3, such that 
+
+R(Θ) = Rz (ψ)Ry (θ)Rx(ϕ). (1) The corresponding rigid-body kinematics are 
+
+˙p = v, (2a) 
+
+˙R = R[ω]×, (2b) where [·]× denotes the skew-symmetric operator. For ω =[p, q, r ]⊤,
+
+[ω]× =
+
+
+
+0 −r qr 0 −p
+
+−q p 0
+
+ . (3) For implementation using Euler angles, the attitude kinemat-ics can equivalently be expressed as 
+
+˙Θ = T(Θ)ω, (4) where 
+
+T(Θ) = 
+
+
+
+1 sin ϕ tan θ cos ϕ tan θ
+
+0 cos ϕ − sin ϕ
+
+0 sin ϕ sec θ cos ϕ sec θ
+
+ , (5) which is nonsingular for |θ| < π/ 2.Using the Newton–Euler formulation, the translational and rotational dynamics are 
+
+m ˙v = −mg e3 + Re 3fT + fair , (6a) 
+
+J ˙ω = −[ω]×Jω + τ + τ g + τ d. (6b) Here, m ∈ R>0 is the vehicle mass, g ∈ R>0 is the gravi-tational acceleration, and e3 = [0 , 0, 1] ⊤ defines the upward inertial vertical axis. The matrix J = diag( Jx, J y , J z ) ∈
+
+R3×3 is the positive-definite vehicle inertia matrix. The scalar 
+
+fT ∈ R≥0 denotes the total rotor thrust, which acts along the body-fixed b3 axis, while τ = [ τϕ, τ θ , τ ψ ]⊤ ∈ R3 denotes the control torque generated by the rotors. The term fair ∈
+
+R3 represents the aerodynamic loading associated with the relative airflow between the vehicle and the surrounding air. The prescribed environmental disturbance enters this term through the wind-velocity field introduced in Section II-C. The vector τ d ∈ R3 denotes externally induced disturbance moments. These moments are retained in the general vehicle model, while the numerical study considers τ d = 0.The gyroscopic torque induced by the rotating propellers is represented as 
+
+τ g = ω × Jr eB
+
+> 34
+
+X
+
+> i=1
+
+σiωi
+
+!
+
+, (7) where Jr ∈ R>0 denotes the rotor polar moment of inertia, 
+
+eB 
+
+> 3
+
+= [0 , 0, 1] ⊤ denotes the rotor-axis unit vector expressed in FB , and σi ∈ {− 1, +1 } specifies the rotation direction of the ith rotor. The distinction between e3 and eB 
+
+> 3
+
+is made explicit because the former denotes the inertial vertical direction, whereas the latter denotes the rotor axis expressed in body coordinates. The total thrust is related to the individual rotor speeds according to 
+
+fT = kT
+
+> 4
+
+X
+
+> i=1
+
+ω2 
+
+> i
+
+, (8) where kT ∈ R>0 is the rotor thrust coefficient and ωi ∈ R≥0
+
+is the angular speed of the ith rotor. For compactness, the rigid-body vehicle state is defined as 
+
+x = p⊤ v⊤ Θ⊤ ω⊤⊤ ∈ R12 , (9) with generalized control input 
+
+u = fT τ ⊤⊤ ∈ R4. (10) The model in (6) explicitly retains the coupling between translational and rotational motion through Re 3fT . Con-sequently, lateral acceleration cannot be generated indepen-dently of vehicle attitude, reflecting the underactuated nature of the multirotor. This coupling is important in the present work because a candidate trajectory determines the required vehicle attitude and thrust history, which subsequently deter-mines the rotor demand and associated battery load. 
+
+B. Motor and Propulsion Dynamics 
+
+The generalized control input in (10) is generated by four rotors with angular velocities ωr = [ω1, ω 2, ω 3, ω 4]⊤ ∈
+
+R4
+
+> ≥0
+
+. For the “ +” configuration considered here, rotors 1–
+
+4 are located along the +b1, +b2, −b1, and −b2 axes, respectively. Rotors 1 and 3 rotate in one direction and rotors 2 and 4 rotate in the opposite direction, such that 
+
+σ1 = σ3 = +1 and σ2 = σ4 = −1 under the adopted yaw moment convention. The thrust and control moments are related to the squared rotor speeds according to 
+
+
+
+fT
+
+τϕ
+
+τθ
+
+τψ
+
+ =
+
+
+
+kT kT kT kT
+
+0 lk T 0 −lk T
+
+−lk T 0 lk T 0
+
+kQ −kQ kQ −kQ
+
+
+
+ω21
+
+ω22
+
+ω23
+
+ω24
+
+ , (11) where l ∈ R>0 is the distance from each rotor to the vehicle center of mass, and kT , k Q ∈ R>0 are the thrust and reaction torque coefficients, respectively. The controller-requested squared rotor speeds are obtained from the inverse allocation as 
+
+νreq = max 0, B−1 
+
+> ω
+
+u , ωr, req = √νreq , (12) where the maximum and square-root operations are applied element-wise. Thus, negative squared-speed values resulting from the inverse allocation are clipped to zero before the corresponding rotor-speed request is formed. The requested speeds are subsequently bounded by the nominal motor-speed capability, 
+
+¯ωi, req = min {ωi, req , ω nom max } , i ∈ { 1, . . . , 4}, (13) before application of the battery-dependent actuator limit. The resulting commanded rotor speed is 
+
+ωi, cmd = min {¯ωi, req , ω max (Vb)} , i ∈ { 1, . . . , 4},
+
+(14) where ωmax (Vb) denotes the instantaneous rotor-speed ca-pability associated with the battery terminal voltage and is developed in Section III. By construction, 
+
+ωmax (Vb) ≤ ωnom max , (15) such that battery discharge can only reduce the available rotor-speed capability relative to the nominal hardware limit. The actual rotor dynamics are represented using the first-order model 
+
+˙ωi = 1
+
+τm
+
+(ωi, cmd − ωi) , i ∈ { 1, . . . , 4}, (16) where τm ∈ R>0 denotes the motor time constant. Equa-tions (12)–(16) therefore distinguish the controller-requested rotor speed, the battery-limited motor command, and the resulting physical rotor speed. This distinction is central to assessing whether the requested control action remains realizable as the battery terminal voltage evolves. 
+
+C. Disturbance Model 
+
+The vehicle is assumed to operate in an environment containing spatially localized wind disturbances. For the present formulation, the disturbance field is assumed to be known a priori over the mission horizon. Thus, the planner is supplied with the locations and prescribed wind characteris-tics of the disturbance regions; uncertainty in this disturbance information is not considered in the present study. Let 
+
+ph = [ x, y ]⊤ ∈ R2 denote the horizontal vehicle position. The external environmental disturbance is represented by the wind-velocity field 
+
+vw(p) = 
+
+> Nd
+
+X
+
+> j=1
+
+vw,j exp 
+
+"
+
+− (z − zd,j )2
+
+2σ2
+
+> d,j
+
+#
+
+χj (ph), (17) where Nd is the number of disturbance regions, vw,j ∈ R3
+
+denotes the prescribed wind velocity associated with the jth region, and zd,j and σd,j ∈ R>0 define its vertical center and spatial spread, respectively. The indicator χj (ph) ∈ { 0, 1}
+
+identifies whether the vehicle lies within the horizontal extent of the jth disturbance region. For the mission considered in this work, the horizontal reference path is prescribed and only the vertical trajectory is modified by the planner. Consequently, the horizontal disturbance-region encounter intervals remain fixed during candidate-trajectory evaluation despite the binary region indicator. The aerodynamic effect of the external disturbance is incorporated through the relative air velocity 
+
+vrel = v − vw(p), (18) and the corresponding aerodynamic force in (6a) is modeled as 
+
+fair = −D (vrel ⊙ | vrel |) , (19) where ⊙ denotes element-wise multiplication and 
+
+D = diag ( dx, d y , d z ) ≻ 0 (20) contains the effective direction-dependent quadratic drag coefficients. Accordingly, vw(p) represents the prescribed external environmental disturbance, whereas fair represents the resulting aerodynamic loading on the vehicle. When 
+
+vw = 0, (19) reduces to the aerodynamic resistance as-sociated with vehicle motion through still air; within adisturbance region, the prescribed wind modifies the relative airflow and therefore the resulting aerodynamic load. The selected trajectory consequently determines the altitude at which each disturbance region is encountered and, through (17)–(19), the aerodynamic loading that must be rejected by the closed-loop controller. 
+
+D. Problem Formulation 
+
+Consider the multirotor dynamics in (6)–(16) executing a nominal mission trajectory p0(t) through the prescribed disturbance field in (17). The objective is to determine a modified reference trajectory pd(t; θ), parameterized by the planning variables θ, while accounting for the prescribed mission requirements and the closed-loop energetic and actuator consequences of the selected trajectory. For each candidate trajectory, the coupled closed-loop vehicle, mo-tor, and battery dynamics are propagated over the mission horizon according to the following causal and algebraic dependencies: 
+
+pd → vw → fair → { x, u} → ωr, req → ωr, cmd 
+
+→ ωr → Pb → { SOC , V b, ω max } , (21) where Pb denotes the total electrical power drawn from the battery. The terminal voltage subsequently determines 
+
+ωmax (Vb) and therefore feeds back into the commanded rotor speed in (14), producing the algebraic battery–actuator coupling developed in Section III. The resulting battery state and actuator authority are used to assess the mission-level operating requirements 
+
+SOC( t) ≥ SOC min , (22a) 
+
+Vb(t) ≥ Vmin , (22b) 
+
+ωi, req (t) ≤ ωnom max , i ∈ { 1, . . . , 4}, (22c) 
+
+¯ωi, req (t) ≤ ωmax (Vb(t)) , i ∈ { 1, . . . , 4}. (22d) Equation (22c) verifies that the original controller request remains within the nominal motor-speed capability, whereas (22d) evaluates whether the nominally admissible request remains realizable under the instantaneous battery-dependent actuator limit. Because ωmax (Vb) ≤ ωnom max by (15), satis-faction of both conditions ensures that neither nominal nor battery-dependent rotor-speed saturation is required during trajectory execution. Importantly, actuator feasibility is as-sessed using rotor-speed requests prior to the corresponding saturation operation; otherwise, feasibility would be satisfied by construction. In the trajectory optimization developed in Section IV, the battery and actuator operating requirements in (22) are incorporated through penalty terms, whereas the planning-variable bounds constitute the hard optimization constraints. Mission feasibility is subsequently verified using (22) after optimization. Here, “predictive” refers to evaluating candi-date trajectories through forward closed-loop propagation of the coupled vehicle–motor–battery model over the complete mission horizon. The present implementation performs this mission-level optimization prior to execution rather than in a receding-horizon manner. The battery dynamics, battery-dependent actuator authority, and corresponding trajectory optimization are developed in Sections III and IV, respec-tively. III. B ATTERY AND ACTUATOR MODEL 
+
+The energetic and actuator feasibility of a candidate trajectory depends not only on the total energy available onboard, but also on the instantaneous electrical load, battery state, and corresponding propulsion capability. To capture these interactions during candidate-trajectory prediction, an SOC-dependent equivalent-circuit battery model is coupled with the propulsion power demand and a terminal-voltage-dependent rotor-speed limit. This formulation allows battery charge, transient voltage response, electrical power capabil-ity, and available actuator authority to evolve simultaneously with the closed-loop vehicle and motor dynamics. 
+
+A. SOC-Dependent Equivalent-Circuit Battery Model 
+
+The battery pack is represented by a two-RC Thevenin equivalent circuit with SOC-dependent parameters. The model consists of an SOC-dependent open-circuit voltage (OCV), an SOC-dependent ohmic resistance R0(s), and two polarization branches characterized by Rj (s) and Cj (s), j ∈{1, 2}. The two polarization states provide distinct transient relaxation time scales while retaining a sufficiently low-order representation for repeated candidate-trajectory propagation. Let s ∈ [0 , 1] denote the normalized battery state of charge (SOC), Ib ≥ 0 the pack discharge current, and Vp, 1 and Vp, 2
+
+the polarization voltages. The battery state is 
+
+xb = s Vp, 1 Vp, 2
+
+⊤ , (23) with dynamics 
+
+˙s = − Ib
+
+3600 Qb
+
+, (24a) 
+
+˙Vp, 1 = Ib
+
+C1(s) − Vp, 1
+
+R1(s)C1(s) , (24b) 
+
+˙Vp, 2 = Ib
+
+C2(s) − Vp, 2
+
+R2(s)C2(s) , (24c) where Qb is the rated battery capacity in Ah. The factor 
+
+3600 converts ampere-hours to ampere-seconds, and the sign convention Ib > 0 corresponds to battery discharge. The resistive and polarization parameters R0(s), R1(s),
+
+R2(s), C1(s), and C2(s) are evaluated from SOC-dependent lookup tables using piecewise-linear interpolation over the prescribed operating SOC range. The open-circuit voltage is represented as a nonlinear function of SOC. Analytical and tabulated OCV–SOC repre-sentations are commonly obtained from battery characteriza-tion data [23], [24], [25]. For the present model, the cell-level OCV relationship is 
+
+Voc ,c (s) = a0 + a1s − a2e−a3s, (25) and the corresponding pack-level OCV for Ns series-connected cells is 
+
+Voc (s) = NsVoc ,c (s). (26) The resistive and polarization parameters R0(s), R1(s),
+
+R2(s), C1(s), and C2(s) are evaluated as SOC-dependent lookup quantities over the operating SOC range. Equiva-lently, the polarization capacitances may be defined from the SOC-dependent time constants according to 
+
+Cj (s) = τj (s)
+
+Rj (s) , j ∈ { 1, 2}. (27) The battery terminal voltage is 
+
+Vb = Voc (s) − Vp, 1 − Vp, 2 − R0(s)Ib. (28) Since the propulsion model specifies the required electrical load through battery power, 
+
+Pb = VbIb, (29) the battery current must be determined consistently with the instantaneous terminal voltage. Defining the voltage prior to the instantaneous ohmic drop as 
+
+¯Vb = Voc (s) − Vp, 1 − Vp, 2, (30) substitution of (28) into (29) gives 
+
+R0(s)I2 
+
+> b
+
+− ¯VbIb + Pb = 0 . (31) The physically relevant low-current discharge solution is therefore 
+
+Ib =¯Vb −
+
+q ¯V 2 
+
+> b
+
+− 4R0(s)Pb
+
+2R0(s) . (32) A real-valued solution requires 
+
+¯V 2 
+
+> b
+
+− 4R0(s)Pb ≥ 0, (33) or, equivalently, 
+
+Pb ≤ Pb, max ≜ ¯V 2
+
+> b
+
+4R0(s) . (34) Equation (34) defines the instantaneous power-delivery con-dition associated with the equivalent-circuit model. A can-didate trajectory violating this condition is classified as electrically infeasible during candidate-trajectory evaluation. Consequently, the battery model captures both cumulative charge depletion and the transient voltage depression pro-duced by the closed-loop electrical load, while allowing the instantaneous power capability to vary with battery state. The model assumes discharge-only operation and neglects thermal dynamics, ageing, cell-to-cell imbalance, hystere-sis, self-discharge, and regenerative charging. The SOC-dependent equivalent-circuit parameters used in the present numerical study are prescribed lookup quantities constructed from the baseline single-RC parameterization to introduce SOC dependence and a second polarization time scale. They are therefore used as a mission-level model-form parameter-ization and should not be interpreted as parameters identified from cell-specific experimental characterization. 
+
+B. Propulsion Power and Battery Load 
+
+The electrical load imposed on the battery is determined from the individual rotor states rather than from a prescribed mission-level energy rate. Rotorcraft power consumption depends strongly on propulsion demand and operating con-dition [26], [27]. Moreover, rotor acceleration introduces an additional transient load because the motor must accelerate the rotating motor–propeller assembly [28]. To retain these effects without introducing a detailed motor electrical model into each candidate-trajectory rollout, the electrical power associated with the ith motor is approximated as 
+
+Pm,i = kP
+
+ηm
+
+ω3 
+
+> i
+
++ ka [max ( ωi, cmd − ωi, 0)] 2 + Pidle , (35) where kP is the propeller power coefficient, ηm ∈ (0 , 1] 
+
+is the effective motor–propulsion efficiency, ka is an em-pirical transient-load coefficient, and Pidle denotes the per-motor idle electrical power. The first term captures the cubic dependence of rotor aerodynamic power on angular speed, whereas the second term approximates the additional electrical demand associated with increasing rotor speed. Because regenerative operation is not modeled, the transient correction is applied only when ωi, cmd > ω i. Using the first-order motor dynamics in (16), 
+
+ωi, cmd − ωi = τm ˙ωi, (36) so that the transient correction increases with positive rotor acceleration. Equation (35) is therefore used as a reduced-order propulsion-load approximation rather than as a detailed electromechanical BLDC motor model. The total electrical power requested from the battery is 
+
+Pb =
+
+> 4
+
+X
+
+> i=1
+
+Pm,i + Paux , (37) where Paux represents the auxiliary electrical load associated with onboard electronics and other non-propulsive systems. The inclusion of a non-propulsive load is consistent with energy-consumption models that distinguish propulsion and onboard-system power demand [27], [28]. The cumulative electrical energy consumed over [0 , t ] is 
+
+Eb(t) = 13600 
+
+Z t
+
+> 0
+
+Pb(τ ) dτ [Wh] . (38) Thus, trajectory tracking and environmental disturbances modify the feedback-control demand and rotor-speed his-tories, which subsequently alter the electrical load, battery state, and available propulsion capability. 
+
+C. Battery-Dependent Actuator Authority 
+
+The battery and propulsion models are coupled by allow-ing the maximum achievable rotor speed to vary with the instantaneous battery terminal voltage. For a voltage-limited electric propulsion system, the achievable motor speed is coupled to the available supply voltage through the motor back-EMF relationship. Rather than introducing a detailed motor torque–speed and electronic-speed- controller model into each candidate-trajectory rollout, this dependence is represented using a reduced-order voltage-dependent actuator envelope. Let ωnom max denote the nominal rotor-speed capability and 
+
+Vref the pack terminal voltage at which this nominal rotor-speed capability is available. The available rotor-speed limit is modeled as 
+
+ωmax (Vb) = ωnom max min 
+
+
+
+1, Vb
+
+Vref 
+
+
+
+, Vb ≥ Vmin . (39) By construction, 
+
+ωmax (Vb) ≤ ωnom max , (40) consistent with the actuator hierarchy introduced in Sec-tion II-B. The numerical values of Vref and ωnom max are speci-fied with the propulsion-system parameters in the numerical study. Substitution of (39) into the rotor-command constraint gives 
+
+ωi, cmd = min {¯ωi, req , ω max (Vb)} , i ∈ { 1, . . . , 4},
+
+(41) where ¯ωi, req is the nominally admissible rotor-speed request defined in (13). Accordingly, the raw controller request 
+
+ωi, req , nominally admissible request ¯ωi, req , battery-limited command ωi, cmd , and actual rotor speed ωi remain distinct throughout the coupled prediction model. To quantify the remaining battery-dependent propulsion reserve, define 
+
+∆ω = ωmax (Vb) − max  
+
+> i
+
+¯ωi, req , (42a) 
+
+ηω = max i ¯ωi, req 
+
+ωmax (Vb) . (42b) Here, ∆ω is the instantaneous rotor-speed reserve and ηω is the fraction of the battery-dependent rotor-speed capability requested by the controller. Thus, ∆ω > 0 and ηω < 1 indi-cate available actuator reserve, whereas ηω ≥ 1 indicates that the nominally admissible request has reached or exceeded the instantaneous battery-dependent capability. Overall actuator feasibility additionally requires the unsaturated rotor request to satisfy the nominal hardware condition in (22c). Importantly, the terminal voltage and available actuator capability cannot be evaluated independently. The terminal voltage determines ωmax , which constrains the rotor com-mands and therefore changes the electrical power demand; the resulting battery current, in turn, determines the terminal voltage. Accordingly, at each prediction step the coupled algebraic dependence 
+
+Vb → ωmax → ωr, cmd → Pb → Ib → Vb (43) is resolved iteratively to a prescribed terminal-voltage tol-erance. During this iteration, the differential states s, Vp, 1,
+
+Vp, 2, and ωr are held fixed, whereas Vb, ωmax , ωr, cmd , Pb,and Ib are updated. After convergence, the resulting current is used in (24), and the converged rotor command is used in (16), to propagate the battery and motor states. This coupled representation enables each candidate trajec-tory to be evaluated through the sequence 
+
+pd → vw → { x, u } → ωr, req → ωr, cmd → ωr
+
+→ Pb → { Ib, V b, s, V p, 1, V p, 2} → ωmax , (44) thereby allowing the planner to account simultaneously for disturbance-induced control demand, electrical energy con-sumption, battery evolution, instantaneous power feasibility, and battery-dependent actuator authority. IV. B ATTERY -A WARE PREDICTIVE TRAJECTORY 
+
+PLANNING 
+
+The proposed planner modifies a nominal mission trajec-tory prior to execution such that the anticipated energetic, tracking, battery, and actuator consequences of environ-mental disturbances are explicitly considered. Rather than optimizing an unconstrained three-dimensional trajectory, the planner employs a low-dimensional parameterization that preserves the nominal horizontal mission while allowing localized altitude modifications in the vicinity of known disturbance regions. Each candidate trajectory is evaluated through closed-loop propagation of the coupled vehicle, mo-tor, battery, and actuator dynamics developed in Sections II and III. Consequently, the planning decision depends not only on the geometric trajectory modification, but also on the feedback-control demand, electrical load, battery evolution, and available actuator authority required to execute the candidate trajectory. 
+
+A. Predictive Planning Framework 
+
+Let p0(t) denote the nominal mission trajectory and let 
+
+δ = [ δ1, . . . , δ Nd ]⊤ denote the planning vector, where δj
+
+specifies the signed altitude modification associated with the jth disturbance region. The battery-aware trajectory is obtained from 
+
+δ∗ = arg min  
+
+> δ∈D
+
+J(δ), (45) where the box-constrained planning domain is 
+
+Dbox = δ ∈ RNd : −δmax ≤ δj ≤ δmax , j = 1 , . . . , N d .
+
+(46) The signed variables allow the optimizer to select either upward or downward altitude modifications according to the predicted consequences of each candidate trajectory. The complete admissible set is 
+
+D =
+
+δ ∈ D box :
+
+zmin ≤ zd(t; δ) ≤ zmax ,
+
+| ˙zd(t; δ)| ≤ vz, max ,
+
+|¨zd(t; δ)| ≤ az, max , t ∈ [0 , T f ]
+
+ .
+
+(47) Thus, altitude, vertical-velocity, and vertical-acceleration re-quirements are enforced directly during trajectory optimiza-tion. For each δ, the complete mission is propagated using a prediction time step ∆tp. The reference determines dis-turbance exposure and closed-loop control demand, which subsequently determine the requested and achievable rotor speeds, electrical load, battery evolution, and available actu-ator authority. The principal dependencies during candidate evaluation are summarized as 
+
+pd → vw → { x, u} → ωr, req → ¯ωr, req → ωr, cmd 
+
+→ ωr → Pb → { Ib, V b, s, V p, 1, V p, 2}, (48) where Vb additionally determines ωmax (Vb) and therefore feeds back algebraically into ωr, cmd . Here, predictive refers to forward propagation of candidate trajectories through the coupled closed-loop model over the complete mission horizon. The optimization is performed prior to mission execution rather than in a receding-horizon manner. 
+
+B. Candidate Trajectory Parameterization 
+
+To preserve the prescribed horizontal mission while mod-ifying disturbance exposure, the candidate reference is con-structed by superimposing localized vertical deviations onto the nominal trajectory: 
+
+pd(t; δ) = p0(t) + e3
+
+> Nd
+
+X
+
+> j=1
+
+δj bj (t), (49) where bj (t) is a compact C2 basis function associated with disturbance window j. Let [t− 
+
+> j
+
+, t + 
+
+> j
+
+] denote the corresponding nominal disturbance-encounter interval and let Ttr > 0
+
+denote the transition time. Defining 
+
+qj (t) = sat [0 ,1] 
+
+t − (t− 
+
+> j
+
+− Ttr )
+
+t+ 
+
+> j
+
+− t− 
+
+> j
+
++ 2 Ttr 
+
+!
+
+, (50) the basis function used in the planner is 
+
+bj (t) = 64 q3 
+
+> j
+
+(t) [1 − qj (t)] 3 . (51) This construction satisfies 0 ≤ bj (t) ≤ 1, with zero value, velocity, and acceleration at the boundaries of its support. The basis reaches bj = 1 at the center of the corresponding interval, such that δj represents the signed peak altitude modification associated with the jth disturbance region. The corresponding reference velocity and acceleration are 
+
+˙pd = ˙ p0 + e3
+
+> Nd
+
+X
+
+> j=1
+
+δj ˙bj , (52a) 
+
+¨pd = ¨ p0 + e3
+
+> Nd
+
+X
+
+> j=1
+
+δj¨bj . (52b) The transition duration Ttr , together with (47), prevents abrupt or excessive altitude changes while preserving the nominal horizontal mission. The intervals [t− 
+
+> j
+
+, t + 
+
+> j
+
+] locate the vertical trajectory modifi-cations along the nominal mission timeline. During closed-loop candidate propagation, however, disturbance exposure is evaluated from the vehicle position using the spatial disturbance model in Section II-C. The basis functions therefore locate the altitude modifications rather than directly prescribing the disturbance experienced by the vehicle. 
+
+C. Closed-Loop Battery-Aware Prediction 
+
+Candidate trajectories are evaluated through closed-loop propagation rather than solely from geometric or kinematic quantities. For each δ, the reference {pd, ˙pd, ¨pd} is propa-gated through the vehicle model over the complete mission horizon. At prediction step k, the feedback controller gener-ates 
+
+uk = κ (xk, pd,k , ˙pd,k , ¨pd,k ) , (53) where κ(·) denotes the feedback-control law. The controller used during planning is held fixed throughout the opti-mization. Control allocation then determines ωr, req ,k and 
+
+¯ωr, req ,k , while the battery–actuator coupling determines the achievable rotor commands and electrical load. At each prediction step, terminal voltage, battery-dependent rotor-speed capability, rotor command, electrical power, and battery current are mutually coupled. For fixed differential states {s, V p, 1, V p, 2, ωr }, the algebraic iteration is initialized as 
+
+V (0)  
+
+> b
+
+= max {2.8Ns, V oc (s) − Vp, 1 − Vp, 2} . (54) The 2.8Ns-V lower bound is used only as a numerical continuation safeguard for the algebraic battery–actuator iteration and is distinct from the mission-feasibility threshold 
+
+Vmin . Defining 
+
+¯Vb = Voc (s) − Vp, 1 − Vp, 2, (55) the coupled quantities are iteratively updated according to 
+
+ω(ℓ)max = ωmax 
+
+
+
+V (ℓ)
+
+> b
+
+
+
+, (56a) 
+
+ω(ℓ) 
+
+> r, cmd
+
+= min 
+
+n
+
+¯ωr, req , ω (ℓ)max 1
+
+o
+
+, (56b) 
+
+P (ℓ) 
+
+> b
+
+= Pb
+
+
+
+ωr , ω(ℓ)
+
+> r, cmd
+
+
+
+, (56c) 
+
+I(ℓ) 
+
+> b
+
+=¯Vb −
+
+q
+
+¯V 2 
+
+> b
+
+− 4R0(s)P (ℓ)
+
+> b
+
+2R0(s) , (56d) 
+
+eV (ℓ+1)  
+
+> b
+
+= ¯Vb − R0(s)I(ℓ) 
+
+> b
+
+, (56e) 
+
+V (ℓ+1)  
+
+> b
+
+= λ eV (ℓ+1)  
+
+> b
+
++ (1 − λ)V (ℓ) 
+
+> b
+
+, (56f) where the minimum in the rotor-command update is applied elementwise and λ ∈ (0 , 1] is a relaxation factor. The iteration terminates when 
+
+V (ℓ+1)  
+
+> b
+
+− V (ℓ) 
+
+> b
+
+≤ εV (57) or when the prescribed maximum number of iterations ℓmax 
+
+is reached. Failure to satisfy (57) within ℓmax iterations is recorded as a coupling-convergence violation. In the numer-ical study, λ = 0 .60 , εV = 10 −5 V, and ℓmax = 30 . The battery differential states remain fixed during this algebraic iteration and are propagated only after the coupling has been resolved. A real-valued discharge-current solution requires 
+
+¯V 2 
+
+> b
+
+− 4R0(s)Pb ≥ 0. (58) If the condition in (58) is violated, the candidate is flagged as electrically infeasible. Because the quadratic battery-current relation no longer admits a real-valued solution, a finite numerical continuation is used solely to maintain candidate propagation and objective evaluation. A bounded surrogate evaluation of current and terminal voltage is used solely for numerical continuation, with terminal voltage lower-bounded by 2.8Ns V. The electrical-feasibility violation is retained in the planning penalty and the final mission-feasibility check. The corresponding instantaneous battery-power utilization is 
+
+ηP (t) = Pb(t)
+
+Pb, max (t) , (59) 
+
+Pb, max (t) = [Voc (s(t)) − Vp, 1(t) − Vp, 2(t)] 2
+
+4R0(s(t)) . (60) Thus, ηP ≤ 1 corresponds to the instantaneous power-delivery condition of the equivalent-circuit model. After the algebraic coupling is resolved, the resulting current propa-gates s, Vp, 1, and Vp, 2 through the battery dynamics, while the converged rotor command propagates the motor states. Repeating this procedure over the complete mission provides the quantities required to evaluate each candidate trajectory. 
+
+D. Objective Function and Mission Feasibility 
+
+The planner employs a normalized composite objective that balances electrical energy, trajectory modification, and closed-loop tracking performance while penalizing undesir-able battery, actuator, and terminal operating conditions: 
+
+J(δ) = wE JE + wpJp + weJe + wf Jf + wsJs + wV JV
+
++ w∆ω J∆ω + wη Jη + wend Jend + wphy Jphy ,
+
+(61) where the w(·) are nonnegative weighting coefficients. The closed-loop position RMSE and terminal position error are 
+
+eRMSE =
+
+s
+
+1
+
+Tf
+
+Z Tf
+
+> 0
+
+∥p(t) − pd(t)∥22 dt, (62a) 
+
+ef = ∥p(Tf ) − pd(Tf )∥2 . (62b) The nominal objective terms are 
+
+JE = Eb(Tf )
+
+Enom 
+
+, Jp = 1
+
+NdNdX
+
+> j=1
+
+ δj
+
+δmax 
+
+2
+
+, (63a) 
+
+Je =
+
+ eRMSE 
+
+Lm
+
+2
+
+, Jf =
+
+ ef
+
+Lm
+
+2
+
+, (63b) where Enom is the nominal battery-energy scale and Lm is a characteristic mission-distance scale. Battery, actuator, and endpoint requirements are incorpo-rated using one-sided quadratic penalties. Defining [x]+ =max {x, 0},
+
+Js =
+
+ [smin − min t s(t)] +
+
+smin 
+
+2
+
+, (64a) 
+
+JV =
+
+ [Vmin − min t Vb(t)] +
+
+Vmin 
+
+2
+
+, (64b) 
+
+J∆ω =
+
+ [∆ ωmin − min t ∆ω(t)] +
+
+ωnom max 
+
+2
+
+, (64c) 
+
+Jη =
+
+h
+
+max  
+
+> t
+
+ηω (t) − ηmax 
+
+i2+
+
+, (64d) 
+
+Jend =
+
+ [ef − emax ]+
+
+Lm
+
+2
+
+. (64e) Here, Jf continuously penalizes terminal tracking error, whereas Jend becomes active only when the prescribed endpoint threshold is exceeded. Similarly, J∆ω encourages a prescribed actuator reserve and Jη discourages operation above the preferred battery-dependent utilization threshold. These preferred thresholds shape the planning objective but do not define the physical actuator boundary. To reject candidates that violate the physical battery or actuator model, the implementation additionally defines 
+
+Jphy = [max  
+
+> t
+
+ηP (t) − 1] 2+ + [max  
+
+> t
+
+ηω, nom (t) − 1] 2+
+
++ 1
+
+NpNp
+
+X
+
+> k=1
+
+Ielec ,k + 1
+
+NpNp
+
+X
+
+> k=1
+
+Iconv ,k , (65) where 
+
+ηω, nom (t) = max i ωi, req (t)
+
+ωnom max 
+
+, (66) 
+
+Ielec ,k = 1 when the battery power-delivery condition is violated, Iconv ,k = 1 when the battery–actuator iteration does not converge, and Np is the number of prediction samples. Thus, physically inadmissible candidates remain numerically evaluable but incur an explicit physical-infeasibility penalty during optimization. The trajectory conditions in (47) are enforced as explicit nonlinear constraints. In contrast, SOC, terminal voltage, preferred actuator reserve, preferred utilization, endpoint accuracy, and physical infeasibility enter the optimization through the penalty terms above. Following optimization, the selected trajectory is subjected to explicit mission-feasibility checks. A mission is classified as feasible only if 
+
+min  
+
+> t
+
+s(t) ≥ smin , min  
+
+> t
+
+Vb(t) ≥ Vmin ,
+
+max  
+
+> t
+
+ηP (t) ≤ 1, max  
+
+> t
+
+ηω, nom (t) ≤ 1,
+
+max  
+
+> t
+
+ηω (t) ≤ 1, ef ≤ emax ,
+
+(67) with successful battery–actuator coupling required through-out the mission. The nominal utilization condition verifies the raw rotor-speed request against the nominal hardware limit, whereas ηω ≤ 1 verifies the nominally clipped request against the instantaneous battery-dependent capability. V. S IMULATION RESULTS AND DISCUSSION 
+
+The proposed predictive trajectory-planning and control framework is evaluated in a long-duration, high-speed multi-rotor mission containing three spatially localized disturbance regions. The simulations examine the interaction among trajectory selection, disturbance exposure, closed-loop track-ing, electrical energy consumption, battery evolution, and battery-dependent actuator capability. The reduced-order bat-tery model is first numerically benchmarked against an independently implemented Simscape equivalent-circuit ref-erence. The nominal and battery-aware trajectories are then compared over the complete mission, followed by planner ablations at nominal and reduced initial SOC. Finally, the selected battery-aware trajectory is executed using multiple feedback controllers to examine the sensitivity of mission performance to the closed-loop control architecture. 
+
+A. Simulation Setup and Mission Description 
+
+The simulated multirotor has a mass of m = 1 .8 kg, arm length l = 0 .23 m, and inertia matrix 
+
+J = diag (0 .030 , 0.030 , 0.055) kg m 2. (68) The thrust and reaction-torque coefficients are kT = 1 .05 ×
+
+10 −5 and kQ = 1 .7 × 10 −7, respectively. The motor time constant is τm = 0.035 s, the nominal maximum rotor speed is ωnom max = 1050 rad/s, and the propulsion efficiency is 
+
+ηm = 0 .82 . The vehicle is powered by a four-cell lithium-ion battery with a rated capacity of Qb = 5 Ah. Unless otherwise stated, the initial SOC is 92% . The closed-loop vehicle simulation uses a time step of ∆t = 0 .005 s, whereas candidate trajectories are evaluated by the planner using 
+
+∆tp = 0 .05 s. The 150 -s mission consists of takeoff over 0–
+
+10 s, horizontal flight over 10 –140 s, and landing over 140 –
+
+150 s. The nominal flight altitude is 5 m. During horizontal flight, a quintic reference is generated through the prescribed waypoints, with zero acceleration specified at the segment boundaries. 
+
+tw = [10 , 30 , 70 , 110 , 140] s ,
+
+xw = [0 , 60 , 220 , 460 , 640] m ,
+
+˙xw = [0 , 3, 5, 6, 0] m /s,
+
+(69) The resulting 640 -m mission exposes the vehicle to distur-bances at different operating speeds and battery states.              
+
+> TABLE I DISTURBANCE CONDITIONS FOR THE LONG -DURATION MISSION .Disturbance Nominal encounter (s)
+> vw,y (m/s) vw,z (m/s)
+> D130 –42 12 −3.75
+> D272 –84 7−2.19
+> D3112 –124 14 −4.38
+
+Three spatially localized disturbance regions are intro-duced during the horizontal portion of the mission, as sum-marized in Table I. The vertical wind component is defined as vw,z = −0.3125 vw,y . The disturbance field is centered at the nominal flight altitude of 5 m with a vertical spread of 
+
+σd = 1 .25 m. The planner comparison considers three information and objective structures. The disturbance-aware case executes the nominal reference trajectory without geometric mod-ification while accounting for the prescribed disturbance field during closed-loop propagation. The energy-aware, battery-unaware planner modifies the reference trajectory based on the predicted closed-loop electrical-energy con-sequences of disturbance exposure, but excludes battery-state-dependent voltage and actuator information from the trajectory-selection process. Finally, the proposed battery-aware planner evaluates candidate trajectories through the complete closed-loop vehicle–motor–battery prediction and additionally accounts for the battery-dependent quantities defined in Section IV. All selected trajectories are subse-quently evaluated using the same coupled vehicle–motor– battery plant. This comparison isolates the benefit of energy-aware trajectory modification from the additional influence of battery-dependent feasibility information. The nonlinear trajectory optimization is solved using SQP from the three initial altitude-offset vectors 
+
+δ(0) ∈
+
+(  0 0 0⊤ , 2.5 1.5 3.0⊤ ,
+
+−2 −1 −2.5⊤
+
+)
+
+m. (70) Because the resulting nonlinear optimization problem is nonconvex, the reported trajectory is the lowest-cost solution obtained from the tested initializations and is not claimed to be globally optimal. 
+
+B. Battery Model Numerical Verification 
+
+The explicit battery model used for candidate-trajectory propagation is numerically benchmarked against an indepen-dently implemented Simscape equivalent-circuit reference using the same SOC-dependent parameterization. The com-parison therefore evaluates agreement between the algebraic– differential implementation used by the planner and the Simscape reference implementation; it is not intended as ex-perimental battery-model validation. Both models are driven by the same mission-representative electrical-power profile and initialized from identical battery conditions. As shown in Fig. 1, the reduced-order model closely reproduces the SOC and cumulative-energy evolution of the Simscape reference over the complete discharge profile. The SOC RMSE is 0.0239 percentage points, while the terminal-voltage RMSE is 0.1095 V. The power RMSE is 2.2205 W, corresponding to a normalized RMSE of 0.6379% over the reference-model power range. The cumulative energies predicted by the reduced-order and Simscape models are 
+
+2.1155 and 2.1010 Wh, respectively, corresponding to a discrepancy of 0.6852% . The voltage comparison exhibits a larger systematic discrepancy than the SOC and cumulative-energy responses, but preserves the load-dependent voltage depressions required for the subsequent actuator-capability calculation. These results provide a numerical model-to-model benchmark supporting use of the reduced-order model Fig. 1. Numerical verification of the battery model used for candidate-trajectory propagation against the independently implemented Simscape equivalent-circuit reference under the same prescribed electrical-power profile and SOC-dependent parameterization. 
+
+for repeated planner evaluation; they are not presented as experimental battery validation. 
+
+C. Closed-Loop Mission Response 
+
+Fig. 2 compares the conventional and battery-aware closed-loop responses over the complete 150 -s mission. The conventional reference remains near the center of the distur-bance layer, whereas the battery-aware trajectory introduces altitude deviations during the three disturbance encounters. For the nominal 92% initial-SOC condition, the selected battery-aware offsets are 
+
+δ∗ = −3.7076 −2.4226 −3.3912 ⊤ m. (71) Thus, the selected reference moves below the disturbance center during all three encounters. The conventional trajectory exhibits large tracking excur-sions during the first and third disturbance encounters, with the largest error occurring during D3. The battery-aware trajectory substantially reduces these excursions by moving away from the center of the spatial disturbance field. The mission-level position RMSE decreases from approximately 
+
+15 .52 m to 4.34 m, corresponding to a reduction of approx-imately 72% .The improved tracking is accompanied by lower cumula-tive electrical demand. The conventional trajectory consumes approximately 14 .11 Wh, whereas the battery-aware trajec-tory consumes approximately 13 .06 Wh, corresponding to an energy reduction of approximately 7.5% . The reduced electrical demand results in a higher retained SOC and terminal voltage during the later portion of the mission. The power response also shows that the energetic im-provement does not result from reducing instantaneous power at every time instant. The altitude-transition maneuvers in-troduce short-duration increases in control and electrical demand. These increases are offset by the reduced feedback effort required while the vehicle traverses the disturbance regions. The trajectory modification therefore redistributes control effort over the mission such that the cumulative energetic consequence of disturbance exposure is reduced. The actuator response provides an important qualification to these results. At the nominal initial SOC, both trajectories remain below the battery-dependent actuator limit, with peak utilization remaining below approximately 90% . The battery-dependent actuator constraint is therefore nonbinding in this case. Accordingly, the nominal-SOC improvement is primarily attributable to reduced disturbance exposure and the associated decrease in closed-loop control and electri-cal demand rather than to avoidance of an active battery-dependent actuator constraint. 
+
+D. Planning Ablation 
+
+Table II summarizes the planning-ablation results for the nominal initial SOC of 92% . Both trajectory-modifying planners select 
+
+δ∗ 
+
+> E
+
+= δ∗ 
+
+> B
+
+= −3.7076 −2.4226 −3.3912 ⊤ m. (72) Relative to the disturbance-aware baseline, the resulting tra-jectory reduces mission energy from 14 .1078 to 13 .0552 Wh, corresponding to a 7.46% reduction, while decreasing the position-tracking RMSE from 15 .5226 to 4.3461 m, cor-responding to a 72 .0% reduction. The offsets move the reference below the nominal altitude during the three distur-bance encounters, reducing the closed-loop control demand associated with disturbance exposure. The equality of the energy-aware battery-unaware and battery-aware solutions at 92% initial SOC is itself an important ablation result. Under this condition, the battery-dependent voltage and actuator terms remain nonbinding along the selected trajectory and therefore do not alter the lowest-cost solution obtained from the tested initializations. The nominal-SOC results consequently attribute the observed energy and tracking improvements primarily to trajectory modification based on predicted closed-loop energetic con-sequences rather than to avoidance of an active battery-dependent constraint. To determine whether battery-dependent information af-fects the planning decision as the available electrical and ac-tuator capability decreases, the same comparison is repeated with the initial SOC reduced to 55% . All other mission, vehicle, disturbance, controller, and planning parameters are unchanged. The resulting stress-test outcomes are summa-rized in Table III. The energy-aware battery-unaware planner selects 
+
+δ∗ 
+
+> E, stress
+
+= −3.7075 −2.4226 −3.3913 ⊤ m, (73) which is essentially unchanged from its 92% -SOC solution. This behavior is expected because battery-state-dependent voltage and actuator information does not enter the energy-aware planner’s objective. In contrast, the battery-aware planner selects 
+
+δ∗ 
+
+> B, stress
+
+= −4.9570 −3.6519 −4.0461 ⊤ m, (74) with larger-magnitude altitude deviations during all three disturbance encounters. The separation between δ∗
+
+> E, stress
+
+and δ∗
+
+> B, stress
+
+, in contrast to their equality at 92% SOC, Fig. 2. Closed-loop mission response for the conventional and battery-aware trajectories over the 150 -s mission. The panels show the realized trajectory, position-tracking error, battery SOC, electrical power, terminal voltage, and battery-dependent actuator utilization. Vertical markers identify the nominal disturbance encounters. TABLE II PLANNING -ABLATION RESULTS FOR THE NOMINAL 92% INITIAL SOC. Case δ1 (m) δ2 (m) δ3 (m) Energy (Wh) Energy red. (%) RMSE (m) RMSE red. (%) Disturbance-aware 0 0 0 14.1078 0 15.5226 0Energy-aware, battery-unaware -3.7076 -2.4226 -3.3912 13.0552 7.46 4.3461 72.0 Battery-aware -3.7076 -2.4226 -3.3912 13.0552 7.46 4.3461 72.0 
+
+demonstrates that the battery-dependent terms have become consequential to the planning decision. The modified battery-aware trajectory also produces mod-est improvements relative to the energy-aware battery-unaware trajectory under the stress condition. Mission en-ergy decreases from 13 .0494 to 12 .9801 Wh, while the position-tracking RMSE decreases from 4.3385 to 4.3048 m. The minimum terminal voltage increases from 12 .0732 to 
+
+12 .0814 V, and the maximum battery-dependent actuator uti-lization decreases from 107 .6531% to 107 .4351% . Although these changes are small in the aggregate mission metrics, the different selected offsets show that battery-state-dependent information changes the optimizer’s preferred trajectory once the electrical and actuator limits become restrictive. The 55% initial-SOC case is intentionally severe, and none of the three cases satisfies all mission-feasibility re-quirements. In particular, even the battery-aware trajectory reaches a minimum terminal voltage of 12 .0814 V, below the prescribed 12 .8-V limit, and a maximum battery-dependent actuator utilization of 107 .4351% , above the 100% phys-ical limit. The stress test is therefore not presented as a demonstration of mission-feasibility recovery. Rather, it provides a causal ablation showing that battery-dependent information, which is inactive at nominal SOC, changes the 
+
+TABLE III PLANNING -ABLATION RESULTS FOR THE LOW -SOC STRESS CONDITION (SOC (0) = 55% ). Case δ1 (m) δ2 (m) δ3 (m) Energy (Wh) RMSE (m) Vb, min (V) ηω, max (%) Feasible Disturbance-aware 0 0 0 15.0825 89.9623 11.6457 137.3898 No Energy-aware, battery-unaware -3.7075 -2.4226 -3.3913 13.0494 4.3385 12.0732 107.6531 No Battery-aware -4.9570 -3.6519 -4.0461 12.9801 4.3048 12.0814 107.4351 No Fig. 3. Execution of the fixed battery-aware trajectory using PD, adaptive, SMC, and RISE controllers. The panels compare the realized trajectory, position-tracking error, battery SOC, and cumulative electrical energy. 
+
+selected trajectory as battery and actuator limitations become restrictive. Taken together, the two operating conditions separate the roles of energetic and battery-dependent prediction in the proposed framework. At nominal SOC, predictive trajectory shaping reduces disturbance-induced closed-loop demand and thereby improves both tracking and mission energy, while the battery-dependent terms remain nonbinding. Under depleted-battery conditions, those terms alter the selected trajectory, but trajectory modification alone cannot guarantee feasibility when the available battery-dependent actuator capability is insufficient for the prescribed mission. 
+
+E. Sensitivity to Feedback-Control Architecture 
+
+The preceding planner studies use the baseline cascaded PD controller. Because candidate trajectories are evalu-ated through their predicted closed-loop consequences, an additional study examines whether mission performance changes when the selected reference is executed using differ-ent feedback-control architectures. The same battery-aware trajectory is executed using cascaded PD [29], adaptive [5], sliding-mode (SMC) [30], and RISE [31] controllers. All cases use identical vehicle, motor, battery, disturbance, actuator-limit, reference-trajectory, and initial-state condi-tions. The comparison therefore isolates the effect of feed-back control after the planner-level reference has been fixed. Fig. 3 shows that the feedback architecture noticeably changes the closed-loop response to the same planned refer-ence, particularly during the stronger disturbance encounters. As summarized in Table IV, the adaptive controller pro-vides the lowest mission-level position RMSE, 3.6881 m, compared with 4.3407 m for PD, 4.2326 m for SMC, and 
+
+3.9097 m for RISE. Relative to PD, the adaptive, SMC, and RISE controllers reduce the RMSE by approximately 15 .0% ,
+
+2.5% , and 9.9% , respectively. The tracking improvement is accompanied by differ-ent electrical and actuator demands. The PD case con-sumes 13 .0552 Wh, compared with 13 .1363 , 13 .6990 , and 
+
+13 .8867 Wh for the adaptive, SMC, and RISE controllers, re-spectively. Relative to PD, these values correspond to energy increases of approximately 0.62% , 4.93% , and 6.37% . The maximum battery-dependent actuator utilization similarly in-                                
+
+> TABLE IV CLOSED -LOOP PERFORMANCE OF THE BATTERY -AWARE TRAJECTORY ACROSS DIFFERENT FEEDBACK CONTROLLERS .Controller RMSE (m) Final error (m) Energy (Wh) Vb, min (V) ηω, max (%) Feasible PD 4.3407 0.0057 13.0552 14.2177 86.37 Yes Adaptive 3.6881 0.0875 13.1363 14.1690 87.79 Yes SMC 4.2326 0.4906 13.6990 14.0838 89.43 Yes RISE 3.9097 0.4291 13.8867 14.0587 90.62 Yes
+
+creases from 86 .37% for PD to 87 .79% , 89 .43% , and 90 .62% 
+
+for the adaptive, SMC, and RISE controllers, respectively. The corresponding minimum terminal voltages are 14 .2177 ,
+
+14 .1690 , 14 .0838 , and 14 .0587 V. The adaptive controller provides the strongest tracking–energy compromise among the controllers considered here, reducing the RMSE by approximately 15% relative to PD while increasing mission energy by only 0.62% . RISE provides the second-lowest RMSE but incurs a substantially larger energetic and actuator cost. The final position errors are 0.0057 , 0.0875 , 0.4906 , and 
+
+0.4291 m for the PD, adaptive, SMC, and RISE controllers. All four cases satisfy the prescribed mission-feasibility criteria. Consequently, the controller providing the lowest mission-level tracking error does not simultaneously min-imize energy consumption, actuator utilization, or termi-nal error. These results reinforce the distinction between trajectory planning and feedback control in the proposed framework. The planner determines the reference according to predicted disturbance, energetic, battery, and actuator consequences, whereas the feedback controller determines how that reference is realized during execution. Controller selection therefore modifies the tradeoff among tracking accuracy, electrical energy, actuator utilization, and terminal performance even when the planned trajectory is held fixed. VI. C ONCLUSION 
+
+This paper presented a battery-aware predictive trajectory-planning framework that couples multirotor dynamics, closed-loop control, motor response, battery evolution, and voltage-dependent actuator capability. Candidate trajectories were evaluated by propagating their predicted closed-loop consequences over the mission, allowing the planner to account for the energetic and battery–actuator effects of disturbance exposure. In the nominal-SOC mission, the se-lected trajectory reduced electrical energy consumption by 
+
+7.46% and position-tracking RMSE by approximately 72% .Planner ablations showed that these improvements primarily resulted from reduced disturbance exposure and electrical demand, since the battery-dependent terms remained non-binding at nominal SOC. Under a depleted-battery stress condition, however, the battery-dependent terms changed the selected trajectory, demonstrating their increasing influence as electrical and actuator limits became restrictive. Finally, execution of the fixed battery-aware trajectory with multiple feedback controllers demonstrated a controller-dependent tradeoff among tracking accuracy, energy consumption, and actuator utilization. These results show that closed-loop prediction of trajectory–control–battery interactions provides a systematic basis for selecting disturbance-aware multirotor trajectories while accounting for the evolving electrical and actuator consequences of mission execution. Future work will extend the present mission-level formulation toward receding-horizon planning with online disturbance estimation and battery-state updates. Of particular interest is the de-velopment of feasibility-aware replanning strategies that can modify the trajectory, mission timing, or terminal require-ments when battery-dependent actuator capability becomes insufficient to complete the original mission. Experimental flight validation will also be pursued to assess the coupled vehicle–battery predictions under measured disturbances and hardware limitations. ACKNOWLEDGMENT 
+
+ChatGPT 5.1 [OpenAI] was used in the preparation to improve the clarity, grammar, and readability of the text. REFERENCES                                           
+
+> [1] M. Idrissi, M. Salami, and F. Annaz, “A Review of Quadro-tor Unmanned Aerial Vehicles: Applications, Architectural Design and Control Algorithms,” Journal of Intelligent & Robotic Systems , vol. 104, no. 2, p. 22, Jan. 2022. [2] R. Sengupta, V. Bulusu, C. E. Mballo, E. B. Onat, and S. ( Cao, “Urban Air Mobility Research Challenges and Opportunities,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 8, no. 1, pp. 407–431, May 2025. [3] L. Martins, C. Cardeira, and P. Oliveira, “Inner-outer feed-back linearization for quadrotor control: Two-step design and validation,” Nonlinear Dynamics ,vol. 110, no. 1, pp. 479–495, Sep. 2022. [4] H. D. Choi, K. S. Kim, P. Shi, and C. K. Ahn, “Adaptive Neuro-Fuzzy Sliding Mode Tracking for Quadrotor UAVs,”
+> IEEE Transactions on Automation Science and Engineering ,vol. 22, pp. 16 322–16 333, 2025. [5] K. Liu, L. Jiao, Y. Zhang, and P. Zhao, “Adaptive Predefined-Time Prescribed Performance Control With Application to a Quadrotor UAV,” IEEE Transactions on Aerospace and Electronic Systems , vol. 62, pp. 4751–4770, 2026. [6] K. Johnston, M. A. Arrafi, K. B. Kidambi, and M. Tiwari, “Adaptive Modified RISE Control for Quadrotors: Enhanc-ing Trajectory Tracking Through Uncertainty Compensa-tion,” IEEE Access , vol. 13, pp. 169 166–169 177, 2025. [7] H. Liu, D. Lin, J. Ye, T. Jiang, and J. Huang, “Quadrotor Ag-gressive Control Based on Angular Acceleration Feedback and High-Fidelity Propulsion Model,” IEEE Transactions on Industrial Electronics , vol. 72, no. 12, pp. 13 584–13 594, Dec. 2025. [8] W. Gu, J. Zhao, and A. Rizzo, “Learning uncertainties online for quadrotor flight control: A comparative study,” Journal of Intelligent & Robotic Systems , vol. 111, no. 3, p. 98, Sep. 2025. [9] Y. Ren, Z. Zhu, J. Xing, and D. Scaramuzza, Learning Agile Quadrotor Flight in the Real World , Jul. 2026. [10] Z. Zhou, G. Wang, J. Sun, J. Wang, and J. Chen, “Efficient and Robust Time-Optimal Trajectory Planning and Control for Agile Quadrotor Flight,” IEEE Robotics and Automation Letters , vol. 8, no. 12, pp. 7913–7920, Dec. 2023. [11] S. Xing, B. Xian, and P. Jiang, “A Probabilistic Inference-Based Efficient Path Planning Method for Quadrotors,”
+> IEEE Transactions on Industrial Electronics , vol. 72, no. 3, pp. 2810–2820, Mar. 2025. [12] W. Zhang, J. Jia, S. Zhou, K. Guo, X. Yu, and Y. Zhang, “A Safety Planning and Control Architecture Applied to a Quadrotor Autopilot,” IEEE Robotics and Automation Letters , vol. 8, no. 2, pp. 680–687, Feb. 2023. [13] G. Sun, X. Zhang, Y. Liu, X. Zhang, and Y. Zhuang, “Safety-Driven and Localization Uncertainty-Driven Perception-Aware Trajectory Planning for Quadrotor Unmanned Aerial Vehicles,” IEEE Transactions on Intelligent Transportation Systems , vol. 25, no. 8, pp. 8837–8848, Aug. 2024. [14] M. Greiff, A. Vinod, S. Nabi, and S. Di Cairano, “Quadrotor Motion Planning in Stochastic Wind Fields,” in 2023 Amer-ican Control Conference (ACC) , May 2023, pp. 4619–4625.
+
+[15] D. Lapandi´ c, F. Xie, C. K. Verginis, S.-J. Chung, D. V. Di-marogonas, and B. Wahlberg, “Meta-Learning Augmented MPC for Disturbance-Aware Motion Planning and Con-trol of Quadrotors,” IEEE Control Systems Letters , vol. 8, pp. 3045–3050, 2024. [16] S. Gasche, C. Kallies, A. Himmel, and R. Findeisen, Energy Aware and Safe Path Planning for Unmanned Aircraft Systems , Apr. 2025. [17] F. Yacef, N. Rizoug, O. Bouhali, and M. Hamerlain, “Op-timization of Energy Consumption for Quadrotor UAV,” 2017. [18] G. Benarfa, M. Mohammadpour, M. Hébert, S. Kelouwani, and A. Amamou, “From Motion to Energy: Health-Aware Motion Planning for Enhanced Predictive Energy Man-agement in Hybrid Fuel Cell/Battery Autonomous Mobile Robots,” IEEE Vehicular Technology Magazine , pp. 2–11, 2026. [19] C. Conte, G. Rufino, G. De Alteriis, V. Bottino, and D. Accardo, “A data-driven learning method for online pre-diction of drone battery discharge,” Aerospace Science and Technology , vol. 130, p. 107 921, Nov. 2022. [20] W. Dai, M. Zhang, and K. H. Low, “Data-efficient modeling for power consumption estimation of quadrotor operations using ensemble learning,” Aerospace Science and Technol-ogy , vol. 144, p. 108 791, Jan. 2024. [21] D. Baek, Y. Chen, A. Bocca, L. Bottaccioli, S. D. Cataldo, V. Gatteschi, D. J. Pagliari, E. Patti, G. Urgese, N. Chang, A. Macii, E. Macii, P. Montuschi, and M. Poncino, “Battery-Aware Operation Range Estimation for Terrestrial and Aerial Electric Vehicles,” IEEE Transactions on Vehicular Technol-ogy , vol. 68, no. 6, pp. 5471–5482, Jun. 2019. [22] J. Kim, S. Park, D. Kim, E. Choi, and S. Han, Motion-Specific Battery Health Assessment for Quadrotors Using High-Fidelity Battery Models , Mar. 2026. [23] Z. Chen, L. Yang, X. Zhao, Y. Wang, and Z. He, “Online state of charge estimation of Li-ion battery based on an improved unscented Kalman filter approach,” Applied Math-ematical Modelling , vol. 70, pp. 532–544, Jun. 2019. [24] C. Weng, J. Sun, and H. Peng, “A unified open-circuit-voltage model of lithium-ion batteries for state-of-charge estimation and state-of-health monitoring,” Journal of Power Sources , vol. 258, pp. 228–237, Jul. 2014. [25] B. Pattipati, B. Balasingam, G. Avvari, K. Pattipati, and Y. Bar-Shalom, “Open circuit voltage characterization of lithium-ion batteries,” Journal of Power Sources , vol. 269, pp. 317–333, Dec. 2014. [26] H. Gong, B. Huang, B. Jia, and H. Dai, “Modeling Power Consumptions for Multirotor UAVs,” IEEE Transactions on Aerospace and Electronic Systems , vol. 59, no. 6, pp. 7409– 7422, Dec. 2023. [27] J. Zhang, J. F. Campbell, D. C. Sweeney Ii, and A. C. Hupman, “Energy consumption models for delivery drones: A comparison and assessment,” Transportation Research Part D: Transport and Environment , vol. 90, p. 102 668, Jan. 2021. [28] M. Jacewicz, M. ˙ Zugaj, R. Gł˛ ebocki, and P. Bibik, “Quadro-tor Model for Energy Consumption Analysis,” Energies ,vol. 15, no. 19, p. 7136, Sep. 2022. [29] I. Lopez-Sanchez and J. Moreno-Valenzuela, “PID control of quadrotor UAVs: A survey,” Annual Reviews in Control ,vol. 56, p. 100 900, 2023. [30] H. Alkomy, H. Wang, and J. Shan, “Energy-Saving Integral Sliding Mode Controller for a Quadrotor With a Slung Payload,” IEEE Control Systems Letters , vol. 10, pp. 1243– 1248, 2026. [31] K. B. Kidambi, C. Fermuller, Y. Aloimonos, and H. Xu, “Robust Nonlinear Control-Based Trajectory Tracking for Quadrotors Under Uncertainty,” IEEE Control Systems Let-ters , vol. 5, no. 6, pp. 2042–2047, Dec. 2021. 
+
+APPENDIX TABLE V SOC-DEPENDENT TWO -RC EQUIVALENT -CIRCUIT PARAMETERS USED IN THE NUMERICAL STUDY . A LL QUANTITIES ARE PACK -LEVEL VALUES .SOC (%) Voc (V) R0 (Ω) R1 (Ω) R2 (Ω) τ1                                          
+
+> (s)
+> τ2
+> (s) 512.035 0.040600 0.015795 0.009765 28 115 15 12.658 0.035000 0.014274 0.008505 31 125 30 13.378 0.031360 0.013104 0.007560 34 140 50 14.300 0.028840 0.012168 0.006804 38 155 70 15.220 0.027440 0.011466 0.006300 42 170 85 15.910 0.028000 0.011700 0.006426 46 185 100 16.600 0.030240 0.012636 0.007056 50 200
+
+The lookup-table SOC breakpoints are 
+
+sb = 0.05 0.15 0.30 0.50 0.70 0.85 1.00  .
+
+(75) Piecewise-linear interpolation is used between consecutive breakpoints for Voc , R0, R1, R2, τ1, and τ2. The correspond-ing polarization capacitances are obtained from 
+
+Cj (s) = τj (s)
+
+Rj (s) , j ∈ { 1, 2}. (76)

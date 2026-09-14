@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-13</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-14</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 5 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-13 21:12:36 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-14 22:23:40 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读3篇机器人协作与控制方向论文，涵盖多机器人安全控制、人本目标跟踪导航及空中集群平台。可重点关注隐蔽执行器攻击下的分布式安全学习控制，以及融合地图约束的人本跟踪导航思路。普通读者若感兴趣，建议先从空中集群开源软硬件平台SwarmNxt入手，门槛相对友好。</p>
+<p>今日精读2篇、速读3篇，聚焦海上四旋翼自主降落与多旋翼抗扰轨迹规划。最值得看的是课程式对抗异构多智能体强化学习用于海上四旋翼降落（9.0分），以及电池感知的扰动下预测轨迹规划与控制（8.0分）。普通读者可优先关注这两篇的仿真设定与能耗约束，再浏览速读中的容错强化学习与低秩适配方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Curriculum-Based Adversarial Heterogeneous Agent Reinforcement Learning for Autonomous Quad-Copter Landing in Maritime Settings">Curriculum-Based Adversarial Heterogeneous Agent Reinforcement Learning for Autonomous Quad-Copter Landing in Maritime Settings</span></li><li><span class="dpr-home-dashboard-paper-title" title="Battery-Aware Predictive Trajectory Planning and Control for Multirotors Under Disturbances">Battery-Aware Predictive Trajectory Planning and Control for Multirotors Under Disturbances</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,9 +87,9 @@
     <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Distributed Secure Learning Control for Large-scale Multirobots under Stealthy Actuator Attacks">Distributed Secure Learning Control for Large-scale Multirobots under Stealthy Actuator Attacks</span></li><li><span class="dpr-home-dashboard-paper-title" title="Human-Aware Target Tracking and Navigation: Fusing Kinematic State Estimation with Structural Map Constraints">Human-Aware Target Tracking and Navigation: Fusing Kinematic State Estimation with Structural Map Constraints</span></li><li><span class="dpr-home-dashboard-paper-title" title="SwarmNxt: Open-source Software-Hardware Platform for Fast and Agile Aerial Swarms">SwarmNxt: Open-source Software-Hardware Platform for Fast and Agile Aerial Swarms</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Predefined-Time Resilient Integral Reinforcement Learning for Input-Constrained Unknown Nonlinear Systems Under FDI Attacks and Disturbances: A Fully Data-Driven Approach">Predefined-Time Resilient Integral Reinforcement Learning for Input-Constrained Unknown Nonlinear Systems Under FDI Attacks and Disturbances: A Fully Data-Driven Approach</span></li><li><span class="dpr-home-dashboard-paper-title" title="Amortized Low-Rank Adaptation for Model-Based Reinforcement Learning">Amortized Low-Rank Adaptation for Model-Based Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="DWMP: Leveraging Dual World Models for Humanoid Obstacle Traversal">DWMP: Leveraging Dual World Models for Humanoid Obstacle Traversal</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 </div>
 
