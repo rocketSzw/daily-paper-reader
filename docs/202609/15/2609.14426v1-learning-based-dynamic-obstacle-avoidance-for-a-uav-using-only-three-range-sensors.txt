@@ -1,0 +1,2847 @@
+Learning-Based Dynamic Obstacle Avoidance for a
+UAV Using Only Three Range Sensors
+Mohammad Reza Ranjbar Divkoti and A. Pedro Aguiar
+SYSTEC-ARISE Research Center for Systems and Technologies,
+Faculty of Engineering, University of Porto, 4200-465, Porto, Portugal.
+Corresponding author: Mohammad Reza Ranjbar Divkoti (Email:
+up202111345@edu.fe.up.pt).
+Abstract
+We present a learning-based approach to kinodynamic online motion planning
+for an Unmanned Aerial Vehicle (UAV) operating at a fixed altitude in unknown
+dynamic environments, where real-time avoidance of both static and dynamic
+obstacles must be achieved under conditions of extreme partial observability.
+The UAV is controlled with a single degree of freedom (yaw only), resulting in
+constrained, nonholonomic motion similar to fixed-wing platforms.
+The proposed framework integrates a behavior grid map representation with
+Deep Reinforcement Learning (DRL), using Proximal Policy Optimization
+(PPO) for stable policy learning in continuous control. The key idea is the
+co-design of a state representation and control policy that enables reliable nav-
+igation using only three low-cost directional range sensors, without reliance on
+dense sensing modalities such as LiDAR or vision-based systems. The behavior
+grid map dynamically aggregates sparse measurements into a structured local
+representation that supports real-time decision-making for obstacle avoidance
+and target reaching. Extensive simulations across environments of varying sizes
+and obstacle densities demonstrate that the proposed standard and enhanced
+methods achieve higher success rates than PPO variants and Model Predictive
+Control (MPC) (94% vs. 79–90% in small-scale high-congestion scenarios, and
+83% vs. 62–71% in large-scale high-congestion scenarios), while maintaining real-
+time performance. Real-world experiments across four scenarios further confirm
+practical feasibility, with consistent target-reaching behaviour and no collisions
+under the tested conditions.
+Keywords: UAV Online Motion Planning, Deep Reinforcement Learning, Behavior
+Grid Map, Dynamic Obstacle Avoidance, PPO
+1
+arXiv:2609.14426v1  [cs.RO]  13 Sep 2026
+
+
+1 Introduction
+Recent years have seen enormous advances in autonomous robotic vehicles, with a
+focus on efficiency and safety. An Unmanned Aerial Vehicle (UAV), commonly referred
+to as a drone, has become increasingly popular for a wide range of applications,
+including environmental research, package delivery, agricultural monitoring, and aerial
+surveillance [1].
+The problem of efficient online motion planning has been a major focus in UAV.
+Various motion-planning techniques have been thoroughly analyzed and categorized
+by recent studies [2]. For instance in [3], an offline path planning method based on
+a map-based approach and vision-based obstacle detection for collision avoidance has
+been proposed. However, effectively addressing dynamic obstacle avoidance in UAV
+environments remains an open area for future research.
+Drones have become increasingly popular over the last ten years due to their numer-
+ous applications. Effective path planning is necessary for autonomous drone operation
+to prevent collisions [4]. The work in [5] examines path generation and environmental
+representation methods, evaluating popular approaches and their cons. By analyz-
+ing influential publications, the study reveals current trends and offers insights for
+developing more robust path planners for autonomous drones.
+Online motion planning algorithms can be broadly divided into two categories: tra-
+ditional and learning-based approaches [6, 7]. Traditional algorithms, lacking a learning
+component, rely on predefined algorithms and rules to generate robot trajectories.
+While effective in static environments, these methods lack adaptability to dynamic sce-
+narios. In contrast, learning-based algorithms, particularly those leveraging machine
+learning and DRL techniques, address these limitations [8–11].
+Deep Reinforcement Learning (DRL) has drawn a lot of interest. The application
+of DRL in this context has been thoroughly investigated by researchers [12–21]. DRL
+can learn challenging online motion planning tasks and adapt to dynamic environ-
+ments. Researchers are investigating methods that combine sensor fusion [22], optimal
+control [23, 24], and graph theory [25] to further improve the capabilities of DRL in
+online motion planning. This integration can enhance the decision-making process and
+offer a more thorough understanding of the environment. The integration of low-cost
+sensors and smart software for various vehicle monitoring scenarios, sensor error mod-
+eling, and enhancing semantic scene understanding should be the main areas of future
+research [26].
+Several advanced learning algorithms have been introduced, including Asyn-
+chronous Advantage Actor-Critic (A3C) [27, 28], Advantage Actor-Critic (A2C),
+Trust Region Policy Optimization (TRPO) [29], and Proximal Policy Optimization
+(PPO) [30–34]. To stabilize and speed up convergence, A3C and A2C used multi-
+thread techniques, while TRPO and PPO added trust region constraints and adaptive
+penalties.
+Table 1 provides a summary of key research papers and their contributions, offering
+insights into the current state of the field.
+Despite these advances, a significant gap remains in deploying learning-based UAV
+navigation frameworks in real-world settings with low-cost, low-perception sensors.
+Many existing approaches assume access to rich sensory data such as 3D LiDAR, dense
+2
+
+
+Table 1: A summary of key research papers and their contributions
+Category
+Pros
+Cons
+Open Problem
+• UAV Path Plan-
+ning and Obstacle
+Avoidance
+[2–
+4, 35–37]
+•
+Comprehen-
+sive
+analyses
+of
+path-planning
+approaches.
+•
+Innovations
+in
+obstacle
+detection
+for UAV.
+•
+Challenges
+in
+dynamic
+obstacle
+avoidance.
+•
+Limitations
+of
+traditional
+online
+motion
+planning
+algorithms.
+• Develop real-time
+adaptive
+solutions
+to dynamic obsta-
+cles.
+•
+DRL-Based
+Motion
+Planning
+and
+Naviga-
+tion [12–14]
+• Potential for com-
+plex online motion
+planning
+with
+DRL.
+• Integration of sen-
+sor fusion and opti-
+mal control.
+•
+Challenges
+in
+accounting
+for
+environmental dis-
+turbances.
+• Issues with poor
+generalization
+in
+DRL.
+• Integrate low-cost
+hardware
+sensors
+with
+smart
+soft-
+ware
+to
+enhance
+environmental
+understanding.
+RGB-D maps, or full environment reconstructions [38, 39], which are often expensive
+and computationally intensive. This reliance makes them impractical for cost-sensitive
+or resource-constrained UAV applications.
+In contrast to these works, this paper investigates a lightweight and cost-effective
+online motion planning framework that uses only three rangefinder sensors positioned
+in the front, left, and right directions of the UAV. These inexpensive sensors provide
+sparse distance readings, and the system must make safe navigation decisions using
+this limited information. To compensate for the perception constraints, we integrate
+these readings into a behavior grid map, a compact, local, and dynamically updated
+spatial representation that feeds a PPO-based policy to generate control actions in
+real-time.
+Although behavior or occupancy maps have been used in DRL settings, they are
+typically supported by rich and dense observations [40, 41]. Our work challenges this
+assumption by demonstrating that strong learning-based navigation performance is
+achievable even with minimal and noisy sensory input if combined with a task-adapted
+behavior grid and structured low-level policy design. While recent works leverage high-
+resolution sensors and dense maps (see Table 2), our method uniquely demonstrates
+DRL-powered obstacle avoidance using sparse, minimal sensing.
+In addition to the severe perception constraints, the control authority of the UAV
+is deliberately limited in this work. The system is modeled with a single degree of
+freedom, where only the yaw rate can be adjusted while the forward velocity remains
+constant. This constraint results in non-holonomic motion behavior similar to that
+of a fixed-wing UAV, which cannot perform in-place rotations or lateral movements.
+As a consequence, the UAV must continuously move forward and commit to its
+heading decisions in advance, making online obstacle avoidance and target reaching
+significantly more challenging, especially in cluttered and dynamic environments.
+3
+
+
+Table 2: Comparison of DRL-based UAV online motion planning methods under
+different sensor modalities
+Ref (Year)
+Sensors
+Perception
+/ Input
+Map
+/
+Represen-
+tation
+DRL
+Algorithm
+Environment
+/
+Hard-
+ware
+Fan
+et
+al.
+(2025) [40]
+3D LiDAR
+Point-cloud
+2D
+obsta-
+cle
+map
+via
+LiDAR
+encoder
+PPO-/end-
+to-end
+Simulated
+and
+real
+UAV,
+dynamic
+environ-
+ment
+Liu
+et
+al.
+(2024) [41]
+Airborne
+LiDAR
+3D scans
+Occupancy
+grid for for-
+mation
+PPO-style
+Simulated,
+multi-UAV
+Huang et al.
+(2025) [38]
+Vision, sen-
+sors,
+and
+LiDAR
+Multimodal
+(RGB,
+depth)
+Transformer-
+enhanced
+perception
+SAC
+and
+GTrXL
+Simulated,
+dynamic
+environ-
+ment
+Almahamid
+(2024) [39]
+RGB
+and
+depth
+camera
+Voxel grids
+3D
+voxel
+map
+Off-policy
+DRL
+3D environ-
+ments simu-
+lated
+Wang et al.
+(2024) [42]
+2D LiDAR
+Relative dis-
+tances
+End-to-end
+and
+poten-
+tial field
+PF-SAC
+Wheeled
+robot,
+but
+LiDAR-
+based
+This Work
+(2025)
+3 rangefind-
+ers
+(front,
+left,
+and
+right)
+Sparse
+range
+read-
+ings
+Local
+behavior
+grid map
+PPO
+Simulated
+and
+real
+UAV, 3 sen-
+sors
+To the best of our knowledge, this is the first work to successfully integrate a
+behavior grid map with PPO for dynamic online UAV motion planning, considering
+a single degree-of-freedom model and relying solely on three sparse rangefinder sen-
+sors, without the use of LiDAR, stereo vision, or global maps. This setup makes our
+approach well-suited for low-power, real-time deployment on a resource-limited UAV
+operating in dynamic, cluttered environments.
+1.1 Methodological Rationale
+This section provides a structured rationale for the proposed framework by posi-
+tioning it relative to classical navigation approaches and highlighting the key design
+choices that enable operation under extreme partial observability and sparse sensing
+conditions.
+Reactive Methods: Classical reactive techniques such as Artificial Potential
+Fields (APF) [43] and Tangent Bug [44] are computationally efficient and suitable
+for real-time applications. However, they are susceptible to local minima and exhibit
+4
+
+
+degraded performance under sparse sensing, where limited range measurements lead
+to fragmented obstacle representations, often resulting in oscillatory behavior and
+unreliable avoidance decisions.
+Predictive Methods: Predictive approaches, including the Dynamic Window
+Approach (DWA) [45] and Model Predictive Control (MPC) [46], improve safety by
+explicitly considering future trajectories. DWA is effective for short-horizon local plan-
+ning but is sensitive to incomplete perception and may fail to capture the UAV’s
+geometric footprint under sparse feedback. MPC is adopted as the primary baseline, as
+it represents a standard optimization-based framework for constrained systems. While
+MPC provides theoretically optimal control under accurate environment models, it
+relies on sufficiently rich geometric information. Under sparse sensing, individual range
+measurements are treated as isolated observations, leading to blind regions between
+sensing directions and under-approximation of obstacle boundaries. This limitation
+provides a consistent reference to evaluate the proposed approach under identical
+perception constraints.
+DRL Policy (PPO): We employ Proximal Policy Optimization (PPO) due to its
+stability and robustness in continuous control settings [47]. While DRL-based naviga-
+tion is well established, the contribution of this work lies in the co-design of the policy
+and the state representation tailored to operate under extreme partial observability,
+rather than in the learning algorithm itself.
+Behavior Grid Map: Standard Local Occupancy Grid Maps (LOGM) [48, 49]
+rely on dense observations to construct coherent obstacle representations. In the
+sparse sensing regime, such representations degenerate into disconnected measure-
+ments, commonly referred to as the Swiss cheese effect. The proposed behavior grid
+map addresses this limitation by introducing a spatial influence kernel that transforms
+discrete sensor readings into continuous regions encoding approximate obstacle influ-
+ence and clearance. This representation does not aim to reconstruct exact geometry,
+but rather provides a structured prior that regularizes sparse observations and enables
+the policy to reason about obstacle proximity despite missing information. Notably,
+many existing works consider multi-beam LiDAR (e.g., 16-beam) as a minimal viable
+sensing setup [50], whereas the present work operates with only three directional
+measurements, representing a significantly more constrained perception regime.
+Sinusoidal Motion Strategy: The sinusoidal motion strategy is formulated as
+an active perception mechanism [51]. While exploratory motion is commonly used
+for mapping in unknown environments [52], here it is integrated as a task-driven
+primitive for real-time obstacle avoidance. By inducing controlled oscillations in the
+UAV heading, the sensing directions are swept across a wider spatial region over
+time, effectively increasing angular coverage. This behavior can be interpreted as a
+form of temporal sensing augmentation, partially mitigating the limitations of sparse
+measurements without introducing additional hardware or computational overhead.
+1.2 Main Contributions
+The main contributions of this paper are summarized as follows:
+5
+
+
+• A learning-based UAV navigation framework designed for operation under
+extreme partial observability, integrating a behavior grid map with PPO. The
+approach enables kinodynamic motion planning under a single degree-of-freedom
+(yaw-only) control model using only three sparse rangefinder measurements,
+departing from prior works that rely on dense sensing modalities. The framework
+combines obstacle and target encoding, dynamic grid updating, and compact
+state extraction to support real-time decision-making with low computational
+overhead.
+• A lightweight and deployable system tailored for resource-constrained platforms,
+requiring minimal memory and computational resources during execution. The
+approach relies on low-cost range sensors and demonstrates suitability for onboard
+implementation without the need for LiDAR or vision-based perception systems.
+• A perception-enhancement strategy based on sinusoidal motion, formulated as an
+active sensing mechanism to improve environmental coverage under sparse obser-
+vations. The enhanced method introduces controlled oscillations during forward
+motion to increase effective perception, improving navigation robustness while
+introducing a measured increase in energy consumption.
+• Extensive validation in both simulation and real-world environments. Simulations
+across multiple environment sizes and obstacle densities show that the proposed
+standard and enhanced methods achieve higher success rates than PPO variants
+and MPC baselines (94% vs. 79–90% in small-scale high-congestion scenarios,
+and 83% vs. 62–71% in large-scale high-congestion scenarios), while maintain-
+ing real-time performance. Real-world experiments across four scenarios further
+demonstrate practical feasibility, with consistent target-reaching behaviour and
+no collisions under the tested conditions.
+The remaining paper is organized as follows. The problem is formally described in
+Section 2. The online motion planning algorithm to solve the problem is presented in
+Section 3. In Section 4, the results are discussed. Section 5 concludes the paper.
+2 Problem Definition
+This paper addresses the problem of planning a feasible kinodynamic trajectory for
+a UAV while avoiding static and dynamic obstacles. Let W = {O, x, y, z} be the
+inertial frame, where the axes are oriented in the north, west, and upward directions.
+Similarly, let B = {Ob, xb, yb, zb} represent the body-fixed frame. By applying classical
+Newtonian or Lagrangian methods, the quadcopter’s dynamics can be formulated as
+follows [53]
+˙ξ = RW B(η)VB
+m ˙VB = −mω × VB + mRT
+W B(η)gW + TB + Fd
+˙η = T(η)ω
+I ˙ω = −κω −ω × (Iω) + τB
+(1)
+where ξ = [ξx, ξy, ξz]T is the position in the inertial frame W, η = [ϕ, θ, ψ]T
+represents the Euler angles (roll ϕ, pitch θ, and yaw ψ), RW B(η) is the rotation
+6
+
+
+matrix from the body-fixed frame to the inertial frame, T(η) is the transforma-
+tion matrix from angular velocities to Euler angle rates, VB = [u, v, w]T is the
+linear velocity in the body-fixed frame, ω = [p, q, r]T is the angular velocity in the
+body-fixed frame, m is the quadcopter mass, I is the body-fixed inertia matrix,
+TB =
+
+Tx Ty Tz
+T =
+
+0 0 k P4
+i=1 Ω2
+i
+T is the total thrust vector acting along the
+body-fixed z-axis, k is the thrust coefficient, Ωi is the angular velocity of rotor i,
+τB =
+
+
+τϕ
+τθ
+τψ
+
+=
+
+
+lk(Ω2
+1 −Ω2
+2 −Ω2
+3 + Ω2
+4)
+lk(Ω2
+1 + Ω2
+2 −Ω2
+3 −Ω2
+4)
+b(Ω2
+1 −Ω2
+2 + Ω2
+3 −Ω2
+4)
+
+represents the control torques, l is the
+distance from each rotor to the center of mass, b is the yaw torque coefficient,
+κ = diag([κ1, κ1, κ2]) is the damping ratio matrix, gW = [0, 0, g]T is the gravitational
+acceleration vector, Fd = −Λ
+ VB + RT
+W B(η)Vw
+
+is the aerodynamic drag force expe-
+rienced by the quadcopter in the body-fixed frame, Λ = diag([Λ1, Λ1, Λ2]) is the drag
+coefficient matrix, and Vw = [uw, vw, ww]T is the wind velocity in the inertial frame.
+In this work, the UAV operates under its full nonlinear dynamics, which are
+regulated by low-level proportional–integral–derivative (PID) controllers. A constant
+altitude reference (z) and a constant forward velocity reference (u) are provided to
+the controller, while the lateral velocity reference is constrained to v = 0. The pro-
+posed algorithm generates the yaw angular velocity command (r), enabling the UAV
+to adjust its heading for navigation and obstacle avoidance, while the PID controllers
+track the commanded references.
+The goal of this paper is to design a kinodynamically feasible online motion planning
+and control strategy that enables a UAV to safely navigate environments with both
+static and dynamic obstacles, using only sparse, low-cost range sensing.
+The main challenge arises from the severely limited sensing capabilities of the UAV. In
+particular, for simplicity and to match the experimental hardware configuration, the
+platform is equipped with only three low-cost rangefinder sensors measuring obstacle
+distances in the forward, left, and right directions. Unlike dense sensing modalities
+such as LiDAR, these sensors provide one-dimensional measurements along narrow
+beams with a maximum range of c meters, resulting in only three scalar observa-
+tions at each time step. This sparse sensing configuration leads to an extremely
+limited and fragmented perception of the environment, where obstacle boundaries are
+under-sampled and may appear as disconnected detections, significantly reducing the
+ability to reliably infer spatial structure and avoid collisions. In addition, to remain
+consistent with this sensing setup, we assume that no dynamic obstacles approach
+the UAV from behind.
+Figure 1 illustrates this setup, showing the drone equipped with three rangefinder
+sensors (forward, left, and right), represented by red lines. A notable limitation is
+highlighted: while the drone can detect the blue part of the ball as an obstacle, it
+fails to detect the box positioned in its blind spot. This constraint poses significant
+challenges for effective obstacle detection and navigation.
+7
+
+
+Fig. 1: Illustration of the setup: the drone is equipped with three rangefinder sensors
+(forward, left, and right), shown as red lines. The right sensor detects only the blue
+part of the ball as an obstacle, while all sensors fail to detect the box, as it is positioned
+in the drone’s blind spot.
+3 Online Motion Planning Algorithm
+This section provides a detailed description of the online motion planning algorithm.
+To address the problem defined in Section 2, a DRL approach is adopted. DRL is par-
+ticularly well-suited to the kinodynamic online motion planning problem in dynamic
+environments where handcrafted rules or classical planners may struggle with real-
+time decision-making under uncertainty. DRL enables the UAV to learn adaptive
+navigation strategies directly from interaction with the environment, handling high-
+dimensional state spaces without requiring an explicit model of the UAV’s dynamics
+or the environment.
+The proposed method relies on a model-free DRL framework to handle the prob-
+lem of incomplete and inaccurate modeling of the environment and obstacle dynamics.
+Among model-free methods, PPO was selected due to its favorable trade-off between
+performance and training stability. PPO maintains reliable updates through clipping
+mechanisms, making it particularly robust for continuous control problems and envi-
+ronments with noisy sensory input, conditions that reflect our UAV’s limited sensing
+capabilities. The PPO agent learns a navigation policy that maps behavior grid-based
+states, derived from low-cost range sensor inputs, to velocity commands, ensuring safe
+and efficient motion toward the goal. Further implementation details are provided in
+the following subsections.
+3.1 Behavior Grid Map Algorithm
+Building on the concept of using low-cost hardware with smart software, this paper
+tackles the challenge of detecting unknown obstacles using only three distance values
+(forward, left, and right) obtained from low-cost sensors. To address this limitation,
+a behavior grid map is introduced to determine the robot’s state at each time step t
+and keep a perception memory of the environment.
+8
+
+
+To ensure memory efficiency, at each time step t, a portion of the environment is
+represented as a grid map where each cell contains a probability value indicating the
+likelihood of an obstacle and/or a target. The robot is always located at the center
+of the grid, and the grid forms around it. The grid size is a fixed value based on the
+rangefinder’s capacity. The grid is updated at each time step according to the robot’s
+movements and sensor readings.
+The algorithm for generating the grid map consists of three parts: marking obsta-
+cles and the target, updating the grid, and extracting states. These three parts are
+described in detail below.
+Marking Obstacles and the Target
+In this section, the positions of the obstacles and the target are marked in the grid
+map based on the robot’s position and its heading angle.
+Consider the driving car perspective (see Figure 2), where the robot is located
+constantly at position
+
+0
+0
+
+in the grid map G ∈Rn×n, where n is the size of the
+grid in both dimensions. Let ψt be the robot’s heading angle at time step t. Let
+d(l)
+t , d(f)
+t
+, d(r)
+t
+be the distances measured by the robot’s rangefinder sensors to the
+closest left, forward, and right obstacles at time step t, respectively. Let d(ι)
+t
+be the
+distance between the robot and the target at time step t. Define the angles γ(l)
+t
+=
+ψt−¯ψ, γ(f)
+t
+= ψt, and γ(r)
+t
+= ψt+ ¯ψ as the angle between the robot’s direction and the
+left, forward, and right closet obstacles at time step t, respectively, and γ(ι)
+t
+as the angle
+between the robot’s direction and the target at time step t. With this setup, at each
+time step t the map G is constructed by including a Gaussian term N
+ 
+µi
+µj
+(k)
+t
+, σ2
+!
+with mean
+
+µi
+µj
+(k)
+t
+(k ∈{l, f, r, ι}) and variance σ2 at corresponding row and column
+indices of G according with the distance measured by the robot’s rangefinder sensors
+to the obstacles or target. The grid map G is initialized with all cell values set to 0,
+and it is updated for each time step t based on Algorithm 1.
+Algorithm 1 constructs the behavior grid map by projecting rangefinder measure-
+ments from the robot’s local frame into a grid aligned with the robot’s heading. For
+each detected obstacle and the target, a Gaussian distribution with mean
+
+µi
+µj
+(k)
+t
+and
+variance σ2 is generated and mapped onto the grid. This distribution illustrates the
+probability of the presence of obstacles and the target. Figure 3 shows this distribution.
+The function F(·, ·) is a cell-wise aggregation operator that maps the current grid
+state and newly available sensory information to an updated grid representation. Its
+first argument is the existing grid map Gt, and its second argument is a Gaussian
+distribution N
+
+µi
+µj
+
+, σ2
+
+centered at the projected location of a detected obstacle
+or target. The operator F acts element-wise over the grid and can be instantiated, for
+9
+
+
+Fig. 2: Driving car perspective of the grid map G.
+Algorithm 1 Construction of the Behavior Grid Map at Time Step t
+1: Inputs: Grid size n, scaling factor f, robot heading ψt, variance σ2, sensor distances
+d(k)
+t
+, sensor angles γ(k)
+t
+, k ∈{l (left), f (front), r (right), ι (target)}
+2: Output: Behavior grid map Gt ∈Rn×n at time step t
+3: Define rotation matrix R(−ψt) =
+cos(−ψt) −sin(−ψt)
+sin(−ψt)
+cos(−ψt)
+
+4: for each k ∈{l, f, r, ι} do
+5:
+Compute rotated position
+Gx
+Gy
+(k)
+t
+= R(−ψt)
+"
+d(k)
+t
+cos(γ(k)
+t
+)
+d(k)
+t
+sin(γ(k)
+t
+)
+#
+6:
+Compute grid indices
+µi
+µj
+(k)
+t
+=
+$
+f
+Gx
+Gy
+(k)
+t
+%
+7:
+if k ∈{l, f, r} and 0 ≤µi, µj ≤n then
+8:
+Add a positive Gaussian distribution centered at
+µi
+µj
+(k)
+t
+with variance σ2 Gt ←
+F(Gt, N
+ µi
+µj
+(k)
+t
+, σ2
+!
+) ▷F is a general cell-wise function that, for example, can be the
+maximum operator.
+9:
+end if
+10:
+if k = ι and 0 ≤µi, µj ≤n then
+11:
+Add a negative Gaussian distribution centered at
+µi
+µj
+(k)
+t
+with variance σ2 Gt ←
+F(Gt, −N
+ µi
+µj
+(k)
+t
+, σ2
+!
+)
+12:
+end if
+13: end for
+14: return Gt
+10
+
+
+Fig. 3: The red arrow indicates the robot’s direction. A normal distribution with mean
+µ =
+
+µi
+µj
+(f)
+t
+at the location of the obstacle and variance σ2 is formed, representing its
+presence.
+example, as a maximum operator, i.e., F(a, b) = max(a, b), which preserves the highest
+activation at each cell and reinforces obstacle regions in the map.
+To distinguish between obstacles and the target, negative values are assigned to
+cells representing the target, while positive values are assigned to cells representing
+obstacles. If we consider G as a landscape, obstacles appear as ’hills’ and the target
+as a ’valley,’ guiding the robot to avoid the hills and move toward the valley.
+Updating the Grid Map
+To account for the robot’s positional changes, the values in the grid map G must be
+updated accordingly. The detailed steps are outlined in Algorithm 2.
+Algorithm 2 Grid Map Updating
+1: Inputs: Grid map Gt ∈Rn×n at time step t.
+2: Create a temporary grid map G ∈Rn×n, initializing its all cell values to 0.
+3: for each cell G(i,j)
+t
+in Gt do
+4:
+Compute G(i,j)
+t+1 using G(i,j)
+t
+in Equation (2).
+5:
+G(i,j)
+t
+←ρG(i,j)
+t+1 ▷Update the corresponding cell value of G, denoted by G(i,j)
+t
+, with
+forgetting factor ρ
+6: end for
+7: G ←G
+8: return G
+Each
+cell
+in
+G,
+represented
+by
+G(i,j)
+t
+at
+time
+step
+t,
+is
+first
+trans-
+formed into a standard perspective at time step t using the rotation matrix
+11
+
+
+R(ψt)
+=
+
+cos (ψt) −sin (ψt)
+sin (ψt)
+cos (ψt)
+
+where ψt is the robot’s heading angle at time step
+t and i and j are the corresponding column and row numbers of G. The cells after
+transformation are denoted as ¯G(i,j)
+t
+that is given by
+¯G(i,j)
+t
+= R(ψt)G(i,j)
+t
+,
+∀{i, j} ∈Z,
+0 ≤i, j ≤n.
+Let ∆xt and ∆yt represent the changes in the robot’s x- and y-positions at time
+step t, respectively:
+∆xt = xt −xt−1,
+∆yt = yt −yt−1,
+where xt, yt are the robot’s current positions at time step t, and xt−1, yt−1 are its
+positions at the previous time step.
+By multiplying the scaling factor f by these changes, the changes in the grid map
+G’s column and row at time step t, denoted as
+
+∆i
+∆j
+
+t
+, are obtained:
+
+∆i
+∆j
+
+t
+=
+
+f
+
+∆xt
+∆yt
+
+.
+The transformed cell values of G in the standard perspective at time step t + 1,
+denoted as ¯G(i,j)
+t+1 , is:
+¯G(i,j)
+t+1 = ¯G(i,j)
+t
+−
+
+∆i
+∆j
+
+t
+,
+∀{i, j} ∈Z
+0 ≤i, j ≤n,
+where ¯G(i,j)
+t
+is each cell of the ¯Gt at time step t. Next, ¯Gt+1 must be transferred back
+to the driving car perspective. To achieve this, the coordinates are rotated using the
+rotation matrix R(−ψt) =
+
+cos (−ψt) −sin (−ψt)
+sin (−ψt)
+cos (−ψt)
+
+.
+Each cell in G is associated with a forgetting factor ρ ∈(0, 1), which determines
+how the probability in each cell decreases over time as G updates. G(i,j)
+t+1 is represented
+the cell values in the grid map G for the next time step t + 1.
+Proposition 1. Let Gt ∈Rn×n denote the robot-centered grid map at time t, and let
+∆xt, ∆yt and ψt represent the translational and rotational motion of the UAV between
+time steps t and t + 1. Then, the grid update rule
+G(i,j)
+t+1 = ρ
+
+R(−ψt) ¯Gt+1
+(i,j) ,
+∀(i, j) ∈{0, . . . , n}2,
+(2)
+correctly represents the evolution of the environment in the robot-centered frame,
+where ¯Gt+1 is obtained by expressing Gt in the world-aligned frame and applying the
+translational shift induced by (∆xt, ∆yt), and ρ ∈(0, 1) is an element-wise forgetting
+factor.
+12
+
+
+Proof We show that the update rule preserves a consistent robot-centered representation of
+the environment under the UAV motion.
+Consider a grid map Gt expressed in the robot-centered frame at time t. By construction,
+the robot is located at the center of the grid, and all obstacle information is encoded relative
+to this reference.
+The update process consists of three transformations. First, the grid map Gt is rotated
+by R(ψt) to align it with a world-aligned frame. This removes the dependence on the robot’s
+heading and allows subsequent positional changes to be applied in a common reference frame.
+Second, the translational motion of the UAV between time steps t −1 and t, given
+by (∆xt, ∆yt), is mapped to discrete grid shifts
+∆i
+∆j
+
+t
+. Applying this shift to the rotated
+grid translates all cells in the opposite direction of the robot’s motion. This operation is
+equivalent to keeping the robot fixed at the grid origin while updating the relative positions
+of environmental features.
+Third, the shifted grid is rotated back to the robot-centered frame using R(−ψt), restoring
+the representation relative to the current UAV heading. Finally, the forgetting factor ρ ∈(0, 1)
+is applied element-wise to model temporal decay of outdated information.
+These transformations collectively ensure that the relative positions of obstacles with
+respect to the UAV are updated consistently across time steps. Therefore, the update rule
+in Equation (2) correctly computes Gt+1 from Gt, preserving a coherent robot-centered
+representation of the environment.
+□
+Proposition 2. The grid map G is resilient to noise in the sense that if any cell of
+G deviates from zero due to noise, its value will converge to zero over time, provided
+that the robot detects no obstacles or targets in that cell and the forgetting factor ρ
+lies within the interval (0, 1).
+Proof If the robot detects an obstacle or a target, some cells in G will have values different
+from zero. When no obstacles or targets are detected, at each time step, the value of G is
+multiplied by the forgetting factor ρ ∈(0, 1), ensuring that each cell value gradually converges
+to zero (see Equation 2). Convergence to zero implies that any detection noise is progressively
+eliminated over time.
+□
+Another advantage of the forgetting factor ρ ∈(0, 1) is that even when two obsta-
+cles are closely spaced and their Gaussian responses partially overlap, this does not
+lead to a permanently impassable region. Since the grid map encodes probabilistic
+occupancy rather than binary obstacles, overlapping Gaussian distributions represent
+increased uncertainty instead of absolute blockage. Moreover, in the absence of per-
+sistent detections, the forgetting factor causes these elevated cell values to decay over
+time, preventing false gap closure and enabling the policy to explore and traverse
+feasible passages.
+Extracting States
+The information from G will be used as states in the DRL. Following the methodologies
+in [54], to reduce memory usage, G is down-scaled to a smaller map g using block
+reduction with the mean function and then flattened. An example of grid map G and
+down-scaled grid map g is depicted in Figure 4.
+13
+
+
+Fig. 4: An example of grid map G (left) and down-scaled grid map g (right).
+Figure 5 illustrates several steps along an example path taken by the drone, with
+their corresponding behavior grid map. Each subfigure shows the environment on the
+left; the behavior grid map, which represents the drone’s internal state, in the middle;
+and the down-scaled behavior grid map on the right. The steps shown are selected
+from the entire trajectory but are not necessarily consecutive time steps; for example,
+the first figure corresponds to time step zero, while the next may correspond to later
+steps. In each environment image (left side), the red dot represents the start point,
+gray circles indicate dynamic obstacles, gray lines indicate static obstacles, the blue
+line shows the path traversed from the start to the current position, and the drone
+is marked by a black cross with a colored arrow indicating its orientation. The red
+arrow denotes the drone’s direction in the behavior grid map and the down-scaled
+behavior grid map. The circular obstacles are moving, directly influencing the shape
+of the generated path.
+3.2 Proximal Policy Optimization (PPO)
+The PPO algorithm with fixed-length trajectory segments is presented in Algorithm 3.
+In each iteration, each of the N parallel actors collects T timesteps of data. Using N
+parallel actors serves two purposes: first, it accelerates experience collection, reducing
+overall training time by a factor proportional to N. Second, it gathers diverse trajec-
+tories from different environmental states, breaking data correlation and stabilizing
+policy training. The collected transitions < st, at, rt, st+1 >, where t is the timestep
+index, st is the state, at is the action taken, rt is the received reward, and st+1 is the
+next state, are stored in trajectory memory and used to compute advantage estimates
+ˆAt using Generalized Advantage Estimation (GAE) with discount factor Γ and GAE
+parameter λ, which controls the trade-off between bias and variance in the advantage
+estimates.
+14
+
+
+Fig. 5: Selected path steps showing an example of a UAV’s environment (left)
+and behavior grid map (right) during navigation. The circular obstacles are moving,
+directly influencing the shape of the generated path.
+15
+
+
+The surrogate loss is then formulated based on these NT timesteps and optimized
+over K epochs using the ADAM optimizer. In each epoch, the data is randomly shuffled
+and divided into minibatches of size M, where each minibatch is used to perform
+a policy update step by minimizing the clipped surrogate loss function. The value
+function is updated simultaneously by minimizing the squared error between predicted
+and target values.
+In this algorithm, the surrogate loss Lt(θ) at timestep t as a function of the
+parameter θ is defined as
+Lt(θ) = ˆEt
+
+LCLIP
+t
+(θ) −ζ1LVF
+t
+(θ) + ζ2S[πθ](st)
+
+,
+where ζ1 and ζ2 are coefficients, ˆEt [. . . ] denotes the empirical average over a finite
+batch of samples, S represents an entropy bonus, πθ is a stochastic policy with
+parameter θ, and LVF
+t
+(θ) is a squared-error loss calculated according to
+LVF
+t
+(θ) =
+ Vθ(st) −V target
+t
+2
+where Vθ(st) is predicted value of state st and V target
+t
+is a target value for the state-
+value function. Clipped surrogate loss, LCLIP
+t
+, is given by
+LCLIP
+t
+(θ) = ˆEt
+h
+min
+ rt(θ) ˆAt, clip(rt(θ), 1 −ϵ, 1 + ϵ) ˆAt
+i
+,
+where ϵ = 0.2 is a hyperparameter, rt(θ) =
+πθ(at|st)
+πθold(at|st) is the probability ratio, πθ(at|st)
+is the probability of taking action at in state st according to the current policy with
+parameters θ, πθold(at|st) is the probability of taking action at in state st according
+to the old policy with parameters θold, at is the action at timestep t, clip(·)1 denotes
+the clipping operator, and ˆAt is an estimator of the advantage function at timestep t,
+computed as
+ˆAt = δt + (Γλ)δt+1 + · · · + (Γλ)T −t+1δT −1,
+where t specifies the time index in [0, T] within a given length-T trajectory segment, Γ
+is the discount factor, λ is the Generalized Advantage Estimation (GAE) parameter,
+and δt is computed according to
+δt = rt + ΓV (st+1) −V (st),
+where rt is the reward received at timestep t, V (st+1) is the learned state-value
+function’s prediction for the value of the next state st+1, and V (st) is the learned
+state-value function’s prediction for the value of the current state st [30].
+Proposition 3. The per-iteration computational complexity of the proposed frame-
+work, consisting of behavior grid map construction, grid map updating, and policy
+1The function clip(x, a, b) limits x to the interval [a, b], i.e., clip(x, a, b) = min(max(x, a), b).
+16
+
+
+Algorithm 3 Proximal Policy Optimization with Clipped Surrogate Objective and
+GAE [30]
+for iteration = 1, 2, ... do
+for actor = 1, 2, ..., N do
+Run policy πθold in environment for T timesteps
+Compute advantage estimates ˆA1, ..., ˆAT
+end for
+Optimize surrogate L w.r.t. θ, with K epochs and minibatch size M ≤NT
+θold ←θ
+end for
+optimization using PPO, is given by
+O
+
+NT (Cenv + Cgrid) + K NT
+M Cnet
+
+,
+where N is the number of parallel actors, T is the rollout horizon, K is the number of
+PPO optimization epochs, and M is the minibatch size. Here, Cenv denotes the cost of
+one environment step, Cgrid denotes the cost of grid map construction and updating
+per time step, and Cnet denotes the cost of forward and backward passes through the
+policy and value networks.
+Proof During each PPO iteration, data collection is performed by running N actors for T
+time steps, resulting in NT environment interactions. For each time step, the behavior grid
+map is constructed using Algorithm 1, which involves a constant number of obstacle and
+target updates (k ∈{l, f, r, ι}). Each update consists of fixed-size matrix operations and
+Gaussian evaluations over the grid, yielding a per-step cost denoted by Cgrid.
+Subsequently, the grid map is updated using Algorithm 2, which processes each cell of the
+n × n grid once. Since the grid size is fixed throughout training, this operation contributes a
+constant cost per time step and is absorbed into Cgrid.
+Therefore, the total cost of data collection and grid processing per iteration scales as
+O
+ NT(Cenv + Cgrid)
+
+.
+Following data collection, policy optimization is carried out using Algorithm 3. The sur-
+rogate objective is optimized for K epochs over minibatches of size M, resulting in K · NT
+M
+gradient updates. Each update involves forward and backward passes through the policy
+and value networks, incurring a cost of Cnet per update. This yields an optimization cost of
+O
+
+K · NT
+M · Cnet
+
+.
+Combining the costs of data collection, grid map processing, and policy optimization
+yields the stated per-iteration computational complexity.
+□
+3.3 Application PPO for Drone Online Motion Planning
+This section details the use of the PPO for drone online motion planning. The three
+key components of the PPO algorithm are actions, states, and rewards, which will be
+discussed in the following sections.
+17
+
+
+Actions
+Based on Section 2, the robot follows the defined UAV dynamics with a constant
+velocity in the x-direction. Consequently, the control input is defined in terms of the
+angular velocity r. The action space is defined as a continuous interval of admissible
+angular velocities, A = [rmin, rmax], where rmin and rmax represent the lower and upper
+bounds of the angular velocity commands (in radians per second).
+States
+At each time step t, the grid G shifts according to Algorithm 2. Then, the positions
+of the obstacles and the target are marked following Algorithm 1. Finally, the states
+are extracted from the behavior grid map. Additionally, the state vector incorporates
+four additional parameters to know the agent’s global awareness. These include the
+Euclidean distance between the robot and the target, denoted as ℓ(t), and the absolute
+angular difference between the robot’s heading and the target, denoted as Ψ(t), both
+of which are scaled to the range [0, 1]. To accelerate the training process and provide
+the model with temporal context, the values from the previous time step, ℓ(t −1) and
+Ψ(t−1), are also included. The PPO states are thus composed of the extracted states
+that define the grid map along with these four parameters.
+Two PPO versions are implemented in this work. The primary framework is a
+PPO-based navigation system that incorporates the proposed behavior grid map rep-
+resentation as part of the state space. To evaluate the contribution of the grid map,
+a second PPO version is also implemented for comparison, where the grid map is
+excluded from the state representation. In this comparison version, the state vector
+consists of the four global parameters together with six parameters derived from range
+sensor measurements. These measurements provide obstacle distances in the left, right,
+and front directions at both the current time step (t) and the previous time step (t−1),
+thereby preserving temporal consistency in the state representation.
+Rewards
+The reward function at time step t is defined as
+R(t) =
+
+
+
+
+
++ ¯R,
+if the robot reaches the target,
+−¯R,
+if the robot exits the workspace or collides,
+c1νdist + c2νangle + c3F(t),
+otherwise,
+where R(t) ∈[−¯R, ¯R], and the coefficients satisfy c1, c2, c3 ≥0 with c1+c2+c3 = 1. The
+reward function is designed to promote progress toward the target while maintaining
+safe navigation. The distance component penalizes lack of progress:
+νdist =
+(
+0,
+if ℓ(t −1) −ℓ(t) > 0,
+−1,
+otherwise,
+18
+
+
+where ℓ(t) denotes the Euclidean distance to the target. The heading component
+penalizes angular misalignment:
+νangle = −|Ψ(t)|,
+where Ψ(t) is the angular deviation between the UAV heading and the target direction.
+The grid-based component F(t) encodes proximity to the target and obstacles through
+the behavior grid map G. If the target lies within the local grid representation, i.e.,
+min(G) < 0, then
+F(t) = 1 −ℓ(t),
+which encourages convergence to the target. Otherwise,
+F(t) = −max(G)
+ 1 −dobs
+
+,
+which penalizes proximity to obstacles. Here, dobs ∈[0, 1] denotes the normalized
+distance to the nearest obstacle inferred from G.
+In the PPO variant without the grid representation, the reward function is sim-
+plified by removing the grid-based term c3F(t). In this case, the agent relies solely
+on νdist and νangle for navigation, while the terminal rewards for goal reaching and
+collisions remain unchanged.
+3.4 Proposed Architecture for UAV Online Motion Planning
+The proposed architecture for UAV online motion planning combines the behavior
+grid map algorithm, PPO with actor-critic neural networks, and a PID controller. The
+input to the PPO model consists of the extracted states, which include outputs from
+the behavior grid map algorithm, as well as ℓand Ψ. The actor neural network then
+outputs the desired angular velocity r. The desired velocities are u = constant, v = 0,
+w = 0, and r. These desired velocities are subsequently passed as inputs to the PID
+controller. The complete architecture is illustrated in Figure 6.
+Remark. The proposed framework naturally extends to configurations with addi-
+tional sensors without requiring architectural modifications. Each additional sensor
+contributes supplementary obstacle information to the behavior grid map, improving
+spatial coverage, reducing perception blind spots, and enhancing obstacle avoidance
+capability under sparse sensing conditions.
+Enhanced Perception Method
+This section explains the enhanced perception method. The robot is equipped with
+three range finder sensors positioned in different directions, which limit its perception
+of the environment. To compensate for this limitation, the robot is encouraged to
+perform an S-shaped motion that is generated by periodically changing the robot’s
+heading, allowing the sensors to scan a wider portion of the surrounding environment
+than would be possible during straight-line motion. When the action value produced
+by the policy is close to zero, a sinusoidal yaw motion is imposed on the robot. The
+yaw angle ψ is set to ψ = A sin(ωt), where A represents the amplitude of the yaw
+19
+
+
+Fig. 6: The proposed UAV online motion planning architecture integrates a behavior
+grid map algorithm, PPO with actor-critic neural networks, and a PID controller.
+Extracted states, including outputs from the behavior grid map and parameters ℓand
+Ψ, serve as inputs to the PPO model. The actor-network outputs the desired angular
+velocity r, and the desired linear velocities are set as u = constant, v = 0, and w = 0.
+These desired velocities are then fed into the PID controller.
+oscillation, ω is the angular frequency, and t denotes the current time. The angular
+velocity r = ˙ψ = Aω cos(ωt) and the maximum magnitude of the angular velocity is
+bounded by Aω ≤rmax.
+With this strategy, energy consumption increases, but the resulting path is safer.
+The user can choose between the proposed standard method, which conserves energy,
+and the enhanced method, which prioritizes safety. The parameters A and ω con-
+trol the intensity of the S-shape movement and therefore affect the trade-off between
+safety and energy efficiency. Small values produce limited exploration benefits, while
+excessively large values increase path oscillation.
+4 Results and Discussion
+This section evaluates the proposed DRL-based online motion-planning framework
+through extensive simulation experiments and preliminary real-world validation with
+a Crazyflie 2.1 UAV. This section includes: (1) detailed ablation studies on the pro-
+posed grid-map representation and reward formulation, (2) evaluation under multiple
+20
+
+
+environment sizes and congestion levels, (3) comparison against multiple baselines,
+including PPO-only, PPO with S-shape movement, MPC, and two variants of the
+proposed framework, (4) battery consumption comparison between standard and
+enhanced methods, (5) computational efficiency and deployment feasibility, and (6)
+real-world deployment results.
+4.1 Simulation Setup
+The training is performed on a PC running Ubuntu 24.04 LTS with 16 GB RAM and
+an Intel Core i7 CPU. We conducted the simulations on a CPU, while a GPU was used
+for the real-world experiments. The main simulation and PPO training parameters
+are summarized in Table 3.
+To improve training stability and convergence, several optimization strategies
+were employed, including reward normalization, state normalization, orthogonal
+initialization, learning-rate decay, and gradient clipping.
+The UAV used in the simulation is a Crazyflie 2.1 drone, which implements the
+dynamics in Equation 1, and the simulation was conducted using Webots 2024a2,
+a professional open-source robot simulator. The Webots simulation setup, featuring
+static and dynamic obstacles, the Crazyflie drone, and a rubber duck as the target
+area, is shown in Figure 7.
+Figure 8 illustrates the comparison between the actual and desired angular veloc-
+ities (r) for an example. The results demonstrate that the actual angular velocity
+closely follows the desired one, indicating effective control of the drone.
+4.2 PPO Training Analysis
+Figure 9 tracks the evolution of the PPO agent over 100,000 steps. The training
+dynamics are defined by four key metrics:
+Value Loss: Measures the error in the critic’s reward predictions. The graph shows
+a sharp initial drop followed by a steady decline, indicating the agent is learning to
+accurately value its environment.
+Policy Gradient Loss: Represents the direction and magnitude of policy updates. It
+trends downward into negative territory, signifying the reinforcement of advantageous
+actions.
+Entropy: Quantifies the randomness of actions. The upward-sloping curve indicates
+a transition from high exploration (randomness) to exploitation (certainty).
+Total Loss: The weighted summation of all objectives. Its V-shaped trajectory
+highlights the overall optimization progress.
+The training reaches its near peak efficiency at the red dashed line (step 55,296).
+At this intersection, the Value Loss and Total Loss reach their near-lowest local points,
+while the Policy Gradient Loss achieves its near maximum stability.
+The shaded red region marks post-selection degradation. In this phase, the value
+loss begins to climb, and the policy gradient loss becomes volatile, suggesting the
+model is either overfitting to recent data or experiencing catastrophic forgetting. By
+2https://cyberbotics.com
+21
+
+
+Table 3: Simulation and PPO Training Parameters
+Parameter
+Value
+Simulation Setup
+Simulation platform
+Webots 2024a
+Simulation area
+20 × 20 meters
+Number of obstacles
+16 cylinders
+Radius of cylinder
+0.2 meters
+Radius of target area
+0.1 meters
+UAV model
+Crazyflie 2.1
+UAV flight altitude
+Constant (0.3 meters)
+Max episode length
+512 steps
+Drone’s Velocity in x direction (Robot Frame)
+0.5 m/s
+PC specifications
+16 GB RAM, Intel Core i7 CPU
+PPO Training Parameters
+Total training steps
+55,296
+Evaluation frequency
+every 10,000 steps
+Batch size
+2048
+Mini-batch size
+64
+Actor learning rate (lra)
+0.0003
+Critic learning rate (lrc)
+0.0003
+Discount factor (Γ)
+0.99
+GAE lambda (λ)
+0.95
+Clipping parameter (ϵ)
+0.2
+PPO epochs per update (Kepochs)
+10
+Hidden layer width
+64
+Number of Hidden layers
+2
+Activation Function
+Hyperbolic tangent (tanh)
+Entropy coefficient
+0.01
+State dimension
+68
+Advantage normalization
+Enabled
+State normalization
+Enabled
+Reward normalization
+Enabled
+Learning rate decay
+Enabled
+Gradient clipping
+Enabled
+Orthogonal initialization
+Enabled
+rmin
+-1 rad/s
+rmax
+1 rad/s
+selecting the checkpoint at the point of lowest loss, we ensure the best balance between
+learned behavior and generalizability.
+4.3 Evaluation Metrics
+To provide a comprehensive evaluation of navigation quality, computational efficiency,
+and safety, the following metrics are used.
+22
+
+
+Fig. 7: A different perspective of one scene of the Webots simulation setup, featuring
+static and dynamic obstacles, the Crazyflie drone, and a rubber duck as the target
+area.
+Success Rate represents the percentage of episodes in which the UAV reaches
+the target region without collision.
+Path Length the total traveled distance from the initial position to the target.
+It is computed by accumulating Euclidean distances between consecutive trajectory
+points.
+Trajectory Smoothness evaluates directional consistency along the generated
+path. It is defined as the cumulative heading-angle variation between consecutive
+trajectory segments:
+Smoothness =
+n−1
+X
+i=2
+arccos
+⃗vi,1 ·⃗vi,2
+∥⃗vi,1∥∥⃗vi,2∥
+ ,
+where⃗vi,1 and⃗vi,2 denote consecutive motion vectors.
+Lower smoothness values correspond to smoother and more dynamically feasible
+trajectories.
+23
+
+
+Fig. 8: Comparison between the actual and desired angular velocities (r).
+(a) Entropy loss
+(b) Policy gradient loss
+(c) Value function loss
+(d) Total combined loss
+Fig. 9: PPO training metrics over 100,000 steps. The red dashed line at step 55,296
+indicates the selected model checkpoint, before which all metrics demonstrate sta-
+ble convergence. The shaded region highlights post-selection degradation in training
+dynamics.
+Average Clearance measures the mean minimum distance between the UAV and
+nearby obstacles throughout the trajectory:
+AC =
+Pn
+i=1 min (∥⃗pi −⃗oj∥for all⃗oj ∈O)
+n
+,
+24
+
+
+where⃗pi is the position of the robot at the i-th step,⃗oj is the position of the j-th
+obstacle, O denotes the set of all obstacles, n is the total number of trajectory points,
+and AC is the Average Clearance.
+Higher clearance values indicate safer navigation behavior.
+Average Planning Time Per Step measures the average computational time
+required to generate one planning action during online navigation. It reflects the real-
+time capability of the proposed framework.
+4.4 Ablation Study for Grid Map
+One of the main contributions of the proposed framework is the dynamic grid-map
+representation used to encode obstacle information for the DRL policy. To analyze
+the influence of individual design choices, multiple ablation studies were conducted
+on the Gaussian spread parameter, forgetting factor, coverage area, grid resolution,
+reduction size, and reduction operator. The tests were conducted in a 20 × 20 m2
+environment under moderate obstacle density conditions. Details of the environment
+setup and testing methodology are provided in a subsequent subsection.
+Effect of Gaussian Spread Parameter: Table 4 evaluates different Gaussian
+spread values (σ). Small values produce highly localized obstacle representations, while
+large values overly diffuse obstacle information across the map.
+The results show that σ = 16 achieves the best overall performance with a success
+rate of 90%. When σ = 2, obstacle influence becomes excessively sparse, reducing envi-
+ronmental awareness and leading to lower success rates. Conversely, σ = 64 produces
+less informative occupancy distributions, degrading navigation performance values.
+These results indicate that moderate obstacle diffusion provides the best balance
+between obstacle awareness and motion flexibility.
+Table 4: Ablation Study on Gaussian Spread (σ) in Grid Map
+σ
+Success
+Rate (%)
+Avg.
+Plan
+Time
+per
+Step (ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg. Smoothness
+2
+77
+80.77
+9.30 ± 1.06
+1.78 ± 0.36
+3.00 ± 1.06
+16
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+64
+81
+84.24
+9.70 ± 1.38
+1.79 ± 0.35
+4.91 ± 2.48
+Effect of Forgetting Factor: Table 5 analyzes the temporal forgetting factor ρ,
+which determines how quickly previous obstacle observations decay.
+A small forgetting factor (ρ = 0.1) rapidly removes obstacle history, reducing
+temporal consistency and lowering success rates. Increasing ρ improves navigation
+robustness by preserving obstacle motion information across time steps. The highest
+success rate is obtained using ρ = 0.95, demonstrating the importance of temporal
+memory in dynamic environments.
+Effect of Grid Coverage Area: Table 6 evaluates different spatial coverage
+areas centered around the UAV.
+25
+
+
+Table 5: Ablation Study on Forgetting Factor (ρ)
+ρ
+Success
+Rate (%)
+Avg.
+Plan
+Time
+per
+Step (ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg. Smoothness
+0.1
+77
+80.92
+9.39 ± 1.07
+1.78 ± 0.35
+3.65 ± 1.59
+0.5
+82
+81.04
+9.51 ± 1.16
+1.76 ± 0.36
+4.07 ± 2.17
+0.95
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+A small coverage area (1 × 1 m2) limits environmental awareness and reduces
+obstacle anticipation capability. In contrast, a large area (4×4 m2) introduces excessive
+irrelevant information, increasing trajectory oscillations and reducing success rate. The
+intermediate coverage size (2 × 2 m2) provides the best trade-off between local detail
+and global awareness.
+Table 6: Ablation Study on Grid Coverage Area Around Robot
+Grid
+Cover-
+age Area
+(m2)
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg. Smoothness
+1 × 1
+82
+80.45
+9.37 ± 1.09
+1.75 ± 0.37
+3.42 ± 1.44
+2 × 2
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+4 × 4
+76
+81.16
+9.47 ± 1.19
+1.81 ± 0.31
+5.70 ± 2.22
+Effect of Grid Resolution: The influence of grid resolution is analyzed in
+Table 7. Increasing the grid size from 32 × 32 to 128 × 128 significantly improves
+success rate due to richer spatial encoding. However, further increasing the resolu-
+tion to 256×256 provides only marginal performance improvement while dramatically
+increasing computational cost from 77.77 ms to 193.03 ms per planning step.
+Therefore, the 128 × 128 resolution was selected as the best compromise between
+accuracy and computational efficiency.
+Table 7: Ablation Study on Grid Resolution
+Grid Size
+σ
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg.
+Smooth-
+ness
+32 × 32
+4
+81
+42.53
+9.47 ± 1.19
+1.75 ± 0.37
+3.83 ± 2.19
+128 × 128
+16
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+256 × 256
+32
+91
+193.03
+9.58 ± 1.11
+1.75 ± 0.35
+5.87 ± 2.25
+26
+
+
+Effect of Down-Scaled Grid Map Size: Table 8 evaluates different down-scaled
+grid map sizes resulting from feature compression.
+A small down-scaled grid map size (4 × 4) oversimplifies obstacle information and
+results in unstable trajectories with high smoothness values. Conversely, a large down-
+scaled grid map size (16 × 16) preserves excessive local variations and significantly
+decreases the success rate to 67%. This performance drop occurs because the neural
+network structure is kept constant (consisting of 2 hidden layers with 64 nodes each)
+to strictly isolate the effects of the input size. For the 16 × 16 configuration, the
+input dimension is set to 260, which overwhelms the fixed capacity of the hidden
+layers and leads to severe underfitting or representation bottlenecks. The intermediate
+down-scaled grid map size (8 × 8) achieves the best overall navigation performance.
+Table 8: Ablation Study on Down-Scaled Grid Map Size
+Reduction
+Size
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg. Smoothness
+4 × 4
+84
+81.46
+9.60 ± 1.08
+1.75 ± 0.35
+10.87 ± 2.12
+8 × 8
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+16 × 16
+67
+81.76
+9.16 ± 0.96
+1.81 ± 0.34
+3.21 ± 1.58
+Effect of Reduction Operator: Table 9 compares mean-pooling and max-
+pooling reduction operators. Mean-pooling aggregates the feature representations by
+calculating the average value across a specified region, capturing the smooth, global
+context of the data. In contrast, max-pooling extracts only the maximum value within
+that region, effectively emphasizing the most prominent or dominant feature while
+discarding less intense signals.
+Mean pooling achieves a significantly higher success rate than max pooling because
+it preserves spatial occupancy distributions more effectively and produces smoother
+obstacle representations for the policy network.
+Overall, the ablation studies confirm that the proposed grid-map formulation is
+highly sensitive to representation design choices. The selected configuration achieves
+the best balance among success rate, safety, trajectory quality, and computational
+efficiency.
+4.5 Ablation Study for Reward Function Coefficients
+The reward function combines three objectives: target reaching, heading alignment,
+and obstacle-awareness through the grid-map representation. Table 10 evaluates the
+impact of different coefficient combinations.
+When the grid-map coefficient dominates (c3 = 0.8), the UAV behaves conserva-
+tively, maintaining larger obstacle distances but producing longer trajectories. When
+27
+
+
+Table 9: Ablation Study on Grid Reduction Operator
+Operator
+(F)
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg. Smoothness
+Max
+81
+80.49
+9.57 ± 1.17
+1.77 ± 0.36
+4.63 ± 2.65
+Mean
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+the heading term dominates (c2 = 0.8), the UAV prioritizes directional consistency but
+becomes less reactive to obstacles, reducing success rate. Similarly, excessive empha-
+sis on goal reaching (c1 = 0.8) encourages aggressive motion toward the target and
+increases collision probability.
+The balanced configuration (c1, c2, c3) = (0.33, 0.33, 0.33) achieves the highest suc-
+cess rate, demonstrating that stable navigation requires simultaneous consideration of
+target progress, trajectory consistency, and obstacle avoidance.
+Table 10: Ablation Study on Reward Function Coefficients (Goal Weight (c1), Head-
+ing Weight (c2), and Grid Map Weight (c3))
+c1
+c2
+c3
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg.
+Smooth-
+ness
+0.1
+0.1
+0.8
+90
+76.39
+10.02 ± 1.03
+1.82 ± 0.43
+5.68 ± 2.39
+0.1
+0.8
+0.1
+66
+79.30
+9.27 ± 0.99
+1.79 ± 0.35
+6.56 ± 2.41
+0.8
+0.1
+0.1
+84
+78.40
+9.50 ± 1.11
+1.76 ± 0.36
+3.49 ± 1.69
+0.33
+0.33
+0.33
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+4.6 Comparison Across Different Environments
+To evaluate scalability and robustness, the proposed framework was tested in envi-
+ronments with different dimensions and obstacle densities. Figure 10 illustrates the
+evaluation scenarios, while Table 11 summarizes their configurations.
+In these evaluation scenarios, the robot’s initial position is fixed at (0, 0) with
+a heading angle (yaw) of 0◦. The target positions are distributed along a square
+perimeter that completely encloses the obstacle field. By placing the targets outside
+the obstacle region, the testing framework forces the robot to navigate through a
+diverse set of obstacle configurations. The obstacles are randomly dispersed. This setup
+ensures comprehensive generality, allowing us to evaluate the robot’s decision-making
+behavior across a wide range of realistic scenarios.
+28
+
+
+Table 11: Test environments with increasing levels of congestion used for evaluation.
+Environment Size (m2)
+Scenario
+# Static Obstacles
+# Dynamic Obstacles
+5 × 5
+No obstacle
+0
+0
+Low
+1
+1
+Moderate
+2
+2
+High
+4
+4
+20 × 20
+No obstacle
+0
+0
+Low
+4
+4
+Moderate
+8
+8
+High
+16
+16
+For each individual test run, the drone takes off from the center start point and
+attempts to reach a single designated target location selected from the outer perime-
+ter shown in Figure 10. Although the figure displays the entire set of available target
+locations simultaneously for visualization purposes, only one unique target point is
+active during a given trial. The drone evaluates the environment by sequentially nav-
+igating toward each target location one by one. The final performance metrics are
+subsequently derived from the average results across all of these individual runs.
+Furthermore, while the initial placement and motion paths of both static and
+dynamic obstacles are generated randomly, their specific environmental layouts are
+kept strictly identical across all compared algorithms for a given test instance. This
+consistency ensures a fair evaluation, subjecting every method to the exact same spa-
+tial challenges and localized constraints. Additionally, to ensure a realistic kinematic
+challenge, the average velocity of the dynamic obstacles is set to approximately half
+of the drone’s maximum velocity.
+Two environment sizes were considered: small-scale environments (5 × 5 m2) and
+large-scale environments (20 × 20 m2).
+Each environment includes four congestion levels: no obstacle, low congestion,
+moderate congestion, and high congestion. The following methods were compared:
+• PPO-NoMap-NoSshape: PPO planner without the grid map and without
+S-shape movement.
+• PPO-NoMap-WithSshape: PPO planner without the grid map but with S-
+shape movement.
+• PPO-WithMap-NoSshape: proposed framework that is PPO planner with
+the grid map but without S-shape movement (standard).
+• PPO-WithMap-WithSshape: full proposed method that is PPO planner with
+the grid map and with S-shape movement (enhanced).
+• MPC: model predictive control baseline.
+Performance in Small-Scale Environments: Table 12 presents the results for
+the 5 × 5 m2 environments.
+In obstacle-free scenarios, all methods achieve 100% success rate. MPC produces
+the shortest and smoothest trajectories due to its deterministic optimization strategy.
+29
+
+
+(a) 5x5 No-Obstacle
+(b) 5x5 Low
+(c) 5x5 Moderate
+(d) 5x5 High
+(e) 20x20 No-Obstacle
+(f) 20x20 Low
+(g) 20x20 Moderate
+(h) 20x20 High
+Fig. 10: Test environments with increasing size and congestion levels. Subfigures (a)-
+(d) correspond to 5×5 m2 environments, while subfigures (e)-(h) correspond to 20×20
+m2 environments. Within each row, obstacle density increases from left to right. The
+blue cross denotes the drone’s start position, and the purple triangle indicates its initial
+heading direction. The filled green circle represents the target position. Gray filled
+circles denote static obstacles, whereas red filled circles denote dynamic obstacles. The
+orange line associated with each dynamic obstacle indicates its movement range.
+However, as obstacle density increases, the advantages of the proposed DRL-based
+framework become more evident.
+In highly congested environments, the PPO-WithMap-WithSshape method
+achieves the highest success rate (94%) due to the combined benefits of the grid map
+and S-shape movement, outperforming PPO-NoMap-NoSshape (79%), which lacks
+both enhancements; PPO-NoMap-WithSshape (81%), which benefits only from S-
+shape movement; PPO-WithMap-NoSshape (88%), which benefits only from the grid
+map; and MPC (90%), whose performance is limited by its reactive planning capa-
+bility in dense environments. This demonstrates the benefit of integrating dynamic
+grid-map information into the policy representation.
+Although MPC produces shorter trajectories and lower planning times in several
+scenarios, its performance degrades in dense dynamic environments due to limited
+long-term adaptability and sensitivity to obstacle motion uncertainty.
+Performance in Large-Scale Environments: Table 13 presents the results for
+the larger 20 × 20 m2 environments.
+The performance gap between methods becomes more pronounced as the envi-
+ronment scale and congestion increase. In highly congested large-scale environments,
+the PPO-WithMap-WithSshape method achieves an 83% success rate, outperform-
+ing PPO-NoMap-NoSshape (62%), PPO-NoGrid-WithSshape (62%), PPO-WithMap-
+NoSshape (79%), and MPC (71%).
+30
+
+
+Table 12: Performance Comparison Across Different Scenarios for 5 × 5 Environment
+Env
+Method
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clearance
+(m)
+Avg.
+Smooth-
+ness
+No obstacle
+PPO-NoMap-NoSshape
+100
+101.84 2.59 ± 0.48
+N/A
+4.01 ± 1.14
+PPO-NoMap-WithSshape
+100
+101.85 2.59 ± 0.48
+N/A
+4.02 ± 1.11
+PPO-WithMap-NoSshape
+100
+166.69 2.57 ± 0.48
+N/A
+2.34 ± 1.06
+PPO-WithMap-WithSshape 100
+166.30 2.57 ± 0.48
+N/A
+2.61 ± 1.02
+MPC
+100
+33.20 2.44 ± 0.32 N/A
+2.35 ± 1.07
+Low
+PPO-NoMap-NoSshape
+94
+102.05 2.57 ± 0.48
+1.66 ± 0.31 3.97 ± 1.15
+PPO-NoGrid-WithSshape
+93
+102.30 2.56 ± 0.48
+1.66 ± 0.31 3.98 ± 1.08
+PPO-WithMap-NoSshape
+99
+165.14 2.61 ± 0.54
+1.64 ± 0.31
+2.74 ± 1.60
+PPO-WithMap-WithSshape 98
+164.36 2.60 ± 0.52
+1.65 ± 0.31
+2.90 ± 1.44
+MPC
+98
+35.57 2.43 ± 0.33 1.66 ± 0.31 2.45 ± 1.23
+Moderate
+PPO-NoMap-NoSshape
+87
+100.35 2.62 ± 0.47
+1.20 ± 0.15
+4.01 ± 1.14
+PPO-NoGrid-WithSshape
+89
+100.66 2.61 ± 0.48
+1.19 ± 0.16
+4.02 ± 1.10
+PPO-WithMap-NoSshape
+94
+165.75 2.63 ± 0.50
+1.20 ± 0.14
+3.00 ± 1.43
+PPO-WithMap-WithSshape 96
+165.04 2.69 ± 0.57
+1.20 ± 0.14
+3.33 ± 1.48
+MPC
+91
+31.78 2.45 ± 0.31 1.26 ± 0.16 2.69 ± 1.24
+High
+PPO-NoMap-NoSshape
+79
+99.98
+2.64 ± 0.46
+1.10 ± 0.05
+4.39 ± 1.58
+PPO-NoGrid-WithSshape
+81
+100.77 2.62 ± 0.46
+1.10 ± 0.05
+4.25 ± 1.40
+PPO-WithMap-NoSshape
+88
+163.20 2.80 ± 0.78
+1.11 ± 0.07 3.79 ± 2.34
+PPO-WithMap-WithSshape 94
+158.62 2.97 ± 0.98
+1.10 ± 0.08
+4.24 ± 2.55
+MPC
+90
+74.49 2.50 ± 0.36 1.19 ± 0.06
+4.18 ± 2.59
+The results indicate that the proposed framework generalizes effectively to larger
+environments while maintaining robust obstacle avoidance capability. The inclusion
+of behavior grid map information significantly improves environmental awareness
+compared to PPO-only approaches.
+Figure 11 qualitatively compares generated trajectories. In challenging scenar-
+ios, PPO-based baselines frequently collide with obstacles. In contrast, our proposed
+methods,
+PPO-WithMap-NoSshape
+(standard)
+and
+PPO-WithMap-WithSshape
+(enhanced), successfully navigate around moving obstacles and reach the target.
+Overall, the experiments demonstrate that the proposed framework provides
+superior robustness and scalability in complex dynamic environments.
+4.7 Effect of S-shape Movement on Battery Consumption and
+Safety
+To analyze the effect of the proposed S-shape exploration behavior on navigation safety
+and energy consumption, additional experiments were conducted in high-congestion
+20 × 20 m2 environments using different values of the S-shape amplitude parameter
+(A) and angular frequency parameter (ω). These experiments evaluate the trade-off
+between navigation robustness and battery consumption introduced by the enhanced
+exploration strategy.
+31
+
+
+(a)
+(b)
+Fig. 11: Plot of the shape of the paths of different methods. a) PPO-WithMap-
+WithSshape (enhanced) and PPO-WithMap-NoSshape (standard) methods are
+achieved to the target, and other methods intersect with the obstacle. b) All methods
+could achieve the target except MPC.
+32
+
+
+Table 13: Performance Comparison Across Different Scenarios for 20 × 20 Environ-
+ment
+Env
+Method
+Success
+Rate
+(%)
+Avg.
+Plan
+Time
+per
+Step
+(ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clearance
+(m)
+Avg.
+Smooth-
+ness
+No obstacle
+PPO-NoMap-NoSshape
+100
+33.07 9.23 ± 1.04
+N/A
+12.17 ± 2.22
+PPO-NoMap-WithSshape
+100
+33.21
+9.22 ± 1.05
+N/A
+12.24 ± 1.94
+PPO-WithMap-NoSshape
+100
+80.58
+9.15 ± 1.07
+N/A
+2.74 ± 0.92
+PPO-WithMap-WithSshape 100
+80.20
+9.15 ± 1.06
+N/A
+5.67 ± 1.14
+MPC
+100
+35.79
+8.97 ± 1.00 N/A
+2.66 ± 1.18
+Low
+PPO-NoMap-NoSshape
+87
+33.19 9.11 ± 1.02
+3.07 ± 0.48
+12.21 ± 2.15
+PPO-NoMap-WithSshape
+88
+33.21
+9.13 ± 1.02
+3.09 ± 0.52 12.13 ± 1.91
+PPO-WithMap-NoSshape
+97
+79.27
+9.22 ± 1.25
+3.05 ± 0.49
+3.54 ± 1.80
+PPO-WithMap-WithSshape 97
+79.77
+9.25 ± 1.23
+3.04 ± 0.48
+6.17 ± 1.76
+MPC
+92
+34.55
+8.91 ± 0.97 3.06 ± 0.49
+2.97 ± 1.47
+Moderate
+PPO-NoMap-NoSshape
+75
+33.12
+9.29 ± 1.05
+1.76 ± 0.34 12.14 ± 2.02
+PPO-NoMap-WithSshape
+75
+32.68
+9.28 ± 1.06
+1.76 ± 0.34 12.25 ± 1.86
+PPO-WithMap-NoSshape
+90
+77.77
+9.37 ± 1.20
+1.70 ± 0.36
+4.51 ± 2.44
+PPO-WithMap-WithSshape 92
+79.03
+9.38 ± 1.12
+1.71 ± 0.34
+6.90 ± 2.08
+MPC
+80
+29.42 8.92 ± 0.95 1.71 ± 0.33
+3.04 ± 1.40
+High
+PPO-NoMap-NoSshape
+62
+33.42
+9.18 ± 0.98
+1.34 ± 0.27 12.07 ± 1.95
+PPO-NoMap-WithSshape
+62
+33.33 9.19 ± 0.99
+1.34 ± 0.27 12.24 ± 1.69
+PPO-WithMap-NoSshape
+79
+79.06
+9.41 ± 1.14
+1.29 ± 0.26
+5.78 ± 3.16
+PPO-WithMap-WithSshape 83
+79.69
+9.55 ± 1.29
+1.28 ± 0.26
+8.06 ± 2.83
+MPC
+71
+35.91
+8.95 ± 0.95 1.33 ± 0.25
+3.67 ± 1.90
+During the study of the amplitude parameter A, the angular frequency was
+fixed at ω = (0.8)2π. Similarly, during the study of ω, the amplitude was fixed at
+A = 0.5. These values were selected because they achieved the best overall navigation
+performance in terms of success rate and trajectory quality. The same parameter con-
+figuration (A = 0.5 and ω = (0.8)2π) was used in all previous experiments involving
+the enhanced method.
+Table 14 presents the influence of different amplitude values on navigation perfor-
+mance and battery consumption. To quantify the energy metrics, battery consumption
+is measured directly within the Webots simulation environment by enabling the robot’s
+built-in battery sensor API. The simulation tracks energy depletion in Joules by contin-
+uously aggregating the basal electrical power of the Crazyflie 2.1 electronics alongside
+the dynamic power drawn by the four main propellers as their rotational speeds fluc-
+tuate. The total consumption for each navigation trial is determined by calculating the
+absolute difference between the initial energy capacity at takeoff and the remaining
+energy recorded upon reaching the target destination. When A = 0, corresponding to
+the standard method without S-shape movement, the success rate reaches 80% with
+an average battery consumption of 397.53 J. Introducing a moderate S-shape motion
+with A = 0.5 improves the success rate to 86%, demonstrating that the additional
+lateral exploration enhances environmental awareness and obstacle avoidance capabil-
+ity in highly congested environments. However, this improvement comes with a slight
+33
+
+
+increase in battery consumption to 401.46 J and an increase in path smoothness values
+due to the oscillatory motion. Increasing the amplitude further to A = 1.0 decreases
+the success rate to 82% and produces less stable trajectories with excessive deviations
+from the direct path. These results indicate that overly aggressive lateral movements
+reduce navigation efficiency.
+Table 14: Average battery consumption and safety comparison for different A values
+in high-congestion 20 × 20 m2 environments.
+A
+Success
+Rate
+(%)
+Avg. Plan
+Time
+per
+Step (ms)
+Avg.
+Path
+Length (m)
+Avg. Clear-
+ance (m)
+Avg. Smoothness Avg.
+Battery
+Consumption (J)
+0
+80
+78.28
+9.74 ± 1.28
+1.30 ± 0.26
+6.14 ± 3.35
+397.53 ± 39.06
+0.5
+86
+78.08
+9.86 ± 1.41
+1.29 ± 0.26
+8.12 ± 3.02
+401.46 ± 42.96
+1.0
+82
+78.31
+9.86 ± 1.38
+1.30 ± 0.26
+9.71 ± 2.75
+401.77 ± 42.14
+Table 15 shows the effect of different angular frequency values. A small angular fre-
+quency value, ω = (0.1)2π, produces weak lateral oscillations that have limited impact
+on environmental exploration, resulting in a lower success rate of 79%. In contrast, the
+moderate value ω = (0.8)2π achieves the highest success rate of 86%, indicating an
+effective balance between exploration and trajectory oscillation. Increasing the angu-
+lar frequency to ω = (1.6)2π causes excessive oscillatory behavior, which increases
+navigation oscillation and slightly decreases the success rate to 80%. Similar to the
+amplitude study, the battery consumption differences remain relatively small across
+all configurations, showing that the improved safety and success rate of the enhanced
+method are achieved with only a minor increase in energy consumption.
+Overall, the results demonstrate that the proposed S-shape movement improves
+navigation robustness and obstacle avoidance performance in highly congested envi-
+ronments by increasing environmental perception coverage. Although the enhanced
+exploration behavior introduces a small increase in battery consumption and trajec-
+tory oscillation, the additional energy cost remains limited compared to the achieved
+improvement in navigation safety and success rate.
+Table 15: Average battery consumption and safety comparison for different ω values
+in high-congestion 20 × 20 m2 environments.
+ω
+Success
+Rate
+(%)
+Avg. Plan
+Time per
+Step (ms)
+Avg.
+Path
+Length (m)
+Avg.
+Clear-
+ance (m)
+Avg.
+Smooth-
+ness
+Avg.
+Battery
+Consumption
+(J)
+(0.1)2π
+79
+78.45
+9.74 ± 1.24
+1.29 ± 0.26
+6.73 ± 2.98
+397.80 ± 37.82
+(0.8)2π
+86
+78.08
+9.86 ± 1.41
+1.29 ± 0.26
+8.12 ± 3.02
+401.46 ± 42.96
+(1.6)2π
+80
+78.10
+9.71 ± 1.14
+1.31 ± 0.26
+7.97 ± 2.39
+396.88 ± 34.73
+34
+
+
+4.8 Computational Efficiency and Deployment Feasibility
+One of the main advantages of the proposed framework is its suitability for deployment
+on resource-limited UAV platforms using inexpensive hardware and low-cost sensors.
+Unlike many existing UAV navigation approaches that depend on computationally
+expensive perception systems such as LiDARs, RGB-D cameras, or high-resolution
+mapping modules, the proposed method relies only on sparse rangefinder measure-
+ments together with a lightweight PPO policy network.
+Table 16 summarizes the computational characteristics of the trained PPO model.
+The policy network consists of a compact multilayer perceptron architecture with two
+hidden layers of 64 neurons each, resulting in only 17,283 trainable parameters and
+a memory footprint of approximately 0.066 MB. This compact architecture enables
+deployment on embedded processors, micro-SBCs, or lightweight onboard computing
+units commonly used in low-cost UAV systems.
+In addition to the low memory requirement, the proposed model achieves an aver-
+age inference latency of only 0.81 ms, corresponding to a theoretical maximum control
+frequency of approximately 1238 Hz. This execution speed is significantly higher than
+the typical control frequencies required for real-time UAV navigation, which com-
+monly range between 50 and 100 Hz. Therefore, the proposed framework can generate
+navigation commands in real time with negligible computational overhead, even in
+dynamic and cluttered environments.
+The results demonstrate that the proposed DRL framework provides an effective
+balance between navigation performance and computational efficiency. The lightweight
+architecture, combined with the use of inexpensive rangefinder sensors, makes the
+proposed approach particularly suitable for low-cost UAV platforms operating under
+hardware and energy constraints.
+Table 16: Computational Resource Analysis of the Trained PPO Policy
+Metric
+Value
+Network Architecture
+MLP [64, 64]
+Total Parameters
+17,283
+Model Size (Memory Footprint)
+0.0659 MB
+Observation Space Dimension
+68
+Action Space Dimension
+1 (Continuous)
+Average Inference Latency
+0.81 ms
+Maximum Control Frequency
+1238.3 Hz
+4.9 Real-World Experimental Results
+The proposed algorithm was validated in a real-world setup using a Crazyflie 2.1
+quadcopter3. The Crazyflie was equipped with a Flow Deck v24 for onboard position
+3https://www.bitcraze.io/products/crazyflie-2-1-plus/
+4https://www.bitcraze.io/products/flow-deck-v2/
+35
+
+
+(a)
+(b)
+(c)
+(d)
+(e)
+(f)
+Fig. 12: Real-world experimental setup: (a) Crazyflie 2.1 nano quadcopter, (b)
+Crazyradio PA communication module, and experimental environments including (c)
+obstacle-free, (d) one static obstacle, (e) four static obstacles, and (f) one dynamic
+obstacle scenarios.
+estimation, and a Multi-ranger Deck5 to measure the distance to the closest obsta-
+cle in three directions: front, left, and right (Figure 12a). Communication between
+the Crazyflie and a host PC was established using the Crazyradio PA6(Figure 12b).
+Figures 12c–f show the testing environments: without obstacles (c), with one static
+obstacle (d), with four static obstacles (e), and with one dynamic obstacle (f). The
+environment size is 1.63 × 2.0 m2.
+The host PC ran Ubuntu 22.04.5 LTS with an Intel Core i7 CPU, 16 GB RAM, and
+an NVIDIA RTX 3060 Ti GPU. The onboard sensors provide distance measurements
+and localization feedback, while the proposed method runs externally on a host PC
+and sends velocity commands to the UAV in real time.
+The Crazyflie receives velocity commands from the PC every 100 ms via the
+Crazyradio. These commands are generated by the proposed method running on the
+PC. The Crazyflie runs the official firmware7, which includes a PID controller that
+translates the velocity commands into motor outputs. The onboard STM32F405 micro-
+controller (Cortex-M4, 168 MHz, 192 KB SRAM, 1 MB flash) handles these operations.
+Feedback from the Flow Deck, including estimated position and yaw angle in the robot
+frame, is sent back to the PC for use in the proposed method. Before deployment,
+5https://www.bitcraze.io/products/multi-ranger-deck/
+6https://www.bitcraze.io/products/crazyradio-pa/
+7https://github.com/bitcraze/crazyflie-firmware
+36
+
+
+(a)
+(b)
+(c)
+Fig. 13: The plots of real-world UAV trajectories in the obstacle-free environment for
+different experimental episodes.
+the scenario was simulated in Gazebo Garden using CrazySim [55]. The policy was
+trained from scratch in Gazebo to adapt to the real-world setting.
+Four experimental scenarios were considered: (i) obstacle-free, (ii) one static obsta-
+cle, (iii) four static obstacles, and (iv) one dynamic obstacle. All obstacles had a
+cylindrical shape with a radius of 0.05 m, and the flight altitude was fixed at 0.4 m
+throughout all experiments.
+Obstacle-free: The first experiment evaluated the UAV performance in an
+obstacle-free environment with different start and goal positions. The quantitative
+results are summarized in Table 17, while the corresponding trajectories are illustrated
+in Figure 13. In each subplot of this figure, the drone’s starting position is designated
+by a small green-filled circle, and the goal destination is indicated by a red asterisk sur-
+rounded by a dotted red region. The drone’s trajectory is depicted as a blue line, with
+arrows representing its heading at each timestep. The color of these arrows corresponds
+to the heading angle, mapped using the color bar on the right side of the plot, where
+π is yellow, −π is purple, and intermediate values scale continuously between them.
+All subsequent trajectory plots in this paper follow this identical visual convention.
+The UAV successfully reached the target region in all test episodes. The average
+planning time remained nearly constant at approximately 32–33 ms, demonstrat-
+ing stable real-time performance. The generated trajectories remained smooth and
+confirmed the reliability of the proposed approach in basic navigation tasks.
+Table 17: Quantitative results of real-world UAV navigation experiments in an
+obstacle-free environment.
+Episode
+Path Length (m)
+Avg. Plan Time (ms)
+Smoothness
+a
+0.686
+33.29
+1.337
+b
+1.115
+33.00
+2.186
+c
+1.297
+32.02
+1.716
+Figure 14a displays a composite snapshot of a successful experimental flight, con-
+structed by overlaying sequential frames of the drone onto a single static background
+37
+
+
+(a)
+(b)
+Fig. 14: Experimental results for the obstacle-free scenario: (a) Composite snapshot
+tracking the drone’s sequential positions from takeoff to landing against a fixed back-
+ground, and (b) the corresponding 2D trajectory plot of the full episode.
+to visualize its complete path from takeoff to landing. The corresponding trajectory
+data for this entire episode is mapped out in Figure 14b.
+One Static Obstacle: The second experiment evaluated the UAV in the presence
+of a single static obstacle positioned between the start and target regions. Table 18
+reports the experimental results, and the corresponding trajectories are shown in
+Figure 15. In each subplot of this figure, the static obstacle is designated by a gray-filled
+circle.
+In episode a, the static obstacle is located directly between the starting position
+and the target. When the drone’s front range sensor detects the obstacle, the UAV
+initiates a clockwise rotation. As the maneuver progresses, the left-side sensor detects
+the obstacle, which prompts the drone to turn further in the same direction. After
+successfully clearing the obstacle, the drone steers back toward the goal to compensate
+for its heading angle error, reaching the target successfully.
+In episode b, the target is located along the positive y-axis, and the obstacle is
+offset from the direct line of sight between the start and goal positions. Consequently,
+the obstacle exerts less influence on the drone’s path, resulting in a shallower, less
+aggressive turn during the avoidance maneuver. A symmetric behavior is observed in
+episode c, where a similar trajectory deviation occurs toward the negative y-axis to
+accommodate a target shifted in that direction.
+The UAV successfully avoided the obstacle in all experiments while maintaining
+a stable trajectory. The average clearance values ranged from 0.413 m to 0.508 m,
+showing that the controller preserved a safe distance from the obstacle during nav-
+igation. The planning time remained close to 31–33 ms, which is comparable to the
+obstacle-free case and indicates that obstacle avoidance did not significantly increase
+computational cost. The results demonstrate that the proposed method can efficiently
+plan safe and feasible trajectories in the presence of a static obstacle.
+38
+
+
+Table 18: Quantitative results of real-world UAV navigation experiments in the pres-
+ence of one static obstacle.
+Episode Path Length (m) Avg.
+Clearance
+(m)
+Avg. Plan Time
+(ms)
+Smoothness
+a
+1.684
+0.464
+33.262
+4.313
+b
+1.340
+0.413
+31.662
+4.434
+c
+1.449
+0.508
+31.062
+5.009
+(a)
+(b)
+(c)
+Fig. 15: The plots of real-world UAV trajectories in the environment containing one
+static obstacle.
+Figure 16a presents a composite snapshot of a successful flight navigating around
+a single static obstacle, created by overlaying sequential video frames onto a fixed
+background to capture the full trajectory from takeoff to landing. Figure 16b illustrates
+the corresponding trajectory data recorded for this episode.
+Four Static Obstacles: To further evaluate the robustness of the proposed
+method, experiments were conducted in a cluttered environment containing four static
+obstacles. To test adaptability, the target positions were varied between episodes. The
+quantitative results are summarized in Table 19, and the corresponding trajectories
+are illustrated in Figure 17.
+In episode a, the drone successfully reached the target. The resulting path is
+smooth, and the average clearance demonstrates that the generated trajectory remains
+safe and reliable, even within a more constrained free space.
+Conversely, in episode b, the drone collided with an obstacle and failed to reach the
+goal. We ran the standard method (without S-shape movement). This failure occurred
+because the obstacle fell within the range sensor’s blind spot. Specifically, the range
+sensor is mounted between two propellers, leaving a structural gap between the sensor
+location and the outer edge of the propeller radius. Because the drone’s sensing system
+could not detect the obstacle from this approach angle, it was unable to initiate an
+avoidance maneuver.
+In episode c, a similar scenario was tested, but the goal position was shifted slightly.
+This modification forced the drone to execute a sharper turn after passing the first
+obstacle to compensate for its yaw angle error. This rotational adjustment allowed the
+39
+
+
+(a)
+(b)
+Fig. 16: Experimental results with a single static obstacle: (a) Composite snapshot
+tracking the drone’s sequential positions from takeoff to landing against a fixed back-
+ground, and (b) the corresponding 2D trajectory plot of the full episode.
+right-side sensor to partially detect the obstacle that caused the collision in episode b,
+enabling the drone to successfully avoid it and reach the destination.
+Compared to the single-obstacle scenario, navigation became significantly more
+challenging due to the reduced free space and increased maneuvering requirements.
+Consequently, the average planning time increased slightly to approximately 36–39 ms
+to accommodate the increased environmental complexity.
+Table 19: Quantitative results of real-world UAV navigation experiments in the pres-
+ence of four static obstacles.
+Episode Goal
+Path Length (m) Avg.
+Clearance
+(m)
+Avg. Plan Time
+(ms)
+Smoothness
+a
+Yes
+1.302
+0.270
+36.00
+5.959
+b
+No
+1.410
+0.235
+40.841
+7.034
+c
+Yes
+1.817
+0.253
+38.98
+7.237
+Figure 18a displays a composite snapshot of a successful flight navigating around
+four static obstacles, constructed by overlaying sequential video frames onto a fixed
+background to capture the full trajectory from takeoff to landing. Figure 18b illustrates
+the corresponding trajectory data recorded for this episode.
+Dynamic Obstacle: The final experiment evaluated the proposed approach in an
+environment containing a moving obstacle. The quantitative results are summarized
+in Table 20, and the corresponding trajectories are shown in Figure 19. In each subplot
+of this figure, the dynamic obstacle is designated by an orange-filled circle, and its
+workspace is represented by the surrounding dotted red region.
+In episode a, the target was located toward the negative y-axis, prompting the
+drone to pass along the right side of the obstacle. The drone initially rotated to
+40
+
+
+(a)
+(b)
+(c)
+Fig. 17: The plots of real-world UAV trajectories in the environment containing four
+static obstacles.
+(a)
+(b)
+Fig. 18: Experimental results with four static obstacles: (a) Composite snapshot
+tracking the drone’s sequential positions from takeoff to landing against a fixed back-
+ground, and (b) the corresponding 2D trajectory plot of the full episode.
+minimize yaw angle error. As the front sensor detected the approaching obstacle, the
+UAV executed a sharper right turn. Under the subsequent activation of the left-side
+sensor, it maintained this rightward evasion before swinging back left to correct its
+heading error and successfully reach the goal.
+In episode b, the target was positioned along the positive y-axis. The drone initially
+rotated counter-clockwise to align its heading. As the dynamic obstacle (which exhibits
+a pendulum-like motion) swung directly into the drone’s path, the drone sensed the
+imminent hazard. While a standard reactive model might continue turning left, the
+trained model dynamically initiated a sharp right turn. This decision was crucial:
+continuing along the leftward path would have placed the drone on an intercept course
+with the moving obstacle. This sudden, intelligent maneuver highlights the trained
+model’s capacity to predict dynamic movements and successfully execute proactive
+collision avoidance.
+41
+
+
+(a)
+(b)
+(c)
+Fig. 19: The plots of real-world UAV trajectories in the environment containing one
+dynamic obstacle.
+In episode c, as the drone bypassed the obstacle, the obstacle was swinging toward
+the positive y-axis. This movement naturally increased the separation distance between
+the two bodies, minimizing the activation of the left sensor and resulting in a less
+aggressive turning maneuver compared to episode a. Furthermore, the larger initial
+distance between the start position and the target and the obstacle in this episode
+allowed for a noticeably smoother overall trajectory.
+Due to the continuously changing environment, the processing overhead exhibited
+larger variations, with planning times ranging from 32.96 ms to 42.48 ms. Nonetheless,
+these results confirm that the proposed method delivers reliable, real-time obstacle
+avoidance in the presence of dynamic hazards.
+Table 20: Quantitative results of real-world UAV navigation experiments in the pres-
+ence of one dynamic obstacle.
+Episode Path Length (m) Avg.
+Clearance
+(m)
+Avg. Plan Time
+(ms)
+Smoothness
+a
+1.336
+0.400
+38.39
+5.234
+b
+0.900
+0.288
+42.48
+5.660
+c
+1.393
+0.420
+32.96
+3.977
+Figure 20a displays a composite snapshot of a successful flight navigating around
+the dynamic obstacle. The snapshot is constructed by overlaying sequential video
+frames onto a fixed background to capture the full trajectory from takeoff to land-
+ing, with a blue curve marking the pendular workspace of the suspended obstacle.
+Figure 20b illustrates the corresponding trajectory data recorded for this episode.
+Energy Consumption Comparison: Figure 21 compares the battery voltage
+discharge profiles of the standard method and the enhanced method during real-world
+experiments.
+The standard method produced a voltage range of 0.1478 V, while the enhanced
+method resulted in a larger voltage range of 0.2639 V, which is approximately 1.79
+42
+
+
+(a)
+(b)
+Fig. 20: Experimental results with a dynamic obstacle: (a) Time-lapse composite
+snapshot tracking the drone’s position relative to the obstacle’s pendular workspace
+(indicated by the blue curve), and (b) the corresponding measured trajectory plot.
+Fig. 21: Drone Battery Voltage Discharge: Standard vs Enhanced Method
+times higher. This indicates that the enhanced method consumed more energy dur-
+ing operation. The increased energy usage is related to the additional maneuvering
+required for increasing the environmental perception.
+4.10 Limitations and Future Work
+Although the proposed framework demonstrates strong performance in dynamic
+obstacle avoidance under sparse sensing, several limitations remain.
+First, the current implementation is restricted to planar motion with constant alti-
+tude. Extending the framework to fully three-dimensional navigation would improve
+43
+
+
+applicability in more complex aerial environments and enable operation in scenarios
+requiring vertical maneuvering.
+Second, to match the constraints of the experimental hardware, the sensing configu-
+ration is limited to three forward-facing range measurements, resulting in a perception
+blind spot in the rear direction. While this is not an inherent limitation of the pro-
+posed framework, but rather of the sensing setup, it may affect safety in scenarios
+involving rear-approaching obstacles. As future work, additional sensors (e.g., a rear
+rangefinder) can be integrated, and the behavior grid map extended accordingly.
+Retraining the PPO policy under this augmented perception configuration would
+enable full directional awareness without modifying the underlying architecture.
+Third, the real-world validation was conducted in relatively small indoor envi-
+ronments with limited obstacle diversity. Although these experiments demonstrate
+feasibility, larger-scale evaluations under more diverse and realistic conditions, includ-
+ing varying levels of environmental complexity, remain necessary to further assess
+generalization.
+Fourth, while the yaw-dominated control structure is motivated by fixed-wing UAV
+constraints, the experimental validation was performed using a Crazyflie quadrotor
+platform. To bridge this gap, the quadrotor was intentionally constrained to yaw-based
+motion, enforcing nonholonomic behavior. While this provides a controlled validation
+setting, further experiments on platforms with inherently constrained dynamics (e.g.,
+fixed-wing UAVs) would strengthen the applicability of the approach.
+Finally, the current reward function relies on fixed empirically selected coefficients,
+which may not optimally balance navigation efficiency and safety across different
+environments. In particular, highly cluttered scenarios may require stronger emphasis
+on obstacle avoidance to maintain larger clearance. As future work, adaptive reward
+weighting mechanisms could be explored to dynamically adjust the relative importance
+of target progress, heading alignment, and obstacle avoidance based on environmental
+conditions, improving both safety and trajectory efficiency.
+5 Conclusion
+This paper proposed a learning-based framework for UAV online motion planning
+under severe sensing constraints, combining a behavior grid map representation with
+a PPO-based control policy. The approach enables real-time navigation in dynamic
+environments using only sparse directional range measurements, without relying on
+dense perception systems such as LiDAR or cameras. This design makes the framework
+particularly suitable for resource-constrained UAV platforms.
+The effectiveness of the proposed approach was demonstrated through system-
+atic simulation studies across multiple environment sizes (5 × 5 and 20 × 20 m2)
+and congestion levels, as well as real-world experiments in four distinct scenarios.
+The results show that the framework consistently achieves reliable target-reaching
+behaviour while maintaining safe interaction with both static and dynamic obsta-
+cles. Compared with MPC and PPO-based baselines, the proposed method improves
+success rates in challenging environments while preserving real-time execution and
+maintaining a lightweight computational footprint. Ablation studies further highlight
+44
+
+
+the role of key design components, including the grid representation, temporal update
+mechanism, and reward formulation.
+Overall, the results indicate that effective navigation can be achieved under extreme
+partial observability through the combination of structured state representation and
+learning-based control. Future work will focus on extending the framework to fully
+three-dimensional motion, incorporating additional sensing to address directional lim-
+itations, and evaluating performance in larger-scale and multi-agent environments.
+References
+[1] Rezaee, M.R., Hamid, N.A.W.A., Hussin, M., Zukarnain, Z.A.: Comprehensive
+review of drones collision avoidance schemes: Challenges and open issues. IEEE
+Transactions on Intelligent Transportation Systems (2024)
+[2] Ait Saadi, A., Soukane, A., Meraihi, Y., Benmessaoud Gabis, A., Mirjalili, S.,
+Ramdane-Cherif, A.: Uav path planning using optimization approaches: A survey.
+Archives of Computational Methods in Engineering 29(6), 4233–4284 (2022)
+[3] Lin, H.-Y., Peng, X.-Z.: Autonomous quadrotor navigation with vision based
+obstacle avoidance and path planning. IEEE Access 9, 102450–102459 (2021)
+[4] Ranjbar Divkoti, M.R., Nouri-Baygi, M.: Rcs: a fast path planning algorithm for
+unmanned aerial vehicles: Mrr divkoti, m. nouri-baygi. Soft Computing 29(1),
+275–298 (2025)
+[5] Gugan, G., Haque, A.: Path planning for autonomous drones: Challenges and
+future directions. Drones 7(3), 169 (2023)
+[6] Xiao, X., Liu, B., Warnell, G., Stone, P.: Motion planning and control for mobile
+robot navigation using machine learning: a survey. Autonomous Robots 46(5),
+569–597 (2022)
+[7] Gonz´alez, D., P´erez, J., Milan´es, V., Nashashibi, F.: A review of motion
+planning techniques for automated vehicles. IEEE Transactions on intelligent
+transportation systems 17(4), 1135–1145 (2015)
+[8] Kaufmann, E., Bauersfeld, L., Loquercio, A., M¨uller, M., Koltun, V., Scaramuzza,
+D.: Champion-level drone racing using deep reinforcement learning. Nature
+620(7976), 982–987 (2023)
+[9] He, L., Aouf, N., Song, B.: Explainable deep reinforcement learning for uav
+autonomous path planning. Aerospace science and technology 118, 107052 (2021)
+[10] He, L., Aouf, N., Whidborne, J.F., Song, B.: Integrated moment-based lgmd and
+deep reinforcement learning for uav obstacle avoidance. In: 2020 IEEE Interna-
+tional Conference on Robotics and Automation (ICRA), pp. 7491–7497 (2020).
+45
+
+
+IEEE
+[11] Angulo, B., Panov, A., Yakovlev, K.: Policy optimization to learn adaptive
+motion primitives in path planning with dynamic obstacles. IEEE Robotics and
+Automation Letters 8(2), 824–831 (2022)
+[12] Aradi, S.: Survey of deep reinforcement learning for motion planning of
+autonomous vehicles. IEEE Transactions on Intelligent Transportation Systems
+23(2), 740–759 (2020)
+[13] Liu, Q., Shi, L., Sun, L., Li, J., Ding, M., Shu, F.: Path planning for uav-mounted
+mobile edge computing with deep reinforcement learning. IEEE Transactions on
+Vehicular Technology 69(5), 5723–5728 (2020)
+[14] Yan, C., Xiang, X., Wang, C.: Towards real-time path planning through deep
+reinforcement learning for a uav in dynamic environments. Journal of Intelligent
+& Robotic Systems 98, 297–309 (2020)
+[15] Chiang, H.-T.L., Hsu, J., Fiser, M., Tapia, L., Faust, A.: Rl-rrt: Kinodynamic
+motion planning via learning reachability estimators from rl policies. IEEE
+Robotics and Automation Letters 4(4), 4298–4305 (2019)
+[16] Wang, C., Wang, J., Shen, Y., Zhang, X.: Autonomous navigation of uavs in
+large-scale complex environments: A deep reinforcement learning approach. IEEE
+Transactions on Vehicular Technology 68(3), 2124–2136 (2019)
+[17] Choi, W., Kang, H., Lee, J.: Robust localization of unmanned surface vehicle
+using ddqn-am. International Journal of Control, Automation and Systems 19(5),
+1920–1930 (2021)
+[18] Hodge, V.J., Hawkins, R., Alexander, R.: Deep reinforcement learning for drone
+navigation using sensor data. Neural Computing and Applications 33, 2015–2033
+(2021)
+[19] Huang, H., Yang, Y., Wang, H., Ding, Z., Sari, H., Adachi, F.: Deep reinforcement
+learning for uav navigation through massive mimo technique. IEEE Transactions
+on Vehicular Technology 69(1), 1117–1121 (2019)
+[20] Wang, C., Wang, J., Wang, J., Zhang, X.: Deep-reinforcement-learning-based
+autonomous uav navigation with sparse rewards. IEEE Internet of Things Journal
+7(7), 6180–6190 (2020)
+[21] Kang, J., Chen, J., Xu, M., Xiong, Z., Jiao, Y., Han, L., Niyato, D., Tong, Y.,
+Xie, S.: Uav-assisted dynamic avatar task migration for vehicular metaverse ser-
+vices: A multi-agent deep reinforcement learning approach. IEEE/CAA Journal
+of Automatica Sinica 11(2), 430–445 (2024)
+46
+
+
+[22] Ali, M.A., Mailah, M.: Path planning and control of mobile robot in road envi-
+ronments using sensor fusion and active force control. IEEE Transactions on
+Vehicular Technology 68(3), 2176–2195 (2019)
+[23] Zheng, Z., Li, J., Guan, Z., Zuo, Z.: Constrained moving path following control
+for uav with robust control barrier function. IEEE/CAA Journal of Automatica
+Sinica 10(7), 1557–1570 (2023)
+[24] Gao, B., Liu, Y.-J., Liu, L.: Fixed-time neural control of a quadrotor uav with
+input and attitude constraints. IEEE/CAA Journal of Automatica Sinica 10(1),
+281–283 (2023)
+[25] Ma, D., Hao, S., Ma, W., Zheng, H., Xu, X.: An optimal control-based path
+planning method for unmanned surface vehicles in complex environments. Ocean
+Engineering 245, 110532 (2022)
+[26] Gyagenda, N., Hatilima, J.V., Roth, H., Zhmud, V.: A review of gnss-independent
+uav navigation techniques. Robotics and Autonomous Systems, 104069 (2022)
+[27] Ryou, G., Sim, Y., Yeon, S.H., Seok, S.: Applying asynchronous deep classification
+networks and gaming reinforcement learning-based motion planners to mobile
+robots. In: 2018 IEEE International Conference on Robotics and Automation
+(ICRA), pp. 6268–6275 (2018). IEEE
+[28] Mnih, V., Badia, A.P., Mirza, M., Graves, A., Lillicrap, T., Harley, T., Silver,
+D., Kavukcuoglu, K.: Asynchronous methods for deep reinforcement learning. In:
+International Conference on Machine Learning, pp. 1928–1937 (2016). PMLR
+[29] Schulman, J., Levine, S., Abbeel, P., Jordan, M., Moritz, P.: Trust region policy
+optimization. In: International Conference on Machine Learning, pp. 1889–1897
+(2015). PMLR
+[30] Schulman, J., Wolski, F., Dhariwal, P., Radford, A., Klimov, O.: Proximal policy
+optimization algorithms. arXiv preprint arXiv:1707.06347 (2017)
+[31] Qi, C., Wu, C., Lei, L., Li, X., Cong, P.: Uav path planning based on the improved
+ppo algorithm. In: 2022 Asia Conference on Advanced Robotics, Automation,
+and Control Engineering (ARACE), pp. 193–199 (2022). IEEE
+[32] Zhu, G., Shen, Z., Liu, L., Zhao, S., Ji, F., Ju, Z., Sun, J.: Auv dynamic obstacle
+avoidance method based on improved ppo algorithm. IEEE Access 10, 121340–
+121351 (2022)
+[33] Chikhaoui, K., Ghazzai, H., Massoud, Y.: Ppo-based reinforcement learning for
+uav navigation in urban environments. In: 2022 IEEE 65th International Midwest
+Symposium on Circuits and Systems (MWSCAS), pp. 1–4 (2022). IEEE
+47
+
+
+[34] Li, L., Li, W., Wang, J., Chen, X., Peng, Q., Huang, W.: Uav trajectory optimiza-
+tion for spectrum cartography: A ppo approach. IEEE Communications Letters
+(2023)
+[35] Qu, C., Gai, W., Zhong, M., Zhang, J.: A novel reinforcement learning based
+grey wolf optimizer algorithm for unmanned aerial vehicles (uavs) path planning.
+Applied soft computing 89, 106099 (2020)
+[36] Ge, F., Li, K., Han, Y., Xu, W., Wang, Y.: Path planning of uav for oilfield inspec-
+tions in a three-dimensional dynamic environment with moving obstacles based
+on an improved pigeon-inspired optimization algorithm. Applied Intelligence 50,
+2800–2817 (2020)
+[37] Zhu, K., Zhang, T.: Deep reinforcement learning based mobile robot navigation:
+A review. Tsinghua Science and Technology 26(5), 674–691 (2021)
+[38] Huang, J., Yujie, C., Guipeng, X., Shuangxia, B., Li, B., Wang, G., Evgeny, N.:
+Gtrxl-sac-based path planning and obstacle-aware control decision-making for
+uav autonomous control. Drones 9(4), 275 (2025)
+[39] AlMahamid, F., Grolinger, K.: Viznav: A modular off-policy deep reinforcement
+learning framework for vision-based autonomous uav navigation in 3d dynamic
+environments. Drones 8(5), 173 (2024)
+[40] Fan, X., Lu, M., Xu, B., Lu, P.: Flying in highly dynamic environments with
+end-to-end learning approach. IEEE Robotics and Automation Letters (2025)
+[41] Liu, Y., Liu, Z., Wang, G., Yan, C., Wang, X., Huang, Z.: Flexible multi-
+uav formation control via integrating deep reinforcement learning and affine
+transformations. Aerospace Science and Technology, 109812 (2024)
+[42] Wang, Y., Shen, B., Nan, Z., Tao, W.: An end-to-end path planner combining
+potential field method with deep reinforcement learning. IEEE Sensors Journal
+(2024)
+[43] Khatib, O.: Real-time obstacle avoidance for manipulators and mobile robots.
+The international journal of robotics research 5(1), 90–98 (1986)
+[44] Kamon, I., Rimon, E., Rivlin, E.: Tangentbug: A range-sensor-based navigation
+algorithm. The International Journal of Robotics Research 17(9), 934–953 (1998)
+[45] Fox, D., Burgard, W., Thrun, S.: The dynamic window approach to collision
+avoidance. IEEE robotics & automation magazine 4(1), 23–33 (2002)
+[46] Mayne, D.Q., Rawlings, J.B., Rao, C.V., Scokaert, P.O.: Constrained model
+predictive control: Stability and optimality. Automatica 36(6), 789–814 (2000)
+[47] Tang, C., Abbatematteo, B., Hu, J., Chandra, R., Mart´ın-Mart´ın, R., Stone, P.:
+48
+
+
+Deep reinforcement learning for robotics: A survey of real-world successes. Annual
+Review of Control, Robotics, and Autonomous Systems 8(1), 153–188 (2025)
+[48] Thrun, S.: Probabilistic robotics. Communications of the ACM 45(3), 52–57
+(2002)
+[49] Ren, Y., Cai, Y., Zhu, F., Liang, S., Zhang, F.: ROG-Map: An efficient robocentric
+occupancy grid map for large-scene and high-resolution lidar-based motion plan-
+ning. In: Proceedings of the IEEE/RSJ International Conference on Intelligent
+Robots and Systems (IROS), pp. 8119–8125 (2024)
+[50] Tao, Y., Popovi´c, M., Wang, Y., Digumarti, S.T., Chebrolu, N., Fallon, M.:
+3D lidar reconstruction with probabilistic depth completion for robotic naviga-
+tion. In: IEEE/RSJ International Conference on Intelligent Robots and Systems
+(IROS) (2022)
+[51] Bajcsy, R.: Active perception. Proceedings of the IEEE 76(8), 996–1005 (1988)
+[52] Placed, J.A., Strader, J., Carrillo, H., Atanasov, N., Indelman, V., Carlone, L.,
+Castellanos, J.A.: A survey on active simultaneous localization and mapping:
+State of the art and new frontiers. IEEE Transactions on Robotics 39(3), 1686–
+1705 (2023)
+[53] Mahony, R., Kumar, V., Corke, P.: Multirotor aerial vehicles: Modeling, estima-
+tion, and control of quadrotor. IEEE robotics & automation magazine 19(3),
+20–32 (2012)
+[54] Walt, S., Sch¨onberger, J.L., Nunez-Iglesias, J., Boulogne, F., Warner, J.D., Yager,
+N., Gouillart, E., Yu, T.: scikit-image: image processing in python. PeerJ 2, 453
+(2014)
+[55] Llanes, C., Kakish, Z., Williams, K., Coogan, S.: Crazysim: A software-in-the-
+loop simulator for the crazyflie nano quadrotor. In: 2024 IEEE International
+Conference on Robotics and Automation (ICRA), pp. 12248–12254 (2024)
+Statements and Declarations
+Funding
+This work was conducted under the FCT doctoral scholarship (reference number
+2023.01812.BD) and forms part of ongoing R&D activities. Financial support was pro-
+vided by the R&D Unit SYSTEC – Systems and Technologies Center (UID/00147)
+and the Associated Laboratory ARISE – Advanced Production and Intelligent Systems
+(ref. LA/P/0112/2020), both funded by FCT/MECI through national funds.
+49
+
+
+Competing Interests
+The authors have no relevant financial or non-financial interests to disclose.
+Author Contributions
+All authors contributed to the study conception and design. All authors read and
+approved the final manuscript.
+Data Availability
+The data that support the findings of this study are available from the corresponding
+author upon reasonable request.
+50

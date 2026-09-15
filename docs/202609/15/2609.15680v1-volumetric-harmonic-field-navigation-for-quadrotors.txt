@@ -1,0 +1,620 @@
+Volumetric Harmonic Field Navigation for Quadrotors
+Shuxiu Jia, Amartya Mukherjee, Yating Yuan, and Jun Liu
+Abstract— Quadrotor navigation in cluttered 3-D environ-
+ments requires global guidance while local motion remains
+subject to collision and motion limits. Harmonic potentials
+provide dense guidance from a global boundary value problem,
+but coupling a volumetric harmonic field to constrained physical
+quadrotor motion remains an open experimental problem.
+We couple a precomputed volumetric harmonic field with a
+constrained predictive planner that queries the field at predicted
+positions instead of extracting a global reference path. In
+Structured 3-D tests, harmonic guidance yields larger minimum
+clearance and lower RMS jerk than matched Dijkstra guidance,
+at the cost of longer paths; the same pattern remains when both
+methods use the same passage. Long maze tests span routes
+far beyond one prediction horizon, and Crazyflie trials validate
+physical execution. To the best of our knowledge, this is the
+first physical quadrotor demonstration of volumetric harmonic
+field navigation. The results show that globally constructed
+harmonic guidance can directly support local constrained
+motion generation on a physical quadrotor.
+I. INTRODUCTION
+Quadrotor navigation in cluttered 3-D environments re-
+quires guidance over the environment and motion that
+respects constraints. Modern planners combine geometric
+planning, trajectory optimization, and receding horizon con-
+trol [1], [2], [3], [4]. Harmonic fields offer a different form
+of guidance: a scalar function defined throughout the free
+volume.
+Potential fields map environment geometry to local motion
+guidance [5]. Classical artificial potential fields can con-
+tain spurious local minima and trap the robot [6]. More
+structured constructions include navigation functions [7] and
+harmonic potentials [8], [9]. Harmonic navigation solves
+Laplace’s equation with boundary values on the goal and
+unsafe boundaries. For a nonconstant harmonic solution,
+the maximum principle excludes interior local maxima and
+minima, although saddle points may remain [8], [10]. The
+resulting potential is smooth in the interior and defines a
+dense scalar field over the solved free domain. Using such a
+field in 3-D still requires a practical way to turn field queries
+into constrained motion.
+Physical aerial systems have used harmonic or Lapla-
+cian guidance [11], [12], [13], while volumetric harmonic
+fields for UAV navigation and exploration have also been
+This research was supported by Mitacs under the Mitacs Globalink
+Research Internship award, Application ID 209332, and by the Waterloo.AI
+Physical AI Graduate Scholarship, supported by the Philantra Foundation.
+Shuxiu Jia is with the Hong Kong Polytechnic University, Hong Kong
+(email: shuxiu.jia@connect.polyu.hk).
+Amartya
+Mukherjee,
+Yating
+Yuan,
+and
+Jun
+Liu
+are
+with
+the
+Department
+of
+Applied
+Mathematics,
+University
+of
+Waterloo,
+Waterloo,
+Ontario,
+Canada
+N2L
+3G1
+(email:
+(a29mukhe,yating.yuan,j.liu)@uwaterloo.ca).
+studied [14], [15]. The remaining gap is a documented
+physical quadrotor realization of volumetric harmonic field
+navigation. We address it by coupling a volumetric harmonic
+field to constrained predictive motion generation over a short
+horizon. To the best of our knowledge, this is the first
+physical quadrotor demonstration of volumetric harmonic
+field navigation.
+Experiments in structured 3-D scenes, a long maze, and
+physical Crazyflie flight evaluate the approach. With the
+same predictive planner, harmonic guidance gives larger min-
+imum clearance and lower RMS jerk than Dijkstra guidance,
+but follows longer paths. The pattern remains when both
+methods use the same passage, so coarse route choice alone
+does not explain it. The long maze tests navigation over
+routes far beyond one prediction horizon. The first contri-
+bution is the physical realization of volumetric harmonic
+navigation through constrained predictive motion generation.
+The second is an empirical characterization of the resulting
+clearance, jerk, and path length behavior.
+II. RELATED WORK
+A. Quadrotor Motion Planning
+Quadrotor planners often combine a geometric descrip-
+tion of free space with trajectory generation and control.
+Polynomial trajectories that minimize snap provide smooth
+references for agile flight [16]. Safe Flight Corridors rep-
+resent free space as connected convex regions for con-
+strained trajectory optimization [1]. Related planning and
+tracking designs have also used corridor constructions to
+establish formal reach-avoid guarantees for quadrotors [17].
+Fast-Planner combines kinodynamic search with B-spline
+optimization and time adjustment [2]; GCOPTER handles
+multicopter trajectory optimization under geometric and dy-
+namic constraints [3]. IPC combines A* planning, Safe Flight
+Corridors, and MPC with jerk input [4]. The cited planners
+organize free space guidance as a path, corridor, or trajectory.
+Our planner instead queries a volumetric harmonic field at
+predicted states.
+B. Harmonic Navigation
+Khatib introduced artificial potential fields for obstacle
+avoidance in real time [5]. Koren and Borenstein later doc-
+umented limitations including local trapping [6]. Navigation
+functions offer one structured construction [7]; harmonic
+potentials offer another through Laplace’s equation [8], [9].
+Harmonic guidance has also been used on aerial platforms.
+Masoud used an HPF gradient as a velocity reference for
+joint UAV planning and control [18]. Scherer et al. used a 3-
+D Laplacian global planner with local collision avoidance on
+arXiv:2609.15680v1  [cs.RO]  14 Sep 2026
+
+
+Fig. 1.
+Volumetric harmonic guidance and online predictive navigation. (a) Volumetric harmonic field in the known 3-D workspace, visualized by two
+horizontal equipotential sections and one translucent 3-D isosurface. The black curve is the measured Crazyflie flight from start to goal, not a preplanned
+reference path. (b) Local view of the boxed region in (a), showing the Crazyflie and the current 12-stage MPC prediction generated online from harmonic
+field guidance. (c) System pipeline: the harmonic field is constructed offline and queried at each MPC update.
+an autonomous helicopter [11]. Rasche developed harmonic-
+potential-based UAV navigation and exploration for 3-D
+environments [14]. Cruz and Encarnac¸˜ao used 3-D harmonic
+panel fields for fixed-wing UAV obstacle avoidance in a
+hardware-in-the-loop simulation [19]. Motonaka et al. gen-
+erated 3-D quadrotor motion from harmonic fields defined
+on the three coordinate planes and later tested the method
+on a physical quadrotor [20], [12]. Those experiments used
+planar fields rather than one volumetric harmonic solution.
+Later work broadened harmonic planning and control.
+Wray et al. introduced harmonic computation in log space
+and GPU acceleration [21]. Kopo et al. used an accelerated
+boundary element method for harmonic exploration in com-
+plex 3-D environments and validated it in simulation [15].
+Recent methods have also extended harmonic potentials to
+online task adaptation and path class customization [22],
+[23]. Mukherjee et al. developed harmonic control Lyapunov
+barrier functions for formal reach-avoid control and included
+a numerical 2-D quadrotor example [24]. Recent physical
+studies still do not document volumetric harmonic flight.
+Bassolillo et al. reported CoDrone experiments with Laplace-
+derived fields, but the published field examples and flight
+trajectories are planar [13]. Kotsinis et al. demonstrated har-
+monic and Poisson field exploration on a physical Crazyflie
+in complex 2-D spaces [25]. The published quadrotor and
+multirotor hardware studies above are planar or do not
+document a volumetric harmonic field.
+III. VOLUMETRIC HARMONIC NAVIGATION
+A. Navigation Task and Planning Model
+Let W ⊂R3 be a known bounded workspace. Let O ⊂W
+be the obstacle set after inflation by the vehicle radius and
+safety margin. The planning free space is F = int(W )\O.
+Let G ⊂F be a compact goal region with center pg, and let
+Ω⊆F be the connected component containing G . Starting
+from p0 ∈Ω, the task is to reach G without leaving Ωwhile
+satisfying the stated translational motion limits. A volumetric
+harmonic field supplies guidance over Ω. A planner with a
+short horizon turns the queried directions into constrained
+motion.
+The predictive planner uses a third-order translational
+model [4]
+x =
+
+p⊤
+v⊤
+a⊤⊤,
+˙p = v,
+˙v = a,
+˙a = j,
+(1)
+where p,v,a,j ∈R3 denote position, velocity, acceleration,
+and jerk. Jerk is the planning input. Assuming the jerk input
+is constant over each sampling interval of duration ∆t, the
+exact discrete-time model is
+xk+1 = Adxk +Bdjk,
+Ad =
+
+
+I3
+∆tI3
+1
+2∆t2I3
+0
+I3
+∆tI3
+0
+0
+I3
+
+,
+Bd =
+
+
+1
+6∆t3I3
+1
+2∆t2I3
+∆tI3
+
+,
+(2)
+where I3 is the 3 × 3 identity matrix. The planner bounds
+velocity, acceleration, and jerk and imposes collision con-
+straints on position. Attitude dynamics are not part of
+the planning model. During physical flight, the low-level
+controller tracks the planned reference and handles attitude
+stabilization and thrust allocation. Table I lists the motion
+limits used in the experiments.
+
+
+B. Volumetric Harmonic Field
+Let V : Ω\ G →[0,1] be the harmonic potential defined
+by the Dirichlet problem
+∇2V(p) = 0
+p ∈Ω\G ,
+V|Γg = 0,
+V|Γu = 1. (3)
+Here Γg = ∂G and Γu = ∂Ω. The unsafe boundary Γu
+contains the inflated obstacle boundaries and the workspace
+boundary of the connected free space component that con-
+tains the goal. We retain the solution as a volumetric nav-
+igation field during execution rather than convert it to a
+global reference path. For a nonconstant harmonic solution,
+the maximum principle excludes interior local maxima and
+minima, although saddle critical points may remain [8], [10].
+At points where ∇V(p)̸ = 0, the guidance direction is
+dH(p) = −
+∇V(p)
+∥∇V(p)∥2
+.
+(4)
+The field is computed offline. We solve the complementary
+field H = 1 −V on a Cartesian voxel grid with spacing
+h, using a seven-point finite-difference stencil and a 3-D
+log-space Gauss–Seidel iteration adapted from [21]. Since
+∇H = −∇V, ascending H is equivalent to descending V.
+For a query between grid nodes, we locally rescale the eight
+neighboring log values before evaluating the trilinear gra-
+dient. The scale cancels after normalization. A numerically
+vanishing gradient gives zero guidance. During each planning
+update, the field is queried only at the nominal predicted
+positions within the finite horizon.
+C. Predictive Motion Generation
+For an N-stage horizon, each replanning step shifts the
+previous jerk sequence and rolls it out through the discrete
+model to obtain nominal positions {¯pk}N
+k=1. We query the
+harmonic field along the nominal rollout,
+dk = dH(¯pk),
+P⊥,k = I3 −dkd⊤
+k ,
+(5)
+The queried directions remain fixed during one quadratic
+program (QP) solve. The QP optimizes the jerk sequence
+{jk}N−1
+k=0 with objective
+J =
+N
+∑
+k=1
+h
+q∥(d⊤
+k vk −sk)2 +q⊥v⊤
+k P⊥,kvk +qa∥ak∥2
+2
+i
++
+N−1
+∑
+k=0
+h
+qj∥jk∥2
+2 +q∆j∥jk −jk−1∥2
+2
+i
++ℓN,
+(6)
+where j−1 is the previously applied jerk and q∥, q⊥, qa,
+qj, and q∆j are nonnegative weights. The first term tracks
+speed sk along the queried direction, the second suppresses
+transverse velocity, and the remaining stage terms regularize
+acceleration, jerk, and changes in jerk. Outside the goal
+region, sk is the cruise speed limited by the stopping speed
+p2amaxdG ,k, with a 0.18 m/s floor; it is zero inside the goal
+region. Here dG ,k is the distance from ¯pk to G . The terminal
+cost ℓN uses weights qN
+v , qN
+a , and qN
+p to penalize velocity error
+relative to sNdN, terminal acceleration, and position error to
+pg; the position term is activated linearly within 0.75 m of
+the goal region.
+The QP enforces the discrete dynamics and polyhedral
+approximations of the velocity, acceleration, and jerk bounds.
+With constant jerk over each stage, position and velocity
+are cubic and quadratic in time, respectively. Their B´ezier
+control points are used to impose workspace, collision, and
+velocity constraints over the full stage. Nearby obstacles are
+represented by supporting half-spaces constructed about the
+nominal rollout, and a trust region limits deviations from
+that rollout. The resulting online problem is a convex QP
+solved with OSQP [26]. A separate continuous-time validator
+checks the candidate trajectory for workspace, collision,
+velocity, acceleration, and jerk constraints. If accepted, the
+first two stages are committed before replanning from the
+latest state.
+IV. EXPERIMENTS
+Structured 3-D tests characterize navigation behavior in a
+volumetric scene. A matched Dijkstra comparison isolates
+differences in guidance; the same passage subset checks
+whether those differences persist without a coarse passage
+change. The large maze tests routes far beyond the 0.60 s
+prediction horizon. Crazyflie trials evaluate the same har-
+monic guidance and predictive planning chain in flight.
+A. Experimental Setup
+For the controlled comparison, Dijkstra-MPC uses the
+same grid, planner, constraints, solver, execution policy,
+and success criterion as HF-MPC. A reverse 26-connected
+Dijkstra search computes the cost from every reachable node
+to the goal using Euclidean edge costs and no diagonal corner
+cutting. Each node stores a minimum cost descent direction.
+Interpolation gives directions between grid nodes, and the
+planner queries them at the same predicted positions used
+for harmonic guidance. Grid-based goal cost guidance has
+prior quadrotor use [27], and interpolated grid navigation
+functions have been coupled directly to constrained MPC
+for wheeled robots [28]; the comparator here is constructed
+specifically on the shared HF grid and planner.
+Adapted IPC serves as a system reference [4]. A* first
+produces a path without collisions. We simplify that path
+and cover it with local convex Safe Flight Corridors. A linear
+MPC with jerk input tracks the path inside the active corridor.
+For our known static scenes, we replace the LiDAR map with
+the same analytic map and build the corridors from known
+obstacle geometry. We use common vehicle limits and task
+criteria while retaining IPC’s 0.10 s prediction step, N = 15
+horizon, and 100 Hz backend. Attitude and thrust conversion
+are outside the translational benchmark. The comparison
+with IPC is a system comparison, not a controlled change of
+guidance alone.
+All methods share the same map, start, goal, vehicle
+limits, timeout, and evaluation rules. Success requires en-
+tering the goal region without collision and maintaining
+speed at most 0.3 m/s and acceleration at most 0.5 m/s2
+for 0.3 s. For each successful simulated episode of duration
+T, path length is the arc length of the continuous trajectory,
+minimum clearance is the minimum vehicle-body clearance
+
+
+Fig. 2.
+Structured 3-D trajectories. (a) HF-MPC and Dijkstra-MPC take different passage classes. (b) They take the same passage class while remaining
+geometrically distinct. Adapted IPC is shown for system context. (c) All 50 HF-MPC trajectories. (d) All 50 Dijkstra-MPC trajectories.
+from any obstacle or workspace boundary, and RMS jerk is
+jRMS =
+
+T −1 R T
+0 ∥j(t)∥2
+2 dt
+1/2
+. Table I gives the HF-MPC
+and Dijkstra-MPC planning settings.
+TABLE I
+HF-MPC AND DIJKSTRA-MPC PLANNING SETTINGS.
+Setting
+Value
+N / ∆t / prediction horizon
+12 / 0.05 s / 0.60 s
+Replanning rate / QP solver
+10 Hz / OSQP
+(vmax,amax, jmax)
+(1.4,2.5,6.0)
+(q∥,q⊥,qa,q j,q∆j)
+(8,4,0.15,0.04,0.12)
+Terminal (qN
+v ,qN
+a ,qN
+p )
+(2,0.5,3)
+h (Structured / maze / flight)
+0.08 / 0.30 / 0.04 m
+Both guidance fields are built offline. On an Apple M1,
+median build times using one thread were 535 and 127 s for
+HF and Dijkstra in Structured 3-D, and 67.4 and 28.1 s in
+the large maze; file I/O is excluded.
+B. Structured 3-D Evaluation
+Passage choice. All three methods completed all 50 starts.
+Passage class records only the designated lateral opening
+crossed at the Zone D gate. HF-MPC and Dijkstra-MPC took
+different passages in 23 starts. Dijkstra-MPC split evenly
+between the two openings; HF-MPC used the opening at
+negative y in 48 starts. Figure 2(a) shows one different
+passage case. Table II reports median metrics for all three
+methods. The IPC values are included for system context,
+not as a matched guidance comparison.
+Same passage behavior. We next retain the 27 starts where
+HF-MPC and Dijkstra-MPC crossed the same designated
+opening. Figure 3 shows the absolute metric distributions.
+Across all 27 pairs, HF-MPC follows a longer path, has
+larger minimum clearance, and has lower RMS jerk. For
+metric m and matched start i, let ∆mi = mHF
+i
+−mDij
+i . The
+median [Q1,Q3] differences are +1.95[1.42,2.26] m for
+path length, +0.198[0.196,0.201] m for minimum clearance,
+TABLE II
+STRUCTURED 3-D MEDIAN METRICS OVER 50 SUCCESSFUL STARTS.
+Path
+length [m]
+Min.
+clearance [m]
+RMS jerk
+[m/s3]
+HF-MPC
+13.67
+0.254
+1.355
+Dijkstra-MPC
+11.71
+0.056
+1.775
+Adapted IPC
+12.49
+0.248
+2.078
+and −0.484[−0.533,−0.336] m/s3 for RMS jerk. The same
+ordering remains after the passage class is fixed. Figure 2(b)
+shows the same passage case; panels (c) and (d) show all 50
+trajectories.
+Fig. 3.
+Metrics for the 27 same passage starts. Each point is one
+deterministic start. Boxes show the median and interquartile range with
+1.5 IQR whiskers. Paired differences are reported in the text.
+C. Route Scale and Prediction Horizon
+The large maze tests navigation on routes much longer
+than the local prediction horizon. We use the maze map
+from [21] and fix 10 starts with a common goal. Reference
+route lengths range from 28.4 to 92.8 m. At 0.95 m/s, one
+0.60 s horizon covers about 0.57 m; the routes are about
+50 to 163 times longer. The horizon remains fixed, and HF-
+MPC completed all 10 starts. Figure 4 shows the trajectories
+over the full maze.
+D. Physical Flight
+The flight trials use the deployed h = 0.04 m harmonic
+field. OptiTrack/Motive supplies pose measurements through
+
+
+Fig. 4.
+Large maze HF-MPC trajectories from 10 fixed starts to a common
+goal.
+Crazyswarm [29]. Offboard HF-MPC replans at 10 Hz, and
+a separate process streams validated references at 100 Hz to
+the onboard Crazyflie controller.
+All three logged runs entered the configured 3-D goal
+region. No planner update was rejected and no deadline was
+missed. For the representative run in Fig. 5, QP solve time on
+the Dell Precision 3660 was 23.8 ms at the median, 26.5 ms
+at the 95th percentile, and 45.9 ms at the maximum; all
+values are below the 100 ms replanning period. RMS and
+maximum position tracking errors were 1.72 and 2.92 cm.
+Minimum planned obstacle clearance was 7.24 cm.
+V. DISCUSSION
+The controlled comparison reveals a consistent tradeoff.
+Across all 27 same passage starts, harmonic guidance in-
+creases minimum clearance and reduces RMS jerk, but
+lengthens the path. Both methods cross the same designated
+opening and use the same downstream planner, so coarse
+passage choice cannot by itself explain the ordering. The
+geometry of the guidance fields offers one possible expla-
+nation. Harmonic guidance comes from a smooth boundary
+value problem over the connected free space, while Dijkstra
+guidance follows accumulated graph cost. The harmonic field
+has no explicit shortest path objective. That difference is
+consistent with the observed combination of larger clearance
+and longer travel. Smooth spatial changes in the harmonic
+field may also produce more gradual changes in the queried
+directions, consistent with lower RMS jerk under the planner.
+The explanation is interpretive, not a theoretical guarantee.
+Harmonic smoothness alone does not imply larger clearance
+or lower jerk.
+The maze and flight experiments test a separate question:
+whether short horizon planning can use guidance computed
+over the full environment. The 0.60 s horizon covers only a
+small fraction of each maze route, yet every query comes
+from a field solved over the global free space. Crazyflie
+trials execute the same pipeline on the physical vehicle: field
+query, constrained local planning, and reference tracking.
+The two experiments show that a short horizon planner can
+use globally constructed harmonic guidance over route scales
+far beyond one prediction horizon.
+The present study assumes a known static environment,
+a fixed goal, and a third-order translational planning model.
+The planner uses only normalized harmonic directions along
+its nominal prediction; the scalar value and much of the
+surrounding field remain unused. Future work can combine
+V and ∇V, query the field at multiple spatial scales, and
+adapt the horizon or objective weights to local field geometry.
+Online field updates could extend the approach to changing
+goals or maps.
+VI. CONCLUSION
+We demonstrated volumetric harmonic field navigation on
+a physical quadrotor using constrained predictive motion
+generation over a short horizon. Controlled tests showed a
+consistent tradeoff: harmonic guidance gave larger minimum
+clearance and lower RMS jerk, but longer paths; the same
+pattern remained after coarse passage choice was fixed.
+Long maze tests and Crazyflie flights showed that globally
+constructed harmonic guidance can support local predictive
+motion over route scales far beyond one horizon and on a
+physical platform. The results establish volumetric harmonic
+guidance as a viable navigation approach for quadrotors in
+known cluttered environments.
+REFERENCES
+[1] S. Liu, M. Watterson, K. Mohta, K. Sun, S. Bhattacharya, C. J.
+Taylor, and V. Kumar, “Planning dynamically feasible trajectories for
+quadrotors using safe flight corridors in 3-D complex environments,”
+IEEE Robot. Autom. Lett., vol. 2, no. 3, pp. 1688–1695, 2017.
+[2] B. Zhou, F. Gao, L. Wang, C. Liu, and S. Shen, “Robust and efficient
+quadrotor trajectory generation for fast autonomous flight,” IEEE
+Robot. Autom. Lett., vol. 4, no. 4, pp. 3529–3536, 2019.
+[3] Z. Wang, X. Zhou, C. Xu, and F. Gao, “Geometrically constrained
+trajectory optimization for multicopters,” IEEE Trans. Robot., vol. 38,
+no. 5, pp. 3259–3278, 2022.
+[4] W. Liu, Y. Ren, and F. Zhang, “Integrated planning and control for
+quadrotor navigation in presence of suddenly appearing objects and
+disturbances,” IEEE Robot. Autom. Lett., vol. 9, no. 1, pp. 899–906,
+2024.
+[5] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile
+robots,” Int. J. Robot. Res., vol. 5, no. 1, pp. 90–98, 1986.
+[6] Y. Koren and J. Borenstein, “Potential field methods and their inherent
+limitations for mobile robot navigation,” in Proc. IEEE Int. Conf.
+Robot. Autom. (ICRA), vol. 2, 1991, pp. 1398–1404.
+[7] E. Rimon and D. E. Koditschek, “Exact robot navigation using
+artificial potential functions,” IEEE Trans. Robot. Autom., vol. 8, no. 5,
+pp. 501–518, 1992.
+[8] C. I. Connolly, J. B. Burns, and R. Weiss, “Path planning using
+Laplace’s equation,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA),
+1990, pp. 2102–2106.
+[9] J.-O. Kim and P. K. Khosla, “Real-time obstacle avoidance using
+harmonic potential functions,” IEEE Trans. Robot. Autom., vol. 8,
+no. 3, pp. 338–349, 1992.
+[10] C. I. Connolly and R. A. Grupen, “The applications of harmonic
+functions to robotics,” J. Robot. Syst., vol. 10, no. 7, pp. 931–946,
+1993.
+
+
+Fig. 5.
+Crazyflie execution of HF-MPC in the motion capture arena. The quadrotor navigates from start to goal while avoiding the obstacles. The
+straw-frame boxes represent obstacles in the environment. The overlaid sequence shows the measured flight.
+[11] S. Scherer, S. Singh, L. J. Chamberlain, and M. Elgersma, “Flying
+fast and low among obstacles: Methodology and experiments,” Int. J.
+Robot. Res., vol. 27, no. 5, pp. 549–574, 2008.
+[12] K. Motonaka, K. Watanabe, and S. Maeyama, “Implementation and
+basic experiments of kinodynamic motion planning for a quadrotor,”
+in Proc. 41st Annu. Conf. IEEE Ind. Electron. Soc. (IECON), 2015,
+pp. 2759–2764.
+[13] S. R. Bassolillo, E. D’Amato, A. Ferraro, I. Notaro, and V. Scor-
+damaglia, “Scalable coordinated control of UAV swarms: A priority-
+driven behavioural approach,” IET Radar Sonar Navig., vol. 19, no. 1,
+2025, art. no. e70079.
+[14] C. Rasche, “A cooperative and verifiable UAV behavior for 3D envi-
+ronments,” Ph.D. dissertation, Univ. Paderborn, Paderborn, Germany,
+2013.
+[15] R. Kopo, C. P. Bechlioulis, and K. J. Kyriakopoulos, “Harmonic
+field-based provable exploration of 3D indoor environments,” 2023,
+arXiv:2303.07042.
+[16] D. Mellinger and V. Kumar, “Minimum snap trajectory generation
+and control for quadrotors,” in Proc. IEEE Int. Conf. Robot. Autom.
+(ICRA), 2011, pp. 2520–2525.
+[17] M. Serry, Y. Yuan, H. Chang, and J. Liu, “Reach-avoid control
+synthesis for a quadrotor UAV with formal safety guarantees,” IEEE
+Trans. Autom. Control, vol. 71, no. 8, pp. 4939–4955, 2026.
+[18] A. A. Masoud, “A virtual velocity attractor, harmonic potential ap-
+proach for joint planning and control of a UAV,” in Proc. Amer.
+Control Conf. (ACC), 2011, pp. 432–437.
+[19] G. C. S. Cruz and P. M. M. Encarnac¸˜ao, “Obstacle avoidance for
+unmanned aerial vehicles,” J. Intell. Robot. Syst., vol. 65, no. 1–4, pp.
+203–217, 2012.
+[20] K. Motonaka, K. Watanabe, and S. Maeyama, “3-dimensional kinody-
+namic motion planning for an X4-flyer using 2-dimensional harmonic
+potential fields,” in Proc. 14th Int. Conf. Control, Autom. Syst. (IC-
+CAS), 2014, pp. 1181–1184.
+[21] K. H. Wray, D. Ruiken, R. A. Grupen, and S. Zilberstein, “Log-space
+harmonic function path planning,” in Proc. IEEE/RSJ Int. Conf. Intell.
+Robots Syst. (IROS), 2016, pp. 1511–1516.
+[22] S. Wang and M. Guo, “Hybrid and oriented harmonic potentials for
+safe task execution in unknown environment,” Automatica, vol. 173,
+2025, art. no. 112105.
+[23] S. Wang, T. Guo, and M. Guo, “Customize harmonic potential fields
+via hybrid optimization over homotopic paths,” IEEE Robot. Autom.
+Lett., vol. 10, no. 8, pp. 8594–8601, 2025.
+[24] A. Mukherjee, R. Zhou, H. Chang, and J. Liu, “Harmonic control
+Lyapunov barrier functions for constrained optimal control with reach-
+avoid specifications,” 2023, arXiv:2310.02869v2, revised Mar. 2024.
+[25] D. Kotsinis, G. C. Karras, and C. P. Bechlioulis, “Autonomous explo-
+ration for micro aerial vehicles with sparse sensing using harmonic
+fields and Monte Carlo integration,” in Proc. Int. Conf. Unmanned
+Aircraft Syst. (ICUAS), 2026, pp. 743–749.
+[26] B. Stellato, G. Banjac, P. Goulart, A. Bemporad, and S. Boyd, “OSQP:
+An operator splitting solver for quadratic programs,” Math. Program.
+Comput., vol. 12, no. 4, pp. 637–672, 2020.
+[27] X. Wang, L. Xi, Y. Chen, S. Lai, F. Lin, and B. M. Chen, “Decen-
+tralized MPC-based trajectory generation for multiple quadrotors in
+cluttered environments,” Guid. Navig. Control, vol. 1, no. 2, 2021,
+art. no. 2150007.
+[28] M. Seder and G. Klanˇcar, “Convergent wheeled robot navigation based
+on an interpolated potential function and gradient,” Robot. Auton. Syst.,
+vol. 177, 2024, art. no. 104712.
+[29] J. A. Preiss, W. H¨onig, G. S. Sukhatme, and N. Ayanian, “Crazyswarm:
+A large nano-quadcopter swarm,” in Proc. IEEE Int. Conf. Robot.
+Autom. (ICRA), 2017, pp. 3299–3304.

@@ -1,0 +1,682 @@
+Global Path Planner with Multi-Model
+Switching
+Pietro Gori ∗Francesco Iotti ∗Eduard Zelenay ∗∗∗
+Rastislav Marko ∗∗Michele Pierallini ∗Franco Angelini ∗
+Gabriele Pannocchia ∗∗∗∗Manolo Garabini ∗
+∗Centro di Ricerca “Enrico Piaggio” and the Dipartimento di
+Ingegneria dell’Informazione, Universit`a di Pisa, Largo Lucio
+Lazzarino 1, 56126 Pisa, Italy
+∗∗Panza Robotics, National Center of Robotics, Ilkovicova 3, 841 04
+Bratislava, Slovakia
+∗∗∗Institute of Robotics and Cybernetics, Faculty of Electrical
+Engineering and Information Technology, Slovak University of
+Technology in Bratislava, Ilkovicova 3, 812 19 Bratislava, Slovakia
+∗∗∗∗Dipartimento di Ingegneria Civile e Industriale, Universit`a di
+Pisa, Largo Lucio Lazzarino 1, 56126 Pisa, Italy
+Abstract: This work enhances global path planning via a pure-pursuit controller with
+multi-model kinematic switching that sustains plan fidelity across diverse terrains. The system
+includes a traversability graph for terrain analysis, a Heading-Aware A* algorithm generating
+feasible paths, and a multi-model Pure Pursuit controller for dynamic tracking. A core innovation
+is adaptive kinematic modeling, enabling real-time switching between kinematic models based
+on terrain features and robot states. This adaptability optimizes path efficiency and energy use
+in challenging scenarios. We validate the approach in simulation on different platforms, namely,
+Artaban quadruped and X3 quadrotor drone, showcasing improved performance, robustness,
+and adaptability over standard baselines.
+Keywords: Autonomous navigation, Task and motion planning, Humanoid and legged robots
+1. INTRODUCTION
+Nowadays, mobile robots possess remarkable capabilities
+to traverse diverse terrains and navigate complex envi-
+ronments [Hoeller et al., 2024]. However, despite their
+impressive mobility, these robots typically rely on human
+operators to determine their actions and behaviors [Iotti
+et al., 2025]. This dependence on external control intro-
+duces rigid constraints, significantly limiting the robot’s
+ability to function effectively in scenarios where human
+intervention is impractical or potentially hazardous [Chen
+et al., 2025].
+Enhancing robot autonomy offers several tangible ben-
+efits. Autonomous platforms can continue operations
+in hazardous or communication-restricted environments,
+such as disaster zones, where teleoperation is challenging
+[Loganathan and Ahmad, 2023]. Furthermore, onboard
+decision-making enables robots to dynamically adjust their
+⋆This research was funded by the European Union’s Horizon Europe
+under grant no. 101079342 (Fostering Opportunities Towards Slovak
+Excellence in Advanced Control for Smart Industries), and funded
+by the Italian Ministry of Education and Research in the framework
+of the FISA 2023 OCCAM Project and the “FoReLab” (Future-
+oriented Research Lab) Project (Departments of Excellence). Pietro
+Gori and Francesco Iotti equally contributed. © 2026 the authors.
+This work has been accepted to IFAC for publication under a
+Creative Commons Licence CC-BY-NC-ND.
+behaviors in real-time, greatly improving operational effi-
+ciency [Wu et al., 2023].
+Path planning algorithms enhance robotic autonomy by
+enabling efficient navigation in complex, dynamic envi-
+ronments, improving reliability, safety, and energy effi-
+ciency through collision avoidance and path optimization.
+Their effectiveness hinges on balancing computational ef-
+ficiency with real-time adaptability. Recent advances in-
+clude application-specific approaches: Hirayama et al. [Hi-
+rayama et al., 2019] developed topological modeling for
+autonomous bulldozers in mining areas, integrating ma-
+terial handling and dynamics; Xing et al. [Xing et al.,
+2022] combined Seeker Optimization (SOA) for global
+paths with Actor-Critic reinforcement learning for local
+adaptability.
+Path planning for quadruped robots operating in complex
+and unstructured environments requires robust methods
+that effectively combine global and local navigation strate-
+gies. In [Jian et al., 2021], the Coupling Two-Stage Path
+Planning (CTSP) approach integrates iterative global op-
+timization with refined local cost functions, facilitating
+smooth transitions between global routes and local maneu-
+vers. Similarly, sampling-based global planners combined
+with dynamics-aware local strategies explicitly incorporate
+robot kinematics and dynamics, enhancing traversal of
+challenging terrains [Norby and Johnson, 2020].
+arXiv:2609.13015v1  [cs.RO]  11 Sep 2026
+
+
+Recent advancements focus on integrating perception and
+terrain analysis to improve real-time navigation. GPU-
+accelerated elevation mapping significantly reduces com-
+putational overhead by efficiently representing terrain ge-
+ometry [Miki et al., 2022]. In [Dixit et al., 2025], the STEP
+framework transforms noisy LiDAR data into risk-aware
+planning through Conditional Value-at-Risk (CVaR) met-
+rics. TRG-Planner employs a direction-aware risk graph
+encoding terrain stability and reachability, enabling hier-
+archical real-time decision-making [Lee et al., 2025]. Ad-
+ditionally, machine learning techniques for traversability
+assessment and foothold scoring have proven effective in
+dynamic, uncertain environments [Wellhausen and Hut-
+ter, 2023]. The TAO framework incorporates both appar-
+ent and relative traversability metrics, further enhancing
+adaptive planning and motion control for effective hazard
+avoidance in mountainous terrains [Yoo et al., 2024].
+Improving robot autonomy requires enabling robots to
+reason about and select the most suitable motion model for
+a given task. Existing approaches typically assume a single,
+fixed kinematic model, which limits robustness in diverse
+environments [Dasanayake et al., 2025]. In this work, we
+introduce a global path planning framework with multi-
+model switching, allowing the robot to autonomously
+switch between models based on hardware constraints,
+task requirements, and environmental conditions. The
+main contributions are:
+• A novel Heading-Aware A* algorithm that incorpo-
+rates orientation costs into path planning, enabling
+smoother and more efficient trajectories.
+• An adaptive trajectory follower capable of switching
+between kinematic models according to the robot’s
+internal state and environment.
+• A comprehensive validation on different robots in
+both simulation and real-world experiments, showcas-
+ing robust and versatile performance.
+2. PATH PLANNING ALGORITHM
+In this section, we introduce the path planning algorithm
+used to navigate the robot through the environment. The
+algorithm is designed to find an optimal path from a start
+point to a goal point while avoiding obstacles, ensuring
+efficiency and safety in its motion. The process begins
+with a raw point cloud of the environment as input,
+which is processed to compute traversability information.
+This information is then used to build the traversability
+graph, as described in Section 2.1. The Heading-Aware A*
+Algorithm, detailed in Section 2.2, is employed to find the
+optimal path from the start point to the goal point.
+Finally, the Pure Pursuit controller, discussed in Section
+2.3, refines the path, generating a smooth trajectory for
+the robot to navigate through the environment. Figure 1
+illustrates the overall pipeline of the path planning process.
+2.1 Traversability Map
+Initially, we obtain raw point cloud data of robot positions
+from sensor measurements. From these data, we iden-
+tify collision-free areas based on terrain features such as
+height filtering, ground segmentation using RANSAC, and
+surface normal estimation. Points are classified according
+to surface normals: vertical normals indicate navigable
+regions, horizontal normals represent obstacles, and in-
+termediate cases are assessed using grid-based slope and
+height evaluations. Navigable regions are further refined
+through coarser grid processing and validated with 2.5D
+maps. Finally, obstacles are grouped via spatial clustering
+(DBSCAN [Deng, 2020]), and nearby navigable points are
+reclassified to mitigate noise and potential misclassifica-
+tion. We define C ∈R3 as the configuration space of the
+robot, representing all possible positions in the environ-
+ment. After this process, we identify two subsets:
+• Cfree ⊆C: the set of all traversable positions, corre-
+sponding to the navigable regions;
+• Cobs ⊆C: the set of all non-traversable positions,
+corresponding to the obstacle regions.
+Given the sets Cfree and Cobs, we build the traversability
+graph TG = (V, E), which serves as the discrete represen-
+tation of the environment for path planning. Each vertex
+vi = (pi, c(vi), Ei) ∈V encodes a feasible robot position,
+where pi ∈Cfree denotes the spatial position, c(vi) is
+the traversability cost, and Ei ⊆E is the set of incident
+edges of vertex i. Edges ξj
+i ∈Ei connect pairs of vertices
+if a direct, collision-free transition between vi and vj is
+possible, determined by spatial proximity and obstacle
+clearance. This graph structure enables efficient search for
+optimal paths, leveraging both geometric connectivity and
+traversability information.
+The cost function c : V →R for each vertex vi ∈V is
+computed as follows:
+c(vi) = wcollccoll(vi) + wdistcdist(vi) + wslopecslope(vi), (1)
+where ccoll, cdist, cslope
+:
+V
+→
+R are the collision,
+distance, and slope cost functions, respectively, and
+wcoll, wdist, wslope are the corresponding weights. Figure
+2 illustrates the cost evolution in the traversability map.
+Collision Cost
+The collision cost ccoll(vi) penalizes a ver-
+tex vi ∈Cfree by its proximity to Cobs. Around pi we con-
+sider a disk of radius rrobot =
+p
+(Lrobot/2)2 + (Wrobot/2)2,
+the robot’s XY circumscribed radius, where Lrobot and
+Wrobot are the robot’s length and width, respectively. If
+any obstacle point lies inside this disk, we mark a hard
+collision; otherwise we apply a soft penalty P(dist) = A ·
+exp
+
+−
+  dist
+σ
+2
+, where dist is the minimum Euclidean
+distance to Cobs, A is the maximum penalty, and σ controls
+the decay rate.. This encourages clearance while remaining
+permissive in narrow passages.
+Distance Cost
+The distance cost function cdist(vi) is
+defined as the Euclidean distance from the vertex position
+pi to the next vertex position pj in the traversability
+graph. This cost is computed as:
+cdist(vi) = ∥pj −pi∥2,
+(2)
+where ∥· ∥2 denotes the Euclidean norm.
+Slope Cost
+The slope cost function cslope(vi) measures
+how steep the terrain is around a vertex vi, since steeper
+slopes are more difficult to traverse. To compute it, neigh-
+boring points are first translated so that vi lies at the
+origin (0, 0, 0). A plane of the form z = ax + by + c is
+then fitted to these points using least squares. Because
+the plane passes through the origin, c ≈0. The plane’s
+normal vector is n = [−a, −b, 1], and the local slope angle
+is the angle between n and the vertical axis ˆk = [0, 0, 1]:
+
+
+Traversability
+Map
+(Sec.2.1)
+Heading-Aware
+A* Algorithm
+(Sec.2.2)
+Pure Pursuit
+Controller
+(Sec.2.3)
+Raw Input
+Point Cloud
+Traversability
+Graph
+Optimal Path
+Final
+Interpolated
+Trajectory
+Fig. 1. Path planning pipeline using traversability computations, A* search, and Pure Pursuit control.
+θ = arccos
+ 
+n · ˆk
+∥n∥∥ˆk∥
+!
+= arccos
+
+1
+√
+a2 + b2 + 1
+
+.
+(3)
+Finally, cslope(vi) is defined as a function of θ, with larger
+angles corresponding to higher traversal cost.
+2.2 Heading-Aware A* Algorithm
+We compute optimal paths from a start vertex, i.e.,
+vstart
+= (pstart, c(vstart), Estart), to a goal vertex, i.e.,
+vgoal = (pgoal, c(vgoal), Egoal), on a traversability graph
+TG = (V, E) using a heading-aware A* variant. Each search
+state combines vertex vi ∈V and arrival heading ψi
+as (vi, ψi), enabling orientation-dependent cost penalties
+(e.g., for sharp turns and terrain slope) that generate
+smooth and feasible trajectories also for non-holonomic
+robots. The complete procedure is detailed in Algorithm 1.
+The core of the algorithm resamble the core of the classic
+A* algorithm, maintaining a min-priority queue of candi-
+date states ordered by their estimated total cost (f-score),
+a cumulative path cost map (g-score) for each visited state,
+and a predecessor tracking map for path reconstruction.
+The cumulative cost, g(vi, ψi), to reach a state (vi, ψi) is
+determined by summing the costs of individual transitions.
+For each transition from a current state (vj, ψj) to a
+successor state (vi, ψi), the step cost, Cstep, consists of
+three primary components:
+• Node Cost (Cbase): An inherent cost associated
+with traversing the edge ξi
+j, representing the baseline
+effort required for movement. Specifically, this cost is
+defined by the node cost c(vi), i.e., (1), of the suc-
+cessor vertex vi, which incorporates the information
+from the traversability graph.
+• Orientation Change Penalty (Chead): A penalty
+for deviations in the robot’s heading. The orientation
+of the traversed edge, ψedge, is computed from the
+displacement vector between pj and pi. The abso-
+lute difference between this edge orientation and the
+Fig. 2. Example traversability map derived from raw point
+cloud data. Navigable regions (Cfree) and obstacle
+regions (Cobs) are visualized, with color intensity in-
+dicating the local traversability cost: higher intensity
+corresponds to higher traversal difficulty or risk.
+Algorithm 1 Heading-Aware A* Algorithm
+Require: Traversability graph TG = (V, E), start vs, goal
+vg, headings ψs, ψg
+Ensure: Optimal path from vs to vg with heading con-
+straints
+1: Initialize queue with (vs, ψs); g[·] ←∞; g[(vs, ψs)] ←0
+2: f[(vs, ψs)] ←h(vs, ψs); parent[·] ←Null
+3: while queue not empty do
+4:
+Pop (vc, ψc) with min f
+5:
+if vc = vg then return path via parent
+6:
+end if
+7:
+for each neighbor vn of vc do
+8:
+d ←pn −pc; ψedge ←atan2(dy, dx)
+9:
+∆ψ ←AngleDiff(ψedge, ψc)
+10:
+Cstep ←c(vn) + wψ|∆ψ| + wslope · sin θ · cos ϕ
+11:
+gnew ←g[(vc, ψc)] + Cstep
+12:
+if gnew < g[(vn, ψedge)] then
+13:
+g[(vn, ψedge)] ←gnew
+14:
+f ←gnew + ∥pn −pg∥2 + wgoal · |ψg −ψedge|
+15:
+parent[(vn, ψedge)] ←(vc, ψc)
+16:
+Enqueue (vn, ψedge)
+17:
+end if
+18:
+end for
+19: end while
+robot’s current orientation, ∆ψ = ψedge −ψj, is
+normalized to (−π, π] and weighted by a coefficient
+wψ:
+Chead = wψ · |∆ψ|.
+(4)
+• Terrain Interaction Cost (Cslope): A terrain-
+adaptive cost that penalizes movements based on the
+local slope and the travelling direction relative to the
+surface normal. This cost is calculated as:
+Cslope = wslope · sin(θ) · cos(ϕ),
+(5)
+where wslope is a weighting factor, θ is the slope angle
+at vj (3), and ϕ is the angle between the normalized
+movement vector (from pj to pi) and the surface
+normal at vj, i.e., n. This formulation increases the
+cost for traversing steeper terrain, especially when
+moving uphill against the normal. However, it allows
+the robot to traverse steep slopes if necessary.
+The total step cost for a transition is the sum of these
+components:
+Cstep = Cbase + Chead + Cslope.
+(6)
+The cumulative g-score for a successor state is updated if
+a newly discovered path yields a lower total cost.
+The heuristic function, h(vi, ψi), provides an admissible
+estimate of the cost-to-go from a successor state (vi, ψi)
+to the goal by leveraging the Euclidean distance between
+the spatial coordinates of vi and the target node vgoal.
+Additionally, if a specific goal orientation ψgoal is provided,
+a weighted penalty for the angular deviation between the
+
+
+successor’s orientation ψs and ψgoal is incorporated into
+the heuristic:
+h(vi, ψi) = ||pi −pgoal||2 + wgoal
+ψ
+· |ψi −ψgoal|,
+(7)
+where wgoal
+ψ
+is a weight factor that balances the importance
+of spatial distance against the orientation penalty. The f-
+score is then computed as the sum of the cumulative cost
+and the heuristic.
+The heading-aware A* algorithm proceeds by repeatedly
+selecting the state with the lowest total estimated cost (f-
+score) from the priority queue. Once the goal is reached,
+the optimal path is reconstructed by tracing back through
+the predecessor map from the goal to the start.
+2.3 Multi-Model Pure Pursuit Controller
+The pure pursuit controller is a geometric path tracking
+method widely used for mobile robots [Lee et al., 2025,
+Samuel et al., 2016]. In our framework, it tracks the path
+generated by the Heading-Aware A* planner (Sec. 2.2)
+and computes velocity commands for both planar and non-
+planar motion.
+At each control cycle, the controller selects a lookahead
+point at distance Ld along the reference path and com-
+putes the tracking error in the robot frame. According
+to the path geometry and robot state, the controller dy-
+namically switches between unicycle and omnidirectional
+kinematic models.
+In the following, we briefly describe the two kinematic
+models used in our pure pursuit controller.
+For planar motion, the unicycle model is:
+˙x = uuni cos ψ,
+(8)
+˙y = uuni sin ψ,
+(9)
+˙ψ = ω.
+(10)
+For non-planar motion, the omnidirectional model is:
+˙x = uomni
+x
+,
+(11)
+˙y = uomni
+y
+,
+(12)
+˙z = uomni
+z
+.
+(13)
+The model selection process is designed to ensure that the
+robot always follows the most efficient control strategy,
+adapting to both the geometry of the path and the robot’s
+current state.
+The tracking error in the robot frame is defined as
+eR = R⊤
+RW
+"xl −xr
+yl −yr
+zl −zr
+#
+.
+(14)
+From eR, the planar distance d, heading error ∆ψ, and
+vertical displacement zdisp are computed as
+d =
+q
+e2x + e2y,
+(15)
+∆ψ = atan2(ey, ex),
+(16)
+zdisp = ez.
+(17)
+The controller selects the unicycle model when
+|∆ψ| < δψ
+and
+|zdisp| < δz,
+(18)
+otherwise, the omnidirectional model is used. Note that δψ
+and δz are predefined thresholds.
+Fig. 3. Top-down view of the planned trajectory in the XY
+plane.
+After selecting the appropriate kinematic model, the con-
+troller computes the velocities required to reach the looka-
+head point.
+Omnidirectional Control
+In omnidirectional mode, the
+commanded velocity is proportional to the tracking error:
+uomni =
+0,
+D < ϵ,
+S eR,
+otherwise,
+(19)
+where
+S = min
+uomni
+max
+D
+, 1
+
+,
+D = ∥eR∥2.
+(20)
+Unicycle Control
+In unicycle mode, the linear velocity
+is proportional to the distance error:
+uuni = kvd cos(∆ψ),
+(21)
+saturated to the admissible velocity range [−uuni
+max, uuni
+max].
+The angular velocity is computed from the heading error:
+ω = kω∆ψ,
+(22)
+where kv and kω are proportional gains for linear and an-
+gular velocity, respectively. Fig. 3 illustrates the resulting
+trajectory obtained with the proposed controller.
+3. NUMERICAL RESULTS
+The path planning method described in Sec. 2 is then
+validated through both simulation and real-world experi-
+ments. The goal is to showcase the effectiveness of the pro-
+posed approach in generating feasible and efficient paths
+for robots in various environments.
+3.1 Simulation
+The proposed path planner was validated using the Arta-
+ban robot [ˇDurikoviˇc and Maˇcicov´a, 2024], developed by
+Panza Robotics 1 , and an X3 quadrotor drone.
+Artaban quadruped
+is a legged robot for hazardous en-
+vironments, featuring cardan joints and four-bar linkages
+enabling multidirectional locomotion, with three actuators
+per leg. Its driver architecture employs PD controllers and
+inverse dynamics to handle unique kinematic loops in the
+rear legs, ensuring precise torque control and stability.
+The system compensates for friction and inertia, reduc-
+ing sim-to-real discrepancies. The robot runs Quad-SDK
+1 Company website: [https://panzarobotics.com
+
+
+Fig. 4. Trajectory executed by the Artaban robot during the simulation experiment.
+Fig. 5. Body position tracking vs. reference in x, y, and z
+axes.
+[Norby et al., 2022], an open-source ROS-based framework
+integrating planning, control, and estimation. The global
+planner node, implemented in C++, interfaces with Quad-
+SDK, defining the robot’s position and velocity to follow
+the trajectory.
+The validation scenario requires the robot to navigate
+through a narrow doorway before entering an open space
+area. During the door traversal, the robot adopts a
+unicycle-like motion, aligning its longitudinal axis with
+the doorway to ensure successful passage. Once through
+the door and into the open space, the robot transitions to
+more flexible, omnidirectional movements, leveraging its
+full kinematic capabilities to efficiently reach the goal. This
+showcases the planner’s ability to adapt motion strategies
+based on environmental constraints. Figures 5 and 6 re-
+port the simulation results. The reference trajectories for
+position and orientation closely match the ground truth
+data, particularly in the horizontal plane (X and Y axes)
+and yaw orientation. Minor deviations are observed in the
+vertical axis (Z), where the algorithm generates a smooth,
+idealized trajectory compared to the robot’s ground truth,
+which exhibits realistic oscillations caused by physical dy-
+namics and interactions with terrain, as depicted in Fig.
+5. Similarly, the planned orientations maintain minimal
+roll and pitch angles, reflecting simplified assumptions in
+the planner, whereas the simulated robot naturally expe-
+riences more pronounced body tilts, Fig. 6.
+X3 quadrotor drone
+is a type of unmanned aerial vehicle
+(UAV) with four rotors arranged in a cross (X) configu-
+ration. It is equipped with a ROS-based flight controller
+capable of executing velocity commands. In the drone
+simulation, our aim is to validate the planner’s capability
+to generate smooth and efficient trajectories in a 3D space.
+The drone navigates through a complex environment, re-
+quiring precise control over its position and orientation to
+avoid obstacles and reach the target location. Despite the
+complexity of the environment, the planner successfully
+computes trajectories that the drone can follow accurately.
+Fig. 6. Body orientation tracking vs. reference
+Fig. 7. Body position tracking vs. reference in x, y, and z
+axes.
+Similarly to the simulation with the quadruped robot, Fig.
+7 shows a good tracking performance.
+3.2 Real-World Experiment
+To further evaluate the robustness of our approach, we
+conducted experiments on the real Artaban hardware. The
+results demonstrate that the robot successfully completed
+the path, validating the effectiveness of the planner in a
+real-world setting. For the real robot scenario, the ref-
+erence trajectory, Fig. 3, computed by the planner also
+closely tracks the actual robot movement. The positional
+tracking, depicted in Fig.8, is consistent with the simula-
+tion, with minor discrepancies attributed primarily to real-
+world sensor noise and execution imperfections. Orienta-
+tion tracking, inferred to be similar to simulation results,
+further supports the algorithm’s capability in effectively
+managing heading (yaw) and maintaining nominal body
+orientations (roll and pitch), although the dynamic influ-
+ences in a real-world environment slightly amplify discrep-
+ancies observed in simulation, Fig.9.
+4. CONCLUSION
+This paper presented an integrated framework for robot
+navigation in complex planar and non-planar environ-
+ments. The proposed approach combines a Heading-Aware
+A* planner operating on a traversability graph with a
+
+
+Fig. 8. Body position tracking vs. reference
+Fig. 9. Body orientation tracking vs. reference
+multi-model pure pursuit controller for adaptive trajectory
+tracking. The planner generates feasible and smooth paths
+by incorporating orientation information into the graph
+search process, while the controller dynamically switches
+between unicycle and omnidirectional motion models ac-
+cording to the local terrain and path geometry. The frame-
+work was validated in simulation and real-world exper-
+iments using the Artaban robot, demonstrating reliable
+navigation through narrow passages, elevation changes,
+and open environments. Future work will focus on dy-
+namic obstacle avoidance and online replanning in more
+challenging scenarios.
+REFERENCES
+Chen, W., Chi, W., Ji, S., Ye, H., Liu, J., Jia, Y., Yu, J.,
+and Cheng, J. (2025). A survey of autonomous robots
+and multi-robot navigation: Perception, planning and
+collaboration.
+Biomimetic Intelligence and Robotics,
+5(2), 100203.
+Dasanayake, P.S., Baranauskas, V., Dervinis, G., and
+Balasevicius, L. (2025).
+A review of mathematical
+models in robotics. Applied Sciences, 15(14).
+Deng, D. (2020). Dbscan clustering algorithm based on
+density. In 2020 7th international forum on electrical
+engineering and automation (IFEEA), 949–953. IEEE.
+Dixit, A., Fan, D.D., Otsu, K., Dey, S., Agha-Mohammadi,
+A.A., and Burdick, J.W. (2025).
+Step: Stochastic
+traversability evaluation and planning for risk-aware
+navigation; results from the darpa subterranean chal-
+lenge. IEEE Transactions on Field Robotics, 2, 81–99.
+ˇDurikoviˇc, R. and Maˇcicov´a, Z. (2024). Artaban: Adaptive
+control for multidirectional locomotion.
+In 2024 New
+Trends in Signal Processing (NTSP), 1–8. IEEE.
+Hirayama, M., Guivant, J., Katupitiya, J., and Whitty,
+M. (2019). Path planning for autonomous bulldozers.
+Mechatronics, 58, 20–38.
+Hoeller,
+D.,
+Rudin,
+N.,
+Sako,
+D.,
+and
+Hutter,
+M.
+(2024). Anymal parkour: Learning agile navigation for
+quadrupedal robots. Science Robotics, 9(88), eadi7566.
+Iotti, F., Ranjan, A., Angelini, F., and Garabini, M.
+(2025).
+Omniquad: A wheeled-legged hybrid robot
+with omnidirectional wheels. Mechanism and Machine
+Theory, 214, 106125.
+Jian, Z., Zhang, S., Chen, S., Nan, Z., and Zheng, N.
+(2021). A global-local coupling two-stage path planning
+method for mobile robots. IEEE Robotics and Automa-
+tion Letters, 6(3), 5349–5356.
+Lee, D., Nahrendra, I.M.A., Oh, M., Yu, B., and Myung,
+H. (2025). Trg-planner: Traversal risk graph-based path
+planning in unstructured environments for safe and
+efficient navigation.
+IEEE Robotics and Automation
+Letters, 10(2), 1736–1743.
+Loganathan, A. and Ahmad, N.S. (2023). A systematic
+review on recent advances in autonomous mobile robot
+navigation.
+Engineering Science and Technology, an
+International Journal, 40, 101343.
+Miki, T., Wellhausen, L., Grandia, R., Jenelten, F.,
+Homberger, T., and Hutter, M. (2022). Elevation map-
+ping for locomotion and navigation using gpu.
+In
+2022 IEEE/RSJ International Conference on Intelligent
+Robots and Systems (IROS), 2273–2280.
+Norby, J. and Johnson, A.M. (2020). Fast global motion
+planning for dynamic legged robots. In 2020 IEEE/RSJ
+International Conference on Intelligent Robots and Sys-
+tems (IROS), 3829–3836.
+Norby, J., Yang, Y., Tajbakhsh, A., Ren, J., Yim, J.K.,
+Stutt, A., Yu, Q., Flowers, N., and Johnson, A.M.
+(2022).
+Quad-sdk: Full stack software framework for
+agile quadrupedal locomotion. In ICRA Workshop on
+Legged Robots, 1–5. sn.
+Samuel, M., Hussein, M., and Mohamad, M.B. (2016). A
+review of some pure-pursuit based path tracking tech-
+niques for control of autonomous vehicle. International
+Journal of Computer Applications, 135(1), 35–38.
+Wellhausen, L. and Hutter, M. (2023). Artplanner: Robust
+legged robot navigation in the field. Field Robotics, 3,
+413–434.
+Wu, M., Yeong, C.F., Su, E.L.M., Holderbaum, W., and
+Yang, C. (2023).
+A review on energy efficiency in
+autonomous mobile robots.
+Robotic Intelligence and
+Automation, 43(6), 648–668.
+Xing, X., Ding, H., Liang, Z., Li, B., and Yang, Z. (2022).
+Robot path planner based on deep reinforcement learn-
+ing and the seeker optimization algorithm. Mechatron-
+ics, 88, 102918.
+Yoo, S.W., Son, E.I., and Seo, S.W. (2024). Traversability-
+aware adaptive optimization for path planning and
+control in mountainous terrain.
+IEEE Robotics and
+Automation Letters, 9(6), 5078–5085.

@@ -1,0 +1,737 @@
+DuctAM: A Duct-Assisted Quadrotor-Based Aerial Manipulator
+Enabling High-Force Push-and-Pull Interactions
+Yi Wang∗, Rui Jin∗, Xinhang Xu∗, Haotian Jin, Ruiyang Liu, Yizhuo Yang and Lihua Xie†
+Abstract— Uncrewed Aerial Manipulators (UAMs) extend the
+capabilities of Uncrewed Aerial Vehicles (UAVs) from percep-
+tion to physical interaction. Among various aerial interactions,
+push-and-pull operations are fundamental manipulation primi-
+tives that require sustained horizontal forces while maintaining
+stable flight. In this paper, we propose DuctAM, a compact
+aerial manipulation platform that enhances horizontal force
+capability for push-and-pull interactions using two ducted fans
+integrated along the quadrotor interaction axis. An attitude-
+force decoupled control scheme enables controllable horizontal
+forces without requiring large attitude changes. Extensive real-
+world experiments are conducted to validate the DuctAM.
+Figure-eight trajectory tracking experiments demonstrate sta-
+ble flight and accurate motion control in both quad and duct
+modes. Force-measurement experiments quantify the decoupled
+longitudinal force capability of DuctAM. Finally, representative
+push-and-pull interaction tasks, including cart pushing, door
+closing, and drawer opening, verify the practical effectiveness
+of DuctAM. The results show that DuctAM achieves signifi-
+cantly improved horizontal interaction force capability while
+maintaining stable flight compared with conventional UAVs.
+I. INTRODUCTION
+Uncrewed Aerial Manipulators (UAMs) extend the ca-
+pabilities
+of
+Uncrewed
+Aerial
+Vehicles
+(UAVs)
+from
+perception-centric autonomy [1]–[4] to physical interaction
+with the environment [5]. Among various forms of aerial
+interaction, pushing and pulling represent fundamental ma-
+nipulation primitives. Many practical aerial tasks can be
+formulated as push-and-pull interactions, such as opening
+doors or drawers [6] during search-and-rescue operations,
+pushing carts or movable containers [7] in warehouse lo-
+gistics, and pulling or guiding cables [8] during tether base
+transportation.
+These tasks, such as the crate-pushing scenario illustrated
+in Fig. 1, require UAMs to generate sustained interaction
+forces while maintaining stable flight. Achieving reliable
+push-and-pull interactions therefore imposes the following
+key requirements on new generation UAMs:
+• High Lateral Force: Push-and-pull interactions re-
+quire the UAMs to generate sufficiently large horizontal
+forces to overcome environmental resistance and drive
+object motion [9].
+∗Indicates equal contribution.
+†Corresponding author: elhxie@ntu.edu.sg.
+Yi Wang, Rui Jin, Xinhang Xu, Haotian Jin, Ruiyang Liu, and Yizhuo
+Yang are with the School of Electrical and Electronic Engineering, Nanyang
+Technological University, Singapore 639798. Lihua Xie is with the NTU–
+VinUni Joint Research Laboratory for Embodied AI and Robotics, School
+of Electrical and Electronic Engineering, Nanyang Technological University,
+Singapore 639798, and VinUniversity, Hanoi, Vietnam.
+This work was supported by Ministry of Education, Singapore, under
+AcRF TIER 1 Grant RG64/23.
+Fig. 1: DuctAM pushing a plastic crate on a sandpaper surface.
+• Attitude–Force Decoupling: The generated interaction
+forces should not significantly disturb the vehicle float-
+ing attitude, enabling stable flight and consistent contact
+direction during interaction.
+• Structural Compactness: The aerial platform should
+maintain a compact structural footprint to operate ef-
+fectively in confined or cluttered environments [10].
+However, satisfying these requirements remains challeng-
+ing for existing UAMs. Conventional multi-rotor UAMs
+[11]–[19] generate thrust primarily along the body normal
+direction. Therefore, horizontal forces can only be produced
+by tilting the airframe, which introduces strong coupling
+between attitude and force generation. As a result, large in-
+teraction forces may significantly disturb the UAM’s attitude,
+limiting stability and controllability during interactions.
+To overcome these limitations, several fully actuated or
+over-actuated aerial platforms have been proposed to achieve
+six-DoF torque-force decoupling. However, these designs
+often introduce increased structural complexity and enlarged
+platform size. In addition, many fully actuated or thrust-
+vectoring designs employ tilted or spatially distributed pro-
+pellers and vectoring mechanisms [20]–[26], whose thrust
+arXiv:2609.15861v1  [cs.RO]  14 Sep 2026
+
+
+vectors are not always aligned with the desired interaction
+direction.
+Consequently, only the projected component of the gen-
+erated thrust contributes to the interaction force. Moreover,
+a significant portion of the available thrust must be used to
+balance gravity and maintain flight, leaving a limited force
+margin for interaction. As a result, the achievable force along
+a single horizontal direction remains constrained.
+To address the challenges in horizontal push-and-pull in-
+teraction commonly encountered in aerial manipulation tasks,
+this paper proposes DuctAM, an aerial manipulation platform
+designed to enhance high horizontal force capability while
+maintaining structural compactness and stable flight. The
+proposed architecture symmetrically integrates two ducted
+fans along the longitudinal axis of a quadrotor platform. By
+leveraging counter-rotating motors and decoupled thrust con-
+trol, the system can generate controllable horizontal forces
+without requiring large attitude changes. This design signif-
+icantly increases the available lateral force while preserving
+a compact structural footprint, thereby enabling high-force
+push-and-pull interactions in confined environments.
+To validate the effectiveness of DuctAM for high-force
+push-and-pull interactions, we conduct extensive real-world
+experiments on representative aerial manipulation tasks, in-
+cluding drawer opening, door closing, cart pushing, and high-
+friction box pushing on sandpaper surfaces. These exper-
+iments prominently demonstrate the high-force interaction
+capabilities of DuctAM compared to conventional UAVs.
+Furthermore, a figure-eight trajectory attitude tracking ex-
+periment is conducted to exhibit the control performance and
+stability, particularly along the longitudinal axis.
+The main contributions of this paper are as follows:
+• We propose a novel UAM design, DuctAM, which is
+suitable for high-force push-and-pull interaction tasks.
+Through dual-ducted fans design, we achieve a platform
+with high longitudinal force capability.
+• We introduce an acceleration decomposition scheme to
+overcome the coupling of attitude and force in con-
+ventional UAVs, thereby enabling attitude stabilization
+during sustained force exertion.
+• Through a series of real-world experiments, we validate
+the capabilities of DuctAM in high-force push-pull
+manipulation scenarios.
+II. SYSTEM MODELING
+In this section, we formulate the dynamics of the proposed
+hybrid aerial platform, which integrates a standard quadrotor
+with two horizontal ducted fans. We define the world inertial
+frame as FW = {xw, yw, zw} and the body-fixed frame as
+FB = {xb, yb, zb}, with the origin shown in Fig. 2(a). The
+system state is defined by position p ∈R3, velocity v ∈
+R3, attitude rotation matrix R ∈SO(3), and body angular
+velocity ω ∈R3.
+A. Hybrid Propulsion Model
+Unlike conventional multirotors, the proposed platform is
+equipped with two hybrid propulsion subsets: four vertically
+mounted rotors that generate thrusts denoted as T1–T4, and
+two horizontally mounted ducted fans that generate thrusts
+denoted as T5 and T6. The ducted fans are aligned parallel
+to the xb-axis.
+The total force Fb = [Fx, Fy, Fz]T generated in the body
+frame can be decoupled into the quadrotor contribution and
+the ducted-fan contribution, defined as:
+Fb = Fq + Fd =
+
+
+0
+0
+P4
+i=1 Ti
+
++
+
+
+T5 + T6
+0
+0
+
+,
+(1)
+where the subscripts q and d indicate the quadrotor and
+ducted-fan contributions, respectively. In the nominal model,
+the two ducted fans are assumed to be symmetrically com-
+manded with T5 = T6. Under this assumption, the ducted-
+fan subsystem provides only longitudinal push-and-pull force
+and does not contribute to yaw actuation. Similarly, the total
+control torque τb = [τx, τy, τz]T in FB is given by
+τb = τq + τd.
+(2)
+The quadrotor torque is defined as:
+τq =
+
+
+τx,q
+τy,q
+τz,q
+
+=
+
+
+√
+2
+2 lq(−T1 + T2 + T3 −T4)
+√
+2
+2 lq(−T1 −T2 + T3 + T4)
+cτ(−T1 + T2 −T3 + T4)
+
+,
+(3)
+where the effective lever arm and the drag torque coefficient
+of the vertical rotors are denoted by lq and cτ, respectively.
+The augmented torque from the ducted fans is explicitly
+expressed as:
+τd =
+
+0, hdFx,d, 0
+T ,
+(4)
+where hd represents the vertical offset of the ducted fans’
+thrust line from the CoM.
+From the established propulsion model, two distinct char-
+acteristics of this hybrid configuration emerge. First, the
+ducted fans provide independent, fully decoupled control
+over the xb-axis translation via the direct longitudinal actu-
+ation Fx,d, which fundamentally expands the underactuated
+flight envelope of the quadrotor. Second, while lateral para-
+sitic forces are eliminated due to the parallel alignment, any
+vertical misalignment (hd̸ = 0) of the ducted fans introduces
+a coupled pitching moment τy,d during forward acceleration.
+This pitch coupling effect is treated as an internal disturbance
+and is actively rejected by the robust attitude controller.
+B. Rigid Body Dynamics
+The translational and rotational dynamics of the platform
+are governed by the Newton-Euler equations:
+m¨p = mg + RFb,
+(5)
+J ˙ω = τb −ω × (Jω),
+(6)
+where m is the total mass, and J ∈R3×3 is the inertia tensor,
+g = [0, 0, −g]T is the gravity vector.
+To further illustrate the advantage of the hybrid design, we
+can expand the translational dynamics (Eq. 5) using Z-Y-X
+Euler angles (ψ, θ, ϕ). In conventional quadrotors (Fx,d = 0),
+
+
+Fig. 2: Coordinate and force definitions, and the control framework.
+Fig. 3: Acceleration decomposition in duct mode.
+generating a global acceleration ¨x requires tight coupling
+with the pitch angle θ. In contrast, for our platform operating
+in the duct mode, the pitch angle is constrained to zero
+(θ = 0) for longitudinal stabilization when an interaction
+occurs. By substituting θ = 0 into the rotation matrix R, the
+translational equations simplify to an analytical form:
+m
+
+
+¨x
+¨y
+¨z + g
+
+=
+
+
+Fx,d cos ψ + Fz,q sin ψ sin ϕ
+Fx,d sin ψ −Fz,q cos ψ sin ϕ
+Fz,q cos ϕ
+
+.
+(7)
+Eq. 7 shows that the global longitudinal and lateral accel-
+erations can be regulated by combining the horizontal force
+Fx,d and the roll angle ϕ without tilting the airframe forward
+or backward. This strict pitch decoupling ensures minimal
+downwash airflow disturbance and lateral stabilization during
+close-proximity manipulations.
+III. CONTROL ARCHITECTURE
+To exploit the platform’s hybrid actuation, the control
+framework is designed to seamlessly switch between the
+underactuated quad mode and the decoupled duct mode. The
+framework is shown in Fig. 2(b) and primarily consists of
+two parts: the position controller and the attitude controller.
+A. Position Control
+The position controller is implemented as a cascaded
+PD controller. First, the desired global acceleration ¨pd is
+calculated as follows:
+¨pd = ¨pr + Kv( ˙pr + Kp(pr −p) −˙p),
+(8)
+where ¨pr, ˙pr, and pr denote the reference acceleration,
+velocity, and position obtained from the reference trajectory;
+˙p and p represent the measured velocity and position of the
+drone; and Kv, Kp are positive definite gain matrices.
+When the drone operates in the underactuated quad mode,
+it can only generate thrust along its body Z-axis zB. The
+desired collective thrust Tz,d is expressed as:
+Tz,d = (m¨pd −mg) · zB.
+(9)
+When switching to the duct mode, the drone achieves
+decoupled longitudinal control. The execution along the
+horizontal X-axis is shifted to the ducted fans, while the
+position error is still corrected by the controller. Therefore,
+the desired force can be expressed in the body frame as
+fb,d = RT (m¨pd −mg) =
+
+
+fx,d
+fy,d
+fz,d
+
+,
+(10)
+where fb,d denotes the desired body-frame force vector. The
+longitudinal component fx,d is assigned to the ducted fans,
+while the vertical component fz,d is mainly provided by the
+quadrotor subsystem.
+B. Attitude Control and Decoupling
+The attitude controller is formulated as a cascaded PID
+controller operating on the SO(3) manifold. First, we define
+the attitude error Re as:
+Re = 1
+2(RT
+r R −RT Rr)∨,
+(11)
+where Rr and R denote the reference and measured attitude
+rotation matrices, respectively, and (·)∨represents the map-
+ping of elements from the Lie algebra so(3) to vectors in
+R3.
+For the quad mode, Rr is derived from the desired
+acceleration ¨pd and the reference yaw using the differential
+flatness property. However, in the duct mode, the forward ac-
+celeration is directly provided by the ducted fans. To prevent
+this independent thrust from coupling with the differential
+flatness mapping, the total desired acceleration is required to
+be decomposed.
+Specifically, as illustrated in Fig. 3(a), we introduce a yaw-
+aligned intermediate frame D (comprising axes xd, yd, zd).
+This frame is obtained by rotating the world frame W around
+
+
+Fig. 4: Hardware configuration and system overview.
+the zw-axis by the reference yaw angle ψr. The total desired
+acceleration vector ac is then decomposed in Fig. 3(b) as:
+ac = aQ
+c + aD
+c ,
+(12)
+where aQ
+c
+is the acceleration distributed to the quadrotor
+subsystem, and aD
+c
+is the acceleration distributed to the
+ducted fans. Since the ducted fans’ control authority is
+constrained to the xd-axis, the scalar acceleration allocated to
+the ducted fans, denoted as aduct, is obtained by orthogonally
+projecting ac onto the xd-axis of the intermediate frame D:
+aduct = eT
+1 Rz(ψr)T ac,
+(13)
+where e1 = [1, 0, 0]T and Rz(ψr) ∈SO(3) is the rotation
+matrix from D to W. The spatial acceleration vector allo-
+cated to the ducted fans in the world frame is then formulated
+as:
+aD
+c = Rz(ψr)
+
+
+aduct
+0
+0
+
+.
+(14)
+After isolating the ducted fan’s effort, the residual acceler-
+ation aQ
+c = ac−aD
+c accounts entirely for the vertical lift and
+lateral maneuvering. The decoupled quadrotor acceleration
+aQ
+c and the reference yaw ψr are utilized through the stan-
+dard differential flatness mapping to generate the decoupled
+reference attitude matrix Rr.
+This acceleration decomposition naturally drives the flat-
+ness mapping to yield a near-zero pitch angle (θ ≈0),
+effectively decoupling the longitudinal translation from the
+pitch dynamics while strictly tracking the altitude and lateral
+trajectories.
+The desired angular velocity ωd and angular velocity error
+ωe are defined as follows:
+ωd = KR · Re,
+(15)
+ωe = ωd −ω,
+(16)
+where KR is a positive definite gain matrix, and ω represents
+the measured angular velocity. Then, the desired torque
+τdes is calculated using positive definite PID gain matrices
+{KP,ω, KI,ω, KD,ω}:
+τdes = KP,ωωe + KI,ω
+Z
+ωedt + KD,ω ˙ωe.
+(17)
+TABLE I: Component Configuration and Weight Distribution
+Component
+Model
+Units Weight (g)
+Battery
+VOLTEN 1550 mAh 6S
+1
+233
+Onboard Computer NVIDIA Jetson Orin NX
+1
+81
+Ducted Fan
+QX-MOTOR 50 mm
+2
+146
+Brushless Motor
+2004.5 2250 KV Customized
+4
+73.6
+ESC
+HAKRC 65A
+2
+22
+Flight Controller
+NxtPX4v2
+1
+6.5
+For control allocation, the computed desired torque τdes
+and the collective thrust derived from aQ
+c
+are allocated
+through the quadrotor mixer. Simultaneously, in the duct
+mode, the decoupled longitudinal acceleration scalar aduct
+is mapped to the ducted fan actuators. Since the two ducted
+fans are symmetrically arranged and commanded with equal
+magnitude, the duct mixer generates the actuator commands
+as
+
+u5
+u6
+
+= Kductaduct,
+(18)
+where Kduct = [k5, k6]T is the mapping gain vector from
+the desired longitudinal acceleration to the ducted-fan com-
+mands. In this work, k5 = k6 is used to avoid introducing
+an additional yaw moment.
+IV. EXPERIMENTS
+A. Implementation Details
+We built a prototype DuctAM to validate the proposed
+dynamics and control framework. The hardware config-
+uration is shown in Fig. 4(a). The prototype measures
+230 × 220 × 130 mm and weighs 987 g. It consists of a
+conventional quadrotor base with two ducted fans mounted
+in parallel along the body longitudinal axis. The ducted
+fans are positioned on a plane
+1 cm above the center of
+mass. DuctAM integrates an NVIDIA Jetson Orin NX as
+the onboard computer and an NxtPX4v2 flight controller for
+low-level attitude stabilization, motor command execution,
+and onboard IMU data acquisition. Table I summarizes the
+model and weight distribution of key components.
+The system overview is illustrated in Fig. 4(b). State
+estimation is provided by an Extended Kalman Filter (EKF)
+that fuses measurements from a Vicon motion capture system
+and the onboard IMU, producing odometry for the controller.
+The prototype can track a commanded reference trajectory
+using the proposed control pipeline.
+
+
+Fig. 5: Figure-8 trajectory tracking experiments and results. Subfigures A and B show the experimental results of DuctAM in duct mode
+and quad mode, respectively: (a) trajectory snapshot overlay, (b) position tracking curves, and (c) time-series of the drone position and
+attitude during trajectory tracking.
+B. Figure-8 Trajectory Tracking
+To evaluate the control performance and tracking accuracy
+of the proposed platform, we conducted figure-8 trajectory
+tracking experiments on DuctAM. The platform was com-
+manded to track a 3.2 × 1.6 m figure-8 trajectory in the
+quad mode and the duct mode, respectively. In each trial,
+DuctAM completed two laps along the reference path. The
+experimental results are visualized in Fig. 5.
+To further quantify the longitudinal force–pitch decoupling
+performance of DuctAM, we introduce the mean absolute
+pitch angle as an evaluation metric, defined as
+|θ| = 1
+N
+N
+X
+i=1
+|θi| ,
+(19)
+where N is the total number of samples and θi denotes the
+pitch angle at the i-th sample. From the experimental data,
+we obtain |θ| = 0.69◦in the duct mode and |θ| = 1.86◦
+in the quad mode, indicating that DuctAM can generate
+longitudinal force with substantially reduced pitch deviation,
+thus validating the decoupling effect.
+Meanwhile, we evaluate the 2D position tracking accuracy
+in the x–y plane using the root-mean-square error (RMSE).
+The position RMSE is 6.2 cm in the duct mode and 7.5 cm
+in the quad mode, indicating comparable tracking accuracy
+and the potential of DuctAM for precise motion tracking
+with enhanced longitudinal force generation.
+C. Longitudinal Force Measurement
+A key advantage of DuctAM over a conventional quadro-
+tor is that the longitudinal force can be regulated indepen-
+dently of the pitch angle, which makes it suitable for push-
+and-pull interactions. To quantify the decoupled longitudinal
+force that DuctAM can generate, we performed the experi-
+ment shown in Fig. 6.
+To ensure measurement accuracy, we built two test rigs
+and cross-validated the results, as shown in Fig. 6(a) and
+(b). In Fig. 6(a), the force measurement is based on a digital
+scale: the quadrotor base is rigidly mounted on a linear guide
+rail to constrain the motion to the longitudinal direction, and
+the front head of DuctAM is brought into contact with the
+scale to measure the interaction force. Using this setup, we
+measured a maximum pushing force of 1372 g.
+However, this rig is not suitable for measuring pulling
+force because the ducted-fan airflow impinges on the scale
+and leads to biased readings. Therefore, we further built
+a thrust-measuring-stand-based rig, where the drone is
+mounted vertically on the stand shown in Fig. 6(b). This
+rig introduces negligible aerodynamic interference, and the
+measured maximum pushing and pulling forces are 1367 g
+and 439 g, respectively. The maximum pushing force differs
+from the digital-scale measurement by only 0.37%, support-
+ing the reliability of the measurements.
+For comparison with a conventional quadrotor, we com-
+pute the pitch angles required in the quad mode to generate
+the same longitudinal pushing/pulling forces while main-
+taining vertical force balance against gravity, as shown in
+Fig. 6(c) and (d). The quad mode requires pitch angles of
+54.3◦and −24.0◦to produce the corresponding maximum
+pushing and pulling forces, respectively. These results high-
+light the force–attitude decoupling capability of DuctAM and
+demonstrate the potential of the proposed configuration for
+
+
+Fig. 6: Longitudinal force measurement. (a) A force-measurement rig based on a digital scale. (b) A force-measurement rig based on a
+thrust-measuring stand. (c) and (d) Required pitch angles in the quad mode to generate longitudinal force components equal to DuctAM’s
+maximum pushing and pulling forces, respectively.
+high-force interaction tasks with reduced attitude deviation.
+D. Push-and-Pull Interactions
+To evaluate the practicality of DuctAM in push-and-pull
+interactions, we conducted four representative tasks: cart
+pushing, door closing, and drawer opening (Fig. 7), as well
+as crate pushing on sandpaper (Fig. 1).
+1) Cart Pushing: A key advantage of the ducted-fan
+configuration is its ability to provide a large thrust magnitude,
+which enables DuctAM to perform pushing interaction tasks
+with relatively heavy loads. To validate this capability, we
+conducted a cart-pushing experiment, as shown in Fig. 7.A.
+In this experiment, DuctAM was commanded to push a cart
+on a foam crawling mat, with the cart carrying a 3.87 kg
+payload (a wheel and a plastic crate).
+DuctAM maintained continuous contact for 6.2 s and
+pushed the cart forward by approximately 2 m. During
+pushing, DuctAM maintained a nearly level attitude, with the
+pitch angle staying around 1◦. We also tested the drone in the
+quad mode under the same conditions. The quadrotor failed
+to move the cart and became unstable, even when the pitch
+angle exceeded 21.2◦. This loaded cart-pushing experiment
+demonstrates the ability of DuctAM to generate longitudinal
+thrust for pushing interactions.
+2) Door Closing: To evaluate the performance of Duc-
+tAM in pushing a rotating object, we conducted a door-
+closing experiment that mimics a common daily action, as
+shown in Fig. 7(b). DuctAM was tasked with closing an
+aviation-case door of size 0.88 × 1.06 m.
+DuctAM contacted the door at t = 2.4 s and pushed
+continuously for about 3.1 s until it was fully closed.
+During the interaction, DuctAM maintained a consistent yaw
+rotation, with a total yaw change exceeding 30◦.
+3) Drawer Opening: To verify the feasibility of DuctAM
+for pulling interaction tasks, we designed a daily-life sce-
+nario: drawer opening (Fig. 7.C). A 2.14 kg laptop was
+placed inside a closed drawer, and a rope was attached
+between the drawer handle and the front end of DuctAM.
+By reversing the thrust direction of the ducted fans, DuctAM
+generated the pulling force and successfully opened the
+drawer after approximately 2.5 s of continuous pulling,
+during which the rope remained taut.
+For comparison, we also evaluated the performance of
+DuctAM in the quad mode under the same setup as a
+benchmark. The quadrotor failed to open the drawer even
+when its pitch angle reached −12.4◦. Despite exhibiting a
+similar pitch angle to the quad mode, the configuration of
+DuctAM provides additional horizontal thrust, enabling the
+drawer to be opened without requiring large attitude changes.
+These results demonstrate the capability of the proposed
+DuctAM system for pulling interactions.
+E. Stability Under Contact Force Loss
+During aerial interaction, a sudden loss of contact with
+the object poses a significant stability challenge. To validate
+this capability, we designed an experiment in which DuctAM
+pushes and topples a plastic crate placed on a 100CW
+sandpaper surface. As shown in Fig. 1, the trial lasted 3.2 s.
+From t = 0 to 1 s, DuctAM approached the crate and
+then continuously pushed for approximately 1.5 s until the
+crate was toppled. After separation, DuctAM remained stable
+despite the abrupt release of interaction force.
+For comparison, we also tested a conventional quadrotor
+configuration, which failed to push the crate even with the
+pitch angle increased to 34.9◦. These results demonstrate the
+dynamic response and stability of DuctAM under sudden
+contact transitions, indicating its potential for robust high-
+force interaction tasks.
+V. CONCLUSION AND FUTURE WORK
+In this work, we presented DuctAM, a compact aerial
+manipulation platform designed to enable high-force push-
+and-pull interactions while maintaining stable flight. By
+integrating two ducted fans along the longitudinal axis of a
+
+
+Fig. 7: Push-and-pull tasks. Each row corresponds to a different task. From left to right, the columns show a snapshot of the interaction,
+external-view images, the estimated position curves, the pitch-angle profile, and the ducted-fan RPM profile.
+quadrotor and employing an attitude-force decoupled control
+strategy, the proposed system can generate enough longitu-
+dinal forces to accomplish practical tasks without requiring
+large attitude deviations.
+To validate the effectiveness of DuctAM, extensive real-
+world experiments were conducted, including trajectory
+tracking, force measurement, and representative push-and-
+pull interaction tasks such as cart pushing, door closing,
+and drawer opening. The results demonstrate that DuctAM
+can produce significantly larger horizontal interaction forces
+while preserving stable flight performance compared with
+conventional UAV platforms.
+These results highlight the potential of the proposed ar-
+chitecture for aerial manipulation tasks that require strong
+horizontal interaction force. Future work will investigate
+improved control strategies for contact-rich manipulation
+and extend the platform to more complex aerial interaction
+scenarios.
+REFERENCES
+[1] Y. Yao, B. Zhang, W. Zhang, L. Gao, D. Peng, B. Li, Y. Wang, and
+B. Wang, “Arsgaussian: 3d gaussian splatting with lidar for aerial re-
+mote sensing novel view synthesis,” ISPRS Journal of Photogrammetry
+and Remote Sensing, vol. 231, pp. 288–306, 2026.
+[2] Y. Zhang, C. Yan, J. Xiao, and M. Feroskhan, “Npe-drl: Enhanc-
+ing perception constrained obstacle avoidance with nonexpert policy
+guided reinforcement learning,” IEEE Transactions on Artificial Intel-
+ligence, vol. 6, no. 1, pp. 184–198, 2024.
+[3] Y. Zhang, H. Yu, J. Xiao, and M. Feroskhan, “Grounded vision-
+language navigation for uavs with open-vocabulary goal understand-
+ing,” arXiv preprint arXiv:2506.10756, 2025.
+[4] R. Jin, Y. Gao, Y. Wang, Y. Wu, H. Lu, C. Xu, and F. Gao, “Gs-planner:
+A gaussian-splatting-based planning framework for active high-fidelity
+reconstruction,” in 2024 IEEE/RSJ International Conference on Intel-
+ligent Robots and Systems (IROS).
+IEEE, 2024, pp. 11 202–11 209.
+[5] M.
+Allenspach,
+“Human
+robot
+interaction
+for
+aerial
+robotic
+manipulation,” Ph.D. dissertation, ETH Z¨urich, Z¨urich, Switzerland,
+2025. [Online]. Available: https://www.research-collection.ethz.ch/
+items/50dde8a3-8259-4eb6-80c1-7d4ba924994a
+[6] H. Gupta, X. Guo, H. Ha, C. Pan, M. Cao, D. Lee, S. Scherer,
+S.
+Song,
+and
+G.
+Shi,
+“Umi-on-air:
+Embodiment-aware
+guid-
+ance for embodiment-agnostic visuomotor policies,” arXiv preprint
+arXiv:2510.02614, 2025.
+[7] W. Deng, H. Chen, B. Ye, H. Chen, Z. Li, and X. Lyu, “Whole-body
+integrated motion planning for aerial manipulators,” IEEE Transac-
+tions on Robotics, vol. 41, pp. 6661–6679, 2025.
+[8] R. Jin, X. Xu, Y. Yang, J. Li, M. Cao, and L. Xie, “Tethered
+uav autonomous knotting on environmental structures for transport,”
+Cyborg and Bionic Systems, vol. 6, p. 0450, 2025.
+[9] A. Ollero, M. Tognon, A. Suarez, D. Lee, and A. Franchi, “Past,
+present, and future of aerial robotic manipulators,” IEEE Transactions
+on Robotics, vol. 38, no. 1, pp. 626–645, 2021.
+[10] J. Lin, S. Ji, Y. Wu, T. Wu, Z. Han, and F. Gao, “Float drone: A fully-
+actuated coaxial aerial robot for close-proximity operations,” in 2025
+IEEE/RSJ International Conference on Intelligent Robots and Systems
+(IROS).
+IEEE, 2025, pp. 7216–7223.
+[11] H. Chen, B. Ye, X. Liang, W. Deng, and X. Lyu, “Ndob-based control
+of a uav with delta-arm considering manipulator dynamics,” in 2025
+IEEE International Conference on Robotics and Automation (ICRA),
+2025, pp. 7505–7511.
+[12] Z. Zhang, H. Yu, Y. Chai, Z. Yang, X. Liang, Y. Fang, and J. Han,
+“An end-effector-oriented coupled motion planning method for aerial
+manipulators in constrained environments,” IEEE/ASME Transactions
+on Mechatronics, vol. 30, no. 6, pp. 6027–6037, 2025.
+
+
+[13] H. Cao, J. Shen, Y. Zhang, Z. Fu, C. Liu, S. Sun, and S. Zhao,
+“Proximal cooperative aerial manipulation with vertically stacked
+drones,” Nature, vol. 646, no. 8085, pp. 576–583, 2025.
+[14] M. Wang, Z. Chen, K. Guo, X. Yu, Y. Zhang, L. Guo, and W. Wang,
+“Millimeter-level pick and peg-in-hole task achieved by aerial ma-
+nipulator,” IEEE Transactions on Robotics, vol. 40, pp. 1242–1260,
+2024.
+[15] S. Deshmukh, J. Alonso-Mora, and S. Sun, “Global end-effector
+pose control of an underactuated aerial manipulator via reinforcement
+learning,” 2025. [Online]. Available: https://arxiv.org/abs/2512.21085
+[16] M. Cao, J. Zhao, X. Xu, and L. Xie, “Aircrab: A hybrid aerial-ground
+manipulator with an active wheel,” in 2024 IEEE/RSJ International
+Conference on Intelligent Robots and Systems (IROS).
+IEEE, 2024,
+pp. 10 356–10 361.
+[17] Y. Wu, F. Yang, R. Jin, Y. Zhong, J. Wang, X. Wu, and F. Gao, “Hand-
+like autonomous flying robot for airborne grasping and interaction,”
+Nature Communications, 2026.
+[18] Y. Wu, F. Yang, Z. Wang, K. Wang, Y. Cao, C. Xu, and F. Gao, “Ring-
+rotor: A novel retractable ring-shaped quadrotor with aerial grasping
+and transportation capability,” IEEE Robotics and Automation Letters,
+vol. 8, no. 4, pp. 2126–2133, 2023.
+[19] Z. Li, H. Chen, Y. Lin, B. Ye, Z. Pan, and X. Lyu, “Aerothrow:
+An autonomous aerial throwing system for precise payload delivery,”
+IEEE Robotics and Automation Letters, 2026.
+[20] G. He, X. Guo, L. Tang, Y. Zhang, M. Mousaei, J. Xu, J. Geng,
+S. Scherer, and G. Shi, “Flying hand: End-effector-centric framework
+for versatile aerial manipulation teleoperation and policy learning,”
+arXiv preprint arXiv:2504.10334, 2025.
+[21] D. Lee, B. Kim, and H. J. Kim, “Autonomous aerial manipula-
+tion at arbitrary pose in se (3) with robust control and whole-
+body planning,” The International Journal of Robotics Research, p.
+02783649251378195, 2025.
+[22] J. Li, J. Li, K. Kaneko, H. Liu, L. Shu, and M. Zhao, “Six-dof
+hand-based teleoperation for omnidirectional aerial robots,” in 2025
+IEEE/RSJ International Conference on Intelligent Robots and Systems
+(IROS), 2025, pp. 15 482–15 488.
+[23] S. Hwang, D. Lee, C. Kim, and H. J. Kim, “Autonomous heavy object
+pushing using a coaxial tiltrotor,” IEEE Transactions on Automation
+Science and Engineering, vol. 22, pp. 4243–4256, 2025.
+[24] S. Park, J. Lee, J. Ahn, M. Kim, J. Her, G.-H. Yang, and D. Lee,
+“Odar: Aerial manipulation platform enabling omnidirectional wrench
+generation,” IEEE/ASME Transactions on mechatronics, vol. 23, no. 4,
+pp. 1907–1918, 2018.
+[25] M. Kara-Mohamed, Q. Zhang, and X. Yan, “Design and control of an
+innovative overactuated thrust vectoring six-dof quadrotor for extreme
+and challenging environments,” Unmanned Systems, vol. 13, no. 02,
+pp. 345–361, 2025.
+[26] M. S. A. Isaac, P. F. Pe˜na, M. A. Luna, A. R. Ragab, and P. Campoy,
+“Sensing and control integration for thrust vectoring in heavy uavs:
+Real-world implementation and performance analysis,” Unmanned
+Systems, vol. 13, no. 02, pp. 609–631, 2025.
