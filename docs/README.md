@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-15</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-16</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 16 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 1 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>1</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-15 22:12:45 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-16 21:58:48 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,10 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 16 篇推荐（精读 4 篇，速读 12 篇）</p>
-<p>精读：《GLAM: Training a latent world model over global spatiotemporal memory for active exploration and navigation》（9.0/10）, 《Learning-Based Dynamic Obstacle Avoidance for a UAV Using Only Three Range Sensors》（8.0/10）</p>
-<p>速读：《Belief-Adaptive Online Autonomy for Quadrotor UAV Navigation under GNSS Degradation in Urban Environments》（7.0/10）, 《Dynamics-Informed Reinforcement Learning for Agile and Energy-Efficient Locomotion of a Monopedal Hopping Quadcopter》（7.0/10）, 《JEPLO: Joint-Embedding Predictive Learning for LiDAR-Based Legged Locomotion》（7.0/10）</p>
-<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
+<p>今天速读 1 篇、精读 0 篇，关注点集中在真机强化学习与灵巧操作方向。</p>
+<p>唯一入选的《Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation》（6.0/10）值得看的是它用 MPC 作为&quot;脚手架&quot;来支撑真机 RL 训练的思路，适合对样本效率和真机部署感兴趣的读者。</p>
+<p>普通读者可先只读该文的摘要与 MPC 脚手架设计部分，评分中等、不必深挖，后续等更高分相关工作再跟进。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">4 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GLAM: Training a latent world model over global spatiotemporal memory for active exploration and navigation">GLAM: Training a latent world model over global spatiotemporal memory for active exploration and navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning-Based Dynamic Obstacle Avoidance for a UAV Using Only Three Range Sensors">Learning-Based Dynamic Obstacle Avoidance for a UAV Using Only Three Range Sensors</span></li><li><span class="dpr-home-dashboard-paper-title" title="Learning to Exploit Passive Dynamics for Energy-Efficient Target Hopping of a Spring-Legged Quadcopter">Learning to Exploit Passive Dynamics for Energy-Efficient Target Hopping of a Spring-Legged Quadcopter</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Belief-Adaptive Online Autonomy for Quadrotor UAV Navigation under GNSS Degradation in Urban Environments">Belief-Adaptive Online Autonomy for Quadrotor UAV Navigation under GNSS Degradation in Urban Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="Dynamics-Informed Reinforcement Learning for Agile and Energy-Efficient Locomotion of a Monopedal Hopping Quadcopter">Dynamics-Informed Reinforcement Learning for Agile and Energy-Efficient Locomotion of a Monopedal Hopping Quadcopter</span></li><li><span class="dpr-home-dashboard-paper-title" title="JEPLO: Joint-Embedding Predictive Learning for LiDAR-Based Legged Locomotion">JEPLO: Joint-Embedding Predictive Learning for LiDAR-Based Legged Locomotion</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation">Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>9</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 

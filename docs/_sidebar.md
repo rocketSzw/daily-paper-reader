@@ -1,6 +1,9 @@
 * <a class="dpr-sidebar-root-link" href="#/">首页</a>
 * <a class="dpr-sidebar-root-link dpr-sidebar-noactive-link" href="javascript:void(0)" data-dpr-hash="#/tutorial/README">使用教程</a>
 * Daily Papers
+  * 2026-09-16 <!--dpr-date:20260916-->
+    * 速读区
+      * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/16/2609.14878v1-real-world-reinforcement-learning-with-mpc-scaffolding-for-dexterous-manipulation" data-sidebar-item="{&quot;title&quot;: &quot;Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.14878v1-real-world-reinforcement-learning-with-mpc-scaffolding-for-dexterous-manipulation&quot;, &quot;score&quot;: &quot;6.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;uav-control&quot;}], &quot;evidence&quot;: &quot;以模型预测控制为脚手架的真实世界机器人强化学习&quot;}">Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation</a>
   * 2026-09-15 <!--dpr-date:20260915-->
     * 精读区
       * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/15/2609.14561v1-glam-training-a-latent-world-model-over-global-spatiotemporal-memory-for-active-exploration-and-navigation" data-sidebar-item="{&quot;title&quot;: &quot;GLAM: Training a latent world model over global spatiotemporal memory for active exploration and navigation&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.14561v1-glam-training-a-latent-world-model-over-global-spatiotemporal-memory-for-active-exploration-and-navigation&quot;, &quot;score&quot;: &quot;9.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;world-uav&quot;}], &quot;evidence&quot;: &quot;基于全局时空记忆的潜世界模型用于导航&quot;}">GLAM: Training a latent world model over global spatiotemporal memory for active exploration and navigation</a>
