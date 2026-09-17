@@ -1,0 +1,648 @@
+Title: Escape-Aware Control Barrier Functions for Quadrotor Safety under Body-Rate Limits
+
+URL Source: https://arxiv.org/pdf/2609.17292v1
+
+Published Time: Wed, 16 Sep 2026 01:23:35 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Escape-Aware Control Barrier Functions for Quadrotor Safety under Body-Rate Limits 
+
+Lei Shi 1, Haosong Wen 2, Qichao Liu 3,* 
+
+Abstract —Control barrier functions for input-constrained sys-tems place the admissible input set inside the definition of the safe set, yet the resulting barrier is almost always a function of the state alone. On a quadrotor this is not cosmetic: because the thrust vector must be reoriented before it can decelerate an approach, and reorientation is limited by the attainable body rate, a state-only barrier certifies states from which no escape is reachable in time. We characterize the certification gap in closed form and show its width is proportional to closing speed and inversely proportional to the body-rate limit. We then define an escape barrier on the augmented pair of state and previously applied input, with escape authority measured over the one-step reachable thrust cap. It admits a closed form and an analytic inverse for the maximum certifiable closing speed, and embeds in a predictive controller at no additional state cost. Across 550 
+
+paired closed-loop episodes on a 13 -state quadrotor, the proposed controller completes every tested scenario, whereas the stopping-distance barrier enforced over the same horizon fails 15% and 
+
+25% of episodes in exactly the two scenarios that enter the predicted gap. Against an online backup-CBF baseline enforcing the same escape condition at the reached state, it holds a 29 –74 ◦
+
+larger directional margin and 3–18 times the clearance, and an independent conservative rollout referee finds no certified state from which escape fails. 
+
+Index Terms —control barrier functions, model predictive con-trol, aerial robotics, safety-critical control 
+
+I. I NTRODUCTION 
+
+Many control barrier function (CBF) based methods formu-late quadrotor safety as geometric clearance: remain outside a prescribed margin around obstacles. This is inexpensive, combines readily with model predictive control (MPC), and extends to multiple obstacles. But clearance alone does not characterize safety, because remaining safe also depends on whether the thrust direction can be reoriented toward the escape direction in time. A quadrotor maneuvers by changing the magnitude and direction of its thrust, and direction is set by attitude: magnitude changes quickly, direction must be slewed and is limited by the attainable body rate. The vehicle therefore cannot brake instantaneously along the obstacle normal — it must first rotate the thrust, and clearance is consumed throughout (Fig. 1). The question is not how much clearance remains, but whether it suffices for an escape feasible under the reachable thrust-direction constraint. Escape-based methods decide safety by the existence of a feasible escape rather than instantaneous distance. In-evitable collision states [1], backup CBFs [2], [3], Hamilton– Jacobi reachability [4], and closed-form input-constrained 
+
+> 1
+
+University of Wisconsin–Madison. 2Southeast University. 3The Hong Kong Polytechnic University. *Corresponding author: Qichao Liu. 
+
+> Fig. 1: Thrust-reorientation drift. The intended path is geometrically safe, but the thrust cannot align with the escape direction within one control interval, so the trajectory drifts toward the boundary before braking is available.
+
+barriers [5], [6] all fold control authority into certification, but to stay tractable for feedback they typically collapse the input constraint into a state-only barrier independent of 
+
+u−. That is reasonable for point-mass models, where the braking direction is history-independent; for a quadrotor the current thrust direction decides whether the escape direction is reachable in time. A set of states then satisfies the stopping-distance barrier hI (x) ≥ 0 yet admits no input that reorients and brakes before collision under a bounded body rate. We therefore propose an escape-aware CBF on the augmented pair 
+
+(x, u −), built from the one-step reachable thrust set induced by the previously applied input, which splits an escape into reorientation followed by aligned braking. The main contributions of this paper are summarized as: 1) A closed-form certification gap. We prove that the stopping-distance barrier hI , equivalently the backup CBF induced by a maximum-braking policy [3], certifies a nonempty set of states from which no body-rate-feasible escape exists, with gap width ∆dgap (ϕ) =max {0, ϕ − π/ 2} vcl /ω max . It grows linearly in closing speed, vanishes only as ωmax → ∞ , and is invisible to any barrier that is a function of x alone, so no constant margin absorbs it. 2) An escape certificate on (x, u −) with a closed form and an analytic inverse. Built from the one-step reachable thrust cap induced by the previously applied input, it assigns different safety values to states with identical position, velocity, and clearance but different thrust directions — a distinction no state-only barrier expresses. Unlike backup and implicit CBFs, which roll out a backup policy numerically, ours is algebraic: hesc 
+
+in closed form, an analytic inverse for the maximum certifiable closing speed, a proof that the certified set is contained in the escapable set under the stated reori-entation and drift assumptions (Theorem 1), and exact reduction to the isotropic braking bound as θ → π.arXiv:2609.17292v1 [cs.RO] 15 Sep 2026 3) Zero-cost embedding in MPC, validated against a backup-CBF oracle. Because MPC already optimizes an input sequence, the dependence on u− propagates along the horizon with no state augmentation. On a 13-state plant with motor lag and a cascaded attitude loop, the controller holds significantly larger clearance and directional margin than a geometric MPC-CBF [7], stays feasible where a constant-margin filter [8] is infeasible from the first step, and beats a rate-feasible backup CBF [2], [3], [9] flown online. Internal ablations isolate two variables: hI imposed over the same horizon still fails 15 –25% of episodes in the two scenarios that enter the gap, and our own certificate imposed at one node instead of 20 loses the margin. The enforcement locus is what the margin depends on, and the closed form is what makes that locus affordable. II. R ELATED WORK 
+
+A. Escape-Based Safety Certificates 
+
+Escape-based certificates define safety through the existence of future admissible motions rather than instantaneous clear-ance. Fraichard and Asama [1] introduced inevitable collision states. Difference: it is a set-membership characterization, pro-viding no scalar barrier, Lie-derivative condition, or forward-invariance certificate for online control. A second line places actuator limits algebraically inside the certificate. Wang et al. [6] couple pairwise distance and relative velocity through a maximum braking capability. Bree-den and Panagou [5] give the most developed form, with a certified set defined through an explicitly parameterized evading maneuver at the input bound. Difference: that ma-neuver is charged against a bound on input magnitude and assumed instantaneously available at every state, its admissi-bility independent of the previously applied input. We charge the reorientation time needed to make the braking direction admissible, and our certified set is a function of (x, u −): for a quadrotor the limiting factor is not the magnitude of available braking but its direction, so two states with identical position, velocity, and clearance can differ in escape capability. 
+
+B. Backup and Implicit Safety Certificates 
+
+Backup and implicit CBFs certify states whose finite-time rollout under a prescribed backup policy stays inside the constraint set; Chen et al. [3] observe that the stopping-distance barrier is the backup CBF induced by a maximum-braking policy. Singletary et al. [9] run backup CBFs onboard racing quadrotors under thrust and attitude-rate limits — the same actuation limits we study. Difference: their certificate is evaluated by numerically integrating a fixed backup controller from the current state , returning a scalar verdict rather than a differentiable function of the control decision, so it can filter a candidate input but cannot shape an optimization over a horizon. We derive the escape distance algebraically on 
+
+(x, u −), so the identical condition can be imposed at every prediction node. The distinction is not cost — Sec. V-D measures the backup-CBF controller as no slower than ours — but that a one-step filter rejects an input only once the state requiring rejection is reached. We use such a rollout as the conservative referee of Sec. V-B, fly it as B3, and move our own certificate to the same single-node locus in Sec. V-E. Projection-based extensions handle mixed state– input constraints [10]. Difference: [10] composes backup poli-cies over constraints on the instantaneous pair (x, u ) and does not bound how far u may move from u− in one interval — precisely the constraint generating our gap. A third route computes the escapable set directly: Hamilton– Jacobi reachability yields the exact viability kernel for a given input set, and [4], [11] use the value function as, or to refine, a CBF. Difference: the offline PDE is solved over a fixed state space, so the input set must depend on the state alone; a u−-dependent U1(u−) would lift the grid from six to nine dimensions. Ours is not a tighter set, but a closed-form certificate for that set. 
+
+C. Margin-Based Safety for Aerial Vehicles 
+
+Aerial avoidance must account for latency, actuator limits, obstacle motion, and estimation uncertainty, so many meth-ods inflate obstacles. The distributionally robust acceleration barrier filter of [8] folds latency, actuator and jerk limits, ob-stacle acceleration, and perception uncertainty into an effective clearance. Difference: such margins are set by worst-case con-stants and are direction-independent. We compute a direction-dependent escape authority from the one-step reachable thrust set induced by u−.Two lines relax that constant. Liu and Wang [12] size an MPC-embedded CBF to the observable region. Difference: 
+
+their margin adapts to what is perceived , ours to what is 
+
+actuable from u−. Shi et al. [13] enrich the barrier with obstacle shape, velocity, and orientation, and distribute control authority across robots. Difference: there authority is sched-uled between agents; here it is thrust authority reachable within one interval on one vehicle. III. P ROBLEM FORMULATION 
+
+A. Quadrotor Dynamics and Input Reachability 
+
+With p, v ∈ R3 the position and velocity, x := ( p, v), and 
+
+e3 = [0 , 0, 1] ⊤, the control-oriented translational dynamics are 
+
+˙p = v, ˙v = m−1f q − ge3 + w, (1) with m the mass, g gravity, and w ∈ W a bounded distur-bance. The input is 
+
+u := ( f, q) ∈ [fmin , f max ] × S2, (2) with f the thrust magnitude and q its direction. The thrust direction is set by attitude and therefore cannot change arbitrarily between control intervals. With u− =(f −, q−) the previously applied input, thrust-rate and body-rate limits give the one-step reachable input set 
+
+U1(u−) = 
+
+(
+
+(f, q) : |f − f −| ≤ ˙fmax ∆t, f ∈ [fmin , f max ],
+
+∠(q, q−) ≤ θ
+
+)
+
+,
+
+(3) where ∆t is the outer sampling period, ˙fmax the thrust-rate bound, and θ the maximum thrust-direction change achievable in one interval. This is not an isotropic acceleration ball but a cap oriented by q−. The angle θ is not ωmax ∆t: the attitude response has a finite lag, so θ ≤ ωmax (∆ t − tlag ) < ω max ∆t,with ωmax the sustained slew rate and tlag the closed-loop attitude-response lag. The analysis uses only the following identified property. 
+
+Assumption 1 (Identified reorientation) . From any admissible attitude, the thrust axis can be rotated onto a target direction 
+
+ψ radians away within tlag + max {0, ψ − θ}/ω max .
+
+For each obstacle Oi let di(p) be the signed distance to its boundary, so the free distance is dfree (p) = min i di(p),and the corresponding most critical obstacle is i⋆(p) =arg min i di(p).Let n(p) denote the outward unit normal at the boundary of Oi⋆ , and let vo be the velocity of that obstacle at its closest point. All escape quantities are evaluated in the frame of the closest obstacle, so the closing speed is 
+
+vcl (x) = max {0, −n⊤(p)( v − vo)}, (4) and the thrust-direction misalignment relative to the escape direction is ϕ = ∠(n(p), q−).
+
+Remark 1 (Moving obstacles) . Eq. (4) is exact for an obstacle at constant velocity. An accelerating obstacle with ∥ao∥ ≤ ¯ao
+
+enters the relative dynamics along n exactly as an inward disturbance, so replacing W by W ⊕ { a : ∥a∥ ≤ ¯ao} inflates 
+
+abound dist by at most ¯ao and every statement below, Theorem 1 included, holds verbatim. What is not absorbed is rotation of 
+
+n itself. 
+
+Two states with identical p, v, and dfree can therefore have different escape authority when q− differs, which is the basis for the gap analyzed next. 
+
+B. State-Only Stopping Barrier 
+
+An isotropic braking abstraction yields the state-only stop-ping barrier 
+
+hI (x) = dfree (p) − (2 amax )−1v2cl (x). (5) with amax := fmax /m , certifying a state when the free distance exceeds the distance needed to dissipate the closing speed under maximum braking. As Chen et al. [3] note, hI is the backup CBF induced by a maximum-braking policy, so it is a genuine state-only certificate under an isotropic braking abstraction rather than a heuristic margin. Its limitation is that it does not depend on 
+
+u−, and therefore assigns the same value to states with iden-tical position, velocity, and free distance but different thrust directions — equivalently, it assumes the braking direction is instantaneously available. Under Eq. (3) that fails. 
+
+C. State-Only Certification Gap under Body-Rate Limits 
+
+Eq. (5) assumes amax is available immediately along the es-cape direction, which fails under Eq. (3). Consider a horizontal encounter with n fixed, no gravity projection along n, and no disturbance, and let ψ(t) := ∠(q(t), n). Under the body-rate limit every feasible thrust-direction trajectory satisfies 
+
+ψ(t) ≥ max {0, ϕ − ωmax t}, (6) with ϕ the initial misalignment. While ψ(t) > π/ 2 the thrust has no positive projection along the escape direction and cannot reduce the closing speed. 
+
+Proposition 1 (Certification gap) . In the horizontal encounter above, suppose that the current thrust direction is opposite to the escape direction, i.e., ϕ = π. Then every state satisfying 
+
+v2cl 
+
+2amax 
+
+≤ dfree < v2cl 
+
+2amax 
+
++ πv cl 
+
+2ωmax 
+
+(7) 
+
+is certified as safe by the state-only stopping barrier, but admits no feasible escape maneuver before the available clearance is consumed under the body-rate limit. Proof. For ϕ = π, Eq. (6) gives ψ(t) > π/ 2 for t <π/ (2 ωmax ), so the thrust has no positive projection along n
+
+and the closing speed cannot be reduced; at least πv cl /(2 ωmax )
+
+of clearance is consumed before braking begins. The lower bound in Eq. (7) gives hI ≥ 0, the upper bound makes the available clearance smaller than the stopping distance plus the reorientation distance, so no escape completes before the clearance is exhausted. The gap width follows from Eq. (7): 
+
+∆dgap =
+
+ v2cl 
+
+2amax 
+
++ πv cl 
+
+2ωmax 
+
+
+
+− v2cl 
+
+2amax 
+
+= πv cl 
+
+2ωmax 
+
+. (8) For fixed vcl > 0 this is proportional to 1/ω max and vanishes as ωmax → ∞ . It is not small: at the identified 
+
+ωmax = 3 .05 rad /s the over-certified band is 0.51 vcl wide, 
+
+2.6 m at 5 m /s. The same argument applies at any misalign-ment, which makes the gap a set of positive measure rather than one configuration. 
+
+Corollary 1 (Gap at arbitrary misalignment) . In the horizontal encounter of Proposition 1, let the initial thrust misalignment be ϕ ∈ [0 , π ]. Every state satisfying 
+
+v2cl 
+
+2amax 
+
+≤ dfree < v2cl 
+
+2amax 
+
++ ∆ dgap (ϕ),
+
+∆dgap (ϕ) = max {0, ϕ − π 
+
+> 2
+
+} vcl 
+
+ωmax 
+
+(9) 
+
+satisfies hI (x) ≥ 0 but admits no body-rate-feasible escape. Proof. By Eq. (6), ψ(t) > π/ 2 for t < (ϕ − π/ 2) /ω max , so at least vcl (ϕ − π/ 2) /ω max of clearance is consumed before braking begins, and Proposition 1 applies with π/ (2 ωmax )
+
+replaced by (ϕ − π/ 2) /ω max . For ϕ ≤ π/ 2 the interval is empty. Two features are important. First, the gap is zero for 
+
+ϕ ≤ π/ 2 and then grows linearly, so the state-only barrier is exact only when the thrust already points outward; this direction-dependent degradation cannot be reproduced by any ϕ-independent margin. Second, Eq. (9) is a lower bound: it charges only the sustained slew and ignores both tlag and the inward acceleration produced while ψ > π/ 2. Quadrotor certification therefore cannot depend on x alone, but must account for the thrust-direction reachability induced by u−.IV. E SCAPE -A WARE BARRIER CONSTRUCTION 
+
+A. One-Step Reachable Thrust Set 
+
+The certificate must therefore retain thrust-direction reach-ability. We first characterize the accelerations generatable within one interval from u−:
+
+A1(u−) = 
+
+ fm q − ge3 : f ∈ [f ′
+
+> min
+
+, f ′
+
+> max
+
+], ∠(q, q−) ≤ θ
+
+
+
+,
+
+(10) where the one-step reachable thrust-magnitude interval is 
+
+f ′ 
+
+> max
+
+= min {fmax , f − + ˙fmax ∆t},f ′ 
+
+> min
+
+= max {fmin , f − − ˙fmax ∆t}. (11) 
+
+A1(u−) is anisotropic and oriented by q−. The barrier below inherits this structure, and with it the ability to separate states that differ only in thrust orientation. 
+
+B. Directional Escape Authority 
+
+The reachable set in Eq. (10) bounds the acceleration available along the escape direction. We define the one-step escape authority as the largest outward normal acceleration reachable from u−:
+
+aavail esc (x, u −) = max 
+
+> a∈A 1(u−)
+
+n⊤(p)a. (12) Because the input set separates the magnitude interval from the direction cap, Eq. (12) evaluates in closed form. For fixed 
+
+f the optimal direction rotates q− toward n(p) as far as the angular budget allows: 
+
+max 
+
+> ∠(q,q−)≤θ
+
+n⊤(p)q = c(ϕ), c (ϕ) := cos (max {0, ϕ − θ}) ,
+
+(13) where ϕ = ∠(n(p), q−) is the current thrust-direction mis-alignment. The remaining scalar problem is linear in f , so the optimum is at an endpoint: 
+
+aavail esc (x, u −) = c(ϕ)
+
+m
+
+(
+
+f ′
+
+> max
+
+, c(ϕ) ≥ 0,f ′
+
+> min
+
+, c(ϕ) < 0, −g n⊤(p)e3. (14) Three properties follow: it depends explicitly on ϕ, hence on 
+
+q−; when ϕ − θ > π/ 2 no reachable direction has positive projection along the escape direction, the regime of Proposi-tion 1; and as θ → π we recover the isotropic abstraction. Subtracting the worst inward disturbance projection, 
+
+abound dist (x) = max 
+
+> w∈W
+
+ −n⊤(p)w . (15) The resulting net escape capability is 
+
+aeff (x, u −) = aavail esc (x, u −) − abound dist (x). (16) This is the certified outward acceleration after the worst admissible disturbance. The certificate of Sec. IV-C is built from aeff : both quantities appearing there are instances of Eq. (16) at different misalignments. Writing aeff (ϕ) for the dependence through c(ϕ),
+
+aalign = aeff (ϕ) ϕ≤θ , adrift = − aeff (ϕ) ϕ=π, f =f ′
+
+> min
+
+,
+
+(17) so aalign is the outward authority available once reorientation completes and adrift the inward authority the same set pro-duces at the lowest reachable thrust while misalignment is maximal. The certificate charges the second over the reorien-tation interval and credits the first afterwards. 
+
+C. Escape Barrier and Analytic Inversion 
+
+An escape has two phases: reorientation, then aligned brak-ing. We charge the clearance consumed during reorientation before computing braking distance. By Assumption 1, 
+
+trot (ϕ) = tlag + max {0, ϕ − θ}
+
+ωmax 
+
+, τ eff = τd + trot (ϕ), (18) where τd denotes the control delay. During τeff , no effective braking is credited. This bookkeeping needs one check. The identified response of Sec. V-A, ψ(t) ≈ ωmax max {0, t − tlag }, makes a rotation by ϕ take tlag + ϕ/ω max , whereas Assumption 1 charges only 
+
+tlag + max {0, ϕ − θ}/ω max ; the shortfall θ/ω max is paid for by the control delay. 
+
+Lemma 1 (Reorientation budget) . Suppose θ ≤ ωmax (∆ t −
+
+tlag ) and τd ≥ ∆t. Then for every ϕ ∈ [0 , π ],
+
+τeff (ϕ) ≥ tlag + ϕωmax 
+
+, (19) 
+
+i.e. the interval over which the certificate credits no braking is at least the true time needed to align the thrust axis. Proof. If ϕ ≤ θ, then τeff = τd + tlag and Eq. (19) reduces to τd ≥ ϕ/ω max , which holds because ϕ ≤ θ ≤ ωmax (∆ t −
+
+tlag ) < ω max ∆t ≤ ωmax τd. If ϕ > θ , then τeff = τd + tlag +(ϕ − θ)/ω max and Eq. (19) reduces to τd ≥ θ/ω max , which holds because θ/ω max ≤ ∆t − tlag ≤ ∆t ≤ τd.Both are design conditions, not vehicle assumptions, and both hold for the plant of Sec. V-A: θ = 0 .141 ≤ ωmax (∆ t −
+
+tlag ) = 0 .161 rad and τd = ∆ t. Where they fail, τeff =
+
+τd + tlag + ϕ/ω max is unconditionally sound. Once the thrust direction is aligned with the escape direc-tion, the available outward acceleration is 
+
+aalign (x, u −) = f ′
+
+> max
+
+m − g n⊤(p)e3 − abound dist (x). (20) We also upper-bound the inward drift accumulated before braking begins by 
+
+adrift (x, u −) = f ′
+
+> min
+
+m + g n⊤(p)e3
+
+ 
+
+> +
+
++ abound dist (x). (21) The required escape distance is then 
+
+desc (x, u −) = vcl τeff + 12 adrift τ 2eff 
+
+| {z }
+
+> no braking available
+
++
+
+ vcl + adrift τeff 
+
+2
+
+2aalign 
+
+| {z }
+
+> braking
+
+,
+
+(22) defined on the domain Xesc = {(x, u −) : aalign (x, u −) > 0}.With dres = dfree − d0 the clearance left after the nominal margin d0, the escape-aware barrier is 
+
+hesc (x, u −) = dres (p) − desc (x, u −), (x, u −) ∈ X esc . (23) so hesc ≥ 0 means the remaining clearance covers both reorientation and braking. Since trot , adrift , and aalign are independent of vcl , Eq. (23) is quadratic in the closing speed; setting hesc = 0 and writing A := aalign , D := adrift , τ := τeff 
+
+gives 
+
+vmax cl (dres , ϕ ) = √Ap(A + D)τ 2 + 2 dres − (A + D)τ. (24) For τ → 0 and D = 0 this reduces to the classical bound √2Ad res : the barrier recovers the standard braking certificate when reorientation is instantaneous, and depends explicitly on 
+
+ϕ otherwise. 
+
+D. Safety Conditions and Conservatism 
+
+Eq. (22) is meaningful only when positive outward ac-celeration is available after alignment, so we separate an authority condition from a distance condition: hauth (x, u −) := 
+
+aalign (x, u −), and hdist (x, u −) := dres (p) − desc (x, u −).The augmented state (x, u −) is certified as escape-recoverable when 
+
+hauth (x, u −) > 0, h dist (x, u −) ≥ 0. (25) The first ensures braking is possible once aligned; the second that the remaining clearance covers reorientation and braking. The first is inactive over most of the envelope: by Eq. (20) it fails only when f ′
+
+> max
+
+/m < g n⊤e3 + abound dist , i.e. when the escape direction points steeply upward, so it becomes active for ceilings and overhangs. It is retained because desc 
+
+is undefined once aalign ≤ 0: it keeps the distance condition well posed rather than adding a safety requirement. Let E be the set of augmented states from which some admissible input trajectory drives vcl to zero before dres is consumed, for all w ∈ W, with admissibility understood through Assumption 1. 
+
+Theorem 1 (Conservatism direction) . Under Assumption 1, on Xesc = {(x, u −) : aalign (x, u −) > 0}, we have 
+
+(x, u −) : hdist (x, u −) ≥ 0 ⊆ E . (26) 
+
+Thus, the certified set does not overestimate escapability. Proof. Split the maneuver at τeff . On [0 , τ eff ) the certificate credits no outward braking, and with n fixed the worst inward growth of the closing speed is bounded by adrift , so vcl (t) ≤
+
+vcl +adrift t; the clearance consumed before braking is therefore at most vcl τeff + 12 adrift τ 2eff and the speed at the start of braking at most vcl + adrift τeff . By Assumption 1 with Lemma 1 the thrust is aligned by τeff , and on Xesc we have aalign > 0,so the remaining speed is dissipated within (2 aalign )−1(vcl +
+
+adrift τeff )2. The two phases require exactly desc in (22), so 
+
+hdist ≥ 0 gives dres ≥ desc and (x, u −) ∈ E .The witnessing maneuver is explicit: the reference escape policy πesc slews the thrust axis toward n at ωmax while ramp-ing the magnitude down to f ′
+
+> min
+
+, then switches to f ′ 
+
+> max
+
+once aligned. Theorem 1 certifies that this deliberately suboptimal maneuver completes within dres . The certificate is conservative by construction — no braking credited during reorientation, the disturbance through its worst inward projection, n held fixed. One term is charged in the opposite direction, and we bound it. 
+
+Remark 2 (Thrust-ramp transient) . adrift is evaluated at the window endpoint f ′
+
+> min
+
+, but πesc needs up to one interval to ramp down from f −. On that sub-interval Eq. (21) is not an upper bound. The excess is bounded: the additional inward speed is at most 
+
+∆v = ˙fmax ∆t2
+
+2m , (27) 
+
+and the additional clearance it consumes is at most ∆vτeff +(2 ve + ∆ v)/(2 aalign ) with ve := vcl + adrift τeff . At the parameters of Sec. V-A this gives ∆v = 0.6 m/s with 
+
+τeff = 0 .62 s at ϕ = 90 ◦ and 1.13 s at ϕ = π, so for the closing speeds of Sec. V-D the clearance it consumes is a few tenths of a metre: larger than d0, but well inside the margins the controller actually holds (Table I). The term vanishes when 
+
+f − = f ′
+
+> min
+
+, and replacing f ′ 
+
+> min
+
+by f − removes the caveat unconditionally at the cost of a uniformly smaller certified set. This is the one place where Theorem 1 is exact only up to an explicitly bounded term. 
+
+The result is a pointwise escape certificate, not a recursive-feasibility or forward-invariance guarantee: Eq. (25) certifies that an escape exists from the current augmented state. 
+
+E. MPC Embedding 
+
+The conditions depend on u−, which fits predictive control naturally, the decision variables of an MPC already forming an input sequence. At step k we set u− 
+
+> k|k
+
+= uk−1, and for later nodes 
+
+u− 
+
+> k+ℓ|k
+
+= uk+ℓ−1|k, ℓ = 1 , . . . , N. (28) Thus, the dependence on u− can be propagated along the horizon without augmenting the system state. We impose the authority and distance conditions as discrete-time CBF constraints along the prediction horizon: 
+
+hauth (xk+ℓ+1 |k , u − 
+
+> k+ℓ+1 |k
+
+) ≥ (1 − α1)hauth (xk+ℓ|k , u − 
+
+> k+ℓ|k
+
+),
+
+(29) 
+
+hdist (xk+ℓ+1 |k , u − 
+
+> k+ℓ+1 |k
+
+) ≥ (1 − α2)hdist (xk+ℓ|k , u − 
+
+> k+ℓ|k
+
+).
+
+(30) 
+
+for ℓ = 0 , . . . , N − 1, where α1, α 2 ∈ (0 , 1] set how quickly the two margins may decrease. The resulting finite-horizon optimal control problem is 
+
+min    
+
+> {uk+ℓ|k}N−1
+> ℓ=0
+> N−1
+
+X
+
+> ℓ=0
+
+
+
+∥xk+ℓ|k − xref 
+
+> k+ℓ|k
+
+∥2 
+
+> Q
+
++ ∥uk+ℓ|k∥2
+
+> R
+
+
+
+s.t. (1), (3), (28), (29), (30) , ℓ = 0 , . . . , N − 1. (31) We freeze the obstacle normal along the horizon, nk+ℓ|k =
+
+nk|k, which keeps the escape quantities closed form and is exact at the first node. The resulting constraints are pointwise escape certificates at the predicted nodes, not a recursive-feasibility guarantee. V. E XPERIMENTS 
+
+A. Experimental Setup 
+
+Closed-loop experiments run on a plant more detailed than the model used to compute the certificate: a 13 -state quadrotor with first-order motor lag and a cascaded attitude loop. The certificate is evaluated on Eq. (1) from position, velocity, and realized thrust direction. The plant is integrated at a 2 ms inner step; the MPC runs at ∆t = 0 .10 s over N = 20 nodes with control delay τd =0.10 s and decay parameters (α1, α 2) = (0 .10 , 0.25) . Thrust is constrained to [fmin , f max ] = [2 , 22] N with ˙fmax = 120 N /s.Obstacles are inflated by dsafe = 0 .35 m , so dfree is the signed distance to the inflated boundary and dres = dfree − d0, with 
+
+d0 = 0 .15 m , is what the escape maneuver may consume. The gust bound is ∥w∥ ≤ 1.5 m /s2.The mass is m = 1 .0 kg , so amax = fmax /m = 22 m /s2.The reorientation parameters are identified, not assumed: thrust-direction step commands over a grid of turning am-plitudes, azimuths, and thrust levels are fitted to ψ(t) ≈
+
+ωmax max {0, t − tlag }, and over 108 responses this gives 
+
+ωmax = 3 .05 rad /s and tlag = 0 .047 s . The worst single-interval turn under full-slew commands is 0.156 rad , and θ is set to 90% of it, θ = 0 .141 rad (8.1◦), the only tuning applied. Scenarios are generated deterministically from a seed, so all controllers face the same initial condition, obstacle mo-tion, and disturbance sequence. Continuous metrics use the Wilcoxon signed-rank test, binary outcomes the exact McNe-mar test, all Holm–Bonferroni corrected. An episode counts as a success if the vehicle reaches the goal region without contacting an obstacle within the time limit; contact and timeout are reported separately where they differ. 
+
+B. Baselines and Escape Referee 
+
+All controllers share the same MPC implementation, tasks, constraints, and disturbances, so the comparison isolates the certificate. B1 is a geometric state-only MPC-CBF [7], rep-resenting certification by instantaneous clearance. B2 is a worst-case constant-margin method [8] inflating the required clearance from global bounds on delay, braking, and input variation, testing whether a fixed margin can replace a state-dependent certificate. B3 is a rate-feasible backup CBF flown online [2], [3], [9], and is the baseline that matters most: it certifies exactly the quantity our closed form approximates, integrating at each step the same backup maneuver the referee uses, and differs from ours only in where that condition is enforced. It shares the plant, scenarios, seeds, disturbances, and backup maneuver of every other controller, and is retuned for nothing. An offline referee evaluates logged states, rolling out the same backup maneuver and marking a state escapable if it 2 4 6 8                                     
+
+> Available clearance dres [m]
+> 0510 15
+> Closing speed  vcl  [m/s] (a) φ= 0 ∘
+> 2468
+> Available clearance dres [m]
+> 0510 15
+> (b) φ= 90 ∘
+> 2468
+> Available clearance dres [m]
+> 0510 15
+> (c) φ= 180 ∘
+> ×1 ×2 ×4 ×8 ×32
+> Body-rate limit scale
+> 0% 20% 40% 60% 80% 100%
+> Area ratio
+> 14% 27% 43% 60% 80%
+> Isotropic reference
+> (d) Certified-area recovery
+> Escape-Aware Certified Set State-Only Over-Certified Set Uncertified Set Escape-Aware Boundary State-Only Boundary Escape Referee
+> Fig. 2: Certified safe regions under thrust-direction misalignment. (a)–(c) ϕ=0◦,90 ◦,180 ◦: green is the escape-aware certified set, orange the state-only over-certified set, gray the rollout referee. (d) The worst-case certified area approaches the isotropic reference as the body-rate limit grows.
+
+recovers before the boundary. It is an independent conservative audit, not a controller baseline. It defines the metric used throughout: writing Ck for the event that a controller’s own barrier certifies the logged state at step k, and Rk for the event that the referee’s rollout recovers from it, the certified-but-inescapable (CBI) count is 
+
+CBI = P 
+
+> k
+
+1[ Ck ∧ ¬R k ], (32) the steps a controller declared safe and the oracle could not escape. It is a soundness counter, not a performance one: a collision the barrier never certified contributes nothing. Because it commits to one fixed maneuver it is conservative, so CBI = 0 gives the stronger inclusion {certified } ⊆{referee-escapable } ⊆ E .
+
+C. Certified Sets under Thrust-Direction Misalignment 
+
+Fig. 2 compares the state-only boundary, ours, and the rollout referee in the (dres , v cl ) plane. At dres = 4 m the state-only barrier certifies 13 .26 m/s at every misalignment; ours certifies 11 .66 , 1.32 , and ≈0 m/s at ϕ = 0 , 90 , 180 ◦.The referee supplies the independent reference, and the comparison is the quantitative form of Corollary 1. Its bound-ary falls from 13 .05 to 8.26 to 0.84 m/s over the same angles: the state-only barrier is essentially exact when the thrust already points outward ( 1.02 × at ϕ = 0 ◦) but over-certifies by 1.61 × at 90 ◦ and 15 .8× at 180 ◦. The error is directional, not a constant offset, and no direction-independent margin absorbs it. Our closed form errs in the opposite direction, recovering 89% , 16% , and 0% of the referee’s certified speed. The two errors are not commensurable — over-certification admits a state no input can escape, under-certification refuses an escapable one at the cost measured in Sec. V-D — so a certificate is useful only when its error is one-sided: Theorem 1 fixes the side, CBI = 0 confirms it. Correspondingly, Fig. 2(d) shows the ϕ = 180 ◦ certified area rising from 14 .5% to 
+
+80 .0% of the isotropic reference as the body-rate limit scales 
+
+×1 to ×32 ; it saturates below 100% because τeff retains 
+
+τd + tlag = 0 .147 s, which does not scale with ωmax .
+
+D. Closed-Loop Behavior 
+
+S1 is a head-on encounter with a constant-velocity obstacle, matching Proposition 1; S2 circumnavigates a turning obstacle; S3 places the goal beyond the obstacle, so goal tracking alone drives the vehicle toward the state-only gap (Fig. 4). TABLE I: Closed-loop performance across three obstacle-avoidance scenarios.                                                                                                                                        
+
+> Scenario Controller Runs Success Min. clear. [m] Path [m] Time [s] Solve [ms] CBI ∆ϕ[deg] S1 Ours 30 100% 3.26 [2.89, 3.51] 39.6 8.2 46.6 083.2 Ours ℓ=0 ‡30 57% ** 0.21 [ −0.30 , 0.39] *** 24.9 9.0 35.4 99.4 B1 30 93% 2.16 [2.03, 2.36] *** 32.5 6.3 51.7 055.3 B2 †30 93% 4.78 [4.49, 4.96] 40.4 8.0 34.8 091.6 B3 30 93% 0.80 [0.57, 1.27] *** 29.3 5.8 36.3 09.0 S2 Ours 30 100% 1.78 [1.69, 1.87] 33.5 5.8 36.7 034.4 Ours ℓ=0 30 97% 0.74 [0.62, 0.85] *** 44.8 10.3 27.5 022.4 B1 30 97% 1.46 [1.40, 1.53] *** 32.8 6.8 39.2 031.6 B2 †30 0% *** −0.48 [−0.64 ,−0.27 ]*** 4.7 −1213.0 0−
+> B3 30 80% 0.10 [0.02, 0.24] *** 28.4 6.6 43.2 02.2 S3 Ours 50 100% 2.03 [1.86, 2.20] 38.8 8.5 42.6 077.6 Ours ℓ=0 50 100% 1.38 [1.27, 1.53] *** 40.4 8.9 23.5 066.3 B1 50 100% 1.37 [1.24, 1.50] *** 37.1 8.2 29.8 069.7 B2 50 100% 1.51 [1.38, 1.76] *** 36.0 8.8 29.8 077.6 B3 50 100% 0.67 [0.59, 0.74] *** 35.1 8.1 27.8 048.9
+
+Median [IQR] over paired seeds; markers on baseline rows denote comparison against ours after correction. CBI counts controller-certified but referee-unsafe steps; ∆ϕ is the directional margin (larger is safer). Success-rate differences against B3 are not significant at these sample sizes; clearance, band-occupancy and ∆ϕ differences are. Ours ℓ=0 
+
+is ours with (29)–(30) imposed only between nodes 0 and 1; every other setting is unchanged. †More than half infeasible steps; excluded from ∆ϕ. ‡8/30 episodes largely infeasible (Sec. V-E). ** p < 0.01 , *** p < 0.001 .5 10  
+
+> x[m]
+> 2.5 5.0 7.5
+> z [m]
+
+S1 head-on    
+
+> 0510
+> x[m]
+> 2.5 5.0 7.5
+> z [m]
+
+S2 lateral turn    
+
+> 0510
+> x[m]
+> −2.5 0.0
+> y [m]
+
+S3 goal-driven          
+
+> 01234
+> t[s]
+> 045 90 135
+> Δϕ [deg]  saturated
+> B3: ≤6.4 ∘
+> for 0.5 s
+
+S2 directional margin     
+
+> Ours ( N= 20 )Ours ℓ= 0 B3 backup CBF
+
+Fig. 3: One episode per scenario (seed 1) around the closest approach. The disc is the obstacle at that instant; markers are each controller’s own closest approach. Panels share a window size and are projected on the plane where avoidance occurs ( x–z for S1 and S2, x–y for S3). Bottom right: directional margin over the S2 encounter — B3 spends half a second at or below 6.4◦, ours never falls below 33 .8◦; shading marks samples where escape survives at any misalignment. 
+
+All scenarios run under a strong wind field whose magnitude and direction vary continuously over time. The controller has no access to the instantaneous wind vector and uses only the bound ∥w∥ ≤ 1.5 m /s2 of Sec. V-A. Table I reports the outcome. Our controller completes every episode, which B1 does not ( 93% in S1, 97% in S2), and holds a larger minimum clearance than B1 throughout ( 3.26 
+
+vs 2.16 m, 1.78 vs 1.46 m, 2.03 vs 1.37 m, all significant after correction) and a larger directional margin ( 83 .2◦ vs   
+
+> (a) (b) (c)
+
+Fig. 4: Trajectories under the time-varying wind field. (a) S1: head-on encounter. (b) S2: turning obstacle. (c) S3: goal beyond the obstacle. 
+
+55 .3◦, 34 .4◦ vs 31 .6◦, 77 .6◦ vs 69 .7◦). It never enters the Proposition 1 band, where B1 spends 7.5% of its closing steps in S1, 6.5% in S3, and none in S2. The band is evaluated at 
+
+ϕ = π on geometry alone, so by Corollary 1 occupancy is necessary but not sufficient for being certified yet inescapable — it measures how often a state-only barrier can be wrong, and S1 and S3 are also the scenarios in which hI itself fails in closed loop (Sec. V-E). The margin is not free, but the cost is narrower than the certificate itself suggests. Against B1 we travel 22% farther and take 30% longer in S1; in S2 the paths are within 2% 
+
+and we in fact reach the goal sooner ( 5.8 vs 6.8 s), and in S3 both gaps are under 5% . What remains is in the nonlinear program, not the algebraic certificate: our median solve time is 10% and 6% below B1’s in S1 and S2 and 43% above it in S3, and the largest median here, 46 .6 ms, sits well inside the 
+
+100 ms control period. B3 carries the contribution, enforcing the same escape condition and differing only in where . Its median clearance is 0.80 , 0.10 , and 0.67 m against our 3.26 , 1.78 , and 2.03 
+
+(padj < 10 −7), and its directional margin collapses to 9.0◦,
+
+2.2◦, and 48 .9◦, reaching 0◦ in the worst S1 and S2 episodes (Fig. 3). It occupies the gap band more than B1, reaches 37 
+
+steps the referee marks inescapable, and collides in 6.7% of S1 and 20% of S2 episodes; at 30 paired seeds those rates are descriptive, while the clearance, band, and ∆ϕ differences are significant. The mechanism is not cost: B3 solves in 0.65 –
+
+1.18 × our median time, cheaper than us in S1 and S3 and 
+
+dearer in S2 — the scenario where it collides most — and its condition is the stronger one; what it cannot do is enforce it anywhere but the state already reached, by which point the thrust is misaligned and the clearance committed. B2 needs separate reading: its globally tuned margin gives the largest S1 clearance ( 4.78 m) yet still collides in 6.7% 
+
+of episodes, and in S2 it is infeasible from the first step, describing a controller that never acts. No single direction-independent margin serves all three; adapting it online is the remedy of [12], and our result says what it must adapt to. The CBI count is zero for every controller except the node-
+
+0 ablation, and reading it correctly matters. For B1 the zero holds even inside the gap band: those excursions occurred at sub-worst-case misalignment, so over-certification showed up as eroded margin rather than as an inescapable state. For B3 the same zero coexists with 37 inescapable steps, because B3’s certificate is the rollout — it never certifies such a state and is simply left with nothing admissible. Those are feasibility, not soundness, failures, and they are the point. 
+
+E. Ablation Study 
+
+A certificate is fixed by what it computes and where it is imposed; B1 and B3 change both. Table II varies the first at a fixed locus of all N nodes. 
+
+Content. Row 2 collapses Eq. (23) to hI — four terms at once, the comparison Proposition 1 predicts rather than a one-term ablation — and is granted our own locus, not the single node at which a stopping barrier is normally applied. It still TABLE II: Internal ablations, 20 paired seeds, locus held at all N nodes. Rows 3–5 switch one modeling choice of our own controller; row 2 collapses the certificate to the state-only barrier hI . Everything else is unchanged.                                                          
+
+> Min. clearance [m] Success [%] Variant S1 S2 S3 S1 S2 S3 Ours, unmodified 3.21 1.77 2.05 100 100 100
+> hIat all Nnodes §2.02 0.51 1.58 85 100 75
+> No directional reachability 2.58 1.30 1.33 100 100 100
+> Constant one-step authority −0.43 −0.35 1.55 000
+> Worst-case drift charged 1.97 −0.26 1.56 55 35 100
+> §Eq. (23) with θ→π,τd=tlag = 0 ,W={0},f′
+> max =fmax , which collapses hesc
+> to hIof Eq. (5): the barrier of Prop. 1, imposed at every node rather than none.
+
+fails 15% of S1 and 25% of S3 while completing all of S2, exactly the scenarios in which B1 enters the Proposition 1 band (7.5% , 6.5% of closing steps, none in S2), and completes S2 on 0.51 m against our 1.77 . Row 3 restores every term but the direction cap and recovers completion at a cost of 20 –35% of the clearance: the reorientation and drift terms keep the vehicle feasible, the cap keeps the margin. Row 4 freezes A1(u−)
+
+through braking and completes no episode anywhere, stalling where it cannot crash ( −0.43 , −0.35 m in S1–S2; 1.55 m and no completion in S3) — a certificate made unsatisfiable rather than unsafe. Row 5 runs against us: charging the transient of Remark 2 unconditionally, the variant needing no caveat in Theorem 1, forfeits 45% and 65% of S1 and S2 episodes. That hI fails where the weaker barrier of B1 does not is the mechanism, not a contradiction: imposing hk+1 ≥ (1 − α)hk
+
+on dfree caps the closing speed near αd free /∆t, below the √2amax dfree that hI licenses over the 1–4 m clearances here. A geometric barrier is conservative by accident; hI authorizes exactly the fast approach in which reorientation time binds. 
+
+Locus. Holding certificate, horizon, cost, weights, decay rates, and solver fixed, we impose Eqs.(29)–(30) only between nodes 0 and 1 (Table I, Ours ℓ=0 ): clearance falls from 3.26 ,
+
+1.82 , 2.03 m to 0.21 , 0.74 , 1.38 against B3’s 0.80 , 0.10 , 0.67 ,and the S1 margin from 83 .2◦ to 9.4◦ against B3’s 9.0◦. The same condition loses the margin when checked only at the state already reached which is the effect B3 entangles. Excluding the eight fallback episodes leaves 0.31 m and 16 .4◦, and it is the only variant with nonzero CBI ( 9 steps, all in colliding episodes): no violation of Theorem 1, the referee being con-servative in that direction, but only this locus reaches where certificate and referee disagree. The converse cell is closed by structure : a rollout has no analytic derivative, so with 
+
+186 variables 20 such constraints cost O(10 3) integrations per Jacobian at every interior-point iteration, against B3’s one rollout per step. VI. C ONCLUSION 
+
+We studied quadrotor safety certification under body-rate-limited thrust reorientation, showing that state-only input-constrained barriers over-certify because they ignore the pre-viously applied thrust direction, and that the gap has aclosed form vanishing as the attainable body rate grows. We addressed it with an escape-aware certificate on (x, u −)
+
+that evaluates one-step reachable thrust authority, charges reorientation time, and admits a closed-form barrier and an analytic inverse for the maximum certifiable closing speed. On a 13-state quadrotor the controller completes every tested scenario while holding larger clearance and directional margin than a geometric MPC-CBF, stays feasible where a constant margin is infeasible from the first step, and is never certified-but-inescapable under an independent conservative backup-CBF rollout audit. Against that same rollout flown as a controller it holds significantly larger clearance and margin at no more than 2.2× the solve time, which isolates the contribution: both enforce the same escape condition, and the closed form is what lets it be enforced across a horizon rather than at one state. Ablations confirm that the stopping barrier hI , enforced over that same horizon, still fails 15 –25% 
+
+of episodes in the two scenarios that occupy the gap band, that directional reachability is essential, and that a constant-authority model is unusable. A key limitation is the lack of hardware validation. The soundness of the proposed certificate depends on Assump-tion 1, which reduces the attitude dynamics to a single effective slew rate. This assumption is identified and validated only on the simulated plant considered in this work [14]; its validity on physical hardware remains to be established. REFERENCES [1] T. Fraichard and H. Asama, “Inevitable collision states. a step towards safer robots?” in Proceedings 2003 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2003. [2] T. Gurriet, M. Mote, A. D. Ames, and E. Feron, “An online approach to active set invariance,” in 2018 IEEE Conference on Decision and Control (CDC) . IEEE, 2018, pp. 3592–3599. [3] Y. Chen, M. Jankovic, M. Santillo, and A. D. Ames, “Backup control barrier functions: Formulation and comparative study,” in 2021 60th IEEE Conference on Decision and Control (CDC) . IEEE, 2021, pp. 6835–6841. [4] J. J. Choi, D. Lee, K. Sreenath, C. J. Tomlin, and S. L. Herbert, “Robust control barrier-value functions for safety-critical control,” in 2021 60th IEEE Conference on Decision and Control (CDC) . IEEE, 2021, pp. 6814–6821. [5] J. Breeden and D. Panagou, “Robust control barrier functions under high relative degree and input constraints for satellite trajectories,”                        
+
+> Automatica , vol. 155, p. 111109, 2023. [6] L. Wang, A. D. Ames, and M. Egerstedt, “Safety barrier certificates for collisions-free multirobot systems,” IEEE Transactions on Robotics ,vol. 33, no. 3, pp. 661–674, 2017. [7] J. Zeng, B. Zhang, and K. Sreenath, “Safety-critical model predictive control with discrete-time control barrier function,” in 2021 American Control Conference (ACC) .IEEE, 2021, pp. 3882–3889. [8] D. Mandaokar and B. Rinner, “Distributionally robust acceleration con-trol barrier filter for efficient UAV obstacle avoidance,” IEEE Robotics and Automation Letters , 2026. [9] A. Singletary, A. Swann, Y. Chen, and A. D. Ames, “Onboard safety guarantees for racing drones: High-speed geofencing with control barrier functions,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 2897–2904, 2022. [10] L. Gacsi, A. K. Kiss, E. Das, and T. G. Molnar, “Enforcing mixed state-input constraints with multiple backup control barrier functions: A projection-based approach,” arXiv preprint arXiv:2603.17097 , 2026. [11] S. Tonkens and S. Herbert, “Refining control barrier functions through Hamilton-Jacobi reachability,” in 2022 IEEE/RSJ International Confer-ence on Intelligent Robots and Systems (IROS) .IEEE, 2022, pp. 13 355– 13 362. [12] Q. Liu and J. Wang, “Aggressiveness-conservativeness trade-off in cooperative driving: An adaptive CBF approach under perception con-straints,” Transportation Research Part C: Emerging Technologies , vol. 183, 2026.
+
+[13] L. Shi, Q. Liu, C. Zhou, and X. Li, “A fairness-oriented control framework for safety-critical multi-robot systems: Alternative authority control,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 16 283–16 289. [14] L. Shi, X. Yu, C. Zhou et al. , “Whole-body impedance coordinative control for a wheel-legged robot on uncertain terrain,” IEEE Robotics and Automation Letters , 2025.

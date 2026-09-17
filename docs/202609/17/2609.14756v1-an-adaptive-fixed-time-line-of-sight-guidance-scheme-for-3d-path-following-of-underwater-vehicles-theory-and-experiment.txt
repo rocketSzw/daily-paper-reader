@@ -1,0 +1,1108 @@
+Title: An Adaptive Fixed-Time Line-of-Sight Guidance Scheme for 3D Path Following of Underwater Vehicles: Theory and Experiment
+
+URL Source: https://arxiv.org/pdf/2609.14756v1
+
+Published Time: Tue, 15 Sep 2026 01:59:19 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+<Society logo(s) and publica-tion title will appear here. >
+
+> Received XX Month, XXXX; revised XX Month, XXXX; accepted XX Month, XXXX; Date of publication XX Month, XXXX; date of current version XX Month, XXXX.
+> Digital Object Identifier 10.1109/XXXX.2022.1234567
+
+# An Adaptive Fixed-Time Line-of-Sight Guidance Scheme for 3D Path Following of Underwater Vehicles: Theory and Experiment 
+
+Hanzhi Yang 1, Jalil Chavez-Galaviz 1,and Nina Mahmoudian 1 
+
+> 1School of Mechanical Engineering, Purdue University, West Lafayette, IN 47907 USA Corresponding author: Nina Mahmoudian (email: ninam@purdue.edu). This work was supported in part by Office of Naval Research (ONR) under Grant No. N00014-24-1-2019. The authors also wish to thank Chabely Pecina Martinez for her valuable assistance during the field validation.
+
+ABSTRACT Reliable path tracking is crucial for autonomous underwater vehicles (AUVs) operating in dynamic and uncertain marine environments. However, traditional line-of-sight (LOS) guidance methods rely on asymptotic convergence, resulting in slow disturbance recovery and unpredictable tracking performance. Existing robust control methods typically require modifications to the underlying vehicle controller, limiting their practical application on commercial AUV platforms. This paper proposes a robust fixed-time adaptive LOS guidance framework for 3D path tracking for AUVs. By combining fixed-time stability theory with LOS guidance, this method guarantees path tracking convergence within a preset time range, with the convergence time independent of initial conditions. Furthermore, a fixed-time adaptive estimator is developed to rapidly compensate for time-varying sideslip disturbances caused by ocean currents. A time-varying look-ahead mechanism is also introduced to improve tracking performance on curved paths. Lyapunov analysis proves the fixed-time stability of the proposed framework, and numerical simulations and physical experiments demonstrate that, compared to state-of-the-art adaptive LOS methods, this framework exhibits superior tracking accuracy, convergence speed, and anti-interference capability. In simulation, the time-varying look-ahead variant reduced cross-track and vertical-track RMSE by 69.37% and 67.46%, respectively, during curved-path tracking. In field experiments with an Iver 3 AUV, the proposed fixed-time guidance reduced average tracking error by 56.35% in straight-path evaluation and 27.59% in curved-path evaluation compared with conventional adaptive LOS guidance.The proposed method provides a practical guidance-level solution for achieving reliable autonomous navigation of AUVs in complex marine environments. 
+
+INDEX TERMS Marine systems, Guidance control, Adaptive control, Fixed-time control, Kinematics 
+
+I. Introduction 
+
+Autonomous underwater vehicles (AUVs) are increasingly used in critical marine missions such as ocean exploration, infrastructure inspection, and surveillance [1]. The success of these missions largely depends on reliable guidance, nav-igation, and control (GNC) systems capable of maintaining precise tracks in uncertain and dynamic underwater environ-ments. Unlike land robots, AUVs operate in environments subject to strong and time-varying disturbances, particularly ocean currents, which can significantly degrade their path-tracking performance. Therefore, achieving rapid and reli-able disturbance recovery is a fundamental requirement for practical autonomous underwater operations. Line-of-sight (LOS) guidance [2] remains one of the most widely adopted path-following strategies due to its simplicity and effectiveness. However, traditional LOS methods typ-ically rely on asymptotic convergence, meaning that while the tracking error gradually decreases, convergence cannot be  
+
+> This work is licensed under a Creative Commons Attribution 4.0 License. For more information, see https://creativecommons.org/licenses/by/4.0/ VOLUME , 1arXiv:2609.14756v1 [cs.RO] 13 Sep 2026 Author et al.:
+
+guaranteed within a predictable time frame. This limitation is particularly critical in time-sensitive robotic tasks, as convergence delays can lead to navigation failures, excessive energy consumption, or collision risks. To improve robustness, existing studies have focused primarily on refining the inner-loop attitude controller that tracks LOS-generated commands. For example, sliding mode control [3], extended state observers [4], and prescribed performance control [5] have been integrated with LOS guidance to compensate for disturbances. However, many commercial AUVs, such as IVER [6], Remus [7], and SLOCUM [8], are equipped with built-in attitude controllers that are inaccessible to end users. Therefore, modifying the low-level controller is often impractical, prompting the de-velopment of more robust and intelligent guidance strategies that can be implemented directly at the guidance layer. Adaptive LOS (ALOS) and integral LOS (ILOS) meth-ods address environmental perturbations by estimating or compensating for sideslip effects [9]–[12]. These methods achieve stable path following under sustained perturbations and have been extended to 3D trajectories. However, their primary reliance on asymptotic convergence limits their ap-plicability to tasks requiring rapid maneuvers and predictable recovery after severe perturbations. Fixed-time control (FxTC) theory offers a promising solu-tion that ensures system convergence within a predetermined time regardless of initial conditions [13], [14]. This property is particularly important for autonomous robots operating in uncertain environments, as recovery time directly impacts mission safety. FxTC has been successfully applied to AUV motion control problems [15]–[17], but its integration with LOS guidance remains limited. Existing fixed-time LOS (FxTLOS) studies mainly focus on 2D path following of surface vehicles or simplified AUV scenarios [18]–[20], lacking comprehensive analysis of perturbation robustness, experimental verification, and extensions to 3D path tracking, where coupled pitch and yaw dynamics introduce additional challenges. To overcome these limitations, this paper proposes a ro-bust adaptive fixed-time line-of-sight (AFxTLOS) guidance framework for 3D path tracking of AUVs. This method offers advantages such as fast convergence, fixed-time sideslip perturbation estimation, and compatibility with existing AUV motion controllers. Furthermore, for curved path tracking, this paper proposes an improved version incorporating time-varying look-ahead distance. The main contributions are summarized below: 
+
+• A novel FxTLOS guidance framework for 3D path fol-lowing of AUVs with guaranteed bounded convergence, independent of initial conditions of the system, while remaining compatible with commercial AUV motion controllers. 
+
+• A fixed-time sideslip estimator that compensates for unknown environmental disturbances to enhance the performance of the proposed control system in dynamic environments. 
+
+• Extensive validation through simulation and field ex-periments demonstrating improved tracking accuracy, faster convergence, and better robustness relative to state-of-the-art adaptive LOS method. This paper is structured as follows. Section II provides the necessary notations and lemmas and elaborates the problem formulation. Section III proposed the adaptive robust FxT-LOS and its variation with time-varying look-ahead distance for tracking curved paths. Section IV validates the proposed methodology in both numerical simulations and physical experiments with a comparative study against the ALOS presented in [12]. Section V concludes the paper. 
+
+> II. Preliminaries and Problem Formulation
+
+In this section, the notation and lemmas used in this pa-per, the AUV kinematic model then reformulated in the amplitude-phase form to simplify the controller design, and the corresponding path-following error dynamics are derived. 
+
+> A. Notations
+
+The following notations are used in this paper. 
+
+• For the trigonometric functions in the matrices, this paper uses: s• as sin •, c• as cos •, t• as tan •, and 
+
+sc • as sec •.
+
+• For variables x, y ∈ R, the notation sig is a function defined as sig x(y) = |y|x sgn( y).
+
+• For variables z, μ ∈ R, the notation ⌈z, μ ⌋ is a function defined as ⌈z, μ ⌋ = sig 1+ 1 
+
+> μ
+
+(z) + sig( z) + sig 1− 1 
+
+> μ
+
+(z)
+
+> B. Lemmas
+
+To prove controller stability, the following lemmas are used in this paper. 
+
+Lemma II.1. [21]. Consider a nonlinear system 
+
+˙x(t) = f  x(t), t > t 0, x(t0) = x0 (1) 
+
+in which x = [ x1, ..., x n]T ∈ Rn is the state variable and 
+
+f (x) : Rn → Rn is a nonlinear function. It is assumed that the origin is an equilibrium point of the system, and in this paper, it is assumed that t0 = 0 with x0 as the initial condition. If there exists a Lyapunov function that satisfies 
+
+˙V (x) ≤ −  αV p(x) + βV q (x)k (2) 
+
+with α, β, p, q, k ∈ R > 0 and pk < 1, qk > 1, then the origin of the system is globally fixed-time stable, and its settling time T is bounded by 
+
+T (x0) ≤ Tmax = 1
+
+αk(1 − pk ) + 1
+
+βk(qk − 1) , ∀x0 ∈ Rn
+
+(3) 
+
+Lemma II.2. [21]. For a nonlinear system (1) , if there exists a Lyapunov function that satisfies 
+
+˙V (x) ≤ − (αV p(x) + βV q (x)) k + ϑ (4)  
+
+> 2VOLUME ,
+
+<Society logo(s) and publication title will appear here. >Global frame 
+
+Body frame 
+
+FIGURE 1: NED coordinate system of underwater vehicles. 
+
+X,Y ,Z,ϕ,θ,ψ are the position and orientation of the vehicle in global frame, and u,v,w,p,q,r are the velocity in body frame. 
+
+with α, β, p, q, k ∈ R > 0, pk < 1, qk > 1, and ϑ ∈ (0 , +∞)
+
+is finite, then the system is practical fixed-time stable and the residual set of its solution is 
+
+X =
+
+
+
+lim  
+
+> t→T
+
+x|∥ x∥ ≤ min 
+
+n
+
+α− 1
+
+> p
+
+ ϑ
+
+1 − θ
+
+ 1
+
+> p
+
+,β− 1
+
+> q
+
+ ϑ
+
+1 − θ
+
+ 1 
+
+> q
+
+o (5) 
+
+where θ ∈ (0 , 1) , and the settling time T is bounded by 
+
+T ≤ Tmax := 1
+
+αθ (1 − p) + 1
+
+βθ (q − 1) (6) 
+
+> C. Kinematic model
+
+The kinematic model of AUVs is described in a body-fixed coordinate frame and a global coordinate frame as shown in Fig. 1 and is given as 
+
+˙η = J(η)ν (7) where η = [ X, Y, Z ]T is the vehicle’s position in the global frame, and ν = [ u, v, w ]T is the vehicle’s velocity in the body frame. The Euler angle rotation matrix J(η) is defined in ZYX convention 
+
+J(η) = 
+
+cθcψ sϕsθcψ − cϕsψ cϕsθcψ + sϕsψ
+
+cθsψ sϕsθsψ + cϕcψ cϕsθsψ − sϕcψ
+
+−sθ sϕcθ cϕcθ
+
+
+
+(8) The kinematic model (7) can be rewritten in an amplitude-phase form [22] expressed by 
+
+˙η =
+
+ Uh cos ( ψ + β)
+
+Uh sin ( ψ + β)
+
+−Uv sin ( θ − α)
+
+ (9) where the phase angles are defined as 
+
+α = tan −1
+
+ v sin( ϕ) + w cos( ϕ)
+
+u
+
+
+
+(10) 
+
+β = tan −1
+
+ v cos( ϕ) − w sin( ϕ)
+
+Uv cos( θ − α)
+
+
+
+(11) and the amplitude speeds are given by 
+
+Uv = u
+
+q
+
+1 + tan 2(α) (12) 
+
+Uh = Uv cos( θ − α)
+
+q
+
+1 + tan 2(β) (13) 
+
+> D. Error dynamics and control objective
+
+In a waypoint-based path following problem, the position tracking error is defined in an additional reference frame with an axis parallel to the straight path connecting two way-points; for example, given a waypoint ηn = [ Xn, Y n, Z n]T
+
+and its next waypoint ηn+1 = [ Xn+1 , Y n+1 , Z n+1 ]T , the reference frame has its origin at ηn and the x-axis pointing toward ηn+1 . In this frame, the along-, cross-, and vertical-track error ηe = [ Xe, Y e, Z e]T is given by 
+
+ηe = JTY JTZ (η − ηn) (14) in which the rotation matrices yield 
+
+JY =
+
+ cπv 0 sπv
+
+0 1 0
+
+−sπv 0 cπv
+
+ (15) 
+
+JZ =
+
+cπh −sπh 0
+
+sπh cπh 00 0 1
+
+ (16) and the azimuth angle πh and elevation angle πv are given by 
+
+πh = atan2( Yn+1 − Yn, X n+1 − Xn) (17) 
+
+πv = atan2 
+
+
+
+−(Zn+1 − Zn), (18) 
+
+p(Xn+1 − Xn)2 + ( Yn+1 − Yn)2
+
+
+
+Taking the derivative of (14) and substituting (9) yields the tracking error dynamics 
+
+˙ηe = JTY JTZ
+
+ Uh cos ( ψ + β)
+
+Uh sin ( ψ + β)
+
+−Uv sin ( θ − α)
+
+ (19) To track the target path in both vertical and horizontal planes, this work focuses on the cross- and vertical-track errors which can be expanded, from (19), as 
+
+˙Ye = Uh sin( ψ + β − πh) (20) 
+
+˙Ze = Uh sin( πv ) cos( ψ + β − πh) − Uv cos( πv ) sin( θ − α)
+
+(21) Substituting (13) into (21) gives a compact form of the vertical-track error dynamics 
+
+˙Ze = −Uv sin( θ − α − πv ) + Uv sin( πv ) cos( θ − α)··
+
+q 
+
+1 + tan 2(β) cos( ψ + β − πh) − 1
+
+
+
+= −Uv sin( θ − α − πv ) + Uh sin( πv )
+
+p1 + tan 2(β) ··
+
+q 
+
+1 + tan 2(β) cos( ψ + β − πh) − 1
+
+
+
+(22) The control objective of this work is to design a guidance law that computes the required pitch and heading angles, θd 
+
+> VOLUME , 3Author et al.:
+
+and ψd, to enable the underwater vehicle to follow the preset waypoints and maintain its course, and to ensure the fixed-time stability of the cross- and vertical-track errors. During the path following along the straight segments connecting each waypoint, the following assumptions are made: 
+
+Assumption 1. The underwater vehicle is moving at a nearly constant positive surge velocity s.t. 0 < u min ≤ u ≤ umax .
+
+Assumption 2. The crab angles α and β are nearly constant along the straight path segments s.t. ˙α ≈ 0, ˙β ≈ 0.
+
+Assumption 3. The crab angles α and β are bounded along the entire path with known upper boundaries s.t. |α| ≤ Mα
+
+and |β| ≤ Mβ .
+
+Assumption 4. The lower-level controller for heading and pitch angle controls on the AUV guarantees accurate track-ing with low time-delay in the response, s.t. θ(t) = θd(t)
+
+and ψ(t) = ψd(t).
+
+Remark 1. Assumptions 1-3 are standard assumptions in ocean vehicle control because AUVs typically maintain a constant target yaw velocity during stable waypoint navi-gation, and ocean currents change slowly relative to vehicle dynamics, naturally limiting the yaw angle to a certain range and causing it to change slowly. Assumption 4, however, is an idealized assumption with practical limitations. In actual hardware deployments, the underlying attitude controller is strictly constrained by actuator limitations and the serial communication delay between the frontseat and backseat computers of the vehicle. Therefore, in such cases, the control system needs to be carefully tuned to ensure that the bandwidth of the attitude controller is fast enough to the guidance loop, thereby stabilizing the vehicle without causing dynamic coupling or trajectory overshoot. 
+
+> III. Controller Design
+
+A FxTLOS guidance law is designed as follows, 
+
+ψd = πh − β + tan −1
+
+ −k1(⌈Ye, μ ⌋)∆h
+
+
+
+(23) 
+
+θd = πv + α + tan −1
+
+ k2(⌈Ze, μ ⌋)∆v
+
+
+
+(24) where k1, k 2 > 0 ∈ R and μ > 1 ∈ R are controller parameters to be tuned, and ∆h and ∆v are look-ahead distances in the horizontal and vertical planes. Since not all AUV models have body-frame velocity feed-back sensors, like Doppler Velocity Log (DVL), installed, in some cases the crab angles, α and β, are difficult to measure and compute. Even when a DVL is available, bottom-track measurements may become unavailable when the sensor loses bottom lock, and not all DVLs support water-tracking mode. An adaptive estimator therefore provides a valuable complementary source of information and a degree of re-dundancy when direct velocity measurements are unavailable or unreliable. To composensate for drift in both horizontal and vertical planes, a robust adaptation law is introduced to estimate the unknown crab angles, 
+
+˙ˆα = γv
+
+∆v
+
+p∆2 
+
+> v
+
++ k22 (⌈Ze, μ ⌋)2 Proj  ˆα, k 2(⌈Ze, μ ⌋) (25) 
+
+˙ˆβ = γh
+
+∆h
+
+p∆2 
+
+> h
+
++ k21 (⌈Ye, μ ⌋)2 Proj   ˆβ, k 1(⌈Ye, μ ⌋) (26) where the parameter projection to enhance the controller’s robustness is defined as 
+
+Proj ( ϑ, τ ) = 
+
+(  1 − c(ϑ)τ if |ϑ| > M ϑ and ϑT τ > 0
+
+τ else (27) in which c(ϑ) = min ( ˆϑ2 − M 2 
+
+> ϑ
+
+)/(M 2ˆϑ − M 2 
+
+> ϑ
+
+), 1 , M ˆϑ =
+
+Mϑ + ϵ, and ϵ > 0 ∈ R is a small constant parameter to be designed such that M ˆϑ is slightly larger than Mϑ. Inserting (25) and (26) to (23) and (24) gives the adaptive version of the fixed-time LOS guidance law, 
+
+ψd = πh − ˆβ + tan −1
+
+ −k1(⌈Ye, μ ⌋)∆h
+
+
+
+(28) 
+
+θd = πv + ˆ α + tan −1
+
+ k2(⌈Ze, μ ⌋)∆v
+
+
+
+(29) Substituting (28) and (29) into (20) and (22) yields 
+
+˙Ye = Uh sin 
+
+
+
+˜β + tan −1
+
+ −k1(⌈Ye, μ ⌋)∆h
+
+
+
+= Uh sin( ˜β) cos 
+
+
+
+tan −1
+
+ k1⌈Ye, μ ⌋
+
+∆h
+
+
+
+− Uh cos( ˜β) sin 
+
+
+
+tan −1
+
+ k1⌈Ye, μ ⌋
+
+∆h
+
+
+
+= Uh
+
+∆h
+
+p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2 sin( ˜β)
+
+− Uh
+
+k1⌈Ye, μ ⌋
+
+p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2 cos( ˜β)= −Uh
+
+∆h
+
+p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2
+
+
+
+cos( ˜β) k1⌈Ye, μ ⌋
+
+∆h
+
+− sin( ˜β)
+
+
+
+(30) 
+
+˙Ze = −Uv sin 
+
+
+
+tan −1
+
+ k2(⌈Ze, μ ⌋)∆v
+
+
+
+− ˜α
+
+
+
++ d(β, Y e)= −Uv sin 
+
+
+
+tan −1
+
+ k2⌈Ze, μ ⌋
+
+∆v
+
+)
+
+
+
+cos(˜ α)+ Ub cos 
+
+
+
+tan −1
+
+ k2⌈Ze, μ ⌋
+
+∆v
+
+)
+
+
+
+sin(˜ α) + d(β, Y e)= −Uv
+
+k2⌈Ze, μ ⌋
+
+p∆2 
+
+> v
+
++ k22 ⌈Ze, μ ⌋2 cos(˜ α)+ Uv
+
+∆v
+
+p∆2 
+
+> v
+
++ k22 ⌈Ze, μ ⌋2 sin(˜ α) + d(β, Y e)= −Uv
+
+∆v
+
+p∆2 
+
+> v
+
++ k22 ⌈Ze, μ ⌋2
+
+
+
+cos(˜ α) k2⌈Ze, μ ⌋
+
+∆v
+
+− sin(˜ α)
+
+
+
++ d( ˜β, Y e)
+
+(31)  
+
+> 4VOLUME ,
+
+<Society logo(s) and publication title will appear here. >
+
+where ˜α = α − ˆα and ˜β = β − ˆβ are the crab angle estimate errors, and the perturbation term is given by 
+
+d( ˜β, Y e) = Uh sin( πv )
+
+p1 + tan 2(β)
+
+q 
+
+1 + tan 2(β)·· cos 
+
+
+
+˜β − tan −1
+
+ −k1(⌈Ye, μ ⌋
+
+∆h
+
+
+
+− 1
+
+ (32) Based on Assumption 2, ˙˜α = − ˙ˆα and ˙˜β = − ˙ˆβ, so, 
+
+˙˜α = −γv
+
+∆v
+
+p∆2 
+
+> v
+
++ k22 (⌈Ze, μ ⌋)2 Proj  ˆα, k 2(⌈Ze, μ ⌋) (33) 
+
+˙˜β = −γh
+
+∆h
+
+p∆2 
+
+> h
+
++ k21 (⌈Ye, μ ⌋)2 Proj   ˆβ, k 1(⌈Ye, μ ⌋) (34) 
+
+Lemma III.1. The origin (Ye, Z e) = (0 , 0) of the subsystem consisting of (30) and (31) is fixed-time stable if the adapta-tion laws (25) and (26) estimates the crab angles perfectly, i.e. ˜α = 0 and ˜β = 0 , and if the perturbation term (32) is zero. Additionally, if the perturbation term is nonzero, then 
+
+Ye = 0 is fixed-time stable and Ze = 0 is practical fixed-time stable. Proof: 
+
+See Appendix A. 
+
+Remark 2. Lemma III.1 also indicates that if the body-frame sensor feedback is available, with which the crab angles can be directly computed, the adaptation law can be isolated from the proposed robust controller structure. 
+
+Lemma III.2. The adaptive control law consisting of (25) ,
+
+(26) , (28) and (29) guarantees stability of the tracking errors and convergence of the estimation errors in the presence of zero perturbation. Proof: 
+
+See Appendix B. 
+
+Theorem III.3. Consider the AUV kinematic system de-scribed by (9) . Applying the proposed AFxTLOS control laws designed as (28) and (29) and the adaptation laws designed as (25) and (26) enables the cross- and vertical-track errors, the dynamic model shown in (20) and (22) , to converge to a small neighborhood around the origin within a fixed time. Moreover, the finite convergence time Tmax is independent of the initial conditions and is upper bounded. Proof: 
+
+See Appendix C. An alternative version of AFxTLOS involving a time-varying look-ahead distance is also proposed in this paper. The constant distance term ∆ in (28) and (29) are replaced with an exponential function: 
+
+∆h = (∆ hmax − ∆hmin ) exp ( −k∆y Y 2 
+
+> e
+
+) + ∆ hmin (35) 
+
+∆v = (∆ vmax − ∆vmin ) exp ( −k∆z Z2 
+
+> e
+
+) + ∆ vmin (36) in which in both vertical and horizontal planes, ∆max and 
+
+∆min are the maximum and minimum desired values of the look-ahead distance ∆, respectively, and k∆ > 0 ∈ R is a design parameter. The basic strategy of the time-varying look-ahead distance mechanism is to assign a small distance value when the vehicle is far from the reference path, thereby making the path tracking more aggressive, and to have a large look-ahead distance if the vehicle is close to the target path, thus lowering the potential overshoots in tracking. The stability in Theorem III.3 can still be guaranteed for the AFxTLOS with time-varying look-ahead distance since the exponentially varying distances are bounded. 
+
+> IV. Results
+
+This section evaluates the performance of the proposed guid-ance law and adaptation law via numerical simulations and field tests. The proposed control methodology is compared with the ALOS scheme presented in [12] to validate its convergence rate and path tracking accuracy. 
+
+> A. Simulation
+
+The numerical simulation environment is built upon the 
+
+Marine Systems Simulator [23] and utilizes a REMUS-100 AUV [7], which is kept at a nearly constant speed of 2 m /s.The vehicle has a PID controller implemented to regulate the pitch and yaw angles by adjusting the angles of the vertical and horizontal rudders: 
+
+δv = −kpv wrap ( θ − θd) − kdv ( ˙θ − ˙θd)
+
+− kiv
+
+Z t
+
+> 0
+
+wrap( θ − θd)dτ (37) 
+
+δh = −kph wrap ( ψ − ψd) − kdh ( ˙ψ − ˙ψd)
+
+− kih
+
+Z t
+
+> 0
+
+wrap( ψ − ψd)dτ 
+
+(38) where wrap( ·) is a function that wraps angles to the interval 
+
+[−π, π ), defined as 
+
+wrap( θ) = [( θ + π) mod 2 π] − π (39) The controller gains have been tuned to track the target attitudes in the simulator, and the numerical study in this work is built using the default settings of the pitch and yaw controllers. This study uses the ALOS method presented in [12] as the baseline and examines the proposed AFxTLOS guidance controller and its variation with time-varying look-ahead distance (TVLD-AFxTLOS). The parameter setups of the controllers are listed in Table. 1. When following the ref-erence path defined by a series of waypoints, the guidance logic advances to the next waypoint as the vehicle enters the predefined neighborhood of the current target. Such a neighborhood is determined by 
+
+p(X − Xn)2 + ( Y − Yn)2 + ( Z − Zn)2 ≤ R (40) where R > 0 ∈ R is the target acceptance radius. To further validate the robustness of the proposed method in the pres-ence of environmental perturbations, currents and waves are  
+
+> VOLUME , 5Author et al.:
+
+TABLE 1: Controller setups of ALOS, AFxTLOS, and TVLD-AFxTLOS guidance in simulation                                    
+
+> Notation ALOS AFxTLOS TVLD-AFxTLOS
+> ∆h,∆vLook-ahead distance 20, 20 20, 20 N/A
+> γh, γ vAdaptive gain 0.002,0.002 0.002, 0.002 0.002, 0.002
+> k1, k 2Fixed-time controller gain N/A 1, 1 1, 1
+> μFixed-time function parameter N/A 22
+> k∆y, k ∆zTime-varying look-ahead distance gain N/A N/A 1, 1
+> ∆hmax ,∆hmin ,∆vmax ,∆vmin Time-varying look-ahead distance bound N/A N/A 30, 10, 30, 10
+
+FIGURE 2: Time-varying environmental disturbances ap-plied to the simulated AUV in the numerical study. added to impact the vehicle’s stability. As shown in Fig. 2, a horizontal current with a constant speed of 0.5m /s is initially added to the environment at a constant angle of 150 degrees. After running half of the simulation, the current is turned to time-varying signal by adding a normally distributed noise with an average value of 0.15 m /s and standard deviation of 
+
+0.02 , and its direction is changed to be normally distributed with an average value of 160 degrees and standard deviation of 0.1. In the vertical plane, the ocean wave is simulated as a uniformly distributed random signal ranging in [0 .4, 0.8]m /s.With this setup, the simulation examines the controller’s robustness in the presence of both constant unidirectional disturbances and time-varying perturbations. The simulations run at a frequency of 10Hz . Two scenarios are set to test the controllers’ capability and robustness of tracking straight and curved paths. 
+
+> 1) Straight path tracking
+
+The first simulation evaluates the convergence capability of the proposed guidance schemes for straight-line path following. The reference trajectory consists of a series of waypoints: [0 , 0, 0] T → [−5, 50 , 2.5] T → [−25 , 150 , 25] T →
+
+[0 , 240 , 25] T → [25 , 325 , 12 .5] T → [12 .5, 450 , 2.5] T →
+
+[5 , 550 , 7.5] T . The AUV starts from a stationary condition, 
+
+η(0) = ν(0) = 0 , and the waypoint acceptance radius is set to R = 4 m .Figures 3a–3c demonstrate that both fixed-time guidance schemes achieve faster path convergence than ALOS in both horizontal and vertical planes. While ALOS gradually reduces the tracking error due to its asymptotic convergence property, AFxTLOS and TVLD-AFxTLOS rapidly drive the cross-track and vertical-track errors toward zero. TVLD-AFxTLOS provides the highest tracking accuracy near way-point transitions by adapting the look-ahead distance accord-ing to the tracking error. The RMSE comparison further confirms this improvement: ALOS results in cross-track and vertical-track errors of 0.81 m and 0.99 m , respectively, whereas AFxTLOS reduces them to 0.47 m and 0.79 m , and TVLD-AFxTLOS achieves 0.44 m and 0.43 m .The disturbance estimation performance is evaluated through crab angle adaptation. As shown in Fig. 3d, the fixed-time adaptation law enables faster convergence and lower estimation errors compared with ALOS. Specifically, the RMSE values of horizontal and vertical crab angle estimation are reduced from 5.44 ◦ and 4.72 ◦ with ALOS to 3.46 ◦ and 3.78 ◦ with AFxTLOS, and further to 3.15 ◦ and 
+
+3.63 ◦ with TVLD-AFxTLOS. These improvements demon-strate that rapid disturbance estimation directly contributes to improved path tracking performance. The desired pitch and yaw commands generated by dif-ferent guidance laws are compared in Fig. 3e. The fixed-time methods require more aggressive attitude adjustments to achieve faster convergence, indicating a trade-off between tracking accuracy and control effort. Although this may increase energy consumption, it provides improved transient performance for missions requiring rapid trajectory recovery. The evolution of the adaptive look-ahead distances is shown in Fig. 3f. During the initial convergence phase, the horizontal and vertical look-ahead distances decrease to pro-vide more aggressive guidance corrections when the tracking errors are large. As the vehicle approaches the desired path and the tracking errors converge, both look-ahead distances gradually increase toward their maximum allowable values. This adaptive behavior allows TVLD-AFxTLOS to achieve a  
+
+> 6VOLUME ,
+
+<Society logo(s) and publication title will appear here. >    
+
+> (a) 3D path tracking (b) 2D path tracking (c) Tracking errors
+> (d) Crab angle adaptations (e) Control efforts (pitch and yaw) (f) Look-ahead distances
+
+FIGURE 3: Performance evaluation of the straight path tracking scenario. (a) 3D spatial tracking demonstrates more precise tracking by the proposed fixed-time guidance scheme compared to ALOS. (b) 2D planar tracking highlights more rapid path convergence in both horizontal and vertical planes. (c) Cross- and vertical-track errors exhibit rapid, accurate convergence to zero due to the fixed-time control mechanism. (d) Crab angle estimations show faster and more precise angle compensation. (e) Pitch and yaw angle adjustments illustrate the more aggressive control efforts required by the fixed-time schemes. (f) Time-varying look-ahead distances gradually approach maximum allowable values as the tracking error converges to zero. balance between rapid convergence during transient motion and smooth path following during steady-state tracking. 
+
+> 2) Curved path tracking
+
+The second simulation investigates the performance of the proposed methods in a more challenging curved-path sce-nario. The reference trajectory is generated using a Dubins path with a minimum turning radius of 20 m and connects the initial position with a final waypoint [0 , 0, 100] T while requiring a 180 ◦ heading change. The waypoint acceptance radius is maintained at R = 4 m .Figures 4a–4c show that the advantage of fixed-time guidance becomes more significant during curved-path track-ing. Due to accumulated disturbance effects and slow con-vergence, ALOS fails to maintain the desired trajectory under the original waypoint switching condition. Even after increasing its acceptance radius to R = 8 m , ALOS exhibits larger deviation from the reference path. In contrast, AFxT-LOS and TVLD-AFxTLOS successfully complete the tra-jectory while maintaining bounded tracking errors. Among the proposed methods, TVLD-AFxTLOS achieves the best performance by dynamically adjusting the look-ahead dis-tance, resulting in RMSE values of 1.04 m and 0.56 m for cross-track and vertical-track errors, respectively. AFxTLOS achieves comparable performance with RMSE values of 
+
+1.67m and 1.08m , while ALOS results in significantly larger errors of 3.40 m and 1.72 m .The crab angle estimation results in Fig. 4d further high-light the robustness of the fixed-time adaptation scheme under complex maneuvers. Compared with ALOS, the pro-posed methods provide faster disturbance compensation and lower estimation errors. The RMSE values of horizontal and      
+
+> VOLUME , 7Author et al.:
+> (a) 3D path tracking (b) 2D path tracking (c) Tracking errors
+> (d) Crab angle adaptations (e) Control efforts (pitch and yaw) (f) Look-ahead distances
+
+FIGURE 4: Performance evaluation of the curved path tracking scenario. (a) 3D spatial tracking demonstrates more precise tracking by the proposed fixed-time guidance scheme compared to the prior ALOS method. (b) 2D planar tracking shows more rapid path convergence in both horizontal and vertical planes. (c) Tracking errors illustrate the robust convergence properties of the fixed-time methods over ALOS. (d) Crab angle estimations demonstrate faster and more precise angle compensations in the vertical plane; horizontal adaptation exhibits chattering due to frequent waypoint switching, but still outperforms ALOS. (e) Control efforts show the more aggressive adjustments in pitch and yaw angles required by the fixed-time schemes. (f) Time-varying look-ahead distances reveal that vertical distance approaches maximum values upon convergence, whereas horizontal distance fluctuates between extremes due to rapid waypoint switching along the curve. vertical crab angle estimation are reduced from 8.46 ◦ and 
+
+20 .74 ◦ with ALOS to 6.21 ◦ and 13 .87 ◦ with AFxTLOS, and to 5.85 ◦ and 11 .95 ◦ with TVLD-AFxTLOS. The larger estimation variation in the horizontal plane is caused by frequent waypoint switching and rapid yaw adjustments during turning maneuvers. Figure 4e compares the corresponding attitude commands. Similar to the straight-path case, the fixed-time methods generate more active control commands to achieve rapid error rejection. TVLD-AFxTLOS requires the largest pitch adjustments due to its improved trajectory-following accu-racy, demonstrating the inherent trade-off between tracking precision and energy efficiency. The corresponding look-ahead distance adaptation is illus-trated in Fig. 4f. Unlike the straight-path case, the horizontal look-ahead distance exhibits frequent variations due to con-tinuous waypoint transitions and curvature changes along the reference trajectory. By reducing the horizontal look-ahead distance during large cross-track deviations, TVLD-AFxTLOS generates stronger lateral corrections to improve path adherence during turning maneuvers. Meanwhile, the vertical look-ahead distance gradually increases as the ver-tical tracking error converges, resulting in smoother depth regulation. These results demonstrate that the time-varying look-ahead mechanism improves adaptability during com-plex 3D maneuvers.  
+
+> 8VOLUME ,
+
+<Society logo(s) and publication title will appear here. >
+
+FIGURE 5: The Iver 3 AUV platform. 
+
+> 3) Simulation summary
+
+The simulation results demonstrate that fixed-time LOS guidance provides significant advantages over conventional adaptive LOS guidance for disturbed 3D AUV path fol-lowing. The proposed methods achieve faster convergence, improved disturbance estimation, and reduced tracking errors without modifying the vehicle’s internal attitude controller. The benefit of the proposed approach is particularly evi-dent in curved-path tracking, where asymptotic convergence limits the performance of conventional ALOS. Compared with ALOS, TVLD-AFxTLOS reduces the tracking RMSE by 69 .37% in cross-track error and 67 .46% in vertical-track error, while reducing crab angle estimation RMSE by 
+
+32 .27% and 42 .40% for horizontal and vertical disturbances, respectively. The increased control activity required by fixed-time guidance represents a potential energy-efficiency trade-off, which will be considered in future optimization-based extensions. 
+
+> B. Field Experiments
+> 1) Experimental setup
+
+To evaluate the proposed AFxTLOS guidance framework under realistic operating conditions, field experiments were conducted using an Iver 3 AUV (Fig. 5). The vehicle is a torpedo-shaped platform with a length of 2.16 m and diameter of 15 cm , equipped with separate frontseat and backseat computers. Since the frontseat controller is a closed system responsible for low-level vehicle control, all pro-posed guidance algorithms were implemented on the back-seat computer following the architecture previously used in underwater autonomy applications [24]–[26]. The guidance module communicates with the frontseat controller through a serial NMEA interface by sending desired thrust, rudder, and elevator commands. The vehicle is equipped with a DVL for underwater velocity estimation and onboard sensors for heading, depth, and position measurements. During underwater operation, the navigation estimate is maintained through dead reckoning and periodically corrected through surfacing events to obtain GPS measurements. The heading and depth loops are con-trolled by existing PID autopilots, which remain unchanged throughout all experiments. Therefore, the proposed method only modifies the guidance layer without requiring access to the internal vehicle controller. The implementation was developed in ROS and executed at 5Hz . The system consisted of a guidance node responsible for computing reference heading and pitch commands and a communication node responsible for sensor acquisition and command transmission. The controller parameters used for ALOS, AFxTLOS, and TVLD-AFxTLOS are summarized in Table 2. Validation consisted of three stages: (i) Gazebo-based verification of the ROS implementation and vehicle software integration, (ii) controller tuning during preliminary field deployments, and (iii) comparative field experiments eval-uating ALOS, AFxTLOS, and TVLD-AFxTLOS. The final evaluation mission consisted of four waypoints, including surface start and end points and two intermediate underwater waypoints at a depth of 2 m . This trajectory generated three navigation segments involving descent, underwater tracking, and surfacing. During the ascent phase, the system acquired GPS signals for positioning to calibrate the position feedback of the vehicle control system. 
+
+> 2) ROS software integration
+
+The first stage of validation was conducted in simulation using Gazebo to verify the logic of the proposed guidance law and to evaluate its performance within the Iver3 software environment. The purpose of this stage was to validate the node architecture and overall system logic prior to field testing, reducing deployment effort and risk. An image of the Bicentennial Nature Area Lake along with its corresponding Gazebo simulation is shown in Fig. 6. 
+
+FIGURE 6: The top row illustrates the first stage of valida-tion conducted prior to field deployments, using Gazebo and ROS for simulation-based testing. The bottom row shows the second stage of validation carried out at Fairfield Lakes and the Bicentennial Nature Area, where the majority of field deployments were performed.  
+
+> VOLUME , 9Author et al.:
+
+TABLE 2: Setups of ALOS, AFxTLOS, and TVLD-AFxTLOS guidance in field tests                                    
+
+> Notation ALOS AFxTLOS TVLD-AFxTLOS
+> ∆h,∆vLook-ahead distance 30, 30 30, 30 N/A
+> γh, γ vAdaptive gain 0.002,0.002 0.002, 0.002 0.002, 0.002
+> k1, k 2Fixed-time controller gain N/A 1, 1 1, 1
+> μFixed-time function parameter N/A 22
+> k∆y, k ∆zTime-varying look-ahead distance gain N/A N/Ah 1, 1
+> ∆hmax ,∆hmin ,∆vmax ,∆vmin Time-varying look-ahead distance bound N/A N/A 50, 30, 50, 30
+> 3) Controller tuning during field deployments
+
+The second stage of validation was conducted at Fairfield Lakes and the Bicentennial Nature Area, both located in Indiana. This stage focused on field validation and controller tuning, including tuning of the depth and heading PID controllers under real environmental disturbances. These experiments also served to assess system robustness, sen-sor behavior, and overall closed-loop performance prior to formal comparative evaluation. 
+
+> 4) Comparative experiment 1: Moderate environmental disturbances
+
+The first comparative experiment, conducted on Day 1, was performed under gentle breeze conditions, with an average wind speed of 4.6 m /s and gusts up to 6.7 m /s.These conditions generated surface waves that significantly degraded the reliability of the GPS signal when the vehicle resurfaced. This behavior is visible Fig. 7a during the final leg of the trajectory, where localization becomes unstable upon surfacing. As a result, performance comparison during this segment becomes less reliable. However, the first two legs of the mission provide a consistent basis for evaluating controller performance. From these segments, AFxTLOS demonstrates the best overall tracking performance, achieving rapid convergence to the predefined trajectory. In the first turn, the increased aggressiveness of AFxTLOS produces a slight overshoot, which delays convergence when transitioning to the second leg of the mission. In contrast, the TVLD-AFxTLOS exhibits smoother behavior during turns and decreases the average tracking error from 4.49m by ALOS to 2.68m . The variable look-ahead softens the response in these regions, reducing overshoot at the expense of a slightly slower alignment compared to AFxTLOS, which results in average tracking error of 1.96 m .In this run, the ALOS controller shows a more conserva-tive turning behavior, leading to slower convergence toward the reference path. While this produces a smoother trajectory with limited overshoot, it delays alignment with the first and second legs. Regarding the depth response, presented in Fig. 7b, the differences among the controllers further highlight their transient characteristics. ALOS results in an average tracking error in the vertical plane of 0.29 m , AFxTLOS leads to 
+
+0.48 m , and TVLD-AFxTLOS, 0.21 m . During descent, all controllers achieve stable convergence toward the com-manded 2m depth. However, the improved responsiveness of the AFxTLOS and TVLD-AFxTLOS controllers is accom-panied by increased oscillatory behavior in the mid-depth segment, although the latter exhibits lower overshoot due to the varying looka-head. During ascent, minor oscillations are observed for all controllers, mainly because the vertical control input, δv , must be adjusted to bring the vehicle to the surface for a GPS fix. The evolution of the crab angles, shown in Fig. 8, provides further insight into the behavior of the adaptive guidance laws. In the vertical plane (see Fig. 8a), the adaptive estimate 
+
+ˆα remains smooth across all controllers and captures the low frequency trend of α, while attenuating high frequency fluctuations. Abrupt variations in ˆα are observed during transitions between submerged and surface operation, highlighted by the shaded regions. Although the depth measurement itself is continuous due to the pressure sensor, these variations arise from an abrupt change in the reference depth originated by the switching between underwater and surface waypoints (blue shaded regions). Since the adaptation law depends on the vertical tracking error Ze, the reference change induces corresponding transients in ˆα. In general, AFxTLOS and TVLD-AFxTLOS closely follow the overall trend of α, and, after the surfacing event, their estimates rapidly converge back to the measured value ( α). In contrast, ALOS struggles to capture the global trend and exhibits slower recovery following the surfacing event. In the horizontal plane, the adaptive estimate ˆβ exhibits significantly larger variations. During submerged operation, 
+
+ˆβ evolves smoothly for AFxTLOS and TVLD-AFxTLOS, following the overall trend. In contrast, ALOS quickly saturates to the maximum allowed values, which degrades performance, particularly during and after surfacing events. Large excursions and saturation of ˆβ are observed near surfacing events (blue shaded regions), which are caused by GPS corrections following dead-reckoning intervals. These corrections introduce abrupt changes in the horizontal track-ing error Ye, and since the adaptation law is driven by this error, they result in rapid variations in ˆβ, bounded by the projection limits. Unlike ALOS, both AFxTLOS and  
+
+> 10 VOLUME ,
+
+<Society logo(s) and publication title will appear here. > 
+
+> (a) Horizontal trajectories (b) Depth profiles
+
+FIGURE 7: Left: Comparison of horizontal path-following for ALOS (blue), AFxTLOS (green), and TVLD-AFxTLOS (red). The AFxTLOS controller exhibits the best overall performance. The ALOS controller demonstrates good tracking capability with noticeable oscillatory behavior. The TVLD-AFxTLOS controller achieves the second-best performance. Right: Depth profiles corresponding to the same mission, illustrating the differences in transient response and convergence behavior across controllers. TVLD-AFxTLOS are able to recover after surfacing. In particular, TVLD-AFxTLOS exhibits a smoother response with minimal overshoot compared to AFxTLOS. This be-havior can be attributed to the time-varying look-ahead mechanism. As the cross-track error increases, the look-ahead distance ∆h decreases, resulting in more aggressive guidance corrections. However, this reduction in ∆h also decreases the effective gain of the adaptation law, as seen in the term ∆h/p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2. Consequently, the update of ˆβ is moderated during large error transients, such as those induced by GPS corrections, leading to smoother adaptive behavior and reduced overshoot. Overall, the adaptive states ˆα and ˆβ capture the low frequency components associated with environmental distur-bances and navigation drift. Among the evaluated strategies, TVLD-AFxTLOS exhibits smoother adaptive behavior, indi-cating improved robustness under hybrid underwater–surface operation. 
+
+> 5) Comparative experiment 2: Mild environmental disturbances
+
+The second comparative experiment, conducted on Day 2, was performed under light air conditions, with an average wind speed of 1.5 m /s and gusts up to 4.0 m /s. For this test, surfacing was forced to occur at the end of the mission to facilitate comparison. Additionally, the wind conditions generated minimal surface waves, which allowed for a more reliable GPS signal while the vehicle was on the surface. As a result, a more stable overall performance can be observed for all the controllers. Similar to the previous run, Fig. 9a shows faster con-vergence of the AFxTLOS controller, closely followed by TVLD-AFxTLOS, which also exhibits steady performance but slightly slower convergence during the transitions be-tween the first and second, and second and third mission legs. An oscillatory behavior and a slight steady-state cross-track error can be observed for the ALOS controller, which is not present in AFxTLOS and TVLD-AFxTLOS, whose average tracking errors in the horizontal plane are 1.16 m 
+
+and 1.25 m while ALOS has 1.32 m . Consistent with the results of the previous run, TVLD-AFxTLOS produces smoother transitions; however, this smoothness results in slightly slower convergence. This behavior is mainly related to the configuration of ∆hmin , which matches the fixed 
+
+∆h used in AFxTLOS and ALOS, effectively bounding its responsiveness.   
+
+> VOLUME , 11 Author et al.:
+> (a) Vertical crab angle (b) Horizontal crab angle
+
+FIGURE 8: (a): Comparison of vertical crab angles α (dashed green line) vs ˆα (blue line) for ALOS, AFxTLOS, and TVLD-AFxTLOS in Day 1. (b): Comparison of horizontal crab angles β (dashed green line) vs ˆβ (blue line) for ALOS, AFxTLOS, and TVLD-AFxTLOS in Day 1. Regarding the depth profile, AFxTLOS exhibits the stead-iest overall descent toward the commanded 2 m depth, although oscillatory behavior is visible during the second leg. In contrast, ALOS shows a steadier second leg perfor-mance with smaller oscillations, but with a slightly slower convergence to the commanded depth. Consistent with its horizontal-plane behavior, TVLD-AFxTLOS presents a smooth initial descent, followed by moderate oscillations during the mid-depth segment. These oscillations appear to be associated with variations in the look-ahead dynamics during the underwater leg, which slightly relax the conver-gence rate before stabilizing near the commanded depth. The corresponding crab angle behavior is shown in Fig. 10. Compared to Day 1, the adaptive estimates exhibit reduced magnitude and fewer abrupt variations, reflecting milder environmental disturbances and improved navigation consistency. In the vertical plane, ˆα remains bounded and smooth across all controllers, capturing the dominant trend of 
+
+α while attenuating high-frequency fluctuations. Compared to AFxTLOS and TVLD-AFxTLOS, ALOS does not capture these variations and exhibits a slight bias with respect to the average value of the measured α.In the horizontal plane, ˆβ exhibits significantly reduced fluctuations compared to Day 1 and remains within a nar-rower range. This behavior indicates smaller variations in the cross-track error Ye, likely due to reduced dead-reckoning drift and improved GPS corrections under calm surface conditions. Similar to the behavior observed on Day 1, ALOS saturates and subsequently fails to track the overall trend of β.The TVLD-AFxTLOS strategy again produces smoother adaptive behavior compared to AFxTLOS, achieving a bal-ance between smoothness and convergence to the measured value. This behavior can be attributed to the time-varying look-ahead mechanism, which moderates the influence of variations in Ye on the adaptation law, resulting in more stable estimates. 
+
+> 6) Aggregate performance comparison
+
+To evaluate overall performance under different environ-mental conditions, statistical analysis was performed on all field operation data. Each controller performed two tasks, each task consisting of four trajectory runs, for a total of eight independent runs per controller. The comparative analysis covered horizontal and vertical tracking errors, and disturbance estimation performance. Over two days of testing, the AFxTLOS-based method consistently reduced tracking error compared to ALOS. This improvement was particularly significant under moderate dis-turbances because the fixed-time convergence characteristic allowed the system to recover more quickly after encounter- 
+
+> 12 VOLUME ,
+
+<Society logo(s) and publication title will appear here. > 
+
+> (a) Horizontal trajectories (b) Depth profiles
+
+FIGURE 9: Field test under light air conditions. Left: Horizontal path-following comparison for ALOS (blue), AFxTLOS (green), and TVLD-AFxTLOS (red). AFxTLOS converges fastest, TVLD-AFxTLOS shows smoother but slightly slower transitions, and ALOS exhibits slower convergence with minor oscillations. Right: Depth profiles for the same mission. AFxTLOS achieves the fastest descent with increased oscillations, ALOS provides a steadier but slower response, and TVLD-AFxTLOS shows an intermediate. ing environmental disturbances or making navigation correc-tions. Overall, compared to ALOS, the proposed controller reduced the average tracking error by 56.35% in straight-path evaluation and by 27.59% in curved-path evaluation. TVLD-AFxTLOS achieved the best balance between tracking accuracy and transient smoothness. While AFxT-LOS achieved the fastest convergence, the additional variable look-ahead mechanism reduced overshoot during aggressive maneuvers and produced smoother disturbance adaptation. 
+
+> 7) Discussion
+
+The field experiments highlight the practical scenarios where fixed-time guidance provides advantages over clas-sical ALOS. For routine tasks with minimal interference and relatively relaxed accuracy requirements, ALOS remains attractive due to its simple structure and small control ampli-tude. However, for safety-critical operations requiring rapid recovery from interference (such as autonomous docking, close-range structural inspection, or navigation in confined environments), AFxTLOS can limit transient tracking devi-ations to predictable time intervals, thus providing higher reliability. The proposed method introduces limited computational overhead because the fixed-time guidance law only relies on explicit error transformation and low-complexity adaptive updates. Unlike optimization-based guidance methods, this method does not require an online numerical solver, making real-time execution possible on the Iver3 backend computer. The algorithm operates at a frequency of 5Hz without exhibiting a significant computational bottleneck. The performance depends on appropriate tuning of con-vergence gains and look-ahead parameters. While increasing the fixed-time gain can enhance disturbance rejection and improve convergence speed, it can also exacerbate con-trol actions and increase potential energy consumption; the TVLD-AFxTLOS mechanism provides additional flexibility by suppressing drastic responses when large transient errors occur. Under strong environmental disturbances, the adaptive law can compensate for large sideslip changes within the designed operating range. However, the impact of degraded GPS signal quality on guidance performance must be con-sidered, especially under the complex water surface con-ditions encountered during the test on Day 1. When the AUV resurfaces, unreliable GPS signals and delayed position corrections introduce abrupt, artificial step-changes in the   
+
+> VOLUME , 13 Author et al.:
+> (a) Vertical crab angle (b) Horizontal crab angle
+
+FIGURE 10: (a): Comparison of vertical crab angles α (dashed green line) vs ˆα (blue line) for ALOS, AFxTLOS, and TVLD-AFxTLOS in Day 2. (b): Comparison of horizontal crab angles β (dashed green line) vs ˆβ (blue line) for ALOS, AFxTLOS, and TVLD-AFxTLOS in Day 2. computed tracking errors. Because the proposed fixed-time adaptation laws are designed for high responsiveness, they react sharply to these discrete localization jumps, resulting in parameter chattering and transient over-corrections in the control effort (as observed in the large excursions of 
+
+ˆβ). Feasible solutions to these problems include using an underwater acoustic positioning network [27] to provide continuous underwater positioning feedback and applying Kalman filtering to obtain more reliable positioning esti-mates.Furthermore, a fault-tolerant mechanism can be added to the proposed LOS controller to reduce the influence of unreliable or delayed positioning signals and also practical actuator limitations such as saturation and hardware wear. This will be included in future works. 
+
+> V. Conclusion
+
+This paper proposes a robust AFxTLOS guidance strategy for 3D AUV path tracking. This method incorporates fixed-time stability theory, enabling rapid estimation and com-pensation of time-varying sideslip angles in strong current environments. Theoretical analysis and experimental results demonstrate that this method improves tracking performance, reducing the average tracking error by up to 69% and the drift estimation error by 42%. Field experiments with an Iver 3 AUV further validate the proposed approach, showing re-ductions in average tracking error of 56.35% in straight-path evaluation and 27.59% in curved-path evaluation compared with conventional ALOS guidance. Through field trials, this study also demonstrates that fixed-time guidance technology can be practically deployed on commercial underwater vehicles without modifying the existing underlying control architecture. This frame-work combines bounded-time convergence characteristics, an adaptive disturbance compensation mechanism, and field validation in real-world environments, thereby improving the reliability of autonomous underwater navigation in un-certain marine environments. These characteristics make this method particularly suitable for tasks such as long-duration inspections, environmental monitoring, and au-tonomous docking, where predictable transient performance is crucial. One drawback of this method is that the controller can cause more drastic attitude adjustments, potentially increas-ing energy consumption. Therefore, it is necessary to develop an energy-efficient adaptive guidance strategy based on exist-ing research to balance tracking accuracy and control costs. This method will be tested in waters with stronger currents to further verify its robustness. Furthermore, future research will develop a multi-AUV cooperative control strategy based on AFxTLOS and introduce a dynamic obstacle avoidance mechanism to ensure the safety of AUV fleet operation.  
+
+> 14 VOLUME ,
+
+<Society logo(s) and publication title will appear here. >
+
+Appendix A Proof of Lemma III.1 
+
+We first prove that the guidance laws lead to fixed-time stability if the crab angles are perfectly estimated, i.e. ˆα = α
+
+and ˆβ = β. In such a case, the error dynamics (30) and (31) can be simplified as 
+
+˙Ye = −Uh
+
+k1⌈Ye, μ ⌋
+
+p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2 (41) 
+
+˙Ze = −Uv
+
+k2⌈Ze, μ ⌋
+
+p∆2 
+
+> v
+
++ k22 ⌈Ze, μ ⌋2 + d(0 , Y e) (42) Then define a Lyapunov function candidate 
+
+V1 = |Ye| + |Ze| (43) whose derivative is 
+
+˙V1 = sgn( Ye) ˙Ye + sgn( Ze) ˙Ze
+
+= −Ω1k1 sgn( Ye)
+
+
+
+|Ye|1+1 /μ sgn( Ye) + |Ye| sgn( Ye)+ |Ye|1−1/μ sgn( Ye)
+
+
+
+− Ω2k2 sgn( Ze)
+
+
+
+|Ze|1+1 /μ ·· sgn( Ze) + |Ze| sgn( Ze) + |Ze|1−1/μ sgn( Ze)
+
+
+
++ sgn( Ze)d(0 , Y e)= −Ω1k1
+
+
+
+|Ye|1+1 /μ + |Ye| + |Ye|1−1/μ 
+
+
+
+− Ω2k2
+
+
+
+|Ze|1+1 /μ + |Ze| + |Ze|1−1/μ 
+
+
+
++ sgn( Ze)d(0 , Y e)
+
+(44) where Ω1 = Uh/p∆2 
+
+> h
+
++ k21 ⌈Ye, μ ⌋2 and Ω2 =
+
+Uv /p∆2 
+
+> v
+
++ k22 ⌈Ze, μ ⌋. According to the definition of ampli-tude speeds and Assumptions 1 and 3, Uh ≥ 0 and Uv > 0.And since the controller coefficients k1, k 2 are positively definite, Ω1 ≥ 0 and Ω2 > 0. Additionally, Assumptions 1 and 3 indicate that Uv and Uh is bounded, i.e. Uv,min ≤
+
+Uv ≤ Uv,max and Uh,min ≤ Uh ≤ Uh,max . Therefore, 
+
+Ω1 and Ω2 are also bounded: 0 < Ω1 ≤ Uh,max /∆h,
+
+0 < Ω2 ≤ Uv,max /∆v . Then, 
+
+˙V1 ≤ − k1Uh,min 
+
+∆h
+
+
+
+|Ye|1+1 /μ + |Ye|1−1/μ 
+
+
+
+− k2Uv,min 
+
+∆v
+
+
+
+|Ze|1+1 /μ + |Ze|1−1/μ 
+
+
+
++ |d(0 , Y e)|≤ − min 
+
+ k1Uh,min 
+
+∆h
+
+, k2Uv,min 
+
+∆v
+
+ 
+
+|Ye|1+1 /μ 
+
++ |Ze|1+1 /μ + |Ye|1−1/μ + |Ze|1−1/μ 
+
+
+
++ |d(0 , Y e)|
+
+(45) According to Jensen’s inequality [28], |Ye|1+1 /μ +
+
+|Ze|1+1 /μ ≥ 21−(1+1 /μ )(|Ye| + |Ze|)1+1 /μ and |Ye|1−1/μ +
+
+|Ze|1−1/μ ≥ (|Ye| + |Ze|)1−1/μ . Thus, 
+
+˙V1 ≤ − min 
+
+ k1Uh,min 
+
+∆h
+
+, k2Uv,min 
+
+∆v
+
+
+
+··
+
+
+
+2−1/μ V 1+1 /μ  
+
+> 1
+
++ V 1−1/μ 
+
+> 1
+
+
+
++ |d(0 , Y e)|
+
+(46) If the perturbation is zero, then by Lemma II.1, the system is fixed-time stable. Otherwise, since 0 ≤ |d(0 , Y e)| ≤
+
+Uh,min < ∞ is finite, according to Lemma II.2, the origin of the system consisting of (41) and (42) is practical fixed-time stable. In addition, it can be seen that the subsystem (41) is fixed-time stable according to Lemma II.1 because 
+
+sgn( Ye) ˙Ye ≤ − k1Uh,max /∆h ·
+
+
+
+|Ye|1+1 /μ + |Ye|1−1/μ 
+
+
+
+.Hence, the subsystem (42) can converge near the origin in fixed-time when Ye converges to zero. This completes the proof of Lemma III.1. 
+
+Appendix B Proof of Lemma III.2 
+
+To further prove the convergence of the proposed adaptation law, here we consider another Lyapunov function candidate 
+
+V2 =
+
+Z Ye
+
+> 0
+
+⌈τ, μ ⌋dτ + Uh
+
+γhk1
+
+(1 − cos( ˜β)) +
+
+Z Ze
+
+> 0
+
+⌈τ, μ ⌋dτ + Uv
+
+γv k2
+
+(1 − cos(˜ α)) 
+
+(47) and its derivative yields 
+
+˙V2 = ⌈Ye, μ ⌋ ˙Ye + Uh
+
+γhk1
+
+sin( ˜β) ˙˜β +⌈Ze, μ ⌋ ˙Ze + Uv
+
+γv k2
+
+sin(˜ α) ˙ ˜α
+
+(48) Based on Assumption 2, ˙˜α = − ˙ˆα and ˙˜β = − ˙ˆβ. Then, 
+
+˙V2 = −⌈ Ye, μ ⌋Uh∆hΩ4
+
+"
+
+cos( ˜β) k1⌈Ye, μ ⌋
+
+∆h
+
+− sin( ˜β)
+
+#
+
+− Uh
+
+k1
+
+sin( ˜β)∆ hΩ4 Proj ( ˆβ, k 1⌈Ye, μ ⌋)
+
+− ⌈ Ze, μ ⌋Uv ∆v Ω3
+
+
+
+cos(˜ α) k2⌈Ze, μ ⌋
+
+∆v
+
+− sin(˜ α)
+
+
+
+− Uv
+
+k2
+
+sin(˜ α)∆ v Ω3 Proj (ˆ α, k 2⌈Ze, μ ⌋)= −UhΩ4 cos( ˜β)k1⌈Ye, μ ⌋2 + Uh∆hΩ4 sin( ˜β)⌈Ye, μ ⌋− Uv Ω3 cos(˜ α)k2⌈Ze, μ ⌋2 + Uv ∆v Ω3 sin(˜ α)⌈Ze, μ ⌋− Uh sin( ˜β)∆ hΩ4⌈Ye, μ ⌋ · QY
+
+− Uv sin(˜ α)∆ v Ω3⌈Ze, μ ⌋ · QZ
+
+(49) where Ω3 = 1 /p∆2 
+
+> v
+
++ k22 (⌈Ze, μ ⌋)2,
+
+Ω4 = 1 /p∆2 
+
+> h
+
++ k21 (⌈Ye, μ ⌋)2,
+
+QY =
+
+(
+
+1 − c( ˆβ), if | ˆβ| > M β & ˆβk 1⌈Ye, μ ⌋ > 01, else 
+
+and QZ =
+
+(
+
+1 − c(ˆ α), if |ˆα| > M α & ˆ αk 2⌈Ze, μ ⌋ > 01, else .According to the parameter projection function (27), the definition of c(·) indicates that 0 < c ( ˆβ) ≤ 1. If ˆβ > M β ,then β − ˆβ = ˜β < 0 and thus sin( ˜β) < 0; since in this case it should follows ⌈Ye, μ ⌋ > 0 to have ˆβT ⌈Ye, μ ⌋ > 0, it can be concluded that c( ˆβ) sin( ˜β)⌈Ye, μ ⌋ < 0. If ˆβ < −Mβ , then 
+
+β − ˆβ = ˜β > 0 and thus sin( ˜β) > 0; since in this case it should follows ⌈Ye, μ ⌋ < 0 to have ˆβT ⌈Ye, μ ⌋ > 0, it can  
+
+> VOLUME , 15 Author et al.:
+
+be concluded that that c( ˆβ) sin( ˜β)⌈Ye, μ ⌋ < 0. Therefore, it is proved to guarantee that c( ˆβ) sin( ˜β)⌈Ye, μ ⌋ < 0 and 
+
+c(ˆ α) sin(˜ α)⌈Ze, μ ⌋ < 0. As a result, 
+
+˙V2 ≤ − UhΩ4 cos( ˜β)k1⌈Ye, μ ⌋2 − Uv Ω3 cos(˜ α)k2⌈Ze, μ ⌋2
+
++ c( ˆβ)Uh∆hΩ4 sin( ˜β)⌈Ye, μ ⌋
+
++ c(ˆ α)Uv ∆v Ω3 sin(˜ α)⌈Ze, μ ⌋≤ − UhΩ4 cos( ˜β)k1⌈Ye, μ ⌋2 − Uv Ω3 cos(˜ α)k2⌈Ze, μ ⌋2
+
+(50) Therefore, the system is stable, and the convergence of tracking and estimation errors is guaranteed in the presence of zero perturbation. This completes the proof of Lemma III.2. 
+
+Appendix C Proof of Theorem III.3 
+
+According to the definitions of Mϑ and M ˆϑ, the estimates and true values of the crab angles are finitely bounded, so based on Lemma II.1, the system consisting of the control law and adaption law is practical fixed-time stable and the tracking error converges to the residual set as defined in (5) before the crab angle estimations are fully converged. As a result, based on Lemmas III.1 and III.2, with the finite estimation and tracking errors, the overall path following adaptive control system can converge within a finite residual set around the origin in fixed-time. This completes the proof of Theorem III.3. 
+
+REFERENCES 
+
+[1] W. Liang and Y. Liang, “Autonomous underwater vehicle navigation and control: A brief review,” Robotics & Automation Engineering Journal , Jan 2024. [Online]. Available: https://juniperpublishers.com/ raej/RAEJ.MS.ID.555672.php [2] T. I. Fossen, M. Breivik, and R. Skjetne, “Line-of-sight path following of underactuated marine craft,” IFAC Proceedings Volumes ,vol. 36, no. 21, pp. 211–216, 2003, 6th IFAC Conference on Manoeuvring and Control of Marine Craft (MCMC 2003), Girona, Spain, 17-19 September, 1997. [Online]. Available: https: //www.sciencedirect.com/science/article/pii/S1474667017378096 [3] J. Miao, K. Deng, W. Zhang, X. Gong, J. Lyu, and L. Ren, “Robust path-following control of underactuated auvs with multiple uncertain-ties in the vertical plane,” Journal of Marine Science and Engineering ,vol. 10, no. 2, p. 238, 2022. [4] J. Miao, X. Sun, Q. Chen, H. Zhang, W. Liu, and Y. Wang, “Robust path-following control for auv under multiple uncertainties and input saturation,” Drones , vol. 7, no. 11, 2023. [Online]. Available: https://www.mdpi.com/2504-446X/7/11/665 [5] H. Yang and N. Mahmoudian, “Finite-time prescribed performance with fixed-time disturbance rejection for underwater glider heading control,” Ocean Engineering , vol. 337, p. 121842, 2025. [Online]. Available: https://www.sciencedirect.com/science/article/pii/ S0029801825015483 [6] J. Crowell, “Design challenges of a next generation small auv,” in 
+
+2013 OCEANS - San Diego , 2013, pp. 1–5. [7] B. Allen, R. Stokey, T. Austin, N. Forrester, R. Goldsborough, M. Purcell, and C. von Alt, “Remus: a small, low cost auv; system description, field trials and performance results,” in Oceans’ 97. MTS/IEEE Conference Proceedings , vol. 2. IEEE, 1997, pp. 994– 1000. [8] O. Schofield, J. Kohut, D. Aragon, L. Creed, J. Graver, C. Haldeman, J. Kerfoot, H. Roarty, C. Jones, D. Webb et al. , “Slocum gliders: Robust and ready,” Journal of Field Robotics , vol. 24, no. 6, pp. 473– 485, 2007. [9] E. Borhaug, A. Pavlov, and K. Y. Pettersen, “Integral los control for path following of underactuated marine surface vessels in the presence of constant ocean currents,” in 2008 47th IEEE Conference on Decision and Control , 2008, pp. 4984–4991. [10] T. I. Fossen and A. M. Lekkas, “Direct and indirect adaptive integral line-of-sight path-following controllers for marine craft exposed to ocean currents,” International Journal of Adaptive Control and Signal Processing , vol. 31, no. 4, pp. 445–463, 2017. [Online]. Available: https://onlinelibrary.wiley.com/doi/abs/10.1002/acs.2550 [11] T. I. Fossen, “An adaptive line-of-sight (alos) guidance law for path following of aircraft and marine craft,” IEEE Transactions on Control Systems Technology , vol. 31, no. 6, pp. 2887–2894, 2023. [12] T. I. Fossen and A. P. Aguiar, “A uniform semiglobal exponential stable adaptive line-of-sight (alos) guidance law for 3-d path following,” 
+
+Automatica , vol. 163, 5 2024. [13] Z. Zuo, “Non-singular fixed-time terminal sliding mode control of non-linear systems,” IET control theory & applications , vol. 9, no. 4, pp. 545–552, 2015. [14] J. Li, Y. Yang, C. Hua, and X. Guan, “Fixed-time backstepping control design for high-order strict-feedback non-linear systems via terminal sliding mode,” IET Control Theory & Applications , vol. 11, no. 8, pp. 1184–1193, 2017. [15] Z. Gao and G. Guo, “Fixed-time sliding mode formation control of auvs based on a disturbance observer,” IEEE/CAA Journal of Automatica Sinica , vol. 7, no. 2, pp. 539–545, 2020. [16] B. Su, H. Wang, Y. Wang, and J. Gao, “Fixed-time formation of auvs with disturbance via event-triggered control,” International Journal of Control, Automation and Systems , vol. 19, no. 4, p. 1505–1518, Jan 2021. [17] M. Van, Y. Sun, S. Mcllvanna, M.-N. Nguyen, F. Zocco, and Z. Liu, “Control of multiple auv systems with input saturations using dis-tributed fixed-time consensus fuzzy control,” IEEE Transactions on Fuzzy Systems , vol. 32, no. 5, pp. 3142–3153, 2024. [18] Z. Li, Y. Fan, H. Bu, and Y. Shi, “Fixed-time line-of-sight guidance law for unmanned surface vehicle path following: theory and experiment,” in 2024 36th Chinese Control and Decision Conference (CCDC) , 2024, pp. 4170–4175. [19] S. Zheng, Y. Su, J. Zhuang, Y. Tang, and G. Yi, “Fixed-time path-following-based underactuated unmanned surface vehicle dynamic positioning control,” Journal of Marine Science and Engineering , vol. 12, no. 4, 2024. [Online]. Available: https: //www.mdpi.com/2077-1312/12/4/551 [20] S. Song, Z. Liu, S. Yuan, and Z. Wang, “Cascaded extended state observers-based fixed-time line-of-sight path following control for unmanned surface vessels with disturbances and saturation,” IEEE Transactions on Vehicular Technology , vol. 73, no. 6, pp. 7733–7747, 2024. [21] Z. Gao and G. Guo, “Fixed-time sliding mode formation control of auvs based on a disturbance observer,” IEEE/CAA Journal of Automatica Sinica , vol. 7, no. 2, pp. 539–545, 2020. [22] T. I. Fossen, “An amplitude-phase representation of the north-east-down kinematic differential equations,” IEEE Access , vol. 11, pp. 12 587–12 593, 2023. [23] T. I. Fossen and T. Perez, “Marine systems simulator (mss),” 2004. [Online]. Available: https://github.com/cybergalactic/MSS [24] B. R. Page, R. Lambert, J. Chavez-Galaviz, and N. Mahmoudian, “Un-derwater docking approach and homing to enable persistent operation,” 
+
+Frontiers in Robotics and AI , vol. 8, p. 621755, 2021. [25] J. Chavez-Galaviz and N. Mahmoudian, “Underwater dock detection through convolutional neural networks trained with artificial image generation,” in 2022 International Conference on Robotics and Au-tomation (ICRA) . IEEE, 2022, pp. 4621–4627. [26] ——, “Efficient underwater docking detection using knowledge distil-lation and artificial image generation,” in 2022 IEEE/OES Autonomous Underwater Vehicles Symposium (AUV) . IEEE, 2022, pp. 1–7. [27] Z. Wu and X. Li, “An improved underwater acoustic network local-ization algorithm,” China Communications , vol. 12, no. 3, pp. 77–83, 2015. [28] J. L. W. V. Jensen, “Sur les fonctions convexes et les in´ egualit´ es entre les valeurs moyennes,” Nov. 1906. [Online]. Available: https://doi.org/10.1007/bf02418571
