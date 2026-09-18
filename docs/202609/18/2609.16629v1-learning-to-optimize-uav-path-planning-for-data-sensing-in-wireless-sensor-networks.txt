@@ -1,0 +1,1022 @@
+Title: Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks
+
+URL Source: https://arxiv.org/pdf/2609.16629v1
+
+Published Time: Wed, 16 Sep 2026 00:39:58 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# LEARNING TO OPTIMIZE UAV P ATH PLANNING FOR DATA 
+
+# SENSING IN WIRELESS SENSOR NETWORKS 
+
+A P REPRINT 
+
+Sijie Ma 1, Zeyuan Ma 2,* , Weijia Cao 3
+
+Yue-Jiao Gong 1, Lingling Ma 3, Zhiyang Huang 1, Jun Zhang 41South China University of Technology 2South China Normal University 
+
+> 3
+
+Aerospace Information Research Institute, CAS 4Nankai University September 16, 2026 
+
+## ABSTRACT 
+
+UAVs have emerged as highly flexible platforms for data sensing in Wireless Sensor Networks (WSNs). Path planning for UAVs in such tasks plays a key role to assure remote sensing effec-tiveness and friendly energy consumption. However, existing approaches show two key limitations: i) they are primarily hand-crafted with certain design biases that harm adaptation on unseen tasks. ii) they predominantly assume idealized spatial complexities of actual environments through sim-plified simulation, causing them to underperform during real-world deployment. In this paper, we propose a novel learning-assisted planning framework, termed Landscape-Aware Meta Differential Evolution (LAMDE), to tackle the mentioned limitations. The major contributions come from the following aspects. We first re-formulate such UAV path planning problem to embrace challenging constraints. To efficiently navigate this highly constrained space, we propose a bi-level learning to optimize approach, where the meta-level is a trainable algorithm configuration policy that meta-learns an adaptable planning strategy for low-level planning algorithm. To address the potential training data scarcity and distribution shift in real-world environments, we introduce a landscape-aware automatic augmentation scheme that enriches training data. At the low-level, a Differential Evolution algorithm is deployed for solving the path planning tasks. To enhance the solving flex-ibility, we further design a variable-length encoding strategy that dynamically prunes redundant hover points and optimizes continuous flight parameters concurrently within a unified search space. Based on all proposed designs, we meta-train LAMDE and compare it with representative baselines. Comprehensive experiments demonstrate that LAMDE achieves state-of-the-art performance on the tested complex UAV path planning tasks in WSN data collection scenarios. 
+
+Keywords Black-box optimization · Evolutionary algorithms · Path planning, Reinforcement Learning · Unmanned aerial vehicle · Wireless sensor networks 
+
+## 1 Introduction 
+
+Unmanned aerial vehicles (UAVs) have been extensively deployed across diverse domains, including environmental monitoring [1, 2], precision agriculture [3], disaster emergency response [4], and wireless sensor network (WSN) data collection [5, 6]. Among these applications, WSN data collection plays a vital role in industrial and smart infrastructure systems [7]. However, practical deployment remains challenging due to complex constraints such as energy consumption and obstacle environments [8, 9, 10]. Evolutionary Computation (EC) methods are widely adopted for optimizing UAV data collection tasks [11, 12]. However, current EC-based approaches still exhibit several inherent limitations when applied to complex real-world missions: 1) Oversimplified Modeling : they often simplify the planning tasks by assuming obstacle-free environ-ments [13, 14]; 2) Inflexible Encoding : they more or less adopt a predefined, fixed number of hovering points [15, 16] 
+
+> ∗
+
+Zeyuan Ma is the corresponding author (mzy@ieee.org). arXiv:2609.16629v1 [cs.RO] 15 Sep 2026 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+for their solution encoding, which limits the optimization flexibility under realistic spatial constraints. 3) Human-crafted Design : they predominantly adopt conventional human-crafted optimizers for the planning tasks, which rely on labor-intensive manual mechanisms and additional sensitive hyper-parameters, ultimately weakening robustness and generalization. Given the effectiveness and automated problem solving potential observed in recent Meta-Black-Box Optimiza-tion (MetaBBO) works [17], in this paper, we propose a holistic learning-assisted EC framework termed as Landscape-Aware Meta Differential Evolution ( LAMDE ), which introduces meta-learning paradigm [18] to learn effective and generalizable optimizer settings for automatic and end-to-end UAV path planning. At the meta-level, a reinforcement learning-based algorithm configuration policy is used to configure the low-level EC optimizer [19] in a dynamic man-ner. The policy is trained on a problem distribution to enhance the expexted planning performance. Following this paradigm, we propose several novel designs in LAMDE for addressing the limitations mentioned above: 1) Modeling Reformulation : to better reflect practical challenges in real-world UAV data collection missions, we for-mulate a comprehensive UAV trajectory optimization model that explicitly incorporates complex physical constraints, including heterogeneous building geometries and customized no-fly zones. 2) Variable-length Encoding : to mitigate the downside of the dimension-fixed encoding in existing EC optimizers, we propose a variable-length encoding strategy that supports flexible dimensional representation for solution and enables automatic pruning of redundant trajectories, hence improving the flexibility and convergence in the low-level optimization. 3) Training Data Augmentation : while MetaBBO successfully alleviates the manual design burdens of classical EC, they normally require a strict distributional alignment between the training problems and tested ones [20]. This is impractical in our data collection tasks, since high-quality prior training data is profoundly scarce. To this end, we landscape-aware training data preparation scheme designed to circumvent the dependency on a predefined training distribution through landscape matching between the target UAV planning tasks and automatically generated synthetic problems. Such data augmentation scheme not only relieve the burden of real-world training data, but also ensures the distributional alignment between training and testing. Rigorous empirical validations show that LAMDE achieves state-of-the-art performance on the proposed UAV tasks compared to both traditional or learning-based EC optimizers. Further ablations and in-depth analysis underscore the effectiveness of each newly proposed design. 
+
+## 2 Related Work 
+
+2.1 UAV Path Planning 
+
+In Wireless Sensor Network data collection, the modeling paradigm of UAV path planning largely determines the complexity and realism of the optimization task. Early studies typically formulate this problem as a discrete combi-natorial optimization task, modeled as variants of the Traveling Salesman Problem (TSP), where the objective is to determine an efficient visiting order of sensor nodes [21, 22]. To enable smoother and more flexible trajectories, recent works have extended this formulation to continuous spaces, representing UAV paths using spatial coordinates or spline curves to balance flight distance, energy consumption, and data coverage [15, 16]. Despite the shift toward continuous spatial modeling, current paradigms remain limited by insufficiently realistic constraint modeling. Most studies either assume idealized obstacle-free environments [11, 12] or rely on coarse grid-based approximations, which fail to accu-rately capture complex building geometries and no-fly zones. As a result, these formulations cannot faithfully reflect the spatial constraints encountered in real-world deployments, leading to a mismatch between modeled and practical scenarios. Therefore, developing a realistically constrained problem formulation that explicitly incorporates complex environments is essential for bridging this gap. Evolutionary Computation (EC) and swarm intelligence algorithms are widely adopted to solve the aforementioned UAV routing paradigms due to their global search capabilities and independence from derivative information [23]. For early discrete formulations, Genetic Algorithms (GAs) are often customized with specialized heuristics to handle routing tasks under strict time limits [22]. Ant Colony Optimization (ACO) is extensively utilized to construct routes with minimal energy consumption [11] and is further enhanced via sequential decision strategies to optimize the Age of Information [24]. As research advances toward continuous spatial modeling, continuous optimizers such as Particle Swarm Optimization (PSO) and Differential Evolution (DE) have been widely adopted. PSO employs refined path representations to reduce flight costs [12, 25], while DE variants such as Matrix Differential Evolution (MDE) have been proposed to better handle complex spatial coordinates [15]. Although successful in idealized or coarsely approximated settings, conventional EC algorithms exhibit notable limitations in realistically constrained environments. A key issue is the requirement to predefine a fixed number of UAV hovering points before optimization, 2Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT No -Fly Zone 
+
+> Ground Sensor
+> Obstacle
+> No -Fly Zone
+> UAV Trajectory
+> Hover Point
+
+Figure 1: Overview of UAV path planning for ground sensor data collection under environmental constraints, including obstacles and no-fly zones. which imposes structural rigidity and prevents flexible trajectory adaptation in complex environments. In addition, their performance often relies heavily on handcrafted heuristics and extensive parameter tuning, making them difficult to transfer across different mission scenarios. As a result, their generalization ability in diverse and unpredictable landscapes is significantly restricted. Motivated by these challenges, this work introduces an automated MetaBBO framework for UAV path planning, featuring a tailored variable-length encoding strategy to enable the adaptive scaling of hovering points. 
+
+2.2 Meta-Black-Box Optimization 
+
+Back to 1987, meta-learning [26] was proposed to learn the credit assignment method itself through self-modifying code, e.g., self-referential G¨ odel machine [27]. Following this principle, Meta-Black-Box Optimization (MetaBBO) [17, 28] adopts a bi-level learning framework to enhance the performance of underlying EC optimizers. In this paradigm, a meta-level agent is trained to guide or control the behavior of low-level optimization processes, enabling adaptive and data-driven search strategies. Considering the target algorithm design tasks, existing studies can generally be categorized into four progressively advanced paradigms: Algorithm Selection [29], Algorithm Config-uration [30], Solution Manipulation [31] and Algorithm Generation [32]. Given such a broad spectrum of algorithm design tasks, the meta learning in MetaBBO is instantiated with diverse training paradigms such as reinforcement learning [33], (self-)supervised learning [20], neuroevolution [34] and LLM-based in-context learning [35]. Despite these advances, MetaBBO still faces a practical challenge in its learning: the distribution shift from the training prob-lems to the testing ones. Most existing methods implicitly assume that the synthetic training problems align with the realistic problems to be tested. However, in real-world scenarios, the true task distribution is often difficult to charac-terize, or explicitly divergent from the training set. Our LAMDE is exactly motivated by this issue and address it by the novel landscape-aware data preparation module. 
+
+## 3 Problem Definition and Modeling 
+
+3.1 UAV Path Planning in WSN Data Collection 
+
+In WSN data collection tasks, the aim is using UAV to fly through the sensor areas and collect data as much as possible. A recent work [15] provides a simplified and clear path planning problem definition for such tasks. Based on that, we re-formulate a more practical UAV-enabled data collection model by explicitly incorporating complex environmental constraints. We consider a rotary-wing UAV collecting data from a group of J ground sensors S =
+
+{s1, . . . , sJ } distributed over a target area A = [0 , U x] × [0 , U y ]. To reduce energy consumption, the UAV operates at a constant cruising altitude H, which simplifies trajectory planning to a 2D spatial problem. As illustrated in Fig. 1, 3Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+the UAV travels from a predefined start point pstart to an end destination pend , while collecting data from sensors and avoiding obstacles and no-fly zones. The trajectory is denoted as {p0, p1, . . . , pI , pI+1 }. The intermediate set 
+
+P = {p1, . . . , pI } defines the planned UAV path. The UAV operates in two alternating phases: flying between hover points and hovering to collect data from the sensors. During the flying phase between consecutive points pi and pi+1 , the UAV follows a trapezoidal velocity profile with maximum speed vmax and constant acceleration a. The flight time Tf ly,i for distance di = ∥pi+1 − pi∥2 is given by: 
+
+Tf ly,i =
+
+ 
+
+> di
+> vmax
+
++ vmax  
+
+> a
+
+, if di > v2
+
+> max
+> a
+
+2
+
+q di 
+
+> a
+
+, if di ≤ v2
+
+> max
+> a
+
+(1) Data collection occurs strictly during the hovering phase. The data transmission rate Ri,j between the UAV hovering at 
+
+pi and the j-th sensor at sj is modeled as Ri,j = max 
+
+n
+
+Rc − ξ · p∥pi − sj ∥22 + H2, 0
+
+o
+
+, where Rc is the maximum theoretical data rate and ξ is the signal decay factor. Here we note that the max operation indicates that if a hover point is too distant from a sensor, no data could be collected. Consequently, for a sensor j, the overall data collected during the flying trajectory P is aggregated as Qj = PIi=1 Ri,j · Thov,i , where Thov = {Thov, 1, . . . , T hov,I } are the hover duration times on the hover points. In such path planning setting, the decision variables are the union of flying trajectory and its corresponding hover duration times: x = {P, Thov }. We will discuss how x participates in the final optimization model in Sec. 3.4. 
+
+3.2 Environmental Modeling with Obstacles 
+
+Based on the basic path planning setting above, we further extend it with physical obstructions and regulatory bound-aries commonly found in urban or suburban areas, so as to bridge the gap between theoretical modeling and real-world deployments. Specifically, we enhance the simulation’s realism by introducing a comprehensive and heterogeneous set of static constraints O. This set is formulated to include multiple circular structures ( Ocir ), rotated rectangular buildings (Orec ), and irregular No-Fly Zones ( Onf z ). The specific geometric definitions of these obstacles, which introduce significant non-convexity into the problem space, are detailed as follows: 
+
+Circular Obstacles. Symmetric structures such as water towers or signal stations are modeled as a set of circular obstacles Ocir . The k-th obstacle in this set is defined as a circular area of which the center is ck = [ xk, y k]⊤ and radius is rk. To reflect the reality, rk is with a range of 40-100m. 
+
+Rectangular Obstacles. Residential and commercial buildings are modeled as a set of rectangular obstacles Orec .To reflect realistic urban layouts rather than simplified axis-aligned grids, our model considers arbitrary orientations. Under such consideration, each rectangular obstacle in Orec is defined by its geometric center c = [ xc, y c]⊤, length 
+
+L, width W , and rotation angle θ ∈ [0 , π ). L and W are with the range of 80-180m. 
+
+No-Fly Zones (NFZs). Large-scale restricted areas, such as industrial parks, are introduced as No-Fly Zones set 
+
+Onf z . Each zone in this is geometrically modeled as a convex polygon defined by an ordered sequence of K vertices 
+
+{v1, . . . , vK } arranged in counter-clockwise order. K is with the range of 3-7, the diameter of the convex polygon is between 3000-4000m. We note that in the simulation of the experiments, we randomly generate these three types of obstacles to construct each obstacle set, ensuring they are distributed following reasonable landscapes in reality. Due to the space limitation, we leave detailed protocols in our project. 
+
+3.3 Modeling of Collision Risk 
+
+With the challenging flying environment with multiple obstacles, we need a metric to measure the collision risk of a flying trajectory P under a given map: Lvio (P). Following the first principle, we use a straightforward way to compute Lvio (P):
+
+Lvio (P) = Lrec (P) + Lcir (P) + Lnf z (P), (2) where Lrec (P), Lcir (P) and Lnf z (P) are the total length of the overlapped part between the flying trajectory and each obstacle set respectively. Lvio (P) serves as an important constraint in our final optimization model. 4Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+3.4 Optimization Model 
+
+With all necessary components established, we can now provide the final optimization model used in this paper. The objective is to minimize a weighted sum of total flight time and hovering time, balancing mission efficiency and energy consumption. Through integrating the UAV dynamics, data requirements, and geometric safety constraints, the overall path planning problem can be formulated as: 
+
+min  
+
+> x
+
+f (x) = α ·
+
+> I
+
+X
+
+> i=0
+
+Tf ly,i + (1 − α) ·
+
+> I
+
+X
+
+> i=1
+
+Thov,i ,
+
+s.t. 
+
+
+
+pi ∈ A , ∀i ∈ { 1, . . . , I } (C1) 
+
+0 ≤ Thov,i ≤ Tmax , ∀i ∈ { 1, . . . , I } (C2) 
+
+> J
+
+X
+
+> j=1
+
+Ri,j ≤ Rλ, ∀i ∈ { 1, . . . , I } (C3) 
+
+Qj ≥ Qλ, ∀j ∈ { 1, . . . , J } (C4) 
+
+Lvio (P) = 0 , (C5) (3) Here, x = {P, Thov } represents the optimization variables, including the planned path P and the corresponding hovering durations Thov . In the objective function, α ∈ [0 , 1] is the weight factor that controls the trade-off between the flight time calculated in Eq. (1) and the hovering time. Constraints (C1) and (C2) restrict the hover points to the target area and impose operational duration limits. (C3) guarantees the instantaneous data transfer rate respects the communication bandwidth Rλ, while (C4) ensures the total collected data Qj meets the mission requirement Qλ.Finally, (C5) guarantees a strictly collision-free trajectory by completely nullifying the penalty term Lvio (P) defined in Eq. (2). Designing an effective algorithm by hand for solving such complex constrained optimization problems is challenging. To this end, we propose LAMDE to automate the algorithm design by meta learning, which will be detailed in the next section. 
+
+## 4 Methodology 
+
+4.1 Low-Level Optimizer 
+
+The low-level optimizer is a Differential Evolution (DE) algorithm with tailored designs to support flexible search behavior, smooth constraint handling, and effective control by the meta-level RL policy. 
+
+Variable-Length Encoding Strategy. Existing works that address UAV path planning tasks lean to simplify the solution encoding, that is, fix the number of hover points as a prior by human experts [15, 16]. Such setting may benefit the algorithm complexity aspect, however, may also result in ineffective task solving. To this end, we consider a relatively large maximum number of allowed hover points Imax 2. Furthermore, we add an additional dimension into the decision variables x = {P, Thov } in our optimization model, which is the activation value ϵ for each hover point. The resulting candidate solution encoding is organized as: 
+
+x = [ u1, u2, . . . , uImax ] , (4) where each ui = [ xi, y i, t i, ϵ i] represents a candidate hover point. These variables are bounded by xi ∈ [0 , U x],
+
+yi ∈ [0 , U y ], ti ∈ [0 , T max ], and ϵi ∈ [0 , 1] .We decode x into a practical flying plan through the following condition-based selection: 
+
+{(xi, y i, t i) | ϵi ≥ τ, i = 1 , . . . , I max } , (5) where τ is a predefined activation threshold. We only keep the hover points whose activation value ϵi larger than the threshold as the actual hover points in the final flying plan. We abuse I as the number of these points in following sections. Note that τ is an adjustable value (0.5 by default): a larger τ results in sparse flying plan and vice versa. 
+
+Constraint Handling Design. In our optimization model, a solution needs to satisfy intricate constraints. To quantify constraint violations during optimization, we introduce explicit penalty metrics for constraint measuring. Recall the constraints we defined in Eq. 3, the basic spatial and temporal constraints (C1) and (C2) are enforced to be satisfied           
+
+> 2We use a simple heuristic: Imax = 10 for a 5 km ×5 km map and Imax = 20 for a 10 km ×10 km map. Future users can also modify this value by experiences.
+
+5Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+since our DE optimizer will do value clamping operation on the decision variables. Hence, we mainly consider the violation status of the rest three constraints. Specifically, violations for communication bandwidth (C3) and data collection (C4) are defined as VC3,i = max {0, PJj=1 Ri,j − Rλ} and VC4,j = max {0, Q λ − Qj }, respectively. For the constraint (C5), we define the violation based on Eq. (2) as: 
+
+VC5 =
+
+μ + ν · Lvio (P), if Lvio (P) > 00, otherwise (6) where P is decoded from x, μ and ν are normalization factors that play a key role in stabilizing the relative quantity. The violation of (C5) is much larger than those of (C3) and (C4), since (C5) measures the overlap length between the flying trajectory and obstacles. This helps re-balance the attention of the DE optimizer on these constraints during the low-level optimization. We leave the values of μ and ν in the experiments. The total constraint violation ϕ(x) is then aggregated: 
+
+ϕ(x) = 
+
+> I
+
+X
+
+> i=1
+
+VC3,i +
+
+> J
+
+X
+
+> j=1
+
+VC4,j + VC5. (7) This unified scalar metric ϕ(x) serves as two roles in LAMDE: 1) it controls the selection pressure in the low-level DE optimizer; 2) it contributes to the optimization state features used by the meta-level algorithm configuration policy. 
+
+Differential Evolution Operations and Selection. The low-level optimization process is modeled as a Markov De-cision Process (MDP). A DE optimizer is used to optimize the UAV path planning tasks. For a given task, at each generation g, the DE’s mutation and crossover operations are controlled by the meta-level algorithm configuration policy. This is achieved by several steps. We first extract an optimization state from current generation of solution population X(g) = {x(g) 
+
+> i
+
+, . . . , x(g) 
+
+> N
+
+} where N is the population size. Then the meta-level policy outputs an action by conditioning this optimization state. The action is then decoded as the concrete mutation/crossover operators and corresponding hyper-parameter values, which are used for current optimization generation. Then the population is updated toward offspring ˜X(g) = {˜x(g)1 , . . . , ˜x(g) 
+
+> N
+
+}.After the offspring are reproduced, our DE optimizer selects the population for g + 1 -th generation by Deb’s feasibility rule: 
+
+x(g+1)  
+
+> i
+
+=
+
+
+
+˜x(g) 
+
+> i
+
+, if ( ˜ϕi − ϕi < 0) ˜x(g) 
+
+> i
+
+, if ( ˜ϕi − ϕi = 0 and ˜fi < f i)
+
+x(g) 
+
+> i
+
+, otherwise 
+
+, (8) where fi and ˜fi denote the objective values of x(g) 
+
+> i
+
+and ˜x(g) 
+
+> i
+
+respectively, ϕi and ˜ϕi denote the constraint violations of x(g) 
+
+> i
+
+and ˜x(g) 
+
+> i
+
+respectively. By such selection procedure, the DE optimizer prioritizes constraint satisfaction over objective minimization, deterministically steering the population toward the feasible manifold. 
+
+4.2 Meta-Level Policy 
+
+As mentioned above, we model the meta-level dynamic algorithm configuration of the low-level DE optimizer as MDP, where a meta-level policy (a learnable neural network) adaptively dictates proper algorithmic configurations based on the optimization state of the low-level optimization progress. In this section, we clarify the details of the MDP design components, the neural network architecture and data flow of the meta-level policy, and the training workflow of the meta-level learning. 
+
+State. At generation g, the observed state comprises the population X(g), objectives f (X(g)), violations ϕ(X(g)),and search progress g/G . To ensure numerical stability, ¯X(g) ∈ [0 , 1] is used as the normalized form of X(g).Simultaneously, to resolve the severe magnitude disparities of f and ϕ across heterogeneous tasks, we introduce a mantissa-exponent decomposition. Each scalar evaluation y ∈ { f, ϕ } is formulated as y = ω ×10 b, where ω ∈ [−1, 1] 
+
+is the continuous mantissa and b ∈ Z is the discrete exponent. By scaling the exponent as ϵ = b/η with constant η, the raw evaluations for the i-th individual are stabilized into tuples (ω(g) 
+
+> f,i
+
+, ϵ (g) 
+
+> f,i
+
+) and (ω(g) 
+
+> ϕ,i
+
+, ϵ (g) 
+
+> ϕ,i
+
+). The optimization state at the g-th generation sg is defined as: 
+
+sg =
+
+n ¯X(g), {(ω(g) 
+
+> f,i
+
+, ϵ (g) 
+
+> f,i
+
+)}Ni=1 , {(ω(g) 
+
+> ϕ,i
+
+, ϵ (g) 
+
+> ϕ,i
+
+)}Ni=1 , gG
+
+o
+
+. (9) 
+
+Action. At each generation g, the meta-level policy πθ outputs a joint action ag that specifies the evolutionary config-uration for each individual in the low-level DE’s population (see supplementary materials for the detailed architecture 6Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+of πθ ). To enable fine-grained control, the action space is formulated as a hybrid of discrete operator selections and continuous hyper-parameter assignments: 
+
+ag = πθ (sg ) =   aos,m i,g , a os,c i,g , F i,g , Cr i,g 
+
+ Ni=1 , (10) where the number of actions for the whole population is N ×4. For the i-th individual, the 4 actions can be categorized into two classes: • Discrete Operator Selection: The categorical variable aos,m i,g ∈ { 1, . . . , 7} selects the mutation strategy from seven classical variants ( rand/1 , best/1 , rand/2 , best/2 , current-to-rand/1 , current-to-best/1 , rand-to-best/1 ). Similarly, aos,c i,g ∈ { 1, 2} determines the crossover scheme, choosing between binomial and exponential .• Continuous Parameter Assignment: The continuous variables Fi,g ∈ [0 , 1] and Cr i,g ∈ [0 , 1] specify the scaling factor and crossover rate for the selected operators. Given the action ag , the low-level DE optimizer updates the population by executing the corresponding mutation and crossover operators to reproduce the offspring, and then selection operation to determine the next generation population, as detailed in Section 4.1. 
+
+Reward. Upon completing the population update, the low-level optimization environment returns a scalar reward rg
+
+to the meta-level to guide the policy’s learning. Let ⟨ϕ(g)
+
+> best
+
+, f (g)
+
+> best
+
+⟩ denote the constraint violation and objective value of the same best individual at generation g. The reward rg is defined as: 
+
+rg =
+
+ 
+
+> ϕ(g−1)
+> best −ϕ(g)
+> best
+> ϕ(g−1)
+> best
+
+, if ϕ(g) 
+
+> best
+
+> δ 
+
+1 + exp  − gG
+
+ , if ϕ(g−1)  
+
+> best
+
+> δ ≥ ϕ(g)    
+
+> best f(g−1)
+> best −f(g)
+> best
+> f(g−1)
+> best
+
+, if ϕ(g−1)  
+
+> best
+
+≤ δ and ϕ(g) 
+
+> best
+
+≤ δ
+
+(11) where δ is a predefined feasibility tolerance. This reward design encourages constraint violation reduction in the early stage, provides an additional bonus when entering the feasible region, and focuses on objective improvement thereafter. 
+
+4.3 Training 
+
+This section presents the training procedure of LAMDE. As an initial exploration on deploying MetaBBO for op-timization tasks in the wild, LAMDE faces a key challenge, which is that the absence of a well-defined training distribution (since many realistic scenarios lack sufficient problem instances) makes it difficult to obtain sufficient training instances for LAMDE to learn. While existing MetaBBO works claim that a subtle training on diverse syn-thetic benchmarks (e.g., CoCo-BBOB benchmark [36] and IEEE CEC BBO benchmark [37]) is sufficient to ensure generalization, it is not the case when we do preliminary validation on the UAV path planning tasks in this paper. We believe this is due to the complex optimization structures in such realistic scenarios, which results in significant distribution shift. In the following sections, we will first introduce how we address this training issue and then provide details on the overall training workflow. 
+
+Landscape Aware Module. To address the potential training distribution shift issue, we introduce a simple yet effec-tive scheme to automatically construct landscape-similar synthetic training problems for UAV path planning problems in this paper. We term this scheme as Landscape-Aware Module . Given a group of target realistic optimization tasks we want to solve (i.e., the test set): Dtest = {T 1, . . . , TM }, for the m-th realistic task, it is defined by its objective function and constraints: Tm = ⟨fm, ϕ m⟩. For Dtest , our landscape-aware module regards it as a target problem distribution and is capable of finding moderate landscape-similar synthetic problems from a large synthetic problem database. Then the found problems constitute a training problem set with sufficient training instances and more importantly, distributional similarity with Dtest .To achieve this, we need to construct a synthetic problem database Dsyn first. Fortunately, the representative CoCo-BBOB benchmark [36] provides us a group of 24 basis synthetic functions with diverse optimization properties. Based on it, we use the problem augmentation interface in a recent learning-based optimization benchmark platform, MetaBox [38, 39], to augment these 24 functions as a database Dsyn . This interface supports us to set different problem dimensions and random shift/rotation transformation for the 24 basis functions, resulting in 14400 diverse BBO instances 3. With the diversity-enhanced synthetic problem database, we next introduce how we query landscape-similar instances for the target realistic optimization tasks in Dtest .            
+
+> 3For each basis function, we select problem dimensions from {20 ,40 ,80 ,120 ,160 ,200 }, and generate 100 instances using random shift and rotation, resulting in 24 ×6×100 = 14400 instances.
+
+7Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+Algorithm 1: Training Procedure of LAMDE 
+
+Input : Policy πθ , critic Vψ , Dtest , Dsyn , population size N , generations G, max epoch E, PPO interval n, PPO epochs κ.
+
+// Phase 1: Construct Training Set  
+
+> 1
+
+Dtrain ← LAM( Dtest , Dsyn ) (Sec. 4.3); 
+
+// Phase 2: Meta-Training via n-step PPO  
+
+> 2
+
+for epoch = 1 , . . . , E do  
+
+> 3
+
+for T ∈ D train do  
+
+> 4
+
+Initialize population X(1) , rollout buffer B ← ∅ ; 
+
+> 5
+
+Observe initial state s1 using Eq. (9);  
+
+> 6
+
+for g = 1 , . . . , G − 1 do  
+
+> 7
+
+Sample actions ag via Eq. (10);  
+
+> 8
+
+Evolve X(g) to X(g+1) by DE with ag ; 
+
+> 9
+
+Observe next state sg+1 ; 
+
+> 10
+
+Evaluate reward rg via Eq. (11);  
+
+> 11
+
+Update B ← B ∪ { (sg , a g , r g , s g+1 )}; 
+
+> 12
+
+if g mod n = 0 then  
+
+> 13
+
+for k = 1 , . . . , κ do  
+
+> 14
+
+Update πθ , V ψ via PPO on B; 
+
+> 15
+
+Clear B ← ∅ ;
+
+Output: Optimal meta-level policy πθ∗ .
+
+Generally speaking, we leverage landscape feature similarity matching to identify similar synthetic instances for target realistic tasks. Specifically, we probe the underlying landscape space of the tasks in Dtest by first using a Latin Hypercube Sampling (LHS) to sample Nprobe points Xm from the solution space. Then we again utilize the NeurELA feature extractor Ψ( ·) to independently extract two groups of landscape features from the objective landscape and constraint violation space: zfm = Ψ( Xm, f m(Xm)) and zϕm = Ψ( Xm, ϕ m(Xm)) . For each synthetic instance s in the synthetic problem database Dsyn , we follow the same feature extraction procedure and denote the attained feature as zs. Given the feature vectors computed offline, we establish a basis for measuring similarity between problems in landscape feature space. We next propose a two-stage query scheme to fill up Dtrain . This is achieved by first locating a subset Sf of Dsyn ,which comprises K (K > M ) different instances that show nearest distributional distance to the tasks in Dtest :
+
+Sf = arg min  
+
+> S⊂D syn ,|S| =K
+
+X
+
+> s∈S
+
+1
+
+M
+
+> M
+
+X
+
+> m=1
+
+zfm − zs 2
+
+!
+
+. (12) In the second stage, for each located objective function sk ∈ S , we focus on locating a best-matching synthetic instance in Dsyn that holds the same problem dimension as s and is the nearest to the corresponding constraint feature 
+
+zϕm. We denote this instance as s′
+
+> k
+
+. Finally, the augmented training problem set Dtrain is constructed by: 
+
+Dtrain = {< s k, s ′ 
+
+> k
+
+>}Kk=1 , (13) which comprises K training problem instances. For each training problem < s k, s ′ 
+
+> k
+
+> in Dtrain , the evaluation is kept in a simple way: given a solution x, its objective value is sk(x), and its constraint violation measure ϕ(x) = s′
+
+> k
+
+(x).LAMDE is trained on our constructed proxy set Dtrain to enhance the optimization performance on the target task set Dtest . By doing so, even if we have limited realistic task instances in the UAV path planning scenario, we could augment sufficient training data by our proposed scheme. This is a key contribution to existing MetaBBO works to relieve the distribution shift and data limitation. 
+
+Training Workflow. We summarize in Algorithm 1 the training procedure of the LAMDE. We adopt Proximal Policy Optimization (PPO) algorithm [40] to meta-train the meta-level policy. In lines 1, we first construct the training problem set as elaborated in Sec. 4.3. Then in lines 2-15, PPO is used for the training process. For each epoch and each task, the low-level DE optimizer initializes a solution population and iteratively optimizes T for G generations. At each generation g, the meta-level policy observes the state sg and outputs the action ag . Guided by this action, the DE optimizer evolves the population forward, yielding the subsequent state sg+1 and the improvement reward rg . In lines 12-15, the actor and critic of the meta-level policy are updated by PPO’s n-step update fashion. After the training, LAMDE could be used for solving unseen tasks in a zero-shot manner. 8Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+Table 1: Results (mean ± std) of different algorithms. Symbols “ +”, “ ≈”, and “ −” denote worse, similar, and better performance than LAMDE under the Wilcoxon rank-sum test ( 95% ). Best results are bolded and second-best are underlined. 
+
+BBO MetaBBO Ours 
+
+Task CMOCSO CMA-ES L-SRTDE MDE-CGO LDE GLEET RLDEAFL ABOM LAMDE 
+
+T1
+
+2.516e+3 
+
+±3.847e+2 1.599e+3 
+
+±7.334e+2 2.045e+3 
+
+±4.904e+2 1.545e+3 
+
+±8.951e+2 2.365e+3 
+
+±8.924e+1 2.439e+3 
+
+±3.967e+2 1.641e+3 
+
+±7.572e+2 1.603e+3 
+
+±7.708e+2 
+
+1.356e+3 
+
+±7.791e+2 
+
+T2
+
+1.899e+3 
+
+±1.068e+3 1.551e+3 
+
+±8.877e+2 5.258e+2 
+
+±3.370e+2 1.008e+3 
+
+±7.196e+2 1.763e+3 
+
+±9.227e+2 2.324e+3 
+
+±8.434e+2 8.606e+2 
+
+±8.364e+2 3.579e+2 
+
+±3.054e+1 
+
+1.823e+2 
+
+±7.575e+0 
+
+T3
+
+6.020e+3 
+
+±1.507e+3 2.089e+3 
+
+±1.382e+3 2.775e+3 
+
+±9.554e+2 2.304e+3 
+
+±1.287e+3 3.974e+3 
+
+±8.768e+2 6.559e+3 
+
+±9.026e+2 1.891e+3 
+
+±1.011e+3 1.790e+3 
+
+±7.003e+2 
+
+5.513e+2 
+
+±6.686e+1 
+
+T4
+
+4.375e+3 
+
+±4.065e+2 
+
+1.973e+3 
+
+±8.551e+2 
+
+4.056e+3 
+
+±1.971e+2 2.949e+3 
+
+±8.856e+2 4.348e+3 
+
+±2.567e+2 4.395e+3 
+
+±2.851e+2 2.944e+3 
+
+±4.428e+2 3.523e+3 
+
+±2.295e+2 2.394e+3 
+
+±6.119e+2 
+
+T5
+
+4.695e+2 
+
+±9.505e+1 2.469e+2 
+
+±1.716e+1 3.563e+2 
+
+±2.149e+1 4.624e+2 
+
+±6.198e+1 4.829e+2 
+
+±3.763e+1 4.419e+2 
+
+±1.102e+2 3.091e+2 
+
+±4.384e+1 3.252e+2 
+
+±2.566e+1 
+
+1.926e+2 
+
+±5.952e+0 
+
+T6
+
+1.122e+3 
+
+±8.943e+2 2.497e+2 
+
+±1.609e+1 3.919e+2 
+
+±3.499e+1 5.214e+2 
+
+±4.528e+1 5.729e+2 
+
+±6.865e+1 1.006e+3 
+
+±8.684e+2 3.379e+2 
+
+±4.121e+1 3.428e+2 
+
+±3.087e+1 
+
+2.249e+2 
+
+±1.733e+1 
+
+T7
+
+1.182e+3 
+
+±1.015e+3 4.572e+2 
+
+±5.786e+2 4.079e+2 
+
+±2.047e+1 7.249e+2 
+
+±5.632e+2 6.569e+2 
+
+±3.398e+2 1.248e+3 
+
+±1.033e+3 8.375e+2 
+
+±8.195e+2 3.706e+2 
+
+±3.569e+1 
+
+2.483e+2 
+
+±8.558e+0 
+
+T8
+
+2.002e+3 
+
+±1.214e+3 1.654e+3 
+
+±1.049e+3 1.540e+3 
+
+±9.585e+2 1.187e+3 
+
+±9.914e+2 1.477e+3 
+
+±9.215e+2 1.901e+3 
+
+±1.179e+3 1.140e+3 
+
+±1.052e+3 6.300e+2 
+
+±6.961e+2 
+
+5.405e+2 
+
+±7.052e+2 
+
+T9
+
+1.593e+3 
+
+±1.131e+3 7.866e+2 
+
+±7.858e+2 4.597e+2 
+
+±5.666e+1 6.039e+2 
+
+±7.659e+1 1.325e+3 
+
+±8.472e+2 1.705e+3 
+
+±1.097e+3 8.367e+2 
+
+±7.735e+2 7.917e+2 
+
+±7.299e+2 
+
+2.372e+2 
+
+±1.417e+1 
+
+T10 
+
+1.823e+3 
+
+±1.044e+3 4.941e+2 
+
+±5.591e+2 5.005e+2 
+
+±3.361e+2 7.448e+2 
+
+±3.612e+2 1.731e+3 
+
+±8.654e+2 2.028e+3 
+
+±8.949e+2 1.033e+3 
+
+±8.609e+2 4.246e+2 
+
+±3.384e+2 
+
+2.871e+2 
+
+±3.337e+2 
+
+T11 
+
+3.482e+3 
+
+±8.906e+2 
+
+1.230e+3 
+
+±2.004e+2 
+
+3.110e+3 
+
+±6.810e+2 2.068e+3 
+
+±6.013e+2 3.570e+3 
+
+±4.091e+2 3.211e+3 
+
+±8.862e+2 1.859e+3 
+
+±9.007e+2 2.100e+3 
+
+±8.135e+2 1.277e+3 
+
+±8.204e+2 
+
+T12 
+
+4.045e+3 
+
+±3.519e+2 2.388e+3 
+
+±9.204e+2 3.845e+3 
+
+±1.951e+2 2.619e+3 
+
+±8.770e+2 4.056e+3 
+
+±2.361e+2 4.183e+3 
+
+±2.859e+2 3.026e+3 
+
+±3.968e+2 3.228e+3 
+
+±5.216e+2 
+
+2.082e+3 
+
+±9.189e+2 
+
+T13 
+
+4.374e+3 
+
+±1.262e+3 1.938e+3 
+
+±9.041e+2 3.989e+3 
+
+±3.955e+2 3.007e+3 
+
+±1.040e+3 4.621e+3 
+
+±4.658e+2 4.824e+3 
+
+±1.380e+3 2.882e+3 
+
+±1.090e+3 3.498e+3 
+
+±5.114e+2 
+
+1.079e+3 
+
+±8.001e+2 
+
+T14 
+
+2.872e+3 
+
+±1.189e+3 1.434e+3 
+
+±9.130e+2 1.642e+3 
+
+±5.567e+2 1.634e+3 
+
+±4.497e+2 1.728e+3 
+
+±4.054e+2 2.945e+3 
+
+±1.053e+3 1.114e+3 
+
+±5.911e+2 1.188e+3 
+
+±6.164e+1 
+
+4.653e+2 
+
+±3.986e+1 
+
+T15 
+
+1.944e+3 
+
+±6.455e+2 9.991e+2 
+
+±1.359e+2 1.701e+3 
+
+±4.487e+2 1.650e+3 
+
+±1.511e+2 1.723e+3 
+
+±1.286e+2 2.607e+3 
+
+±9.849e+2 1.136e+3 
+
+±3.533e+2 1.286e+3 
+
+±6.818e+1 
+
+5.417e+2 
+
+±4.102e+1 
+
+T16 
+
+3.105e+3 
+
+±1.025e+3 9.804e+2 
+
+±1.429e+2 3.092e+3 
+
+±7.551e+2 2.221e+3 
+
+±8.539e+2 3.619e+3 
+
+±1.669e+2 3.276e+3 
+
+±9.051e+2 1.657e+3 
+
+±8.588e+2 1.597e+3 
+
+±4.898e+2 
+
+8.538e+2 
+
+±5.407e+2 
+
++/−/≈ 16/0/0 13/1/2 16/0/0 15/0/1 16/0/0 16/0/0 16/0/0 15/0/1 N/A 
+
+## 5 Experimental Results 
+
+5.1 Experimental Setup Benchmark Suite. The existing UAV path planning benchmarks [15, 16] lack the accurate and comprehensive mod-eling to capture the complex physical constraints of real-world UAV deployments. To bridge this gap, based on the basic modeling of 2D UAV path planning tasks, we construct a dedicated benchmark suite (i.e., Dtest ) comprising 16 WSN data collection settings for LAMDE and other compared baselines to do UAV path planning tasks. The gener-ation of this suite follows our obstacle designs in Sec. 3.2, spanning two map sizes— 5000 × 5000 (Imax = 10 ) and 
+
+10000 × 10000 (Imax = 20 ), and with incremental obstacle density hence posing diverse difficulties for the underlying optimizers to solve. We provide 4 visualization examples of these task instances in Fig. 2. An important point we must emphasize is that: in this paper, we strictly follow the challenging conditions in realistic scenario, that is, for each instance, the total number of evaluations allowed for solving it is limited to 10000. 
+
+Baselines. We evaluate LAMDE against 8 representative baselines selected from both traditional evolutionary ap-proaches and recent MetaBBO approaches. For the former, we adopt CMA-ES [41]: a powerful global optimizer, 
+
+CMOCSO [42]: a competition-based and up-to-date optimizer for solving multi-objective multi-constraints prob-lem, L-STRDE [43]: the winner optimizer in IEEE CEC 2024 competition, and MDE-CGO [15]: a matrix-based evolutionary optimizer tailored for WSN data collection scenarios. For the latter, we adopt ABOM [20], LDE [44], 
+
+GLEET [30], and RLDEAFL [45]. These learning-assisted optimizers are representative ones that show competitive optimization performance in recent literature. For CMA-ES, L-STRDE and all MetaBBO baselines, since they are not originally designed for constrained optimization, we use classical penalty approach [46]: ˆf (x) = f (x) + δ · ϕ(x), to transform constraints into the objective function, where δ = 10 . Despite these differences, all baselines follow their original settings in their papers. 9Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT X (km) Y (km)                             
+
+> 0123450123450123450123450246810 0246810 0246810 0246810
+> Start End Obstacles Sensors NFZ LAMDE CMA-ES MDE-CGO ABOM
+
+Figure 2: The best flying trajectories generated by LAMDE, CMA-ES, MDE-CGO, and ABOM on diverse maps T1,
+
+T2, T3, and T4.
+
+Implementation Details. LAMDE uses the pre-trained NeurELA feature extractor released by the original authors. 4
+
+Since LAMDE only requires a small number of real function evaluations to construct the proxy training set ( Nprobe =100 ), the remaining evaluation budget is reserved for test optimization. In contrast, other MetaBBO baselines without proxy training directly consume the full evaluation budget on Dtest . All experiments are independently repeated 25 times. We provide detailed implementation configurations in the supplementary materials, including the environment settings and training hyperparameters. 
+
+5.2 Systematic Performance Comparison 
+
+We first compare the optimization performances of the baselines. For traditional optimizer baselines, we directly use them to optimize the given 16 UAV path planning instances. For learning-assisted MetaBBO baselines including our LAMDE, we test their trained versions on the instances. To compare baselines with a unified performance metric, we use classical penalty approach [46] (smaller is better): ˆf (x) = f (x) + δ · ϕ(x), and set δ as 10. The average optimization results and corresponding standard deviations across the 25 independent runs are reported in Table 1. The results in the table demonstrate that: 1) LAMDE significantly outperforms all compared baselines on almost all tested path planning instances. This underscores the effectiveness of each specific designs in our LAMDE as a whole system. More importantly, by meta learning on the training problem distribution, LAMDE could show robust generalization on unseen realistic problems. 2) LAMDE only underperforms the powerful CMA-ES optimizer on two cases T4
+
+and T11 with slight performance gap. This is mainly due to the performance computation focuses on the statistical average across multiple runs. As a powerful optimizer, it is not a surprise at all the CMA-ES could perform robustly on some realistic problems. However, as we presented in Fig. 2, the best trajectories our LAMDE finds are superior to CMA-ES and other baselines. 3) LAMDE achieves state-of-the-art performance within the MetaBBO baselines. A major reason behind is the training data preparation we propose in Sec. 4.3. Given this scheme, we can augment the training data without loss of distribution alignment. In contrast, the compared MetaBBO baselines are limited by the target optimization tasks and restricted evaluation resources. This indicates that LAMDE is more capable of solving optimization challenges in the wild. Note that this is a step forward for existing MetaBBO paradigms. 4) An up-to-date MetaBBO baseline ABOM shows competitive results on such realistic tasks, while it still performs worse than our LAMDE. What we want to discuss here is the design philosophy of ABOM: training online policy along the actual optimization process with adaptive self-supervised learning. Compared to the other three MetaBBO baselines, ABOM performs better, which indicates that such online learning is also a promising way to address realistic challenging optimization tasks. 5) Generally, we validate the learning potential for automating algorithm design in optimization tasks. While the ranks of the four traditional baselines show clear variance, our LAMDE ranks the first place consistently with automated algorithm configuration. 6) A specific case we would like to mention here is the comparison between CMOCSO (a tailored constraint optimizer) and CMA-ES (an unconstrained optimizer with penalty objective). CMA-ES beats CMOCSO in every tested instance, with significant performance gap. This more or less reflects the existing status in human-crafted evolutionary optimizers. Once they are used in unseen scenarios, it is extremely hard to ensure the claimed optimization robustness. This further underscores the importance of exploring more on learning-assisted optimization techniques such as MetaBBO. We further visualize the best flying trajectories found by the top-4 optimizers across 25 independent runs in Fig. 2 to illustrate the actual effectiveness of LAMDE. We could observe that the three baselines frequently produce irregular paths with redundant detours, whereas LAMDE generates more concise and smoother routes, owing to its general-ized meta-level policy for flexible search and the variable-length encoding in the low-level optimization to ensure 
+
+> 4https://github.com/MetaEvo/Neur-ELA
+
+10 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT GLEET CMOCSO LDE L-SRTDE MDE-CGO RLDEAFL ABOM CMA-ES LAMDE-F LAMDE 0.5 0.6 0.7 0.8 0.9 1       
+
+> Performance
+> 0.777 0.789 0.823 0.874 0.887 0.894 0.906 0.912 0.913 0.958
+
+Figure 3: Comparison of performance between LAMDE-F and baselines Table 2: Ablation of retrieval strategies on 16 UAV instances. ID LAMDE-R LAMDE-E LAMDE-L LAMDE-O LAMDE 
+
+T1 1.58e+3 ± 8.02e+2 1.62e+3 ± 6.13e+2 1.69e+3 ± 5.52e+2 1.36e+3 ± 7.74e+2 1.36e+3 ± 7.79e+2 
+
+T2 1.82e+2 ± 7.78e+0 1.82e+2 ± 8.95e+0 1.82e+2 ± 9.02e+0 1.84e+2 ± 1.62e+1 1.82e+2 ± 7.57e+0 
+
+T3 6.93e+2 ± 4.49e+2 8.71e+2 ± 6.19e+2 5.52e+2 ± 4.74e+1 6.77e+2 ± 3.15e+2 5.51e+2 ± 6.69e+1 
+
+T4 2.48e+3 ± 3.95e+2 2.50e+3 ± 5.91e+2 2.62e+3 ± 1.80e+2 2.45e+3 ± 5.49e+2 2.39e+3 ± 6.12e+2 
+
+T5 1.96e+2 ± 6.62e+0 1.94e+2 ± 8.91e+0 1.94e+2 ± 4.32e+0 1.92e+2 ± 5.73e+0 1.93e+2 ± 5.95e+0 
+
+T6 2.88e+2 ± 5.39e+1 2.78e+2 ± 7.92e+1 2.28e+2 ± 1.29e+1 2.22e+2 ± 8.93e+0 2.25e+2 ± 1.73e+1 
+
+T7 2.77e+2 ± 4.41e+0 2.48e+2 ± 1.20e+1 3.10e+2 ± 3.15e+2 2.50e+2 ± 1.08e+1 2.48e+2 ± 8.56e+0 
+
+T8 7.23e+2 ± 8.36e+2 6.45e+2 ± 7.70e+2 6.74e+2 ± 7.55e+2 7.13e+2 ± 8.01e+2 5.41e+2 ± 7.05e+2 
+
+T9 3.06e+2 ± 3.34e+2 2.51e+2 ± 2.96e+1 2.52e+2 ± 2.23e+1 2.39e+2 ± 1.80e+1 2.37e+2 ± 1.42e+1 
+
+T10 3.32e+2 ± 3.76e+2 2.97e+2 ± 3.92e+2 2.90e+2 ± 3.23e+2 3.54e+2 ± 4.69e+2 2.87e+2 ± 3.34e+2 
+
+T11 1.42e+3 ± 7.31e+2 2.38e+3 ± 7.11e+2 1.53e+3 ± 9.48e+2 1.36e+3 ± 8.92e+2 1.28e+3 ± 8.20e+2 
+
+T12 2.56e+3 ± 3.90e+2 2.55e+3 ± 8.22e+2 2.35e+3 ± 7.19e+2 2.36e+3 ± 6.91e+2 2.08e+3 ± 9.19e+2 
+
+T13 1.14e+3 ± 9.11e+2 1.56e+3 ± 9.00e+2 1.23e+3 ± 9.13e+2 1.51e+3 ± 8.76e+2 1.08e+3 ± 8.00e+2 
+
+T14 4.89e+2 ± 4.42e+1 4.70e+2 ± 4.13e+1 4.84e+2 ± 4.19e+1 4.70e+2 ± 5.84e+1 4.65e+2 ± 3.99e+1 
+
+T15 5.65e+2 ± 7.44e+1 5.81e+2 ± 7.28e+1 6.27e+2 ± 3.08e+2 6.69e+2 ± 2.96e+2 5.42e+2 ± 4.10e+1 
+
+T16 8.66e+2 ± 5.72e+2 8.90e+2 ± 4.73e+2 8.93e+2 ± 5.81e+2 1.24e+3 ± 7.99e+2 8.54e+2 ± 5.41e+2 
+
+ability to adaptively prune unnecessary hover points. We provide the visualization results of the rest 12 cases at our project. In addition, to further investigate the searching behavior of LAMDE, we decompose the optimization metric into objective value and constraint violation value, and analyze their search behaviors provided in the supplementary materials. 
+
+5.3 Ablation Studies 
+
+We would like to again emphasize two major contributions in LAMDE’s methodology: i) the variable-length encod-ing strategy used to facilitate searching flexibility in the low-level optimization. ii) the landscape-aware training data augmentation scheme to enlarge the training scale of the meta-level policy. In this ablation section, we aim to demonstrate the effectiveness of these two core contributions through rigorous experiments. First, we focus on the variable-length encoding strategy. Specifically, we ablate this strategy in LAMDE by replacing it with a fixed gene encoding, termed as LAMDE-F. This ablated variant enforces the low-level DE optimizer to search feasible solutions with Imax hover points. We plot the average normalized performances 5 of all previous baselines and LAMDE-F in Fig 3. The results indicate that: 1) LAMDE achieves consistently higher and more stable returns than LAMDE-F across all 16 instances, confirming the benefit of adaptive trajectory pruning. 2) LAMDE-F still slightly outperforms all selected baselines, this on the other hand validates the learning of LAMDE is effective. Second, we validate the importance of the landscape-aware module by preparing four ablated baselines: (i) LAMDE-R, which samples synthetic training tasks at random without any landscape guidance; (ii) LAMDE-E , which replaces NeurELA with classical ELA features [47] while retaining the same matching procedure; and (iii) LAMDE-L , which performs the landscape locally: instead of locating synthetic functions with distributional similarity, we locate a group of similar synthetic instances for each target task; (iv) LAMDE-O : we entirely drop the prepared training set and train LAMDE as the original setting in existing MetaBBO baselines. Table 2 reports the results across all 16 instances. LAMDE-R performs worst overall, confirming that unguided sampling produces training distributions misaligned 
+
+> 5
+
+The normalization is performed in a per-run manner. In each run, the final performance is normalized by the initial performance. Then performances of 25 runs over all 16 test cases are aggregated. 
+
+11 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 20 30 40 50 60 70 80 90 100 00.2 0.4 0.6 0.8 1
+
+> LAMDE-F
+> LAMDE
+
+Figure 4: Average feasible rates under increasing Imax across test set. with the target domain. LAMDE-E improves upon random sampling, yet remains clearly inferior to our LAMDE, exposing the limited representational capacity of handcrafted features when characterizing complex constrained land-scapes. LAMDE-L narrows the gap further, but its instance-wise retrieval is inconsistent with the learning philosophy of MetaBBO: learning over problem distribution. LAMDE-O also performs significantly worse than LAMDE, which further validates the bottlenecks of existing MetaBBO paradigms in solving realistic problems. Our LAMDE, by aligning synthetic tasks through global centroid matching, captures coherent domain-level structure and achieves the best performance, validating that both the learned feature representation and the holistic matching strategy are indis-pensable for effective zero-shot generalization. 
+
+5.4 In-depth Analysis 
+
+A key observation in Fig. 3 is that, with the enhancement of the variable-length encoding strategy in the low-level optimization, LAMDE performs significantly better learning effectiveness and generalized optimization performance. We think this is an important experimental result and it deserves more exploration. To this end, in this section we provide a series of in-depth analysis on this aspect. Recall that to isolate the contribution of the proposed variable-length encoding, we construct a variant, LAMDE-F , that retains the landscape aware meta-policy but removes the Variable-Length Encoding Strategy. The policy is trained by the same setting as LAMDE. We use this variant and our LAMDE for subsequent analysis. Fig. 4 illustrates the feasible rates of LAMDE and LAMDE-F as the maximum problem dimension (i.e., Imax hover points) increases. These rates are computed by counting the proportion of feasible solutions in the last-generation population across all 16 target tasks and 25 independent runs. We could observe that as the Imax increases from 20 to 100, LAMDE-F deteriorates rapidly and fails to produce feasible solutions once Imax ≥ 70 , burdened by optimizing an expanding set of redundant hover points. In contrast, with our proposed variable-length encoding strategy, LAMDE maintains a high feasibility rate as the decision variable dimension increases. Specifically, it ensures a feasible rate above 0.6 even at Imax = 100 , demonstrating strong robustness and is preferable in practical complex optimization environments. We believe this is achieved by the added decision dimension (i.e., the activation value) in the solution. This added dimension provides the low-level optimizer a more fine-grained interface to determine the sparsity of the solution. Furthermore, such additional dynamics of the low-level optimization could provide a more informative environmental dynamics for the meta-level policy to learn more preferable algorithm configuration decisions, which in turn helps enhance the overall optimization performance. Due to space constraints, further analyses regarding the algorithmic behaviors and the broader applicability of this variable-length strategy across other optimizers are detailed in the supplementary materials. 
+
+## 6 Conclusion 
+
+In this paper, we propose a systematic MetaBBO framework LAMDE to address realistic UAV path planning (with challenging obstacle layout) in WSN data collection tasks. In particular, we first re-formulate the optimization model in such planning scenarios with city-level obstacles and various running constraints. Then we dive into the design space of the MetaBBO paradigm. At the meta level, we propose an landscape-aware automatic training data prepa-ration scheme to mitigate the potential distribution shift issue in existing MetaBBO training paradigms. At the lower level, we equip EC optimizers with a variable-length encoding strategy to facilitate solving flexibility of low-level op-timization process. Experiments on diverse UAV missions show that LAMDE consistently outperforms both classical and learning-based baselines. Fuether in-depth analysis underscore the effectiveness of our designs. We also mark potential future works that could improve LAMDE further: i) 3D UAV environmental setting. ii) Online dynamic 12 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+planning in noisy environment. iii) Multi-UAV co-evolution. We believe LAMDE is not only an effective solver for challenging UAV path planning tasks, but also a practical guideline for those who develop MetaBBO for realistic problems. 
+
+## References 
+
+[1] T. Ahmad, A. Morel, N. Cheng, K. Palaniappan, P. Calyam, K. Sun, and J. Pan, “Future uav/drone systems for intelligent active surveillance and monitoring,” ACM Computing Surveys , vol. 58, no. 2, pp. 1–37, 2025. [2] N. Ya’acob, M. Zolkapli, J. Johari, A. L. Yusof, S. S. Sarnin, and A. Z. Asmadinar, “Uav environment monitoring system,” in 2017 International Conference on Electrical, Electronics and System Engineering (ICEESE) , 2017, pp. 105–109. [3] S. Zhang, X. Wang, H. Lin, and Z. Qiang, “A review of the application of uav multispectral remote sensing technology in precision agriculture,” Smart Agricultural Technology , p. 101406, 2025. [4] S. M. S. M. Daud, M. Y. P. M. Yusof, C. C. Heo, L. S. Khoo, M. K. C. Singh, M. S. Mahmood, and H. Nawawi, “Applications of drone in disaster management: A scoping review,” Science & Justice , vol. 62, no. 1, pp. 30–42, 2022. [5] J. Baek, S. I. Han, and Y. Han, “Energy-efficient uav routing for wireless sensor networks,” IEEE Transactions on Vehicular Technology , vol. 69, no. 2, pp. 1741–1750, 2020. [6] C. Zhan, Y. Zeng, and R. Zhang, “Energy-efficient data collection in uav enabled wireless sensor network,” IEEE Wireless Communications Letters , vol. 7, no. 3, pp. 328–331, 2018. [7] J. Poorvi, A. Kalita, and M. Gurusamy, “Reliable and efficient data collection in uav-based iot networks,” IEEE Communications Surveys & Tutorials , vol. 28, pp. 2531–2571, 2026. [8] A. Singh and R. M. Hegde, “Age-aware uav-aided energy harvesting for the design of wireless rechargeable mobile networks,” IEEE Transactions on Artificial Intelligence , vol. 6, no. 7, pp. 1797–1807, 2025. [9] D. Yang, Q. Wu, Y. Zeng, and R. Zhang, “Energy tradeoff in ground-to-uav communication via trajectory design,” 
+
+IEEE Transactions on Vehicular Technology , vol. 67, no. 7, pp. 6721–6726, 2018. [10] M. Jones, S. Djahel, and K. Welsh, “Path-planning for unmanned aerial vehicles with environment complexity considerations: A survey,” ACM Computing Surveys , vol. 55, no. 11, pp. 1–39, 2023. [11] C. Lin, G. Han, X. Qi, J. Du, T. Xu, and M. Mart´ ınez-Garc´ ıa, “Energy-optimal data collection for unmanned aerial vehicle-aided industrial wireless sensor network-based agricultural monitoring system: A clustering com-pressed sampling approach,” IEEE Transactions on Industrial Informatics , vol. 17, no. 6, pp. 4411–4420, 2021. [12] L. Shi and S. Xu, “Uav path planning with qos constraint in device-to-device 5g networks using particle swarm optimization,” IEEE Access , vol. 8, pp. 137 884–137 896, 2020. [13] S. Goudarzi, S. A. Soleymani, W. Wang, and P. Xiao, “Uav-enabled mobile edge computing for resource allo-cation using cooperative evolutionary computation,” IEEE Transactions on Aerospace and Electronic Systems ,vol. 59, no. 5, pp. 5134–5147, 2023. [14] L. Liu, A. Wang, G. Sun, J. Li, H. Pan, and T. Q. S. Quek, “Multi-objective optimization for data collection in uav-assisted agricultural iot,” IEEE Transactions on Vehicular Technology , vol. 74, no. 4, pp. 6488–6503, 2025. [15] Y. Bai, P.-F. Sun, T.-H. Wang, B. Sun, W.-J. Yu, J.-H. Zhong, G.-H. Song, S.-W. Jeon, S. Tak Wu Kwong, and J. Zhang, “Uav path planning for data collection from wireless sensor network with matrix-based evolutionary computation,” IEEE Transactions on Intelligent Transportation Systems , vol. 26, no. 9, pp. 13 672–13 687, 2025. [16] P.-F. Sun, Y. Song, K. Gao, Y. Wang, C. Zhou, S.-W. Jeon, and J. Zhang, “3d uav trajectory planning for iot data collection over 3d terrain features,” in 2025 IEEE 101st Vehicular Technology Conference (VTC2025-Spring) ,2025, pp. 1–6. [17] Z. Ma, H. Guo, Y.-J. Gong, J. Zhang, and K. C. Tan, “Toward automated algorithm design: A survey and practical guide to meta-black-box-optimization,” IEEE Transactions on Evolutionary Computation , vol. 30, no. 2, pp. 667–687, 2026. [18] C. Finn, P. Abbeel, and S. Levine, “Model-agnostic meta-learning for fast adaptation of deep networks,” in 
+
+Proceedings of the 34th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 70. PMLR, 06–11 Aug 2017, pp. 1126–1135. [19] R. Storn and K. Price, “Differential evolution–a simple and efficient heuristic for global optimization over con-tinuous spaces,” Journal of global optimization , vol. 11, no. 4, pp. 341–359, 1997. 13 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+[20] C. Wang, L. Jiao, L. Li, J. Zhao, G. Wang, F. Liu, and S. Yang, “Task-free adaptive meta black-box optimization,” in International Conference on Learning Representations , 2026. [21] R. Shivgan and Z. Dong, “Energy-efficient drone coverage path planning using genetic algorithm,” in 2020 IEEE 21st International Conference on High Performance Switching and Routing (HPSR) , 2020, pp. 1–6. [22] J. Joseph, M. Radmanesh, M. N. Sadat, R. Dai, and M. Kumar, “Uav path planning for data ferrying with communication constraints,” in 2020 IEEE 17th Annual Consumer Communications & Networking Conference (CCNC) , 2020, pp. 1–9. [23] X.-X. Shao, Y.-J. Gong, Z.-H. Zhan, and J. Zhang, “Bipartite cooperative coevolution for energy-aware coverage path planning of uavs,” IEEE Transactions on Artificial Intelligence , vol. 3, no. 1, pp. 29–42, 2022. [24] X. Gao, X. Zhu, and L. Zhai, “Aoi-sensitive data collection in multi-uav-assisted wireless sensor networks,” 
+
+IEEE Transactions on Wireless Communications , vol. 22, no. 8, pp. 5185–5197, 2023. [25] X. Liu, H. Liu, K. Zheng, J. Liu, T. Taleb, and N. Shiratori, “Aoi-minimal clustering, transmission and trajectory co-design for uav-assisted wpcns,” IEEE Transactions on Vehicular Technology , vol. 74, no. 1, pp. 1035–1051, 2024. [26] J. Schmidhuber, “Evolutionary principles in self-referential learning,” Ph.D. dissertation, Technische Universit¨ at M¨ unchen, 1987. [27] J. Schmidhuber, “G¨ odel machines: Fully self-referential optimal universal self-improvers,” in Artificial general intelligence . Springer, 2007, pp. 199–226. [28] X. Yang, R. Wang, K. Li, and H. Ishibuchi, “Meta-black-box optimization for evolutionary algorithms: Review and perspective,” Swarm and Evolutionary Computation , vol. 93, p. 101838, 2025. [29] H. Guo, Y. Ma, Z. Ma, J. Chen, X. Zhang, Z. Cao, J. Zhang, and Y.-J. Gong, “Deep reinforcement learning for dynamic algorithm selection: A proof-of-principle study on differential evolution,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 54, no. 7, pp. 4247–4259, 2024. [30] Z. Ma, J. Chen, H. Guo, Y. Ma, and Y.-J. Gong, “Auto-configuring exploration-exploitation tradeoff in evolution-ary computation via deep reinforcement learning,” in Proceedings of the Genetic and Evolutionary Computation Conference , 2024, pp. 1497–1505. [31] X. Li, K. Wu, Y. B. Li, X. Zhang, H. Wang, and J. Liu, “Pretrained optimization model for zero-shot black box optimization,” in Advances in Neural Information Processing Systems , vol. 37. Curran Associates, Inc., 2024, pp. 14 283–14 324. [32] H. Guo, Z. Ma, Y. Ma, X. Zhang, W.-N. Chen, and Y.-J. Gong, “Designx: Human-competitive algorithm designer for black-box optimization,” in Advances in Neural Information Processing Systems , vol. 38. Curran Associates, Inc., 2025, pp. 6582–6615. [33] P. Li, J. Hao, H. Tang, X. Fu, Y. Zheng, and K. Tang, “Bridging evolutionary algorithms and reinforcement learning: A comprehensive survey on hybrid algorithms,” IEEE Transactions on Evolutionary Computation ,vol. 29, no. 5, pp. 1707–1728, 2025. [34] R. Lange, T. Schaul, Y. Chen, T. Zahavy, V. Dalibard, C. Lu, S. Singh, and S. Flennerhag, “Discovering evolu-tion strategies via meta-black-box optimization,” in Proceedings of the Companion Conference on Genetic and Evolutionary Computation , 2023, pp. 29–30. [35] F. Liu, X. Tong, M. Yuan, X. Lin, F. Luo, Z. Wang, Z. Lu, and Q. Zhang, “Evolution of heuristics: Towards efficient automatic algorithm design using large language model,” arXiv preprint arXiv:2401.02051 , 2024. [36] N. Hansen, A. Auger, S. Finck, and R. Ros, “Real-parameter black-box optimization benchmarking 2010: Ex-perimental setup,” Ph.D. dissertation, INRIA, 2010. [37] J. Liang, B. Qu, P. Suganthan, and Q. Chen, “Problem definitions and evaluation criteria for the cec 2015 compe-tition on learning-based real-parameter single objective optimization,” Technical Report201411A, Computational Intelligence Laboratory, Zhengzhou University, Zhengzhou China and Technical Report, Nanyang Technological University, Singapore , vol. 29, pp. 625–640, 2014. [38] Z. Ma, H. Guo, J. Chen, Z. Li, G. Peng, Y.-J. Gong, Y. Ma, and Z. Cao, “Metabox: A benchmark platform for meta-black-box optimization with reinforcement learning,” in Advances in Neural Information Processing Systems , vol. 36. Curran Associates, Inc., 2023, pp. 10 775–10 795. [39] Z. Ma, Y.-J. Gong, H. Guo, W. Qiu, S. Ma, H. Lian, J. Zhan, K. Chen, C. Wang, Z. Huang, Z. Huang, G. Peng, R. Cheng, and Y. Ma, “Metabox-v2: A unified benchmark platform for meta-black-box optimization,” in Ad-vances in Neural Information Processing Systems , vol. 38. Curran Associates, Inc., 2025. 14 Learning to Optimize UAV Path Planning for Data Sensing in Wireless Sensor Networks A P REPRINT 
+
+[40] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” 
+
+arXiv preprint arXiv:1707.06347 , 2017. [41] M. Nomura, M. Shibata, and R. Hamano, “cmaes: A simple yet practical python library for cma-es,” arXiv preprint arXiv:2402.01373 , 2026. [42] F. Ming, W. Gong, D. Li, L. Wang, and L. Gao, “A competitive and cooperative swarm optimizer for constrained multiobjective optimization problems,” IEEE Transactions on Evolutionary Computation , vol. 27, no. 5, pp. 1313–1326, 2023. [43] V. Stanovov and E. Semenkin, “Success rate-based adaptive differential evolution l-srtde for cec 2024 competi-tion,” in 2024 IEEE Congress on Evolutionary Computation (CEC) , 2024, pp. 1–8. [44] J. Sun, X. Liu, T. B¨ ack, and Z. Xu, “Learning adaptive differential evolution algorithm from optimization ex-periences by policy gradient,” IEEE Transactions on Evolutionary Computation , vol. 25, no. 4, pp. 666–680, 2021. [45] H. Guo, S. Ma, Z. Huang, Y. Hu, Z. Ma, X. Zhang, and Y.-J. Gong, “Reinforcement learning-based self-adaptive differential evolution through automated landscape feature learning,” in Proceedings of the Genetic and Evolu-tionary Computation Conference , 2025, pp. 1117–1126. [46] F.-F. Wei, W.-N. Chen, Q. Li, S.-W. Jeon, and J. Zhang, “Distributed and expensive evolutionary constrained optimization with on-demand evaluation,” IEEE Transactions on Evolutionary Computation , vol. 27, no. 3, pp. 671–685, 2022. [47] O. Mersmann, B. Bischl, H. Trautmann, M. Preuss, C. Weihs, and G. Rudolph, “Exploratory landscape analysis,” in Proceedings of the 13th annual conference on Genetic and evolutionary computation , 2011, pp. 829–836. 15

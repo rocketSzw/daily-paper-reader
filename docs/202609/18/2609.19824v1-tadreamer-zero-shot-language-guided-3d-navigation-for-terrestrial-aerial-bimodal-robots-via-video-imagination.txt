@@ -1,0 +1,387 @@
+Title: TADreamer: Zero-Shot Language-Guided 3D Navigation for Terrestrial-Aerial Bimodal Robots via Video Imagination
+
+URL Source: https://arxiv.org/pdf/2609.19824v1
+
+Published Time: Fri, 18 Sep 2026 00:45:46 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# TADreamer: Zero-Shot Language-Guided 3D Navigation for Terrestrial-Aerial Bimodal Robots via Video Imagination 
+
+Xiangyu Li *, Tiancheng Lai *, Xijie Huang, Ruitian Pang, Siqi Shen, Juncheng Chen, Zaisheng Pan, Chao Xu, Fei Gao, Yanjun Cao †
+
+Abstract — Language-guided navigation for terrestrial-aerial bimodal robots requires selecting routes and locomotion modes that match scene context and task intent. Generated videos can represent such motion sequences, but recovering metrically con-sistent navigation references from them is challenging because of scale ambiguity and axis-dependent geometric distortions. We present TADreamer, a zero-shot framework that grounds video-imagined navigation in measured geometry without task-specific training or fine-tuning. A vision-language model translates onboard observations and instructions into navigation prompts, selects valid generated videos, and provides corrective feedback when regeneration is needed. The selected video is reconstructed into 3D waypoints annotated with terrestrial or aerial modes. A two-stage calibration procedure uses field-of-view constraints to initialize scale estimation, then refines axis-dependent scales, rotation, and translation by registering the reconstructed point cloud to measured geometry. The calibrated waypoints and mode labels guide a planner that incorporates measured geom-etry for robot execution. Real-world experiments demonstrate navigation across seven indoor and outdoor scenarios. With five candidates per round, usable videos are obtained within two rounds in all seven scenarios. On the calibration observations, our method reduces mean absolute depth error by 87.7% and mean absolute relative depth error by 86.3% compared with NavDreamer. 
+
+I. I NTRODUCTION 
+
+Animals in nature often adapt to complex environments by employing multiple modes of locomotion. The roadrunner, for example, primarily relies on agile and energy-efficient terrestrial locomotion. When threatened, it can also perform short flights to avoid obstacles and evade pursuing preda-tors. A similar mechanism is embodied in terrestrial-aerial bimodal robots (TABRs) [1], [2], [3]. When the terrain is traversable, these robots use terrestrial locomotion to reduce energy consumption and extend operational endurance; when the ground becomes impassable, they use flight to overcome obstacles. TABRs therefore offer distinct advantages in appli-cations such as search and rescue, inspection, and exploration of unknown environments. However, the key to fully exploit-ing the advantages of TABRs lies in deciding how terrestrial and aerial locomotion should be composed according to  
+
+> *Equal contribution. †Corresponding author. Xiangyu Li, Tiancheng Lai, Xijie Huang, Ruitian Pang, Siqi Shen, Juncheng Chen, Chao Xu, Fei Gao and Yanjun Cao are with the State Key Laboratory of Industrial Control Technology, Zhejiang University, Hangzhou 310027, China, and also with the Huzhou Institute of Zhe-jiang University, Huzhou 313000, China (email: xiangyu.li@zju.edu.cn; yanjunhi@zju.edu.cn) Zaisheng Pan is with the Institute of Cyber-Systems and Control, Zhejiang University, Hangzhou 310027, China
+
+scene context and task instructions, rather than merely find-ing a single-mode collision-free path. This requires semantic traversability reasoning, geometrically grounded decision-making, and metric consistency between imagined motion and the real environment. Geometric representations alone are insufficient for seman-tic traversability reasoning. TABR navigation requires under-standing terrain traversability, obstacle properties, and lan-guage instructions. Existing methods typically use geometric representations for collision detection and planning [4], [5], [6], but these representations often lack semantic information and task intent. For example, a flexible curtain and a rigid wall may both appear as obstacles, although the former may permit terrestrial traversal [7]. Such ambiguity can lead to unnecessary flight or infeasible ground routes. Vision-language models (VLMs) jointly interpret visual observations and language instructions to understand task intent, reason about scenes, and generate high-level naviga-tion decisions. However, these decisions require geometric grounding for execution. In aerial navigation, See, Point, Fly [8] uses a frozen VLM to identify two-dimensional way-points in first-person images and converts them into three-dimensional motion commands through a geometric mod-ule. FlightGPT [9] combines semantic maps with language-specified objectives to predict navigation goals. For TABRs, DS-LABRNav [7] uses a VLM to assess obstacle traversabil-ity and guide locomotion-mode planning. Generative video models offer a bridge between semantic decision-making and spatial motion. [10], [11] Conditioned on visual observations and task instructions, these models can synthesize imagined navigation sequences, from which cam-era poses can be recovered to construct candidate trajectories. NavDreamer [12] demonstrates the potential of this approach for zero-shot 3D navigation. However, visually plausible videos do not necessarily produce geometrically consistent or executable trajectories. Monocular reconstruction remains scale-ambiguous without metric priors, while video gener-ation may introduce scene hallucinations and non-uniform geometric distortions. Here, axis-dependent geometric distor-tion refers to anisotropic scaling in the reconstructed geome-try, where distances along different spatial axes are distorted by different factors. Consequently, a single global scale factor cannot simultaneously align all axes, leading to systematic errors in the recovered waypoints. These limitations motivate calibrating imagined waypoints against measured geometry to provide metrically aligned references for downstream trajectory planning. arXiv:2609.19824v1 [cs.RO] 17 Sep 2026 Fig. 1. Language-guided terrestrial-aerial navigation with TADreamer. The instruction “Go to KFC” guides video imagination, waypoint calibration against measured geometry, and robot execution through ground travel, flight over the stairs, and landing. 
+
+To address the aforementioned challenges, we propose a scene-aware video navigation framework for TABRs. The framework employs a VLM to interpret first-person robot observations and natural-language instructions and generate prompts that guide imagined-video generation, without re-quiring manually designed decomposed prompts. After the VLM selects a generated video and identifies its locomotion modes, the Depth Anything 3 (DA3) [13] decoder recovers the camera trajectory and imagined point cloud. The imag-ined point cloud is then registered with the measured point cloud to estimate the transformation parameters and correct the metric-scale deviations of the recovered waypoints. Fi-nally, the aligned waypoints are passed to a low-level planner, which generates a continuous trajectory satisfying collision-avoidance and motion constraints for execution by the robot. Fig. 1 illustrates a representative task in which TADreamer follows a language instruction through ground travel, flight over stairs, and landing and rolling to the destination. The main contributions of this work are as follows:  
+
+> •
+
+We introduce TADreamer, a zero-shot language-guided navigation framework for TABRs that uses VLM-guided video imagination to compose terrestrial and aerial loco-motion according to scene context and task instructions.  
+
+> •
+
+We design a two-stage calibration procedure that uses measured point clouds to initialize and refine axis-dependent scales, aligning video-reconstructed geome-try and waypoints with the measured environment.  
+
+> •
+
+We validate TADreamer in seven real-world scenarios, demonstrating usable multimodal navigation videos and substantially improved reconstruction accuracy over ex-isting baselines. II. R ELATED WORK 
+
+A. Autonomous Navigation for TABRs 
+
+TABRs trade ground endurance for aerial reachability, so navigation must choose both a route and a locomotion mode. Fan et al. [4] unified rolling and flying control with a differential-flatness planner for unknown environments. Zhang et al. [5] coupled hierarchical kinodynamic search with B-spline optimization to account for ground curva-ture and flight energy. Their later model-based framework integrated unified dynamics, trajectory optimization, and nonlinear model predictive control for both modes [14]. Li et al. [15] reduced online computation by predicting global land–air keypoints from depth and goal inputs before map-based local refinement. For exploration, Gao et al. [16] jointly scheduled bimodal viewpoints and modes under time and energy budgets. These approaches provide geomet-ric planning and control under motion and resource con-straints. However, these geometry-planning-based methods only demonstrate the motion capabilities of TABRs, falling short of effectively leveraging natural language instructions and environmental semantics in real-world settings. 
+
+B. VLM-Based Semantic and Affordance-Aware Navigation 
+
+VLM-based navigation augments geometric perception with goal semantics and reasoning about scene affor-dances [17]. LM-Nav [18] decomposes free-form instructions into landmark sequences, grounds them with CLIP, and con-nects them using a learned navigation policy. VLMaps [19] fuses pretrained vision–language features into a 3D map, enabling open-vocabulary object and spatial-relation queries. For UAVs, See, Point, Fly [8] uses a frozen VLM to predict image-plane waypoints and travel distances, then lifts them to 3D displacements with geometry. FlightGPT [9] reasons over a semantic map and language goal with look-ahead planning. For a single TABR, DS-LABRNav [7] invokes a VLM before takeoff to assess obstacle traversability and update the occupancy map. These systems primarily translate semantic information into landmarks, navigation goals, con-trol commands, or map updates. A remaining challenge is to represent route progression, locomotion-mode transitions, and stopping conditions jointly within a temporally coherent predictive representation. 
+
+C. Generative Video Models for Robot Planning 
+
+Generative video models provide a visual planning space in which predicted observations encode long-horizon behav-ior. UniPi generates text-conditioned plans and converts them to controls with an inverse-dynamics model [10]. Video Lan-guage Planning combines a video dynamics model, VLM-based policy/value functions, and tree search, then executes selected futures through goal-conditioned policies [11]. Re-cent navigation systems bring this idea closer to deployment. NavDreamer [12] ranks generated videos with a VLM, reconstructs 3D waypoints, and estimates a single global scale from monocular metric-depth priors; ImagiNav [20] couples language subgoals, visual prediction, and inverse dynamics for embodied navigation. DreamToNav [21] refines language prompts with a VLM and recovers executable robot trajectories from third-person generated videos using robot detection, visual odometry, and pose estimation. Action Agent [22] adds generator selection, iterative video valida-tion, prompt revision, and flow-conditioned action prediction. These approaches connect visual imagination to action, but a generated trajectory still requires a reliable metric interface for execution on a hybrid platform. III. M ETHOD 
+
+Our framework comprises VLM-guided video generation and selection, point cloud reconstruction, geometric calibra-tion, and mode-aware trajectory planning, as illustrated in Fig. 2. In this context, zero-shot denotes the direct applica-tion of pretrained VLM, video-generation, and DA3 models without task-specific training or fine-tuning. 
+
+A. VLM-Based Perception and Navigation Prompt Genera-tion 
+
+Brief language instructions typically specify only the task intent, whereas video generation requires an explicit descrip-tion of the motion sequence appropriate for the scene. We use a VLM to process an egocentric RGB observation clip 
+
+Iobs , the user instruction ℓ, and a predefined semantic prompt 
+
+Psem to generate a scene-specific navigation prompt: 
+
+Pnav = FVLM 
+
+ Iobs , ℓ ; Psem 
+
+ = ( droute , d mode , d stop ) . (1) 
+
+droute specifies the motion direction, target, and sequence of motion stages; dmode specifies the choice between ground locomotion and flight and the route segments to which each applies; and dstop describes the state at task completion. The three components are combined into a length-constrained prompt for video generation. 
+
+B. Navigation Video Generation with VLM Feedback 
+
+Previous studies have reported that closed-source models outperform open-source models in terms of physical plausi-bility and instruction adherence [12]. We therefore adopt the Wan2.7 image-to-video model, using the first frame I0 of the current observation clip as the visual condition and combin-ing the navigation prompt Pnav with a predefined generation prompt Pgen as the generation input. Pgen specifies visual constraints that apply to all tasks, including maintaining a first-person perspective, preserving scene structure, and avoiding camera cuts and physically implausible zooming. Let r ∈ {1, . . . , R max } index the generation-and-evaluation rounds. Each round generates n candidate videos using different random seeds and evaluates them with the VLM. The initial corrective prompt is empty, P (1) fix = ∅. A new round is initiated only when all candidates are rejected and the corrective prompt is updated. The j-th candidate in round r is generated as 
+
+V (r) 
+
+> j
+
+= Gwan 
+
+
+
+I0, P nav ⊕ Pgen ⊕ P (r)fix , ζ (r) 
+
+> j
+
+, ΘG
+
+
+
+, (2) 
+
+⊕ denotes prompt combination, ζ(r) 
+
+> j
+
+is the random seed, 
+
+ΘG denotes the generation parameters, and P (r)fix is the corrective prompt for the current round, which is initially empty. Since video generation is stochastic, a single sample may yield a video of poor quality or one that fails to meet the requirements. We therefore generate candidate videos using multiple random seeds to reduce the impact of random variation. Given the candidate videos, the VLM evaluates their valid-ity and identifies requirement violations using the navigation prompt and a predefined evaluation prompt Peval :
+
+n 
+
+b(r) 
+
+> j
+
+, E(r)
+
+> j
+
+o nj=1 
+
+= FVLM 
+
+n
+
+V (r)
+
+> j
+
+onj=1 
+
+, P nav , P eval 
+
+
+
+.
+
+(3) The validity indicator b(r) 
+
+> j
+
+∈ { 0, 1} specifies whether the candidate follows the prescribed route, locomotion modes, and stopping condition while maintaining a continuous first-person view and consistent scene structure. The violation set E(r) 
+
+> j
+
+records specific failures, such as unexpected object motion, newly introduced actors, or zoom-only apparent motion. If valid candidates are available, the VLM compares their camera-motion smoothness, consistency of the prescribed motion sequence, and clarity of progress toward the target, and selects a preferred video Vbest .If all candidates fail the evaluation, the system updates the corrective prompt based on the failure reasons: 
+
+P (r+1) fix = Fupdate 
+
+P (r)fix ,
+
+> n
+
+[
+
+> j=1
+
+E(r)
+
+> j
+
+ . (4) This update transforms the observed problems into specific generation constraints, while retaining the original task ob-jective and proceeding to the next generation round. To bound the computational cost, the maximum number of generation rounds is set to Rmax .After selecting the video, the landing and takeoff events of the video are obtained through VLM analysis. 
+
+M⋆ = Fmode (Vbest ) = 
+
+n 
+
+τ fly  
+
+> k
+
+, τ land 
+
+> k
+
+o Ns
+
+> k=1
+
+. (5) 
+
+τ fly  
+
+> k
+
+and τ land  
+
+> k
+
+denote the time of lift-off and the time at which landing is completed on the video timeline, respectively. If Fig. 2. Overview of TADreamer. A VLM generates prompts, selects videos with corrective feedback, and assigns locomotion modes. DA3 reconstructs imagined geometry, while measured point clouds calibrate the recovered waypoints. A mode-aware planner generates executable trajectories. Green and blue denote terrestrial and aerial waypoints. 
+
+landing does not occur within the video, the aerial interval extends to the final frame. These timestamps are used to delineate locomotion modes and do not directly determine the timing of the robot’s actual takeoffs and landings. 
+
+C. Two-Stage Scale Calibration based on Measured Point Cloud 
+
+The selected imagined video is sampled at fixed temporal intervals to obtain an image sequence I = {Ii}K−1 
+
+> i=0
+
+. The sequence is then fed into DA3 to recover the camera pose and scene point cloud of each frame. To construct a unified geometric representation, we use the first frame’s camera coordinate system as the reference frame, transforming the point clouds recovered from all frames into it before merg-ing: 
+
+bP0 =
+
+> K−1
+
+[
+
+> i=0
+
+T0←i bPi. (6) Here, bPi denotes the point cloud recovered from the i-th frame in its camera coordinate system, T0←i denotes the transformation from the camera coordinate system of the i-th frame to that of the first frame, computed from the recovered camera poses, and bP0 denotes the merged imagined point cloud. After coordinate alignment, the camera center of the first frame is located at the origin, while the camera centers of the remaining frames form a sequence of candidate waypoints relative to the starting position. Each waypoint is assigned a terrestrial or aerial mode label according to the timestamp of its corresponding sampled frame in the generated video. To correct scale discrepancies in the reconstructed point clouds and waypoints, we perform the two-stage registration illustrated in Fig. 3, using the measured metric point cloud as the reference. The first stage estimates an initial scale transformation for the subsequent iterative closest point (ICP) optimization [23]. In the first stage, the horizontal angular coverage of the measured point cloud and the horizontal field of view inferred from the first imagined frame are used to determine the planar axis ratio κ = s0y /s 0x, where the x- and y-axes span the horizontal plane and the z-axis represents the vertical direction. Scaling ICP extends point-set registration to account for axis-dependent scales [24]. The first frames of the imagined and measured point clouds share the same position and are free of rotation. With the FoV-derived ratio fixed, we use a constrained scale-only ICP procedure to estimate one horizontal scale parameter and one independent vertical scale parameter. The procedure alternates between updating nearest-neighbor correspondences and optimizing the scale parameters with the correspondences held fixed. We minimize the trimmed root-mean-square correspondence distance without applying rotation or translation, yielding 
+
+S⋆ 
+
+> 0
+
+= diag  s⋆
+
+> 0x
+
+, s ⋆ 
+
+> 0y
+
+, s ⋆
+
+> 0z
+
+ , s ⋆ 
+
+> 0y
+
+= κs ⋆
+
+> 0x
+
+. (7) The initial scale transformation S⋆ 
+
+> 0
+
+is applied to the complete imagined point cloud to reduce the scale mismatch and provide an initialization for the second stage. Fig. 3. Two-stage calibration using FoV-based scale initialization and full-cloud anisotropic registration. The estimated transformation corrects recovered waypoints. Blue and orange denote measured and imagined point clouds, respectively. 
+
+Starting from this initialization, the second stage removes the horizontal axis-ratio constraint and jointly refines all three axis scales, rotation, and translation within the ICP framework. At each iteration, nearest-neighbor correspon-dences are recomputed under the current transformation and held fixed while updating the transformation parameters. We define the incremental scale matrix for the second stage as 
+
+S1 = diag ( s1x, s 1y , s 1z ) . (8) For a fixed set of correspondences, the registration objective is formulated as 
+
+(R⋆, t⋆, S ⋆ 
+
+> 1
+
+) = arg min 
+
+> R, t,S 1
+> N
+
+X
+
+> j=1
+
+RS 1p(0)  
+
+> j
+
++ t − qj
+
+> 22
+
+. (9) Here, p(0)  
+
+> j
+
+= S⋆ 
+
+> 0
+
+bpj denotes an imagined point after the initial scale transformation, qj denotes its corresponding measured point, and N is the number of valid point correspondences. The rotation matrix satisfies R ∈ SO (3) , the translation vector is t ∈ R3, and the incremental scale factors satisfy 
+
+s1x, s 1y , s 1z > 0, with no equality constraint between s1x
+
+and s1y . The registration is completed by iteratively updating the point correspondences and transformation parameters. Finally, the composite scale transformation is defined as 
+
+S⋆ = S⋆ 
+
+> 1
+
+S⋆ 
+
+> 0
+
+, and the calibrated candidate waypoints are obtained as wi = R⋆S⋆ 
+
+> 1
+
+S⋆ 
+
+> 0
+
+bwi + t⋆
+
+= R⋆S⋆ bwi + t⋆. (10) 
+
+bwi denotes the original recovered waypoint, while wi de-notes the calibrated waypoint in the coordinate system of the measured point cloud. Its terrestrial or aerial mode label remains unchanged. 
+
+D. Mode-Aware Trajectory Generation 
+
+Even after calibration against the measured point cloud, the waypoints recovered from the generated video may still contain local nonlinear geometric errors, particularly in regions that are occluded from the initial viewpoint, such as areas behind obstacles. Tracking these waypoints directly may still cause collision risks and non-smooth mo-tion. To address this issue, we employ the TABR trajectory generator proposed by Zhang et al. [5], which uses the aligned waypoints and their associated locomotion modes as references and incorporates the measured environmental map to generate a smooth trajectory that satisfies obstacle-avoidance and motion constraints. In addition, in the terrestrial mode, the robot is subject to a nonholonomic no-side-slip constraint, requiring its yaw angle to align with the direction of its planar velocity during locomotion. In the aerial mode, the yaw angle can be con-trolled independently of the translational motion. Therefore, we only use the yaw angle corresponding to the recovered waypoints as a reference in the aerial mode, in order to meet the orientation requirements of specific tasks. Finally, the planned trajectory is passed to the low-level controller for tracking and execution. IV. E XPERIMENTS 
+
+A. Real-World Navigation Experiments 
+
+We evaluated the framework in seven indoor and outdoor scenarios using a TABR similar to that of Li et al. [3]. An onboard Odin1 module provides RGB images, time-of-flight (ToF) point clouds, and robot pose estimates. The VLM and video model are accessed through APIs for prompt generation, video synthesis, and candidate selection. DA3 runs on an NVIDIA RTX 4080 at 504 × 406 resolution to reconstruct camera poses and point clouds. Calibrated waypoints and locomotion-mode labels are transmitted to the onboard Jetson Orin NX, where the planner incorporates live Odin1 point clouds to generate trajectories satisfying obstacle-avoidance and motion constraints. Control com-mands are then sent to the PX4 flight controller. Fig. 4 illustrates real-world execution in Slope , Grassland ,
+
+KFC , Notice , Red Box 1 , Red Box 2 , and Square . In the demonstrated trials, the robot follows the main imagined route and reaches the instructed goal. 
+
+B. VLM-Based Navigation Prompt Generation 
+
+We evaluated ChatGPT Sol-5.6 in seven challenging sce-narios to assess whether it can combine visual observations, user instructions, and predefined prompts into navigation prompts suitable for video generation. As shown in Fig. 5, these scenarios cover terrain understanding, target recogni-tion, path selection, and locomotion-mode decisions. In Slope and Grassland , geometric planners relying on a flat-ground assumption may classify slopes or grass as non-traversable and trigger flight. The VLM instead recognizes the terrain and explicitly specifies continued ground loco-motion, using environmental semantics to avoid unnecessary takeoffs. 
+
+KFC and Notice require different terminal locomotion modes. Guided by user instructions, the VLM locates the target, describes forward and turning motions, and specifies whether to remain airborne or on the ground upon arrival. These scenarios assess its joint understanding of target semantics, motion sequences, and terminal states. In Red Box 1 , Red Box 2 , and Square , the VLM selects routes and locomotion modes based on obstacle distribution and the predefined energy-saving requirement. It specifies ground detours in Red Box 1 and Square , and takeoff only in Red Box 2 , where flight is required to cross the obstacle. This reflects a preference for ground locomotion, with flight used only when necessary. These results indicate that, in the tested scenarios, the VLM translates visual information and language-based task requirements into navigation prompts specifying routes, loco-motion modes, and terminal conditions, providing semantic guidance for subsequent video generation. 
+
+C. Video Generation and Mode Annotation 
+
+For each scene, we generated five 5-second videos per round using different random seeds and sampled frames every 0.5 s. The VLM selected a valid candidate or provided corrective feedback for regeneration. VLM-predicted takeoff and landing times determined the locomotion-mode label of each sampled frame. To evaluate video usability and the accuracy of the locomotion-mode annotations, we invited experienced robot operators to manually assess the videos generated in each round and verify the mode annotations of the selected videos. In Table I, Usable videos denotes the number of videos in each round that satisfy the basic re-quirements. Failure reason records the primary failure reason when no usable video is obtained in the first round. Mode Success indicates whether all locomotion-mode annotations in the selected video are correct. A case is counted as successful only when the predicted mode of every sampled waypoint matches the reference annotation provided by the robot operators. The results show that five of the seven scenarios yielded at least one usable video after the first generation round. In the KFC and Red Box 2 scenarios, none of the first-round candidates satisfied the requirements. After adding “No peo-ple or moving objects.” and “All objects are stationary and do not move” as Pfix for the KFC and Red Box 2 scenarios, respectively, usable videos were obtained for both scenarios in the second round. Across the final videos selected for all seven scenarios, the locomotion modes assigned by the VLM to all sampled waypoints agreed with the reference annotations provided by the robot operators. In addition, we found that in the experiments, the VLM was able to identify cases in the KFC and Red Box 2          
+
+> Fig. 4. Imagined navigation and real-world execution across seven scenarios. Panels illustrate (a) ground traversability, (b) target-dependent terminal modes, and (c) obstacle-aware route and mode selection. Fig. 5. VLM-generated navigation prompts across seven scenarios. Each row pairs an observation and user command with a generated prompt specifying routes, locomotion modes, and stopping conditions. The shared predefined prompt encourages ground locomotion.
+
+scenes where none of the candidate videos met the basic requirements, and to provide targeted correction prompts. When qualified videos were available, the VLM could also complete the selection and choose one video, but its top choice did not always agree with the the robot operators’ selection. These results indicate that the generation pipeline combin-ing VLM-based candidate selection with prompt correction can produce usable navigation videos and provide valid locomotion-mode labels for the extracted waypoints.                           
+
+> TABLE I SUCCESS AND REGENERATION RESULTS ACROSS SCENES .Scene Usable Videos Failure Reason Mode Success
+> Slope 4/5 None Yes
+> Grassland 2/5 None Yes
+> KFC 0/5 (Round 1) External object entering —5/5 (Round 2) None Yes
+> Notice 5/5 None Yes
+> Red Box 1 2/5 None Yes
+> Red Box 2 0/5 (Round 1) Obstacle movement —1/5 (Round 2) None Yes
+> Square 2/5 None Yes
+
+D. Evaluation of Scale Calibration 
+
+Metric-scale errors in recovered waypoints can compro-mise downstream trajectory planning and execution. Al-though monocular geometry models can provide scale pri-ors [25], generated videos may exhibit unaligned and time-                                
+
+> TABLE II QUANTITATIVE COMPARISON ACROSS SEVEN SCENARIOS . E ACH RESULT IS REPORTED AS ABSOLUTE DEPTH ERROR (M) / RELATIVE DEPTH ERROR (%). L OWER VALUES ARE BETTER .
+> Scenario NavDreamer DA3 Ours
+> Slope 9.521 / 673.01 5.170 / 310.34 0.803 / 34.55
+> Grassland 3.961 / 345.41 4.260 / 331.40 1.211 / 158.41
+> KFC 3.353 / 145.57 1.760 / 79.68 0.563 / 23.92
+> Notice 0.388 / 18.24 0.264 / 15.55 0.148 / 14.07
+> Red Box 1 0.652 / 32.76 1.036 / 40.63 0.170 / 8.21
+> Red Box 2 0.407 / 22.82 0.583 / 25.56 0.294 / 16.88
+> Square 9.662 / 818.66 4.048 / 349.51 0.241 / 26.34 Mean 3.992 / 293.78 2.446 / 164.67 0.490 / 40.34
+> Mean error reduction achieved by Ours
+> vs. NavDreamer 87.73% (MADE.) / 86.27% (MARDE.)
+> vs. DA3 79.97% (MADE.) / 75.50% (MARDE.)
+
+varying camera intrinsics as well as nonlinear geometric distortions. Consequently, the directly recovered geometry may still deviate from the true metric scale. To evaluate this issue, we compare the scales directly recovered by DA3, the scale calibration results of NavDreamer, which uses 
+
+π3 [26] reconstruction followed by MoGe2 [27] metric depth estimation to unify scale, and the calibration results of our method across seven scenarios. From the first-person perspective, we compute the mean absolute depth error (MADE) and the mean absolute relative depth error (MARDE) over the common valid-pixel region between the predicted depth and the ground-truth depth acquired by the onboard ToF camera: 
+
+MADE = 1
+
+|Ω|
+
+X
+
+> u∈Ω
+
+|Dpred (u) − Dgt (u)| , (11) 
+
+MARDE = 1
+
+|Ω|
+
+X
+
+> u∈Ω
+
+|Dpred (u) − Dgt (u)|
+
+Dgt (u) × 100% . (12) 
+
+Ω denotes the set of valid pixels, while Dpred and Dgt 
+
+denote the predicted and ground-truth depths, respectively. Depth errors are evaluated on the observations used for calibration and therefore quantify alignment accuracy on those observations. As shown in Table II, our method outperforms DA3 and NavDreamer in all evaluated scenarios. Compared with DA3 and NavDreamer, our method reduces the mean absolute depth error by 80 .0% and 87 .7% , respectively, and the mean absolute relative depth error by approximately 75 .5% and 
+
+86 .3% , respectively. Comparisons across scenarios further show that the geometric reconstruction errors in indoor, short-range scenarios, such as Notice and Red Box 1 , are lower than those in outdoor, long-range scenarios, such as Grassland and Square . These results indicate that cal-ibration using measured point clouds can reduce the depth discrepancy between the reconstructed geometry and the real environment, thereby providing a more accurate basis for recovering the metric scale of the waypoints. E. Qualitative Comparison with a Geometric Planner 
+
+Fig. 6 also demonstrates the terrestrial planning capability of our method compared with the planners proposed by Gao et al. [16]. Previous works rely on dedicated ground identification and extraction for terrestrial planning, which fails on uneven terrains. In the Grassland scene, the uneven, grass-covered terrain causes ground extraction to fail, so the planner treats the grass as obstacles and flies along the entire path. In the Square scene, due to the low mapping resolution, the slope cannot be identified, so the planner takes off in front of the step. In contrast, our planner performs semantic reasoning about ground traversability and therefore selects the ground mode to save energy. 
+
+Fig. 6. Planned paths in Grassland and Square. Green and red de-note TADreamer and a geometric baseline. Ground-extraction and slope-recognition failures trigger baseline flights, while TADreamer selects ground routes using terrain semantics. Insets highlight the relevant terrain. 
+
+V. C ONCLUSION 
+
+We presented TADreamer, a language-guided navigation framework that combines video imagination, measured geo-metric calibration, and mode-aware trajectory planning for terrestrial-aerial bimodal robots. In seven real-world sce-narios, the framework produced usable videos within two generation rounds, and all sampled mode annotations in the selected videos agreed with human assessments. Calibration reduced mean absolute depth error by 80.0% relative to DA3 and 87.7% relative to NavDreamer. Future work will address high-level closed-loop replanning and navigation in dynamic environments. REFERENCES [1] M. Lai, Y. Ye, H. Wu, C. Xuan, R. Zhang, Q. Ren, C. Xu, F. Gao, and Y. Cao, “Trofybot: A transformable rolling and flying robot with high energy efficiency,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 4989–4995. [2] J. Lin, R. Zhang, N. Pan, C. Xu, and F. Gao, “Skater: A novel bi-modal bi-copter robot for adaptive locomotion in air and diverse terrain,” 
+
+IEEE Robotics and Automation Letters , vol. 9, no. 7, pp. 6392–6399, 2024. [3] X. Li, T. Lai, M. Lai, J. Lin, M. Zhang, J. Zhi, C. Xu, F. Gao, and Y. Cao, “Triphibot: a triphibious robot combining foc-based propulsion with eccentric design,” arXiv preprint arXiv:2602.01385 , 2026. [4] D. D. Fan, R. Thakker, T. Bartlett, M. B. Miled, L. Kim, E. Theodorou, and A.-a. Agha-mohammadi, “Autonomous hybrid ground/aerial mo-bility in unknown environments,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2019, pp. 3070–3077. [5] R. Zhang, Y. Wu, L. Zhang, C. Xu, and F. Gao, “Autonomous and adaptive navigation for terrestrial-aerial bimodal vehicles,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 3008–3015, 2022. [6] T. Lai, Y. Gao, X. Li, R. Pang, X. Wang, S. Shen, M. Zhang, Y. He, F. Gao, C. Xu et al. , “Explore from sketch: Accelerating uav exploration in large-scale environments with prior maps,” arXiv preprint arXiv:2606.11708 , 2026. [7] Y. Li, W. Yu, M. Duan, B. Zhang, Z. Liu, and Q. Li, “Ds-labrnav: Land-air bimodal robot navigation with traversable obstacles base on vision-language model,” IEEE Robotics and Automation Letters , 2026. [8] C. Y. Hu, Y.-S. Lin, Y. Lee, C.-H. Su, J.-Y. Lee, S.-R. Tsai, C.-Y. Lin, K.-W. Chen, T.-W. Ke, and Y.-L. Liu, “See, point, fly: A learning-free vlm framework for universal unmanned aerial navigation,” in 
+
+Conference on Robot Learning . PMLR, 2025, pp. 4697–4708. [9] H. Cai, J. Dong, J. Tan, J. Deng, S. Li, Z. Gao, H. Wang, Z. Su, A. Sumalee, and R. Zhong, “Flightgpt: Towards generalizable and interpretable uav vision-and-language navigation with vision-language models,” in Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , 2025, pp. 6670–6687. [10] Y. Du, S. Yang, B. Dai, H. Dai, O. Nachum, J. Tenenbaum, D. Schu-urmans, and P. Abbeel, “Learning universal policies via text-guided video generation,” Advances in neural information processing systems ,vol. 36, pp. 9156–9172, 2023. [11] Y. Du, S. Yang, P. Florence, F. Xia, A. Wahid, P. Sermanet, T. Yu, P. Abbeel, J. B. Tenenbaum, L. Kaelbling et al. , “Video language planning,” in International Conference on Learning Representations ,vol. 2024, 2024, pp. 31 138–31 155. [12] X. Huang, W. Gai, T. Wu, C. Wang, Q. Zheng, Z. Liu, X. Zhou, Y. Wu, and F. Gao, “Navdreamer: Video models as zero-shot 3d navigators,” 
+
+IEEE Robotics and Automation Letters , 2026. [13] H. Lin, S. Chen, J. Liew, D. Y. Chen, Z. Li, G. Shi, J. Feng, and B. Kang, “Depth anything 3: Recovering the visual space from any views,” arXiv preprint arXiv:2511.10647 , 2025. [14] R. Zhang, J. Lin, Y. Wu, Y. Gao, C. Wang, C. Xu, Y. Cao, and F. Gao, “Model-based planning and control for terrestrial-aerial bimodal vehi-cles with passive wheels,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2023, pp. 1070– 1077. [15] Y. Li, Z. Liu, W. Yu, Z. Lu, C. Wang, F. Yu, and Q. Li, “A two-stage lightweight framework for efficient land-air bimodal robot autonomous navigation,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025, pp. 11 165–11 171. [16] Y. Gao, R. Zhang, T. Lai, Y. Cao, C. Xu, and F. Gao, “Autonomous exploration with terrestrial-aerial bimodal vehicles,” IEEE Robotics and Automation Letters , 2025. [17] N. Yokoyama, S. Ha, D. Batra, J. Wang, and B. Bucher, “Vlfm: Vision-language frontier maps for zero-shot semantic navigation,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) .IEEE, 2024, pp. 42–48. [18] D. Shah, B. Osi´ nski, S. Levine et al. , “Lm-nav: Robotic navigation with large pre-trained models of language, vision, and action,” in 
+
+Conference on robot learning . pmlr, 2023, pp. 492–504. [19] C. Huang, O. Mees, A. Zeng, and W. Burgard, “Visual language maps for robot navigation,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 10 608–10 615. [20] J. Chen, Y. Cai, Y. Wang, R. Bai, Y. Cao, J. Li, Y. W. Yun, and G. Sar-toretti, “Imaginav: Scalable embodied navigation via generative visual prediction and inverse dynamics,” arXiv preprint arXiv:2603.13833 ,2026. [21] V. Serpiva, J. Sam, C. Simon, H. Amjad, I. Zhura, A. Lykov, and D. Tsetserukou, “Dreamtonav: Generalizable navigation for robots via generative video planning,” arXiv preprint arXiv:2603.06190 , 2026. [22] J. Sam, N. Khang, Y. Mahmoud, M. A. Cabrera, and D. Tsetserukou, “Action agent: Agentic video generation meets flow-constrained dif-fusion,” arXiv preprint arXiv:2605.01477 , 2026. [23] P. J. Besl and N. D. McKay, “Method for registration of 3-d shapes,” in Sensor fusion IV: control paradigms and data structures , vol. 1611. Spie, 1992, pp. 586–606. [24] S. Du, N. Zheng, L. Xiong, S. Ying, and J. Xue, “Scaling iterative closest point algorithm for registration of m–d point sets,” Journal of Visual Communication and Image Representation , vol. 21, no. 5-6, pp. 442–452, 2010. [25] M. Hu, W. Yin, C. Zhang, Z. Cai, X. Long, H. Chen, K. Wang, G. Yu, C. Shen, and S. Shen, “Metric3d v2: A versatile monocular geometric foundation model for zero-shot metric depth and surface normal estimation,” IEEE Transactions on Pattern Analysis and Machine Intelligence , vol. 46, no. 12, pp. 10 579–10 596, 2024. [26] Y. Wang, J. Zhou, H. Zhu, W. Chang, Y. Zhou, Z. Li, J. Chen, J. Pang, C. Shen, and T. He, “ π3: Permutation-equivariant visual geometry learning,” in International Conference on Learning Representations ,vol. 2026, 2026, pp. 10 481–10 497. [27] R. Wang, S. Xu, Y. Dong, Y. Deng, J. Xiang, Z. Lv, G. Sun, X. Tong, and J. Yang, “Moge-2: Accurate monocular geometry with metric scale and sharp details,” Advances in Neural Information Processing Systems , vol. 38, pp. 35 928–35 959, 2026.

@@ -1,0 +1,1383 @@
+Title: Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs
+
+URL Source: https://arxiv.org/pdf/2609.19362v1
+
+Published Time: Fri, 18 Sep 2026 00:13:14 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs 
+
+Omayra Yago Nieto 1 and Leonardo Colombo 2
+
+Abstract — We study high-order safety-critical control of quadrotor teams under bounded inputs and pairwise collision-avoidance constraints. Squared-distance barriers may lose thrust effectiveness when the relative displace-ment is orthogonal to the available thrust directions, while nonsingular constraints may still be jointly infeasi-ble under shared bounds. We characterize both phenom-ena through pairwise effectiveness and aggregate feasi-bility measures. A torque-aware dynamic extension ex-poses attitude torques in a fourth-order barrier and pre-vents the extended-input row from vanishing under positive thrust. Gaussian processes directly learn the fourth-order HOCBF residual, providing robust margins without differen-tiating unknown perturbations. Under residual-bound and persistent-feasibility assumptions, the resulting QP guar-antees collision avoidance and recovers the nominal input whenever it satisfies the robust safety and actuator con-straints. 
+
+Index Terms — High-order CBFs, quadrotor UAVs, multi-agent systems, safety-critical control, Gaussian processes. 
+
+I. I NTRODUCTION 
+
+Quadrotor UAVs are intrinsically underactuated: they gen-erate translational force only along the body-fixed vertical di-rection [1]. Consequently, their collision-avoidance capability depends on the instantaneous attitude and relative geometry. Control barrier functions (CBFs) enforce safety through forward invariance of prescribed safe sets [2], while high-order and exponential CBFs address constraints whose input appears only after repeated differentiation [3], [4]. Recent work fur-ther addresses robustness, performance-critical constructions, and loss of input effectiveness at singular configurations [5], compatibility of multiple CBFs under input bounds [6], robust multiple-CBF enforcement with constrained inputs [7], and distributed CBF-based safe navigation [8]. Recent quadrotor safety filters have also incorporated higher-order vehicle dynamics. Harms et al. [9] use a third-order nonlinear model and composite CBFs with recursive-feasibility analysis, while [10] enforces high-relative-degree  
+
+> 1
+
+Omayra Yago Nieto is with Universidad Polit ´ ecnica de Madrid, Spain. omayra.yago.nieto@alumnos.upm.es 
+
+> 2
+
+Centre for Automation and Robotics (CSIC-UPM), Ctra. M300 Campo Real, Km 0,200, Arganda del Rey - 28500 Madrid, Spain, 
+
+leonardo.colombo@csic.es .The authors acknowledge financial support from Grants PID2022-137909NB-C21 funded by MCIN/AEI/10.13039/501100011033 and iRoboCity2030-CM, Rob ´ otica Inteligente para Ciudades Sostenibles (TEC-2024/TEC-62), funded by the Programas de Actividades I+D en Tecnolog´ ıas en la Comunidad de Madrid. 
+
+collision constraints through the full quadrotor dynamics under actuator limits. In contrast, our focus is the pairwise thrust sin-gularity and the exact aggregate feasibility of shared bounded inputs in multi-UAV collision avoidance. Gaussian-process (GP) models have been combined with CBF-based safety filters for uncertainty quantification and pointwise feasibility [11], including HOCBF residual learn-ing [12]. Here, residual learning provides a uniform robust margin, while we study the geometry-induced singularity and aggregate bounded-input feasibility. Our recent work [13], developed an aggregated robust HOCBF-QP for quadrotor teams driven by decentralized nav-igation functions, with safety conditional on QP feasibility. Here we show that infeasibility has two distinct sources: pairwise loss of thrust effectiveness and joint incompatibility of nonsingular inequalities sharing bounded inputs. We first characterize the thrust singular set and introduce an exact scalar aggregate feasibility margin for the shared bounded-thrust constraints. We then use a torque-aware dy-namic extension: thrust rate appears at third order, whereas attitude torques first enter at fourth order, where they prevent the pairwise extended-input row from vanishing under positive thrust bounds. Finally, we extend the aggregate feasibility anal-ysis to the dynamically extended inputs, learn the scalar fourth-order HOCBF residual with GPs to construct robust margins, and formulate a torque-aware safety-critical QP with pairwise channel nonsingularity and local feasibility guarantees. Section II studies thrust-level feasibility; Sections III–IV de-velop the torque-aware robust controller and its local feasibil-ity conditions; Section V presents simulations, and Section VI concludes. 
+
+II. T HRUST -B ASED HIGH -O RDER SAFETY AND 
+
+AGGREGATE FEASIBILITY 
+
+A. Pairwise HOCBF safety and thrust effectiveness 
+
+Consider N quadrotor UAVs indexed by V = {1, . . . , N }.The state of agent i is xi = ( pi, v i, R i, Ωi), with pi, v i, Ωi ∈
+
+R3 and Ri ∈ SO (3) , and its control input is (fi, τ i) ∈ R×R3.The dynamics are (see [1], for instance) 
+
+˙pi = vi, ˙Ri = Ri bΩi, (1) 
+
+mi ˙vi = fiRie3 + mig + ∆ f,i (pi, v i), (2) 
+
+Ji ˙Ωi + Ω i × JiΩi = τi + ∆ τ,i (xi), (3) where mi > 0, Ji ≻ 0, e3 = (0 , 0, 1) ⊤, g = −g0e3, g0 > 0
+
+and ba b = a × b.arXiv:2609.19362v1 [eess.SY] 16 Sep 2026 Throughout, the analysis is restricted to a compact oper-ating set. The force perturbations ∆f,i (pi, v i) are C2, while 
+
+∆τ,i (xi) are locally Lipschitz there. The restricted dependence 
+
+∆f,i = ∆ f,i (pi, v i) ensures that, after the dynamic extension introduced in Section III, the uncertain fourth-order contribu-tion modifies only the drift term and not the extended-input co-efficient. We consider locally Lipschitz feedback laws. Under these assumptions, the closed-loop solutions are unique and the derivatives entering the fourth-order HOCBF are well defined classically along trajectories. The fourth-order construction is required because the attitude torques first appear explicitly after four differentiations of the pairwise distance barrier. For the safety analysis, let μf,i (pi, v i) be a learned estimate of ∆f,i (pi, v i) obtained here from GP regression [14], and define ¯∆i := ∆ f,i −μf,i . Let ¯df,i (pi, v i) denote the associated confidence bound, so that ∥df,i (pi, v i)∥ ≤ ¯∆i(pi, v i) on the operating set. Collision avoidance is encoded by an undirected graph G =(V, E). For (i, j ) ∈ E , define 
+
+hij := ∥pi − pj ∥2 − d2min , Cij := {x : hij (x) ≥ 0}, (4) where x = col( x1, . . . , x N ) and dmin > 0.Because the singularity studied below corresponds to a loss of uniform relative degree, we briefly recall the least-relative-degree HOCBF construction of [5]. For ˙x = F (x) + G(x)u,a function h ∈ Cr has least relative degree r on D if 
+
+LGLkF h = 0, k = 0, . . . , r − 2, where LF denotes the Lie derivative along F and LGq := ∇q⊤G. It has uniform relative degree r if also LGLr−1 
+
+> F
+
+h̸ = 0 on D. With suffi-ciently differentiable extended class-K functions αk, φ0 := h
+
+and φk := ˙φk−1 + αk(φk−1), a locally Lipschitz feedback satisfying φr ≥ 0 renders Tr−1
+
+> k=0
+
+{φk ≥ 0} forward invariant whenever the HOCBF condition is feasible. Let pij := pi − pj , vij := vi − vj , and fij := col( fi, f j ).Since ˙hij = 2 p⊤ 
+
+> ij
+
+vij , the true second-order HOCBF defined by φ0,ij := hij , φ1,ij := ˙hij + α1(hij ), and φ2,ij := ˙ φ1,ij +
+
+α2(φ1,ij ) admits the decomposition 
+
+φ2,ij = bcij (x) + Bij (x)fij + δ(2)  
+
+> ij
+
+(x), (5) where 
+
+Bij (x) := 2 
+
+ p⊤ 
+
+> ij
+
+Rie3
+
+mi
+
+− p⊤ 
+
+> ij
+
+Rj e3
+
+mj
+
+
+
+, (6) and bcij := 2 ∥vij ∥2 + 2 p⊤ 
+
+> ij
+
+(μf,i /m i − μf,j /m j ) + α′
+
+> 1
+
+(hij ) ˙hij +
+
+α2( ˙hij +α1(hij )) . Moreover, δ(2)  
+
+> ij
+
+:= 2 p⊤ 
+
+> ij
+
+(df,i /m i −df,j /m j )
+
+satisfies 
+
+δ(2)  
+
+> ij
+
+≤ 2∥pij ∥
+
+ ¯∆i
+
+mi
+
++ ¯∆j
+
+mj
+
+
+
+=: ρ(2)  
+
+> ij
+
+.
+
+Here, bcij contains the known terms and the GP-based force estimates, whereas δ(2)  
+
+> ij
+
+collects the residual force uncertainty. Writing the input-dependent term separately as Bij fij isolates the relative-thrust coefficient whose norm is used below to quantify thrust effectiveness. Hence a robust pairwise HOCBF condition is Bij (x)fij ≥ − bcij (x) + ρ(2)  
+
+> ij
+
+(x).
+
+Definition 2.1: The pairwise thrust-effectiveness measure and thrust singular set are γth  
+
+> ij
+
+(x) := ∥Bij (x)∥ and Σth  
+
+> ij
+
+:= 
+
+{x : Bij (x) = 0 }.Equivalently, Σth  
+
+> ij
+
+= {x : p⊤ 
+
+> ij
+
+Rie3 = 0 , p ⊤ 
+
+> ij
+
+Rj e3 = 0 }.Thus hij has uniform relative degree two away from Σth  
+
+> ij
+
+. At the singular set, the thrust magnitudes cannot modify φ2,ij 
+
+instantaneously. The uncertainty margin shifts the feasibility level but leaves the thrust singular set unchanged. 
+
+B. Robust aggregate HOCBF feasibility 
+
+Let f := col( f1, . . . , f N ) and assume bounded thrust inputs 
+
+F := 
+
+> N
+
+Y
+
+> i=1
+
+[f min  
+
+> i
+
+, f max  
+
+> i
+
+], 0 < f min  
+
+> i
+
+< f max  
+
+> i
+
+. Embedding Bij (x)
+
+into the full thrust vector, let ¯Bij (x) ∈ R1×N denote the row whose only nonzero entries are the ith and jth components given by (6), and define rrob  
+
+> ij
+
+(x) := −bcij (x) + ρ(2)  
+
+> ij
+
+(x). The robust pairwise HOCBF condition is therefore 
+
+¯Bij (x)f ≥ rrob  
+
+> ij
+
+(x), (i, j ) ∈ E . (7) Stacking all pairwise inequalities gives 
+
+B(x)f ≥ rrob (x), f ∈ F , (8) where B(x) ∈ RM ×N , M := |E| , and rrob (x) ∈ RM stacks the corresponding rrob  
+
+> ij
+
+. Robust aggregate feasibility refers to the simultaneous satisfaction of all pairwise inequalities by a single f ∈ F , i.e., their pointwise compatibility under the shared input constraints [6]. 
+
+Definition 2.2: For a fixed state x, define 
+
+Γrob th (x) := max   
+
+> f∈F
+
+min 
+
+> (i,j )∈E
+
+  ¯Bij (x)f − rrob  
+
+> ij
+
+(x). (9) Thus, Γrob th (x) is the largest common margin achievable across all robust pairwise HOCBF inequalities with a single admis-sible thrust vector. 
+
+Remark 2.3: Pairwise thrust effectiveness and robust ag-gregate feasibility are distinct properties. The quantity γth 
+
+> ij
+
+measures the input effectiveness of a single edge, whereas Γrob th 
+
+measures simultaneous feasibility under the shared bounded thrust inputs and uncertainty margins. For y ∈ RN , let σF (y) := max f ∈F y⊤f denote the support function of F [15]. 
+
+Theorem 2.4: Consider the robust bounded-thrust HOCBF inequalities (8). Let ∆M := {λ ∈ RM 
+
+> ≥0
+
+: 1⊤λ = 1 }. Then 
+
+Γrob th (x) = min 
+
+> λ∈∆M
+
+σF
+
+ B(x)⊤λ − λ⊤rrob (x) . (10) Consequently, (8) is feasible if and only if Γrob th (x) ≥ 0.Moreover, Γrob th (x) > 0 if and only if there exist f ∈ F and 
+
+ε > 0 such that B(x)f ≥ rrob (x) + ε1.
+
+Proof: For any s ∈ RM , every λ ∈ ∆M defines a convex combination of its components, so λ⊤s ≥ min k sk,with equality at λ = ek⋆ for k⋆ ∈ arg min k sk. Hence 
+
+min k sk = min λ∈∆M λ⊤s.Applying this identity to s = B(x)f − rrob (x) in (9) gives 
+
+Γrob th (x) = max   
+
+> f∈F
+
+min 
+
+> λ∈∆M
+
+λ⊤ B(x)f − rrob (x).
+
+The sets F and ∆M are compact and convex, and the objective is continuous and affine in each variable. Hence, by Sion’s minimax theorem [16], 
+
+Γrob th (x) = min 
+
+> λ∈∆M
+
+max   
+
+> f∈F
+
+λ⊤ B(x)f − rrob (x).For fixed λ,
+
+max   
+
+> f∈F
+
+λ⊤B(x)f = σF
+
+ B(x)⊤λ,
+
+which proves (10). By (9), Γrob th (x) ≥ 0 if and only if there exists f ∈ F 
+
+such that B(x)f ≥ rrob (x). Likewise, if Γrob th (x) > 0, an optimizer f ⋆ satisfies B(x)f ⋆ ≥ rrob (x) + Γ rob th (x)1. The converse follows directly from (9). 
+
+Corollary 2.5: Let ¯f := col( ¯f1, . . . , ¯fN ) and df := col( df 
+
+> 1
+
+, . . . , d fN ), where ¯fi := ( f max  
+
+> i
+
++ f min  
+
+> i
+
+)/2 and dfi := (f max  
+
+> i
+
+− f min  
+
+> i
+
+)/2. Then 
+
+Γrob th (x) = min 
+
+> λ∈∆M
+
+ ¯f ⊤B(x)⊤λ + ( df )⊤|B(x)⊤λ| − λ⊤rrob (x) .
+
+(11) 
+
+Proof: Let y := B(x)⊤λ. Since F is a Cartesian product of intervals, 
+
+σF (y) = 
+
+> N
+
+X
+
+> i=1
+
+max     
+
+> fi∈[fmin
+> i,f max
+> i]
+
+yifi = ¯f ⊤y + ( df )⊤|y|.
+
+Substituting y = B(x)⊤λ into (10) yields (11). 
+
+III. T ORQUE -A WARE HOCBF C ONTROL 
+
+A. Torque-aware dynamic extension 
+
+To identify the extended input channel without differenti-ating the uncertain terms in (2)–(3), consider the reference dynamics obtained by omitting these terms. Uncertainty is reintroduced at the HOCBF level below. Let h(k) 
+
+> ij, ref
+
+denote the 
+
+kth time derivative of hij along the reference dynamics. This notation distinguishes reference-dynamics quantities from the GP-based quantities denoted by hats in Section II. Let ζi := Rie3. From (1), ˙ζi = −Ribe3Ωi. Introduce qi := ˙fi
+
+and νi := ˙qi = ¨fi, and define zi := ( pi, v i, R i, Ωi, f i, q i),
+
+z := col( z1, . . . , z N ), wi := col( νi, τ i), and wij := col( νi, ν j , τ i, τ j ).Since gravity cancels from the relative dynamics, let aij := 
+
+fiζi/m i − fj ζj /m j . Then 
+
+h(3)  
+
+> ij, ref
+
+= 6 v⊤ 
+
+> ij
+
+aij +2 p⊤ 
+
+> ij
+
+˙aij , h (4)  
+
+> ij, ref
+
+= 6 a⊤ 
+
+> ij
+
+aij +8 v⊤ 
+
+> ij
+
+˙aij +2 p⊤ 
+
+> ij
+
+¨aij .
+
+For ai := fiζi/m i,
+
+˙ai = qi
+
+mi
+
+ζi + fi
+
+mi
+
+˙ζi, ¨ai = νi
+
+mi
+
+ζi + 2qi
+
+mi
+
+˙ζi + fi
+
+mi
+
+¨ζi.
+
+Using the reference rotational dynamics, ¨ζi = dζ,i −
+
+Ribe3J−1 
+
+> i
+
+τi, where dζ,i := −Ri bΩibe3Ωi +Ribe3J−1 
+
+> i
+
+(Ω i ×JiΩi).Consequently, 
+
+h(4)  
+
+> ij, ref
+
+= ℓ(4)  
+
+> ij, ref
+
+(z) + Aext  
+
+> ij
+
+(z)wij . (12) where ℓ(4)  
+
+> ij, ref
+
+collects the reference drift terms and 
+
+Aext  
+
+> ij
+
+(z) = 2 
+
+" p⊤ 
+
+> ij
+
+Rie3
+
+mi
+
+, − p⊤ 
+
+> ij
+
+Rj e3
+
+mj
+
+,
+
+− fi
+
+mi
+
+p⊤ 
+
+> ij
+
+Ribe3J−1 
+
+> i
+
+, fj
+
+mj
+
+p⊤ 
+
+> ij
+
+Rj be3J−1
+
+> j
+
+#
+
+.
+
+(13) For quantitative input-effectiveness measures, let Sij := diag( sν,i , s ν,j , s τ,i I3, s τ,j I3) ≻ 0 contain fixed characteristic input scales and define γext ,S 
+
+> ij
+
+(z) := ∥Aext  
+
+> ij
+
+(z)Sij ∥.We use the same notation Cij for its natural lift to the extended state space. We next show that this extended input channel does not vanish at a thrust singularity. 
+
+Theorem 3.1: Let (i, j ) ∈ E and suppose z ∈ C ij . If at least one of fi or fj is nonzero, then Aext  
+
+> ij
+
+(z)̸ = 0 . In particular, if 
+
+x ∈ Σth  
+
+> ij
+
+and fi̸ = 0 , then 
+
+γext ,S 
+
+> ij
+
+(z) ≥ 2|fi|sτ,i 
+
+miλmax (Ji) ∥pij ∥ > 0. (14) and analogously for agent j. Moreover, on the admissible thrust domain fi ∈ [f min  
+
+> i
+
+, f max  
+
+> i
+
+],
+
+γext ,S 
+
+> ij
+
+(z) ≥ 2dmin 
+
+mi
+
+min 
+
+
+
+sν,i , f min  
+
+> i
+
+sτ,i 
+
+λmax (Ji)
+
+
+
+> 0. (15) Consequently, hij has uniform relative degree four with re-spect to wij along the reference extended dynamics whenever at least one vehicle has nonzero thrust. 
+
+Proof: If Bij (x)̸ = 0 , the first two components of Aext 
+
+> ij
+
+in (13) cannot both vanish. Consider x ∈ Σth  
+
+> ij
+
+. Since z ∈ C ij , ∥pij ∥ ≥ dmin > 0. Let 
+
+qpi := R⊤ 
+
+> i
+
+pij . Then ∥qpi ∥ = ∥pij ∥ and, by x ∈ Σth  
+
+> ij
+
+, (qpi )⊤e3 =0. Hence ∥(qpi )⊤be3∥ = ∥qpi ∥ = ∥pij ∥. Since Ji ≻ 0,
+
+p⊤ 
+
+> ij
+
+Ribe3J−1 
+
+> i
+
+≥ σmin (J−1 
+
+> i
+
+) (qpi )⊤be3 = ∥pij ∥
+
+λmax (Ji) .
+
+Thus the ith scaled torque block of Aext  
+
+> ij
+
+Sij has norm at least  
+
+> 2|fi|sτ,i
+> miλmax (Ji)
+
+∥pij ∥, and (14) follows. The argument for agent j
+
+is identical. For the uniform bound, write qpi = ( qpi, 1, q pi, 2, q pi, 3)⊤. The 
+
+ith thrust-acceleration and torque blocks give 
+
+∥Aext  
+
+> ij
+
+Sij ∥2 ≥ 4
+
+m2
+
+> i
+
+"
+
+s2
+
+> ν,i
+
+(qpi, 3)2 + f 2 
+
+> i
+
+s2
+
+> τ,i
+
+λ2max (Ji)
+
+ (qpi, 1)2 + ( qpi, 2)2#
+
+≥ 4d2min 
+
+m2
+
+> i
+
+min 
+
+(
+
+s2
+
+> ν,i
+
+, (f min  
+
+> i
+
+)2s2
+
+> τ,i
+
+λ2max (Ji)
+
+)
+
+,
+
+which proves (15). Since wij does not enter h(k) 
+
+> ij
+
+for k ≤ 3,while the coefficient of wij in h(4)  
+
+> ij
+
+is Aext 
+
+> ij
+
+̸ = 0 , the relative-degree claim follows. 
+
+Remark 3.2: At a thrust singularity, the thrust-acceleration coefficients vanish but the torque coefficients remain nonzero because torques rotate the thrust directions. Thus the dynamic extension changes the safety input channel rather than merely differentiating the second-order HOCBF. 
+
+B. Robust extended feasibility and QP 
+
+For the true dynamics, define, for k = 1 , . . . , 4
+
+η0,ij := hij , η k,ij := ˙ ηk−1,ij + αk(ηk−1,ij ), (16) Let ηref 4,ij denote the corresponding fourth-order HOCBF ex-pression along the reference dynamics. By (12), 
+
+ηref 4,ij (z, w ij ) = ℓref  
+
+> ij
+
+(z) + Aext  
+
+> ij
+
+(z)wij , (17) where ℓref  
+
+> ij
+
+collects the reference drift and lower-order HOCBF terms. For the true dynamics, 
+
+d2
+
+dt 2
+
+ fiζi + ∆ f,i 
+
+mi
+
+
+
+= νiζi + 2 qi ˙ζi + fi ¨ζi + ¨∆f,i 
+
+mi
+
+,
+
+where ¨ζi = dζ,i −Ribe3J−1
+
+> i
+
+ τi +∆ τ,i 
+
+. Moreover, since ∆f,i =∆f,i (pi, v i) ∈ C2, ˙∆f,i = Dp∆f,i vi + Dv ∆f,i ˙vi, and ¨∆f,i 
+
+depends on (pi, v i, R i, Ωi, f i, q i) but not on wi = ( νi, τ i).Hence the uncertain terms modify only the drift with respect to 
+
+w, and the true and reference fourth-order HOCBF expressions have the same input coefficient: 
+
+η4,ij (z, w ij ) = ℓtrue  
+
+> ij
+
+(z) + Aext  
+
+> ij
+
+(z)wij .
+
+Define δ(4)  
+
+> ij
+
+(z) := ℓtrue  
+
+> ij
+
+(z) − ℓref  
+
+> ij
+
+(z) and assume |δ(4)  
+
+> ij
+
+(z)| ≤ 
+
+ρ(4)  
+
+> ij
+
+(z) on the prescribed operating domain. Hence a robust 
+
+4th -order HOCBF condition is Aext  
+
+> ij
+
+(z)wij ≥ ρ(4)  
+
+> ij
+
+(z)−ℓref  
+
+> ij
+
+(z).Since fi is an extended state, its physical bounds are enforced through auxiliary second-order HOCBFs. Define 
+
+gi, − := fi − f min  
+
+> i
+
+, g i, + := f max  
+
+> i
+
+− fi, and ϑ± 
+
+> 1,i
+
+:= ˙ gi, ± +
+
+αf, 1(gi, ±), ϑ ± 
+
+> 2,i
+
+:= ˙ϑ± 
+
+> 1,i
+
++ αf, 2(ϑ±
+
+> 1,i
+
+). Since ˙fi = qi and 
+
+˙qi = νi, ϑ± 
+
+> 2,i
+
+are affine in νi. Let W0 be a nonempty compact convex set of admissible extended inputs, possibly encoding coupled actuator limits, and define 
+
+Wa(z) := w ∈ W 0 : ϑ−
+
+> 2,i
+
+(z, w i) ≥ 0, ϑ +2,i (z, w i) ≥ 0, i ∈ V .
+
+For each fixed z, Wa(z) is convex and compact whenever nonempty. Let w := col( w1, . . . , w N ). Embed Aext  
+
+> ij
+
+into the full input space as ¯Aext  
+
+> ij
+
+and define rrob ext ,ij := ρ(4)  
+
+> ij
+
+− ℓref  
+
+> ij
+
+. Stacking the robust inequalities gives 
+
+Aext (z)w ≥ rrob ext (z), w ∈ W a(z), (18) where Aext stacks the rows ¯Aext  
+
+> ij
+
+.In analogy with (9), define 
+
+Γrob ext (z) := max  
+
+> w∈W a(z)
+
+min 
+
+> (i,j )∈E
+
+  ¯Aext  
+
+> ij
+
+(z)w − rrob ext ,ij (z) . (19) For y in the extended input space, let σWa(z)(y) := max w∈W a(z) y⊤w.
+
+Proposition 3.3: Suppose Wa(z) is nonempty. Let M := 
+
+|E| and ∆M := {λ ∈ RM 
+
+> ≥0
+
+: 1⊤λ = 1 }. Then 
+
+Γrob ext (z) = min 
+
+> λ∈∆M
+
+σWa(z)
+
+ Aext (z)⊤λ − λ⊤rrob ext (z) . (20) Consequently, the robust fourth-order aggregate HOCBF con-straints (18) are feasible if and only if Γrob ext (z) ≥ 0.
+
+Proof: The result follows from the minimax argument of Theorem 2.4, with F, B, and rrob replaced by Wa(z), Aext ,and rrob ext , respectively. Let wnom (z) ∈ W 0 be a locally Lipschitz nominal extended input. The robust torque-aware safety-critical controller is 
+
+w⋆ = arg min 
+
+> w∈W a(z)
+
+12 ∥w − wnom ∥2
+
+> H
+
+s.t. Aext (z)w ≥ rrob ext (z),
+
+(21) where H ≻ 0. The applied inputs satisfy ˙fi = qi, ˙qi = ν⋆i ,while τ ⋆i is applied to (3). Let C := T 
+
+> (i,j )∈E
+
+Cij and CH := T
+
+> (i,j )∈E
+
+T3
+
+> k=0
+
+{z :
+
+ηk,ij (z) ≥ 0}. Since η0,ij = hij , CH ⊂ C. Define also 
+
+Cf := \
+
+> i∈V
+
+\
+
+> σ∈{− ,+}
+
+z : gi,σ (z) ≥ 0, ϑ σ
+
+> 1,i
+
+(z) ≥ 0 .
+
+Theorem 3.4: Consider the dynamically extended quadrotor system and suppose z(0) ∈ C H ∩ C f . Assume that the fourth-order residual bound holds for every (i, j ) ∈ E on the pre-scribed operating domain, (21) is feasible for all t ≥ 0, and its solution is locally Lipschitz. Then CH ∩C f is forward invariant, collision avoidance is guaranteed, and fi(t) ∈ [f min  
+
+> i
+
+, f max  
+
+> i
+
+] for all i ∈ V . Moreover, if wnom (z) ∈ W a(z) satisfies the robust collision constraints, then w⋆ = wnom .
+
+Proof: For every (i, j ) ∈ E , the QP constraint gives 
+
+ηref 4,ij (z, w ⋆ij ) ≥ ρ(4)  
+
+> ij
+
+(z). Since η4,ij = ηref 4,ij + δ(4)  
+
+> ij
+
+and |δ(4)  
+
+> ij
+
+| ≤ 
+
+ρ(4)  
+
+> ij
+
+, we obtain η4,ij ≥ 0.Therefore ˙η3,ij ≥ −α4(η3,ij ). Since η3,ij (0) ≥ 0, the comparison principle gives η3,ij (t) ≥ 0. Repeating recursively yields η2,ij (t) ≥ 0, η1,ij (t) ≥ 0, and η0,ij (t) = hij (t) ≥ 0.Hence z(t) ∈ C H for all t ≥ 0. Since CH ⊂ C , collision avoidance follows. Moreover, since w⋆ ∈ W a(z), ϑ± 
+
+> 2,i
+
+≥ 0 for every i ∈ V .Hence ˙ϑ± 
+
+> 1,i
+
+≥ −αf, 2(ϑ±
+
+> 1,i
+
+), and, since ϑ±
+
+> 1,i
+
+(0) ≥ 0, the comparison principle gives ϑ±
+
+> 1,i
+
+(t) ≥ 0. Therefore ˙gi, ± ≥−αf, 1(gi, ±), and gi, ±(0) ≥ 0 implies gi, ±(t) ≥ 0. Thus Cf is forward invariant and fi(t) ∈ [f min  
+
+> i
+
+, f max  
+
+> i
+
+] for all i.Finally, if wnom (z) ∈ W a(z) satisfies the robust collision constraints, it is feasible for (21). Since the objective is strictly convex and is minimized at w = wnom , we obtain w⋆ = wnom .
+
+Remark 3.5: The common true/reference input coefficient together with Theorem 3.1 ensures a nonzero pairwise extended-input row, whereas Proposition 3.3 shows that ag-gregate feasibility remains a distinct bounded-input property. Thus, several nonsingular fourth-order constraints may still be jointly infeasible. 
+
+IV. L EARNING -B ASED ROBUST MARGINS AND LOCAL 
+
+FEASIBILITY 
+
+Section III incorporates a uniform fourth-order residual bound into the robust HOCBF constraints and QP. We now construct this bound from data and quantify local feasibility. At second order, learned force estimates and uncertainty bounds provide μf,i and ¯∆i in Section II. At fourth order, propagating them through successive derivatives may require derivatives of the unknown perturbations, so we instead learn directly the scalar residual δ(4)  
+
+> ij
+
+from Section III. For each (i, j ) ∈ E , let zij := col( zi, z j ). By the pairwise structure above, δ(4)  
+
+> ij
+
+depends only on zij . We model δ(4)  
+
+> ij
+
+(zij )
+
+by a GP with posterior mean μδij (zij ) and standard deviation 
+
+σδij (zij ) [14]. Thus, the GP input dimension is pairwise and does not grow with the number of agents. For prescribed βij >
+
+0, assume the event 
+
+EGP := 
+
+n
+
+δ(4)  
+
+> ij
+
+(zij ) − μδij (zij ) ≤ pβij σδij (zij ), ∀(i, j ) ∈ E 
+
+oholds uniformly on the prescribed operating domain. Such bounds can be obtained under standard GP concentration assumptions [17]; here EGP is an explicit assumption of the safety analysis. Define ρ(4)  
+
+> ij
+
+(z) := |μδij (zij )| + pβij σδij (zij ).Then |δ(4)  
+
+> ij
+
+(z)| ≤ ρ(4)  
+
+> ij
+
+(z) for every (i, j ) ∈ E , and Theorem 3.4 applies on this event. For the quantitative feasibility analysis below, let S ≻ 0
+
+be the global diagonal scaling whose pairwise restriction is 
+
+Sij defined in Section III-A, and set ¯w = S−1w. Then 
+
+Aext w = ( Aext S) ¯ w. Since S is nonsingular, normalization does not change whether an input-effectiveness row vanishes, but makes its norm dimensionally meaningful. 
+
+A. Local feasibility 
+
+Theorem 3.4 provides a conditional safety guarantee under persistent feasibility of (21). We now give pointwise sufficient conditions for feasibility of the robust constraints. For (i, j ) ∈ E , define the nominal robust deficit rij (z) := h
+
+ρ(4)  
+
+> ij
+
+(z) − ηref 4,ij (z, w nom  
+
+> ij
+
+)
+
+i
+
+> +
+
+. Set Aext ,S 
+
+> ij
+
+:= Aext  
+
+> ij
+
+Sij . Let 
+
+Wa,ij (z) denote the projection of Wa(z) onto wij , and define 
+
+¯Wa,ij (z) := S−1 
+
+> ij
+
+Wa,ij (z).
+
+Proposition 4.1: Suppose B( ¯ wnom  
+
+> ij
+
+, r w) ⊂ ¯Wa,ij (z), where 
+
+¯wnom  
+
+> ij
+
+:= S−1 
+
+> ij
+
+wnom  
+
+> ij
+
+and rw > 0. If rij (z) < r w∥Aext ,S 
+
+> ij
+
+(z)∥,then the robust constraint for edge (i, j ) is feasible. 
+
+Proof: If rij = 0, the nominal input is feasi-ble. Otherwise, choose δ ¯wij = λ(Aext ,S 
+
+> ij
+
+)⊤/∥Aext ,S 
+
+> ij
+
+∥, with 
+
+rij /∥Aext ,S 
+
+> ij
+
+∥ < λ < r w. Then Aext ,S 
+
+> ij
+
+δ ¯wij = λ∥Aext ,S 
+
+> ij
+
+∥ > r ij ,while ¯wnom  
+
+> ij
+
++ δ ¯wij ∈ ¯Wa,ij (z).Let AS
+
+> ext
+
+(z) stack the rows ¯Aext  
+
+> ij
+
+(z)S, (i, j ) ∈ E , and let 
+
+r(z) stack the corresponding deficits rij (z). Define ¯Wa(z) := 
+
+S−1Wa(z).
+
+Proposition 4.2: Suppose B( ¯ wnom , r w) ⊂ ¯Wa(z), where 
+
+¯wnom := S−1wnom and rw > 0. If AS
+
+> ext
+
+(z) has full row rank and ∥(AS
+
+> ext
+
+(z)) †r(z)∥ < r w, then (21) is feasible at z.
+
+Proof: Choose δ ¯w = ( AS
+
+> ext
+
+)†r. Full row rank gives 
+
+AS
+
+> ext
+
+δ ¯w = r, so all violated robust inequalities are satisfied. The norm condition ensures ¯wnom + δ ¯w ∈ ¯Wa(z).These conditions are pointwise and do not imply recursive feasibility; accordingly, Theorem 3.4 remains conditional on persistent feasibility of (21). Since AS
+
+> ext
+
+(z) ∈ RM ×4N , full row rank requires M = |E| ≤ 4N , limiting Proposition 4.2 for dense graphs. 
+
+B. Decentralized implementation 
+
+Assume W0 = QNi=1 W0,i where each W0,i ⊂ R4 may encode coupled actuator limits; the product assumption is only across agents. Define 
+
+Wa,i (zi) := {wi ∈ W 0,i : ϑ−
+
+> 2,i
+
+(zi, w i) ≥ 0, ϑ +2,i (zi, w i) ≥ 0}.
+
+Then Wa(z) = QNi=1 Wa,i (zi). Let Ni denote the neighbors of agent i. Using a reference input wref  
+
+> j
+
+for each neighbor, agent i computes 
+
+w⋆i = arg min 
+
+> wi∈W a,i (zi)
+
+12 ∥wi − wnom  
+
+> i
+
+∥2
+
+> Hi
+
+s.t. ηref 4,ij (z, w i, w ref  
+
+> j
+
+) ≥ ρ(4)  
+
+> ij
+
+(z) + ρcomm  
+
+> ij
+
+(z), j ∈ N i,
+
+where Hi ≻ 0. The reference may be a synchronized, communicated, or predicted neighbor input. Let Aext  
+
+> ij,j
+
+be the block of Aext  
+
+> ij
+
+multiplying wj , and Sj the diagonal block of S corresponding to wj . If the normalized mismatch satisfies the known bound ∥ ¯wj − ¯wref  
+
+> j
+
+∥ ≤ εij ,where ¯wj := S−1 
+
+> j
+
+wj and ¯wref  
+
+> j
+
+:= S−1 
+
+> j
+
+wref  
+
+> j
+
+, then one may take ρcomm  
+
+> ij
+
+(z) := ∥Aext  
+
+> ij,j
+
+(z)Sj ∥ εij . Indeed, ηref 4,ij (z, w i, w j ) ≥
+
+ηref 4,ij (z, w i, w ref  
+
+> j
+
+) − ρcomm  
+
+> ij
+
+(z). Thus, if the mismatch bound holds, the local constraint implies the robust pairwise HOCBF condition for the neighbor input; if wref  
+
+> j
+
+= wj , ρcomm  
+
+> ij
+
+= 0 .
+
+V. S IMULATION STUDY 
+
+We evaluate the proposed controller on a three-quadrotor crossing maneuver designed to expose the distinction be-tween loss of pairwise thrust effectiveness and bounded-input HOCBF feasibility. The complete interaction graph is used, with dmin = 0.8 m. The vehicles have mi = 1.30 kg, 
+
+g0 = 9 .81 m/s 2, and Ji = diag(0 .022 , 0.022 , 0.040) kg m 2.The initial and final positions are p01 = ( −2.5, −0.15 , 1.5) ,
+
+pf 
+
+> 1
+
+= (2 .5, −0.15 , 1.5) , p02 = (2 .5, 0.15 , 1.5) , pf 
+
+> 2
+
+=(−2.5, 0.15 , 1.5) , p03 = (0 , −2.5, 2.4) , and pf 
+
+> 3
+
+= (0 , 2.5, 2.4) .A quintic smooth-step reference acts over t ∈ [3 , 7] s, giving the nominal crossing near t = 5 s, with vi(0) = 0 , Ri(0) = I,
+
+Ωi(0) = 0 , fi(0) = mig0, and qi(0) = 0 . The nominal tracking gains are kp = 4.5, kv = 3.4, kR = 7, and 
+
+kΩ = 0 .85 , while the extended thrust tracker uses kf p = 25 
+
+and kf q = 10 . We impose fi ∈ [1 , 25] N, |νi| ≤ 100 N/s 2, and 
+
+∥τi∥∞ ≤ 2.5 N m. Accordingly, Si = diag(100 , 2.5, 2.5, 2.5) 
+
+is used for the normalized extended-input effectiveness and QP. The collision HOCBFs use αk(s) = 8 s, k = 1 , . . . , 4, and the thrust-state HOCBFs use αf, 1(s) = αf, 2(s) = 4 s. The geometric comparison is performed with ∆f,i = ∆ τ,i = 0 
+
+to isolate singularity and aggregate feasibility; uncertainty is introduced only in the GP experiment below. All trajec-tories are integrated with fourth-order Runge–Kutta using a 5 ms step. An animation and additional diagnostics are provided in the supplementary video at https://youtu. be/UIqZg36BcXE .We compare the nominal geometric tracking controller, the second-order thrust-only HOCBF-QP of Section II, and the proposed fourth-order torque-aware HOCBF-QP. As shown in Fig. 1 (a), the nominal maneuver violates the safety distance, reaching 0.300 m. The second-order QP becomes infeasible at t = 4.53 s, while the agents are still 1.673 m apart. In contrast, the proposed controller completes the maneuver with min t, (i,j )∈E ∥pij (t)∥ = 0 .822 m > d min . Moreover, the minimum values of (η0,ij , η 1,ij , η 2,ij , η 3,ij ) over all edges and times are (0 .035 , 0.100 , 0.195 , 0.495) , respectively. Figure 1 (b) isolates the pairwise input-channel effect on the same nominal states. For edge (1 , 2) , at the safe-side configuration t = 4 .83 s, where d12 = 0 .813 m, the thrust effectiveness has decreased to γth 12 = 5 .65 × 10 −2, whereas the torque-aware extended effectiveness is γext ,S12 = 2 .57 ×10 3.The latter also remains well above the uniform lower bound 
+
+76 .92 predicted by (15). Thus the loss of thrust effectiveness does not propagate to the dynamically extended input channel. 0 2 4 6 8 10           
+
+> Time [s]
+> 0.5 1.0 1.5 2.0 2.5 3.0 3.5
+> Minimum pairwise distance [m]  Nominal Second-order Proposed
+> dmin 0246810
+> Time [s]
+> 10 9
+> 10 7
+> 10 5
+> 10 3
+> 10 1
+> 10 1
+> 10 3
+> Input effectiveness
+> th 12
+> ext, S 12
+> Theoretical lower bound Near-singular safe state
+
+Fig. 1 : Crossing maneuver. (a) Minimum pairwise distance for the nominal, second-order thrust-only, and proposed con-trollers. (b) Thrust and extended input effectiveness for edge 
+
+(1 , 2) on the same nominal states. Pairwise nonsingularity alone does not ensure bounded-input feasibility. At the first infeasible point of the second-order QP, all three thrust-effectiveness measures remain nonzero, (γth 12 , γ th 13 , γ th 23 ) = (0 .493 , 1.979 , 1.949) , while the ex-act aggregate margin satisfies Γrob th = −2.815 < 0; see Fig. 2 (a). This numerically illustrates the distinction in Remark 2.3 between pairwise input effectiveness and bounded-input fea-sibility. For the proposed controller, Γrob ext remains positive throughout the maneuver, with min 
+
+t Γrob ext (t) = 5278 .6. The actuator requirements remain within the prescribed bounds: 
+
+fi ∈ [10 .225 , 16 .976] N, max i |qi| = 13 .90 N/s, max i |νi| =50 .44 N/s 2, and max i,k |τik | = 0 .441 N m. Finally, we evaluate the robust controller under smooth, agent-dependent force and torque perturbations of the form 
+
+∆f,i = Dp,i pi + Dv,i vi + bf,i and ∆τ,i = Kτ,i Ωi + bτ,i .For each edge, a GP is trained offline on δ(4) 
+
+ij using 202 samples of the standardized 40-dimensional pair state zij . The nominal fourth-order trajectory is sampled every 0.1 s and each sample is augmented by one independently perturbed state, with standard deviations 0.10 m, 0.12 m/s, 0.025 rad, 
+
+0.04 rad/s, 0.35 N, and 0.7 N/s in (p, v, R, Ω, f, q ), respec-tively. We use k(z, z ′) = kRBF (z, z ′; ℓ = 4) + 10 −4δzz ′ ,with unit RBF amplitude, GP regularization 10 −8, output normalization, and no hyperparameter optimization. We set 
+
+βij = 16 , so ρ(4) 
+
+ij = |μδij | + 4 σδij . As shown in Fig. 2(b), along the disturbed closed loop max 
+
+t, (i,j )
+
+|δ(4) 
+
+ij − μδij |
+
+4σδij 
+
+= 0 .335 < 1,and all evaluated residual errors lie within the 4σ enve-lope. The robust controller maintains dobs min = 0.895 m, 
+
+min( η0,ij , η 1,ij , η 2,ij , η 3,ij ) = (0 .161 , 1.131 , 8.189 , 62 .235) ,
+
+min ηtrue 4,ij = 245 .79 , and min Γ rob ext = 5528 .58 . The resulting actuator ranges remain fi ∈ [9 .527 , 18 .018] N, max |qi| =17 .01 N/s, max |νi| = 65 .88 N/s 2, and max |τik | = 0 .499 N m. 
+
+VI. C ONCLUSIONS 
+
+We studied pairwise singularity and aggregate feasibility in safety-critical control of quadrotor teams under bounded inputs and model uncertainty, characterized the thrust singular set, and derived an exact aggregate feasibility margin for shared bounded-thrust constraints. A torque-aware dynamic extension exposes thrust acceleration and attitude torques in a fourth-order HOCBF, preventing pairwise extended-input de-generacy under positive thrust bounds. Robustness is obtained by directly learning the fourth-order HOCBF residual with 0 1 2 3 4          
+
+> Time [s]
+> 0100 200 300 400 500 600 700 800
+> Aggregate feasibility margin
+> rob th Feasibility threshold First infeasible time 0246810
+> Time [s]
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Coverage ratio |  |/(4  )
+> Edge (1,2) Edge (1,3) Edge (2,3) Coverage threshold
+
+Fig. 2 : Aggregate feasibility and GP robustness. (a) Exact thrust-feasibility margin along the second-order closed loop. (b) Empirical residual-envelope coverage for all edges. GPs, while normalized input-effectiveness measures provide local feasibility conditions for the extended-input QP. Future work will address experimental multi-UAV validation and less conservative aggregate-feasibility guarantees. 
+
+REFERENCES 
+
+[1] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control of a quadrotor uav on se (3),” in 49th IEEE conference on decision and control (CDC) . IEEE, 2010, pp. 5420–5425. [2] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2017. [Online]. Available: http://ames.caltech.edu/ames2017cbf.pdf [3] Q. Nguyen and K. Sreenath, “Exponential control barrier functions for enforcing high relative-degree safety-critical constraints,” in 2016 American Control Conference (ACC) , 2016, pp. 322–328. [4] W. Xiao and C. Belta, “High-order control barrier functions,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3655–3662, 2022. [5] X. Tan, W. S. Cortez, and D. V. Dimarogonas, “High-order barrier functions: Robustness, safety, and performance-critical control,” IEEE Transactions on Automatic Control , vol. 67, no. 6, pp. 3021–3028, 2022. [6] X. Tan and D. V. Dimarogonas, “Compatibility checking of multiple control barrier functions for input constrained systems,” in 2022 IEEE 61st Conference on Decision and Control (CDC) , 2022, pp. 939–944. [7] W. S. Cortez, X. Tan, and D. V. Dimarogonas, “A robust, multiple control barrier function framework for input constrained systems,” IEEE Control Systems Letters , vol. 6, pp. 1742–1747, 2022. [8] P. Mestres, C. Nieto-Granda, and J. Cort´ es, “Distributed safe navigation of multi-agent systems using control barrier function-based controllers,” 
+
+IEEE Robotics and Automation Letters , vol. 9, no. 7, pp. 6760–6767, 2024. [9] M. Harms, M. Jacquet, and K. Alexis, “Safe quadrotor navigation using composite control barrier functions,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 6343–6349. [10] D. Tscholl, Y. K. Nakka, and B. C. Gunter, “FastBridge: Closing the model-based realization gap in safety filters on 3d gaussian splatting for fast quadrotor flight,” arXiv preprint arXiv:2607.01200 , 2026. [11] F. Casta˜ neda, J. J. Choi, B. Zhang, C. J. Tomlin, and K. Sreenath, “Pointwise feasibility of gaussian process-based safety-critical control under model uncertainty,” in 2021 60th IEEE Conference on Decision and Control (CDC) , 2021, pp. 6762–6769. [12] M. Aali and J. Liu, “Learning high-order control barrier functions for safety-critical control with gaussian processes,” in 2024 American Control Conference (ACC) , 2024, pp. 1–6. [13] O. Y. Nieto, A. A. Simoes, and L. Colombo, “Safety-critical control for quadrotor uavs via decentralized navigation functions,” arXiv preprint arXiv:2608.13507 , 2026. [14] C. E. Rasmussen and C. K. I. Williams, Gaussian Processes for Machine Learning . Cambridge, MA: MIT Press, 2006. [15] S. Boyd and L. Vandenberghe, Convex Optimization . Cambridge University Press, 2004. [16] M. Sion, “On general minimax theorems,” Pacific Journal of Mathemat-ics , vol. 8, no. 1, pp. 171–176, 1958. [17] N. Srinivas, A. Krause, S. M. Kakade, and M. Seeger, “Gaussian process optimization in the bandit setting: No regret and experimental design,” in 
+
+Proceedings of the 27th International Conference on Machine Learning ,2010, pp. 1015–1022.
