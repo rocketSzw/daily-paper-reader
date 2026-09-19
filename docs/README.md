@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-18</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-19</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 12 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 6 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>10</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-18 22:00:33 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-19 21:16:09 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今天完成 12 篇论文日报：精读 2 篇、速读 10 篇，重点落在无人机控制与视觉策略学习两条线。</p>
-<p>最值得看的是两篇 8.0 分精读——《Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs》聚焦四旋翼高阶安全控制的可行性与奇异性问题，《Accelerating Visual Policy Learning with Sampling-Based Model Predictive Control》则用采样型 MPC 加速视觉策略学习；速读中还有模块化生产系统的分布式优化、无人机具身智能，以及 3D 高斯泼溅地图下的语义风险感知导航等方向。</p>
-<p>普通读者可先从这两篇精读入手，理解&quot;安全约束是否可行&quot;与&quot;用 MPC 提升视觉学习效率&quot;这两个核心思路，再按需挑速读中的具身智能或 3D 导航方向延伸。</p>
+<p>今日共生成 6 篇推荐（精读 0 篇，速读 6 篇）</p>
+<p>速读：《Characterizing Replay Retention Under Dynamics Shift in Model-Based Reinforcement Learning》（7.0/10）, 《UAVs Meet Embodied Intelligence: Bridging Human Intents and Flying Dynamics Via Harnessing Physical-Digital AI Agents》（7.0/10）, 《WorldContact: A Contact-Centric World Model for Scalable Robot Learning》（6.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs">Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Accelerating Visual Policy Learning with Sampling-Based Model Predictive Control">Accelerating Visual Policy Learning with Sampling-Based Model Predictive Control</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">10 篇</strong>
+    <strong class="dpr-home-dashboard-count">6 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Distributed Optimization of Modular Production Systems using Model-based Reinforcement Learning with Inverse Models">Distributed Optimization of Modular Production Systems using Model-based Reinforcement Learning with Inverse Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="UAVs Meet Embodied Intelligence: Bridging Human Intents and Flying Dynamics Via Harnessing Physical-Digital AI Agents">UAVs Meet Embodied Intelligence: Bridging Human Intents and Flying Dynamics Via Harnessing Physical-Digital AI Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="SemSafe-3DGS: Semantic Risk-Aware Active Navigation in Uncertain 3D Gaussian Splatting Maps">SemSafe-3DGS: Semantic Risk-Aware Active Navigation in Uncertain 3D Gaussian Splatting Maps</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Characterizing Replay Retention Under Dynamics Shift in Model-Based Reinforcement Learning">Characterizing Replay Retention Under Dynamics Shift in Model-Based Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="UAVs Meet Embodied Intelligence: Bridging Human Intents and Flying Dynamics Via Harnessing Physical-Digital AI Agents">UAVs Meet Embodied Intelligence: Bridging Human Intents and Flying Dynamics Via Harnessing Physical-Digital AI Agents</span></li><li><span class="dpr-home-dashboard-paper-title" title="WorldContact: A Contact-Centric World Model for Scalable Robot Learning">WorldContact: A Contact-Centric World Model for Scalable Robot Learning</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 
