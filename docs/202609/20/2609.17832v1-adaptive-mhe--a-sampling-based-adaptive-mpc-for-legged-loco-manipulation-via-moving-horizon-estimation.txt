@@ -1,0 +1,609 @@
+Title: Adaptive-MHE : A Sampling-Based Adaptive MPC for Legged Loco-Manipulation via Moving Horizon Estimation
+
+URL Source: https://arxiv.org/pdf/2609.17832v1
+
+Published Time: Thu, 17 Sep 2026 00:22:39 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Adaptive-MHE : A Sampling-Based Adaptive MPC for Legged Loco-Manipulation via Moving Horizon Estimation 
+
+Hossein Keshavarz 1, Alejandro Ramirez-Serrano 1, Majid Khadiv 2
+
+Abstract — Legged robots have demonstrated a remarkable ability to traverse various terrains, yet generating effective loco-manipulation behaviors remains challenging. A key difficulty is that object and terrain parameters are typically unknown to the robot, and mismatches between these parameters and their simulated counterparts introduce a sim-to-real gap that degrades control performance. Classical system identification (Sys-ID) methods often assume differentiable dynamics, an assumption that does not hold for contact-rich legged sys-tems. Sampling-based Sys-ID avoids this restriction by directly matching simulated and recorded state trajectories through massively parallel rollouts, but existing approaches are typically applied offline and do not adapt as environmental conditions change. We present Adaptive-MHE an online sampling-based Sys-ID framework, based on moving horizon estimation (MHE), that estimates the physical parameters of objects and terrain in the environment (e.g., mass, friction) and couples this estimate with a sampling-based model predictive controller, enabling adaptive loco-manipulation in changing and uncertain environments. In simulation and hardware experiments, our framework consistently outperforms baselines and matches the performance of a controller with access to ground-truth parameters. 
+
+I. I NTRODUCTION 
+
+Humans and animals exploit a diverse set of body parts to interact with the environment in flexible ways, enabling them to traverse cluttered terrain and manipulate objects far larger than themselves. Replicating this level of contact-rich interactions in robots remains a major challenge. A key difficulty is that these interactions depend on uncertain physical parameters, including object mass, friction, and terrain properties, which are rarely known in advance and can vary substantially across tasks. As a result, fixed-parameter controllers often fail under uncertainty and environmental changes, leading to slipping, instability, or ineffective force application. Existing loco-manipulation methods often as-sume access to accurate prior knowledge or training-time dynamics. This limitation motivates the need for robots that can infer relevant physical properties directly from interaction data, enabling more adaptive and generalizable loco-manipulation in unseen environments. In this work, we address the problem of loco-manipulation of unknown objects within a priori unknown environment parameters. To this end, we propose a sampling-based MHE framework that estimates unknown interaction parameters, including the              
+
+> 1University of Calgary, Department of Mechanical Engineering, 2500 University Drive NW, Calgary, AB, Canada Emails:
+
+hossein.keshavarz, aramirez@ucalgary.ca              
+
+> 2Munich Institute of Robotics and Machine Intelligence (MIRMI), Technical University of Munich (TUM), Germany Email:
+
+majid.khadiv@tum.de First step  Adding mass (+ 1 kg)  Final step     
+
+> Switch to Region 2 Adaptation to Region 2 Final step
+> 312
+> Baseline
+> Adaptive-MHE
+> Adaptive-MHE
+> Baseline
+> 1
+> 13
+> 3
+> 321
+
+Fig. 1: Comparison with the baseline: (top) T3: Adaptation to mass variation, (bottom) T4: Adaptation to terrain change. object’s mass and inertia as well as changes in the terrain friction coefficient, directly from the robot’s most recent win-dow of observations during interaction. Rather than solving the underlying nonlinear estimation problem via gradient-based optimization [1, 2], which requires derivatives of the dynamics under contact constraints, our formulation samples a large set of candidate parameters over the estimation horizon, evaluates each by comparing predicted and observed interaction trajectories, and selects the parameter set that best explains the robot’s recent observed dynamics. Coupling this sampling-based MHE module with a sampling-based model predictive controller yields, to the best of our knowledge, the first sampling-based adaptive MPC formulation for legged loco-manipulation, in which parameter estimation and con-trol are solved with a unified sampling-based framework. The resulting online estimates continually update the downstream controller, enabling robust object-manipulation and pushing behaviors across a wide range of object properties and terrain conditions. The main contributions of this paper are as follows:  
+
+> •
+
+We formulate a novel sampling-based moving hori-zon estimation (MHE) mechanism for online system identification in legged loco-manipulation, efficiently identifying the key physical parameters that most affect controller performance from a sliding window of real-world interaction data, without requiring a differentiable simulator or specialized sensing (e.g., touch or force/-torque sensors).  
+
+> •
+
+We couple this sampling-based MHE module with a arXiv:2609.17832v1 [cs.RO] 15 Sep 2026 sampling-based model predictive controller, yielding, to the best of our knowledge, the first sampling-based adaptive MPC formulation for legged loco-manipulation, and demonstrate improved performance under object and terrain uncertainty across simulation and hardware experiments. II. R ELATED WORK 
+
+A. Loco-Manipulation for quadruped Robots 
+
+Learning-based approaches to loco-manipulation control typically rely on reinforcement learning (RL) to train whole-body policies and have demonstrated impressive general-ization across a variety of tasks [3]–[6] (see [7] for acomplete review of different methods). These policies are typically trained over a fixed distribution of object and terrain properties through domain randomization, and adapting to parameters outside this distribution generally requires re-training or fine-tuning. To address this limitation, object and terrain parameters can instead be estimated online and incorporated into the control loop, enabling adaptation to new conditions without retraining the underlying policy. In the model-based control community, loco-manipulation has traditionally been formulated as an optimization prob-lem and solved using gradient-based methods [8]. These approaches generally assume that the relevant robot and environment parameters are known in advance. While some works have attempted to estimate unknown parameters through system identification for contact-rich locomotion [1, 2], such methods are often computationally expensive, lim-iting their applicability to online estimation. Consequently, tightly coupling these estimation methods with MPC to achieve real-time adaptive control remains challenging. With recent advances in massively parallel simulation, sampling-based MPC has emerged as an attractive alternative for controlling robots in contact-rich settings. Unlike RL, it requires no offline policy training and can leverage parallel sampling to handle discontinuous and non-convex dynam-ics. Recent works have successfully applied sampling-based MPC to legged loco-manipulation [9]–[12]. More recent approaches have also explored combining the complemen-tary advantages of sampling-based MPC and RL [13]–[16]. However, these approaches generally assume that the relevant properties of the environment are known, limiting their ability to adapt online to changing or previously unknown environmental conditions. 
+
+B. System Identification and Parameter Adaptation 
+
+System identification for robotic systems dates back to the late 1980s [17]. With advances in constrained opti-mization, recent approaches have established the interplay between geometric and physical consistency in system iden-tification by explicitly enforcing constraints [18, 19]. These optimization-based approaches typically require derivatives of the dynamics, limiting their applicability to contact-rich settings. Several recent works have sought to extend system identification to systems with contact switches [1, 2, 20]. However, these methods rely on precise contact-event detection, which limits their applicability to highly contact-rich scenarios such as whole-body loco-manipulation, where frequent and intermittent contacts occur between the robot and its environment. More recently, [21] introduced Sampling-based Parame-ter Identification (SPI) with active exploration, a two-stage sampling-based framework that identifies a legged robot’s physical parameters from real-world trajectories collected using motion priors from pre-trained RL policies. The framework subsequently refines the parameter estimates by actively selecting exploration commands that maximize the Fisher information [22] of the collected data. However, SPI is applied offline, limiting its ability to adapt to changing conditions during operation. Also, it was only demonstrated for locomotion. In contrast, we propose Adaptive-MHE, an online sampling-based parameter estimation framework that estimates the physical parameters of objects and the environ-ment during loco-manipulation. By coupling Adaptive-MHE with sampling-based MPC, our approach enables adaptive control in the presence of unknown and changing object properties. III. P RELIMINARIES 
+
+This section briefly explains two building blocks under-lying the proposed framework: MPOPI [11], the sampling-based whole-body MPC controller, and SPI [21], the sampling-based parameter identification method that our online estimator builds upon. 
+
+A. MPOPI 
+
+MPOPI [11] combines MPPI [10] with the Covari-ance Matrix Adaptation Evolution Strategy (CMA-ES) method [23] to leverage the advantages of each, with the goal of creating a unified approach that reduces the time needed to find a control action [24]. In contrast to MPPI and CMA-ES individually, MPOPI generates an initial set of randomized samples using a random or predefined mean and covariance. These two parameters are then updated via CMA-ES, from which a new, improved set of randomized samples is generated using the updated mean and covariance. This updating process is repeated for L cycles, yielding a refined subset of robot motion trajectories (joint positions). This strategy enables an efficient search over actions to quickly find the optimal sequence with reduced computation. 
+
+B. SPI 
+
+SPI [21] formulates system identification as a zero-order optimization problem solved via GPU-based parallel sam-pling, avoiding the need for differentiable dynamics. The system is modeled as xt+1 = f (xt , ut ; θ ), where xt is the robot state, ut the control input, and θ the unknown physical parameters to be identified from a dataset of real-world state-action trajectories D = {(xt , ut )}Nt=1. The identified param-eters θ = [ θin , θmo ]T consist of mass-inertia properties θin 
+
+(mass, center of mass, and inertia) and actuator parameters 
+
+θmo characterizing motor dynamics, whose parameterization ensures physical correctness of the outputs [25]. Real-world trajectories are segmented into Nc short clips of horizon length H, sampled from a uniform distribution to avoid bias from any single fixed horizon length. The identification problem is then posed as a multi-step, nonlinear least-squares rollout-matching objective 
+
+J(θ , {ck}) = 
+
+Nc
+
+# ∑
+
+k=1
+
+H−1
+
+# ∑
+
+t=0
+
+xrt+1,k − xt+1,k 2
+
+Wx + ∥θ − θ0∥2
+
+Wθ , (1) where xt+1,k = f (xt,k, urt,k; θ ) is the simulated state rolled out under candidate parameter θ from clip ck’s recorded initial condition, while the second cost term regularizes θ
+
+toward a nominal prior θ0. This cost is minimized using CMA-ES: at each iteration, a batch of candidate parameter vectors is sampled, evaluated in parallel via (1), and used to update the sampling distribution until convergence, yielding the parameter estimate ˆ θ .IV. P ROPOSED LOCOMOTION FRAMEWORK 
+
+The proposed adaptive control framework builds upon SPI [21] and MPOPI [11], extending SPI’s sampling-based estimation strategy to an online moving-horizon estimation (MHE) framework that recursively re-estimates object and terrain parameters from interaction data collected during task execution. The framework is illustrated in Fig. 2, consists of two main components: A) the moving-horizon estimator and 
+
+B) the whole-body controller. The two components operate Iteration L                       
+
+> Iteration 2
+> MPPI .
+> .
+> .
+> 𝜽 𝟏
+> 𝜽 𝟐
+> 𝜽 𝑵
+> 𝜽 𝟏
+> 𝜽 𝒌 𝒆
+> 𝜽 𝟐
+> ..
+> 100 Hz
+> 𝐽 1= 𝑐𝑜𝑠𝑡(𝜃 1)
+> 𝐽 2= 𝑐𝑜𝑠𝑡(𝜃 2)
+> 𝐽 𝑛 = 𝑐𝑜𝑠𝑡(𝜃 𝑛 )
+> ..
+> .Updating Cov ()
+> Updating Mean ()
+> 𝜽 𝟐,𝒏𝒆𝒘
+> 𝜽 𝟏,𝒏𝒆𝒘
+> 𝜽 𝑵,𝒏𝒆𝒘
+> ..
+> B) Whole-body Controller (MPOPI)
+> Identified Parameters ( 𝒑̂ )
+> Joint
+> targets
+> Data Collection
+> 𝒙 𝟎 𝒓 𝒖 𝟎 𝒓 𝒙 𝟏 𝒓 𝒖 𝟏 𝒓 𝒙 𝟐 𝒓 𝒖 𝟐 𝒓
+> Real Trajectories
+> Reference states
+> Updated states
+> Parameter Identification
+> 𝒙 𝟏 𝒙 𝟐 𝒙 𝟑 𝒙 𝟒
+> 𝒖 𝟎 𝒓 𝒖 𝟏 𝒓 𝒖 𝟐 𝒓 𝒖 𝟑 𝒓
+> Updating mean/covariance (CMA-ES)
+> Iteration L
+> Iteration 1
+> 𝒙 𝟏 𝒓 𝒙 𝟐 𝒓 𝒙 𝟑 𝒓 𝒙 𝟒 𝒓
+> Prediction cost 𝑱 𝒊
+> Iteration 2
+> A) Moving Horizon Estimator
+> Real World Physics
+> 𝝉 Encoders
+> 20 Hz
+> PD Controller
+> Iteration 1
+> Σ𝑡
+> 1-2 Hz
+
+Fig. 2: Overview of the Adaptive-MHE framework. asynchronously on separate CPU threads, with the estimator running in the background at a lower frequency while the whole-body controller continues to generate control actions in real time. 
+
+A. Moving Horizon Estimator 
+
+SPI [21] identifies system parameters offline from a fixed, pre-collected dataset using massively parallel GPU sampling. In contrast, the proposed estimator operates online and con-tinuously updates its parameter estimate as new interaction data become available. During task execution, the states of both the robot and the box, together with the corresponding control inputs applied to the robot, are recorded at each time step to form the trajectory 
+
+D = {(xrt , ut )}Nt=1 , (2) where xrt contains the pose (position and orientation), linear and angular velocities of the robot base and box, as well as the robot joint positions q and velocities ˙ q.Contrary to SPI that estimates the parameters once from the complete recorded history, our proposed estimator uses a short sliding window containing only the most recent history of interaction data. At each update, the window 
+
+DH (t) = {(xr
+
+τ , uτ )}t
+
+τ=t−H+1 (3) is extracted from D and used for parameter estimation. The window is refreshed every ∆tupdate seconds, allowing the estimate to be refined as additional information about the system dynamics becomes available. Unlike SPI, which parallelizes candidate rollouts on a GPU, the proposed estimator runs on the CPU in a separate thread from the whole-body controller. This asynchronous implementation allows parameter estimation to proceed in the background without interrupting the real-time control loop. 
+
+B. Whole-body Controller (MPOPI) 
+
+The estimated parameters are incorporated into the dy-namics model used by the MPOPI controller introduced in Section III. In [11], the sampling distribution is refined over 
+
+LMPOPI loops at every control cycle, which increases the computational cost of the controller. To reduce this cost, we exploit the periodic structure of the reference gait and perform the multi-loop refinement only when the contact mode changes. Between mode switches, the sampling distri-bution obtained from the most recent refinement is retained and used to warm-start the subsequent control cycles. This modification reduces the computational burden of MPOPI while preserving its sampling-based exploration and ex-ploitation during complex whole-body locomotion tasks. The resulting controller operates continuously while the MHE thread asynchronously updates the dynamics parameters. 
+
+C. Adaptive-MHE Formulation 
+
+Algorithm 1 summarizes the complete control loop. Both the estimator and the controller use the same parameterized dynamics model f . Its state transition is given by 
+
+xt+1 = f (xt , ut ; p) + wt , (4) where xt and ut denote the system state and control input, respectively, wt represents process noise, and p is the vector of unknown system parameters. For brevity, f (p) denotes the dynamics model instantiated with parameter vector p.At each control cycle, MPOPI (line 13-22 in Algorithm 1) uses the current estimate ˆ p to generate and evaluate candidate control sequences using f ( ˆp) (line 4 in Algorithm 1). The first control action of the optimized sequence is applied to the system, and the resulting state–input pair is appended to the data buffer. When the parameter-update interval ∆tupdate is reached, the most recent H measurements are used to update the parameter estimate. Given the current identification window and the previous parameter estimate ˆ p− 
+
+> t
+
+, the MHE problem is formulated as ˆpt = arg min 
+
+> pH−1
+
+# ∑
+
+> k=0
+
+xrk+1 − xk+1 2 
+
+> Wx
+
++ p − ˆp− 
+
+> t
+> 2
+> Wp
+
+, (5) Here, xrk+1 denotes the recorded state in the identification window, while xk+1 is the corresponding state predicted by rolling out f (p) using the recorded control inputs. The matrix 
+
+Wx weights the state prediction error, while Wp regularizes the updated estimate toward the previous estimate. In this work, Wp = diag (wmass , winertia , wfriction ) .
+
+To solve the optimization in (5), a diagonal Gaussian distribution is initialized around the previous estimate ˆ p− 
+
+> t
+
+and iteratively refined using candidate parameter samples (line 23-24 in Algorithm 1). At each iteration ℓ, B candidates are drawn according to 
+
+p(ℓ) 
+
+> j
+
+∼ N
+
+
+
+μ(ℓ) 
+
+> p
+
+, Σ(ℓ)
+
+> p
+
+
+
+, Σ(ℓ) 
+
+> p
+
+= diag 
+
+
+
+(σ (ℓ) 
+
+> p
+
+)2
+
+. (6) Each candidate is evaluated by rolling out f (p(ℓ) 
+
+> j
+
+) over the identification window and the candidate distribution is then updated from the lowest-cost samples using log-rank-weighted averaging with learning rate α. The resulting distribution mean provides the updated estimate ˆ pt .The updated estimate is subsequently used to instanti-ate f ( ˆpt ) for the controller (line 9 in Algorithm 1). As new measurements are collected, the identification window advances and the estimation procedure is repeated every 
+
+∆tupdate seconds. Thus, parameter estimation and whole-body control proceed concurrently, allowing the controller to adapt its dynamics model online while maintaining the real-time control loop. The complete procedure is summarized in Algorithm 1. V. E VALUATION 
+
+In this section, we evaluate the proposed framework on several loco-manipulation tasks using the Unitree Go1. The controller is implemented in Python within the Robot Operating System (ROS) framework and runs in real time on an AMD Ryzen 9 7950X3D CPU with 64 GB of memory. Our objective is to demonstrate that the robot can successfully manipulate objects while adapting to changes in the terrain and the physical properties of the object. Throughout all tasks, we compare our method Adaptive-MHE to two alternatives, True , and Baseline . The True 
+
+control mode uses a fixed belief based on the ground-truth parameters, representing the best achievable performance with a non-adaptive belief. In contrast, Adaptive-MHE first initializes its belief via an offline probing estimation step and subsequently performs online closed-loop re-identification during task execution using a moving horizon estimator. 
+
+Algorithm 1: ADAPTIVE -MHE framework 
+
+Require: Initial parameter prior p0, dynamics model f (p), estimator hyperparameters 
+
+(LMHE , B, ∆tupdate , H, α, wmass , winertia , wfriction )
+
+Ensure: Control actions {ut }; updated parameter estimate ˆ p 
+
+> 1:
+
+Initialize ˆ p ← p0, data buffer D ← /0 
+
+> 2:
+
+Initialize trajectory mean μt and covariance Σt 
+
+> 3:
+
+for t ← 0 to T − 1 do  
+
+> 4:
+
+(ut , μt , Σt ) ← MPOPI (μt , Σt , ˆp) 
+
+> 5:
+
+Append (xt , ut ) to D 
+
+> 6:
+
+if parameter update is triggered then  
+
+> 7:
+
+DH ← { (xτ , uτ )}t 
+
+> τ=t−H+1
+> 8:
+
+ˆp ← MHE-E STIMATE (DH , ˆp−) 
+
+> 9:
+
+Update dynamics model f ( ˆp) 
+
+> 10:
+
+end if  
+
+> 11:
+
+end for  
+
+> 12:
+
+return {ut }, ˆ p 
+
+> 13:
+
+function MPOPI( μt , Σt , ˆp) 
+
+> 14:
+
+Sample and parallel-roll out N action sequences under f ( ˆp); evaluate their costs  
+
+> 15:
+
+if gait mode switch then  
+
+> 16:
+
+Refine Σt over LMPOPI loops  
+
+> 17:
+
+else  
+
+> 18:
+
+Reuse Σt as a warm start  
+
+> 19:
+
+end if  
+
+> 20:
+
+Update μt using weighted costs; ut ← μt [0] 
+
+> 21:
+
+return ut , μt , Σt 
+
+> 22:
+
+end function  
+
+> 23:
+
+function MHE-E STIMATE (DH , ˆp) 
+
+> 24:
+
+Initialize the parameter distribution with mean ˆ p 
+
+> 25:
+
+for ℓ ← 1 to LMHE do  
+
+> 26:
+
+Sample {p j}Bj=1 ∼ N (μp, diag (σ 2 
+
+> p
+
+))  
+
+> 27:
+
+Evaluate trajectory cost J(p j) using (5)  
+
+> 28:
+
+Update μp, σp using {J(p j)}Bj=1 
+
+> 29:
+
+if σp ≤ σfloor then  
+
+> 30:
+
+break  
+
+> 31:
+
+end if  
+
+> 32:
+
+end for  
+
+> 33:
+
+return ˆp ← μp 
+
+> 34:
+
+end function 
+
+Finally, Baseline represents the SPI [21] that relies on a fixed, offline-identified prior belief that remains unchanged throughout the run, reflecting the standard practice of offline parameter identification without further adaptation. 
+
+A. Task Definitions and setups 
+
+We design a series of simulation scenarios covering di-verse loco-manipulation tasks. For comparison across control modes, the robot is commanded to move at 0 .2 m/s in the following tasks: 
+
+T1. Single-goal pushing: The robot pushes an object with unknown physical properties to a predefined goal. As shown in Fig. 3a, the box waypoint ( B j) remains fixed at the goal, while the robot waypoint ( Ri) tracks the box center to maintain contact during motion. T2. Circular-path pushing: To evaluate continuous adap-tation, the robot pushes an unknown box along a circular trajectory (Fig. 3b). The robot waypoint is placed on the pushing side of the box and continuously updated toward the next target position, ensuring the correct pushing direction along the curved path. 
+
+T3. Adaptation to mass variation: The box mass is changed abruptly during the task (Fig. 3c), requiring 
+
+Adaptive-MHE to re-estimate the mass and associated fric-tion online and adapt the control action accordingly. 
+
+T4. Adaptation to terrain change: The robot pushes the box across two floor regions with friction coefficients μ1 =
+
+0.4 and μ2 = 0.8, separated at xb = 1.5 m (Fig. 3d). This task evaluates the ability to detect changes in terrain friction online and adapt the control action accordingly. 
+
+T5. Pushing a box with one leg: The robot pushes a box of unknown physical properties 0 .5 m to the side using a front leg while maintaining a stationary three-legged stance (Fig. 3e). Unlike the previous tasks, the desired robot speed is zero. a 
+
+> Adding mass
+> c
+> de
+> b
+
+Fig. 3: Overview of the loco-manipulation scenarios eval-uated in this work: (a) T1. Single-goal pushing, (b) T2. Circular-path pushing, (c) T3. Adaptation to mass variation, (d) T4. Adaptation to terrain uncertainty, and (e) T5. Pushing a box with one leg. 
+
+B. Ablation and Simulation Study 
+
+We evaluate two aspects of the proposed online Adaptive-MHE pipeline: (i) how sensitive closed-loop task perfor-mance is to the online identification hyperparameters, and (ii) whether Adaptive-MHE provides a measurable benefit over a fixed belief under a controlled, non-stationary physical parameter change. All experiments use the box-pushing loco-manipulation task, in which a quadruped pushes a box toward a fixed goal while the floor friction changes (Fig. 3d). The proposed framework exposes seven hyperparameters in (5) that govern the accuracy and responsiveness of the es-timator: the number of updating cycles LMHE , sample count 
+
+B, update period ∆tupdate (seconds between identification calls), time horizon H, learning rate α, and the regularization weights wmass and wfriction that pull each online estimate back toward its warm-started prior. For each run, final goal error (eg), controller cost ( J), success rate ( SR), and execution time ( texec ) are reported. We vary each hyperparameter in-dividually across a small grid of values while holding the remaining six fixed, repeating every configuration across 
+
+Nseed = 15 random seeds. Figure 4 shows the resulting mean 
+
+± standard deviation (across seeds) for mean controller cost and success rate. For each hyperparameter, the default value deployed on hardware (green dashed line) was selected as the setting that achieved the lowest mean controller cost while maintaining a high success rate, favoring the most conservative (i.e., most stable) choice among comparable configurations. Using the default operating point identified in Fig. 4 (green dashed lines), we compare the three belief conditions ( True ,
+
+Baseline , and Adaptive-MHE ) across the same Nseed = 15 seeds per condition, enabling paired comparisons. Table I summarizes the results. The Baseline belief succeeds on only a small fraction of seeds. Injecting the ground-truth parameter values without further adaptation in True mode achieves complete success and the lowest final goal error. 
+
+Adaptive-MHE substantially improves all metrics over the 
+
+Baseline belief despite never having access to ground-truth parameters, though it does not fully close the gap to the True 
+
+condition. TABLE I: Comparison across control modes, mean ± std over 15 random seeds.                                              
+
+> True Baseline Adaptive-MHE (ours)
+> SR↑100 .0±0.013 .33 ±35 .286 .7±35 .2
+> eg[m]↓0.045 ±0.02 0.58 ±0.23 0.16 ±0.24
+> J(×10 5)↓0.43 ±0.03 0.62 ±0.04 0.51 ±0.05
+> texec [s]↓48 .1±0.277 .4±0.13 56 .3±0.04
+
+We also evaluate the performance of the three control modes across all five tasks introduced in Section V-A. Table II summarizes the final goal/tracking error and RMSE for all tasks. As shown, our Adaptive-MHE approach nearly matches the tracking performance of the controller with true parameters by continuously estimating the unknown parameters and incorporating them into the control loop. A detailed qualitative analysis of the results is provided in the Appendix. TABLE II: Summary of final error / RMSE across all tasks, True / Baseline / Adaptive-MHE (ours).                      
+
+> Task True Baseline Adaptive-MHE T1 – RMSE (m/s) 0.134 0.160 0.139 T2 – RMSE (m/s) 0.108 0.119 0.104 T3 – RMSE (m/s) 0.093 0.117 0.092 T4 – RMSE (m/s) 0.095 0.099 0.097 T5 – final error (m) 0.12 0.42 0.28 T5 – RMSE (m/s) 0.051 0.149 0.052
+
+Fig. 4: Ablation over Adaptive-MHE hyperparameters. The means and standard deviations are computed from 15 different random seeds for each setting. Green dashed lines denote the default parameters we deploy on hardware. 
+
+C. Real-world demonstration 
+
+In addition to the simulation studies, real-world locoma-nipulation experiments were conducted on a Unitree Go1 quadruped robot running either Adaptive-MHE or Baseline 
+
+policies performing a box-pushing task. The robot’s objective was to push an object (a box or a basket) toward a predefined goal position, while the object’s physical properties, surface friction or mass, were varied in ways unknown to the policy a priori. In the first experiment (Fig. 1 top), we tested adaptation to an abrupt, unmodeled change in object mass during task execution. The robot pushed a basket with an initial mass of 3 kg toward the target (”First step”). Partway through the push, an additional 1 .0 kg was manually added to the basket (”Adding mass”), increasing its total mass to 4 .0 kg with no explicit signal to the policy. The Baseline policy (”Final step” top) continues applying force calibrated to the original 3 kg estimate; since this force is insufficient for the heavier basket, the robot fails to close the remaining distance, leaving a noticeable gap to the target marker. The adaptive policy (”Final step” bottom) instead detects the change in the basket’s response, re-estimates the mass online, and increases its pushing force accordingly, successfully driving the basket to the target despite the mid-episode disturbance. In the second experiment, we evaluated robustness to spatially varying surface friction using an environment with two regions: a low-friction concrete floor (Region 1) and a high-friction turf mat (Region 2), as shown at the bottom of Fig. 1. The robot pushed a box starting on the low-friction surface across onto the high-friction region toward the target. The Baseline policy applies force calibrated to an average friction coefficient learned during offline estimation; snapshots 2–3 show that once the box crosses onto the high-friction mat, this mismatch causes the robot to under-drive the push, stalling the box short of the target. In contrast, the 
+
+Adaptive-MHE mode infers the increased resistance from the contact dynamics and compensates by increasing the applied force, successfully driving the box to the target (snapshots 2–3). This demonstrates that the online-estimated friction parameter enables the policy to adapt its control effort in real time. VI. C ONCLUSIONS 
+
+In this paper, we presented Adaptive-MHE , a sampling-based moving horizon estimation framework for online sys-tem identification coupled with sampling-based MPC for legged loco-manipulation. To the best of our knowledge, this is the first sampling-based adaptive MPC framework for legged loco-manipulation that does not require differentiable dynamics or hand-crafted adaptation laws. Simulation and hardware experiments demonstrated accurate trajectory and speed tracking under uncertain object and terrain parameters, with performance comparable to the True mode and con-sistently better than the Baseline control mode, achieving substantially lower final goal error. These results demon-strate the potential of Adaptive-MHE for robust legged loco-manipulation in unstructured environments. REFERENCES [1] S. Khorshidi, M. Dawood, B. Nederkorn, M. Bennewitz, and M. Khadiv, “Physically-consistent parameter identification of robots in contact,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 677–683. [2] S. Martinez, S. Tonneau, and C. Mastalli, “System identification under constraints and disturbance: A bayesian estimation approach,” arXiv preprint arXiv:2602.16358 , 2026. [3] S. Jeon, M. Jung, S. Choi, B. Kim, and J. Hwangbo, “Learning whole-body manipulation for quadrupedal robot,” IEEE Robotics and Automation Letters , vol. 9, no. 1, pp. 699–706, 2023. [4] G. Pan, Q. Ben, Z. Yuan, G. Jiang, Y. Ji, S. Li, J. Pang, H. Liu, and H. Xu, “Roboduet: Learning a cooperative policy for whole-body legged loco-manipulation,” IEEE Robotics and Automation Letters ,vol. 10, no. 5, pp. 4564–4571, 2025. [5] S. Omar and M. Khadiv, “Learning to act through contact: A unified view of multi-task robot learning,” arXiv preprint arXiv:2510.03599 ,2025. [6] I. Dadiotis, M. Mittal, N. Tsagarakis, and M. Hutter, “Dynamic object goal pushing with mobile manipulators through model-free constrained reinforcement learning,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 13 363–13 369. [7] S. Ha, J. Lee, M. van de Panne, Z. Xie, W. Yu, and M. Khadiv, “Learning-based legged locomotion: State of the art and future per-spectives,” The International Journal of Robotics Research , vol. 44, no. 8, pp. 1396–1427, 2025. [8] P. M. Wensing, M. Posa, Y. Hu, A. Escande, N. Mansard, and A. Del Prete, “Optimization-based control for dynamic legged robots,”                                
+
+> IEEE Transactions on Robotics , vol. 40, pp. 43–63, 2023. [9] H. Xue, C. Pan, Z. Yi, G. Qu, and G. Shi, “Full-order sampling-based mpc for torque-level locomotion control via diffusion-style annealing,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) .IEEE, 2025, pp. 4974–4981. [10] J. Alvarez-Padilla, J. Z. Zhang, S. Kwok, J. M. Dolan, and Z. Manch-ester, “Real-time whole-body control of legged robots with model-predictive path integral control,” in 2025 IEEE International Confer-ence on Robotics and Automation (ICRA) .IEEE, 2025, pp. 14 721– 14 727. [11] H. Keshavarz, A. Ramirez-Serrano, and M. Khadiv, “Control of legged robots using model predictive optimized path integral,” in
+> 2025 IEEE-RAS 24th International Conference on Humanoid Robots (Humanoids) .IEEE, 2025, pp. 1–8. [12] V. Pacelli, A. Ratheesh, and E. A. Theodorou, “Sampling-based control via entropy-regularized optimal transport,” arXiv preprint arXiv:2605.02147 , 2026.
+
+[13] P. N. Crestaz, L. De Matteis, E. Chane-Sane, N. Mansard, and A. Del Prete, “Td-cd-mppi: Temporal-difference constraint-discounted model predictive path integral control,” IEEE Robotics and Automation Letters , vol. 11, no. 1, pp. 498–505, 2025. [14] L. Bruderm¨ uller, B. Hung, X. Zhu, J. Wang, N. Hawes, P. Culbertson, and S. Le Cleac’h, “Generative models from and for sampling-based mpc: A bootstrapped approach for adaptive contact-rich manipulation,” 
+
+IEEE Robotics and Automation Letters , 2026. [15] J. Z. Zhang, M. Sorokin, J. Br¨ udigam, B. Hung, S. Phillips, D. Yer-shov, F. Niroui, T. Zhao, L. Fermoselle, X. Zhu, C. Cao, D. Ta, T. Pang, J. Wang, P. Culbertson, Z. Manchester, and S. Le Cl´ eac’h, “Sumo: Dynamic and generalizable whole-body loco-manipulation,” 
+
+arXiv preprint arXiv:2604.08508 , 2026. [16] A. Shirwatkar, S. Sanokowski, S. Kolathaya, A. Johnson, and M. Khadiv, “Shield-loco: Shielding locomotion policies with predictive safety filtering,” arXiv preprint arXiv:2606.07193 , 2026. [17] C. G. Atkeson, C. H. An, and J. M. Hollerbach, “Estimation of inertial parameters of manipulator loads and links,” The International Journal of Robotics Research , vol. 5, no. 3, pp. 101–119, 1986. [18] P. M. Wensing, S. Kim, and J.-J. E. Slotine, “Linear matrix inequalities for physically consistent inertial parameter identification: A statistical perspective on the mass distribution,” IEEE Robotics and Automation Letters , vol. 3, no. 1, pp. 60–67, 2017. [19] T. Lee, J. Kwon, P. M. Wensing, and F. C. Park, “Robot model identification and learning: A modern perspective,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 7, 2024. [20] J. Kang, K. Ren, T. Pang, and X. Xiong, “Prime: Physically-consistent robotic inertial and motion estimation for legged and humanoid robots,” arXiv preprint arXiv:2605.17681 , 2026. [21] N. Sobanbabu, G. He, T. He, Y. Yang, and G. Shi, “Sampling-based system identification with active exploration for legged robot sim2real learning,” arXiv preprint arXiv:2505.14266 , 2025. [22] A. Ly, M. Marsman, J. Verhagen, R. P. Grasman, and E.-J. Wagen-makers, “A tutorial on fisher information,” Journal of Mathematical Psychology , vol. 80, pp. 40–55, 2017. [23] N. Hansen, “The cma evolution strategy: A tutorial,” arXiv preprint arXiv:1604.00772 , 2016. [24] D. M. Asmar, R. Senanayake, S. Manuel, and M. J. Kochenderfer, “Model predictive optimized path integral strategies,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 3182–3188. [25] T. Lee, P. M. Wensing, and F. C. Park, “Geometric robot dynamic identification: A convex programming approach,” IEEE Transactions on Robotics , vol. 36, no. 2, pp. 348–365, 2019. 
+
+APPENDIX 
+
+Here we present qualitative results to better understand where the performance gain comes from. 
+
+T1. Single-goal pushing: We begin with the simplest case, i.e., pushing an object to the goal. Figure 5 compares the three control modes for this task. On the left, both True 
+
+and Adaptive-MHE push the box to the goal successfully, while Baseline deviates substantially. On the right, True 
+
+and Adaptive-MHE track the commanded reference vx =
+
+0.2 m/s more closely than Baseline , yielding lower RMSE (Table II). These results confirm that inaccurate dynamics parameters degrade velocity tracking, and Adaptive-MHE 
+
+recovers performance close to True .
+
+T2. Circular-path pushing: Here, we verify that this per-formance holds under a continuously changing pushing di-rection. To verify that closed-loop performance holds un-der a continuously changing pushing direction, we evaluate circular-path pushing. Figure 6 compares the three control modes: True and Adaptive-MHE closely track the reference path (left), while Baseline drifts and fails to maintain the desired radius. The cost distributions (right) are consistent 0.5 1 1.5 2              
+
+> Box position x [m]
+> 00.2 0.4 0.6 0.8 1
+> Box position y [m] Box Trajectory in the Horizontal Plane
+> True Adaptive-MHE Baseline 345678910 11
+> Time [s]
+> -0.4 -0.2 00.2 0.4 0.6
+> Robot velocity v x [m/s]
+> Robot End-Effector Velocity Tracking During Push (4th-order zero-phase Butterworth, f c= 5 Hz)
+> RMSE [3,11]s [m/s] -- True: 0.134 Adaptive-MHE: 0.139 Baseline: 0.164
+> True Adaptive-MHE Baseline Desired
+
+Fig. 5: Comparison of control modes for T1. (left) box trajectory; (right) robot forward velocity tracking. with this trend: Adaptive-MHE shows a sharp peak near zero cost, indicating efficient pushes, whereas Baseline ’s broader, higher-cost distribution reflects degraded performance from the mismatched dynamics. -1 -0.5 0 0.5 1 1.5 2     
+
+> Box position x [m]
+> 00.5 11.5 2
+> Box position y [m] Box Trajectory Along the Circular Path
+> True Adaptive-MHE Baseline Reference path 00.05 0.1 0.15 0.2
+> Cost [ 10 6]
+> 020 40 60 80 100 120 140
+> Probability density Cost Distribution by Control Mode (Circular Path Task)
+> True Adaptive-MHE Baseline
+
+Fig. 6: Comparison of control modes for T2. (left) box trajectory; (right) cost density. 00.5           
+
+> |v| [m/s]  True (RMSE = 0.108 m/s)
+> Raw Filtered Desired
+> 00.2 0.4 0.6
+> |v| [m/s]  Adaptive-MHE (RMSE = 0.104 m/s)
+> 020 40 60 80
+> Time [s]
+> 00.2 0.4
+> |v| [m/s]  Baseline (RMSE = 0.119 m/s)
+> Robot Speed Tracking (4th-order zero-phase Butterworth (f c= 5 Hz))
+
+Fig. 7: Robot forward velocity tracking for T2. Figure 7 shows the robot’s speed against the desired 0.2 m/s target. True and Adaptive-MHE track the desired speed closely with lower RMSE than Baseline , confirming that even under a continuously changing pushing direction, 
+
+Adaptive-MHE matches True and consistently outperforms 
+
+Baseline .
+
+T3. Adaptation to mass variation: We next test robustness to a sudden change in the object being pushed. Figure 8 compares the three control modes when the box mass is switched from 4 to 6 kg at t = 10 s. True and Adaptive-MHE 
+
+continue tracking the reference path closely after the switch (right), while Baseline deviates noticeably, unable to account for the updated mass; the corresponding cost distributions show the same pattern. Figure 9 illustrates the underlying online adaptation: 
+
+Adaptive-MHE tracks the true mass and friction coefficient 0.5 1 1.5 2 2.5 3 3.5 Box position x [m] -1 -0.5 00.5 1Box position y [m] Box Trajectory in the Horizontal Plane True Adaptive-MHE Baseline Mass switch (4 6 kg) -0.1 0 0.1 0.2 0.3 0.4  
+
+> Cost [ 10 6]
+> 0510 15 20
+> Probability density Cost Distribution by Control Mode
+> True Adaptive-MHE Baseline
+
+Fig. 8: Comparison of control modes for T3. (left) box trajectory; (right) cost density. 5 10 15 20 25 30 35 40                
+
+> Time [s]
+> 44.5 55.5 6
+> Mass estimate [kg] Online Mass Estimate vs. True Mass
+> MHE estimate True mass
+> 010 20 30 40
+> Time [s]
+> 0.2 0.4 0.6 0.8
+> Friction estimate [-] Online Friction Estimate vs. True Friction
+> MHE estimate True friction 00.1 0.2 0.3
+> |v| [m/s]  True RMSE pre: 0.089 post: 0.093 m/s
+> 00.1 0.2 0.3
+> |v| [m/s]  Adaptive-MHE RMSE pre: 0.075 post: 0.092 m/s
+> 510 15 20
+> Time [s]
+> 00.1 0.2 0.3
+> |v| [m/s]  Baseline RMSE pre: 0.111 post: 0.117 m/s
+> Robot End-Effector Speed Tracking Across the Mass Switch (4 6 kg at t=10s, 4th-order zero-phase Butterworth (f c= 5 Hz))
+
+Fig. 9: Comparison of control modes for T3. (left) estimated parameters, (right) robot forward velocity tracking. closely, updating its estimates once the switch occurs and converging shortly after (left). Speed tracking (right) shows 
+
+True and Adaptive-MHE maintain low error immediately after the switch, while Baseline shows a substantially larger RMSE of 0 .117 m/s (Table II), reflecting its inability to adapt. These results confirm the proposed framework detects and compensates for abrupt, unmodeled changes in object properties online. 
+
+T4. Adaptation to terrain change: We next turn to a changing environment, i.e., the robot traverses a floor with an abrupt change in surface friction. As shown in Fig. 10 (left), Adaptive-MHE ’s mass estimate remains close to its true constant value ( mtrue = 4 kg) throughout the run, with only a brief transient at the switch, while the friction estimate converges toward the true post-switch value within a few seconds of crossing xb = 1.5 m. 0 10 20 30 40                 
+
+> Time [s]
+> 44.1 4.2 4.3
+> Mass estimate [kg] Online Mass Estimate vs. True Mass
+> MHE estimate True mass
+> 010 20 30 40 50
+> Time [s]
+> 0.2 0.4 0.6 0.8
+> Friction estimate [-] Online Friction Estimate vs. True Friction (SysID run)
+> MHE estimate True friction 00.2 0.4
+> |v| [m/s]  True RMSE pre: 0.093 post: 0.095 m/s
+> 00.2 0.4
+> |v| [m/s]  Adaptive-MHE RMSE pre: 0.093 post: 0.097 m/s
+> 510 15 20
+> Time [s]
+> 00.2 0.4
+> |v| [m/s]  Baseline RMSE pre: 0.091 post: 0.099 m/s
+> Robot End-Effector Speed Tracking Across the Friction Switch (0.4 0.8 at x=1.2 m, 4th-order zero-phase Butterworth (f c= 5 Hz))
+
+Fig. 10: Comparison of control modes for T4. (left) estimated parameters, (right) robot forward velocity tracking. Figure 10 (right) shows the resulting effect on closed-loop speed tracking. Since the switch triggers on box position, 
+
+True and Adaptive-MHE cross xb = 1.5 m sooner than 
+
+Baseline , which pushes more slowly; pre- and post-switch windows therefore span different absolute intervals across modes. All three achieve comparable pre-switch accuracy, with Baseline only marginally worse. Post-switch, tracking degrades modestly for all modes, with Adaptive-MHE ’s degradation mirroring the brief re-convergence transient in Fig. 10 (left), suggesting the benefit of online friction adap-tation is not strongly separable from the fixed-parameter controller at the level of closed-loop velocity tracking alone, even though the underlying friction estimate is substantially more accurate under Adaptive-MHE .
+
+T5. Pushing a box with one leg: Finally, we test the framework beyond whole-body pushing by having the robot manipulate the box with a single leg (Fig. 3.e). Figure 11 compares the final box configuration for a 0 .5 m lateral push: Adaptive-MHE achieves a final box error of 0 .28 m, closely approaching True (0 .12 m), while Baseline incurs a substantially larger error of 0 .42 m. Also, Fig. 12 shows 
+
+True and Adaptive-MHE closely track the zero-velocity reference (RMSE 0 .051 and 0 .052 m/s), while Baseline 
+
+shows a markedly higher RMSE of 0 .149 m/s. These re-sults demonstrate that single-leg pushing, paired with online adaptation, achieves accurate object displacement despite the added complexity of using a locomotion limb as a temporary manipulator. a)  True  b)  Adaptive-MHE (ours)  c)  Baseline  
+
+> Box error: 0.12 m Box error: 0.28 m
+> Box error: 0.42 m
+
+Fig. 11: Final configuration of the robot and box after completing T5. 3 4 5 6 7 8 9 10 11 
+
+Time [s] 
+
+-0.8 -0.6 -0.4 -0.2 00.2 0.4 
+
+> Robot velocity v x [m/s]
+
+Robot End-Effector Velocity Tracking During Push (4th-order zero-phase Butterworth, f c = 5 Hz) 
+
+True Adaptive-MHE Baseline Desired 
+
+RMSE [m/s] -- True: 0.051 Adaptive-MHE: 0.052 Baseline: 0.149 
+
+Fig. 12: Robot speed tracking for T5.

@@ -1,0 +1,530 @@
+Title: LEAP: Learning Emergent Active Perception for Quadruped Navigation
+
+URL Source: https://arxiv.org/pdf/2609.17628v1
+
+Published Time: Thu, 17 Sep 2026 00:07:26 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# LEAP: Learning Emergent Active Perception for Quadruped Navigation 
+
+Bora G¨ okbakan 1, St´ ephane Caron 2, and Philippe Sou` eres 3
+
+Abstract — Active perception allows autonomous agents to select their viewpoints rather than passively process the view-points given to them, enabling them to target where to reduce uncertainty about their environment. Learned systems typically encourage this behavior with hand-designed proxy objectives, such as coverage or curiosity bonuses, that may conflict with the task. In this work, we propose a method to learn emergent 
+
+active perception (LEAP) without augmentation of the task objective. We formulate the problem of goal-oriented navigation over hazardous terrains with goals that must be discovered visually. We then propose an architecture for navigation policies with active perception, and train them on a terrain curriculum where task pressure alone leads to the emergence of gaze control. Key to this emergence, LEAP works on a gaze-invariant representation that integrates depth images into egocentric belief maps. We validate its performance in held-out evaluation scenarios, where it achieves a 92 .7% success rate, compared to 74 .2% for scripted or 34 .5% for passive perception, and comes within 4.6 points of a privileged oracle. We validate that LEAP navigation policies, unchanged, can be directly applied to steering quadrupedal locomotion policies in physics simulation. 
+
+I. I NTRODUCTION 
+
+Learned locomotion has enabled legged robots to perform agile movements and traverse obstacle courses, but most of its perception so far remains passive, with body-fixed cameras that undergo body movements without contributing to control decisions. This suffices where upcoming decisions enter the forward view successively [1], [2], but there are more general situations where an agent will need to decide where to look before deciding where to go. Goal-oriented navigation on hazardous terrain (Fig. 1) is such a setting. The features that determine the feasibility of a route may be located below, beside, or behind the robot. A robot with a single limited-field-of-view sensor must then choose where to look. A glance that uncovers a hidden pit redirects the route; a glance at an already seen surface changes nothing. The value of a gaze is thus the improvement in expected return it enables. This value of information [3] is unobservable at decision time, so learned active-perception systems typically replace it with a hand-designed proxy: a curiosity bonus [4], a coverage objective [5], or a reconstruction loss [6]. The proxy is set independently of the task, so the two can disagree: an agent rewarded for coverage keeps scanning parts of the environment that are not relevant to the task; a robot with a direct line to the goal need not look behind. This         
+
+> *This work was supported by the PEPR O2R AS2 (No. ANR-22-EXOD-0006) through France 2030. 1Inria and DI ENS, PSL , Paris, France,
+> 2Institute for Intelligent Systems and Robotics, CNRS and Sorbonne Uni-versity , Paris, France, 3LAAS-CNRS and University of Toulouse , Toulouse, France.
+
+raises the question of whether a separate sensing objective is needed at all. This paper proposes a framework for learning emergent active perception ( LEAP ), which removes the de-signed sensing objective altogether: a single policy controls both the body twist and the camera orientation, and with no sensing reward term, the return depends only on progress toward the goal. On the training terrains, a level forward gaze cannot resolve the hazards, and the goal must be discovered visually; an adaptive curriculum over spawn locations scales the difficulty as the policy improves. Under this pressure, gaze control emerges from the task reward alone. In summary, the contributions are:  
+
+> •
+
+a Partially Observable Markov Decision Process (POMDP) formulation of goal-oriented navigation un-der active perception with no sensing reward, where gaze emerges from task pressure alone;  
+
+> •
+
+a gaze-invariant belief representation, where a cell is encoded identically whichever viewpoint observed it, so gaze exploration is not punished by a calibration error; a batched heightmap ray-caster renders depth at on-policy training scale;  
+
+> •
+
+evidence that the emergent gaze is task-driven: 92 .7% 
+
+held-out success over five terrain families, within 4.6
+
+points of a ground-truth oracle that, given the maps outright, never learns camera control. The navigation policies trained with LEAP transfer to a full-body quadruped in physics simulation over held-out terrains, steering an independently trained locomotion policy. II. R ELATED WORK 
+
+A. Active Perception 
+
+Most robot perception in learned locomotion is passive: the sensor position is fixed at design time, and percep-tion is the problem of extracting the most from the input stream the placement yields. Active perception instead treats sensing as a control surface: where to point the sensor becomes a decision variable, made online, conditioned on the task [7], [8]. Learned implementations often make the sensing objective an explicit target: information gain mo-tivates viewpoint selection in active SLAM [9], intrinsic curiosity bonuses reward novelty during training [4], and look-around policies are trained on coverage [5] or scene reconstruction objectives [6], [10]. Nevertheless, these sur-rogate terms can misprice the actual value of information: in tabletop manipulation, camera control learned from the task reward alone outperformed the same system trained with an added visibility bonus [11], and for a quadrotor learning goal-directed flight with an actuated camera, a voxel-based arXiv:2609.17628v1 [cs.RO] 15 Sep 2026 123          
+
+> Fig. 1. Goal-oriented navigation on hazardous terrain. The Go2 quadruped must reach a goal whose location is not given, on a procedurally generated terrain, where the features that determine the route (a decoy crossing with a pit and a traversable bridge) are only visible from certain viewpoints. LEAP
+> commands both the body and the camera, trained with no sensing reward. 1At spawn, nothing is mapped: the robot must survey the surroundings before committing towards the platform; 2the route choice hinges on which crossing is traversable: the robot must localize the hazard or rule it out before committing; 3the robot must stay clear of the final pit on the way to the goal. The rollout shown is the full-body sim2sim transfer on the bridges
+> terrain.
+
+information-gain bonus added map coverage but no goal-reaching success [12]. LEAP takes the opposite position on the objective design: no reward term refers to the camera. Gaze control is learned only to the extent that it improves the task ( i.e. , navigation) return, so the information is priced by the task itself rather than approximated by a hand-designed heuristic. Closest to this position, [13] also learns camera control without a hand-designed sensing objective: a mechanical eyeball trained with RL is rewarded for views that help the manipulation policy it feeds imitate the demon-strations, and gaze behavior emerges from the coupling. LEAP differs in the task and in the coupling: goal-oriented navigation rather than tabletop manipulation, and a single policy commanding body and camera rather than separate perception (RL) and manipulation (imitation) learners. 
+
+B. Visual Legged Locomotion 
+
+Advances in learning-based locomotion have allowed quadruped robots to traverse increasingly challenging ter-rains in recent years, progressing from blind locomotion on flat terrain [14], [15] to hiking on rough terrain, first blind [16], then with height scans sampled from elevation maps [17], and ultimately to parkour over obstacle courses with egocentric depth from body-fixed cameras alone [1], [2] or combined with LiDAR [18]. Sensing across this line of work remains passive: the sensors are body-fixed, and even the obstacle courses are linear, the terrain unrolling in front of the agent as it progresses. A forward-facing camera is sufficient to perceive the terrain ahead of the robot. LEAP drops this assumption: hazards often lie outside the body-fixed frustum in non-linear layouts, and viewpoint selection becomes a controller decision, with the same return steering both the body and the camera. 
+
+C. Viewpoint Calibration and Belief Maps 
+
+Reinforcement learning directly from pixels is known to be sample-inefficient, and a sizable body of work facilitates it through the visual representation: contrastive auxiliary objectives [19] and image augmentation [20] regularize the encoder against random crops and jitter. These augmenta-tions are orthogonal to policy-driven viewpoint selection: a gaze change produces different content, and is not amere perturbation of the percept. Encoder and policy are both calibrated to whatever viewpoint distribution the fixed sensor configuration produces. Active perception breaks that premise and closes a feedback loop: a novel viewpoint, however informative, falls outside the calibration, the return drops, and the viewpoint distribution never shifts. Moving the sensor hurts before it helps . LEAP sidesteps the loop by construction: no learned encoder sits between the camera pose and the representation. Depth images are back-projected by fixed camera geometry into an egocentric bird’s-eye-view belief map, a representation common in vision-based driving [21]. The resulting representation is gaze-invariant: a new gaze changes which cells are observed, but not how 
+
+observations are encoded. The map doubles as the policy’s memory: instead of a recurrent state, the belief map persists what the gaze has observed. The belief map inherits from robotic elevation mapping, where range measurements are fused into height maps: [22] models the height uncertainty explicitly, and [17] couples such maps to locomotion, both under passive sensing. LEAP’s map differs in how it is filled: the memory’s contents are a policy decision. III. P ROBLEM STATEMENT 
+
+In hazardous-terrain goal-oriented navigation, an agent spawns on terrain it has not seen before and must reach a goal whose location is not given. The features that decide the route (crossings, pits, dead ends) and the goal marker itself are visible only from the right viewpoints. The agent carries a single limited-field-of-view sensor whose orientation it controls. The problem is posed at the navigation level: the body is abstracted as a planar twist on the terrain surface, and the realization of the commanded twist by a legged platform is treated separately (Sec. IV-E). Formally, the navigation task is treated as a POMDP M =
+
+⟨S , A, T , O, R, γ ⟩ where:  
+
+> •
+
+S is the state space, where st = (qt, ηt, xgoal , m )
+
+collects the base pose qt ∈ SE(3) , the sensor configura-tion (limited to its mechanical range), the goal position 
+
+xgoal ∈ R3, and the terrain m, fixed per episode. The Fig. 2. Normalized cost-to-go ϕ/ϕ (x∗               
+
+> 0)over an islands instance: the spawn and goal platforms are each ringed by a fatal moat crossed only by narrow crossings. The trace ( ) is the gradient descent on ϕfrom the hardest spawn x∗
+> 0() to the goal xgoal (); its nodes are the reverse-curriculum spawns. Black cores are the true obstacles; the lighter zone is the agent-radius dilation that the agent’s center must avoid.
+
+height is bound to the terrain surface, here a heightfield 
+
+h: zt = h(xt, y t) and roll/pitch align with the terrain normal, leaving position and yaw (xt, y t, ψ t) as the controllable degrees of freedom.  
+
+> •
+
+A is the action space, where at = ( abody  
+
+> t
+
+, acam  
+
+> t
+
+) pairs a planar body twist with the sensor’s commanded velocity.  
+
+> •
+
+T is the transition function: both actions are integrated under randomized actuation dynamics, accounting for the legged platform’s imperfect tracking.  
+
+> •
+
+O is the observation space: an exteroceptive mea-surement taken at the current sensor configuration ηt,together with the robot state; the observation never includes xgoal . The goal is observed only when the sensor points at it, so the agent must discover the goal, and perception is active: through acam  
+
+> t
+
+, the agent controls what it sees.  
+
+> •
+
+R : S × A × S → R is the reward function. Sensing actions carry no direct reward: the reward depends only on the body position, never on ηt or acam  
+
+> t
+
+. 
+
+> •
+
+γ ∈ [0 , 1) is the discount factor. Perception is instantiated with a depth camera on a pan-tilt mount: ηt ∈ R2 are the pan-tilt angles, acam  
+
+> t
+
+∈ R2
+
+their commanded velocities, and the measurement is a depth image stacked with a binary channel encoding the goal. The formalism, however, applies to any agent-controlled sensor. 
+
+A. Cost-to-Go on Anisotropic Terrain 
+
+Progress toward the goal is measured by a cost-to-go ϕ(x):the cost of the cheapest path from the planar position x to the goal under a terrain-aware running cost, defined below. On flat ground far from hazards, ϕ reduces to the Euclidean distance to the goal. The cost-to-go is defined only over the geometrically feasible region, delimited by two constraints: (i) a maximum traversable height variation ∆hmax = 0.4 m, the robot’s standing body height, rules out both fall-height drops and unclimbable steps; (ii) the agent has a finite body width, disqualifying passages narrower than the body (Fig. 2). Infeasible states receive ϕ = + ∞.Over the feasible region, the directional traversal cost combines a slope term and a clearance term: 
+
+c(x, ˆd) = 1+ wh
+
+ ∇h(x)· ˆd2 +wc max  0, δ −dc(x)2, (1) where ∇h(x) is the terrain slope at x and ˆd the direction of travel ( wh = 0 .5), dc(x) is the clearance to the infeasible region, and δ = 0 .575 m is the cut-off distance. wc = 10 
+
+discourages hugging the boundary of the infeasible region. Under the running cost c, ϕ satisfies the Bellman optimal-ity condition 
+
+min 
+
+> ˆd∈S1
+
+c(x, ˆd) + ∇ϕ(x) · ˆd = 0 , ϕ(xgoal  
+
+> xy
+
+) = 0 . (2) 
+
+B. Reward 
+
+The reward is organized around the cost-to-go: ϕ supplies both the dense progress signal and the success criterion, and is complemented by a fall penalty and a constant time cost. The cost-to-go itself is computed from the ground-truth terrain and goal; the actor never observes it. The timestep reward 
+
+rt = rprogress  
+
+> t
+
++ rsuccess  
+
+> t
+
+− rfall  
+
+> t
+
+− cτ (3) combines dense progress shaping rprogress  
+
+> t
+
+, defined below, with a sparse success bonus rsuccess  
+
+> t
+
+= 1[ϕ(xt) < r goal ],awarded when the cost-to-go drops below rgoal = 0 .5 m, a fall penalty rfall  
+
+> t
+
+= cf 1[fall t] with cf = 2 .5, and a constant time cost cτ = 0 .002 .1 Success is measured geodesically rather than by planar distance, so a position behind an obstacle near the goal does not count as reaching it. A fall is a step across a drop exceeding ∆hmax ; a rise exceeding it blocks the motion instead, acting as a wall. 2 Reaching the goal, falling, timing out, and leaving the terrain boundaries all terminate the episode. The shaping term rprogress  
+
+> t
+
+=  ϕ(xt−1) − ϕ(xt)/ϕ (x∗
+
+> 0
+
+),normalized by the cost-to-go at the nominal spawn x∗ 
+
+> 0
+
+(the terrain’s designated start position; the actual spawn x0 lies on the route from x∗ 
+
+> 0
+
+to the goal xgoal  
+
+> xy
+
+), is potential-based reward shaping (cf. [23]): over any trajectory it telescopes to 
+
+ϕ(x∗
+
+> 0
+
+)−1
+
+> T
+
+X
+
+> t=1
+
+ ϕ(xt−1) − ϕ(xt) = ϕ(x0) − ϕ(xT )
+
+ϕ(x∗
+
+> 0
+
+) , (4) independent of the path taken; since ϕ(x0) ≤ ϕ(x∗
+
+> 0
+
+), a successful episode’s cumulative progress reward is bounded by 1. The telescoping has an important consequence for active perception: a probe-and-return detour nets exactly zero progress reward, and its only cost is the time it takes, through the discount γ and cτ . The reward is therefore orthogonal to exploration: gaze earns nothing directly, and is rewarded only through the progress it enables toward the goal.         
+
+> 1Ablations showed that neither cτnor rsuccess
+> tmeasurably affects the learned policy; both are retained as trained.
+> 2Since the fall position has ϕ= + ∞, the shaping term is zeroed on that step: a fall is penalized by rfall alone.
+
+islands crests pillars bridges decoys         
+
+> Fig. 3. Training environments. One unseen instance of each procedural terrain type, with 25 LEAP rollouts (5 per tile); 24 reach the goal xgoal (), marks the single fall ( crests ), the spawn location.
+
+IV. M ETHOD 
+
+The navigation policy πnav is trained in a custom GPU-parallel environment: procedurally generated hazardous ter-rains whose heightmaps and precomputed cost-to-go maps supply the reward. The observation pairs egocentric belief maps with the robot state, the action a unicycle twist with pan-tilt velocities; the policy is a Transformer encoder whose attention mask realizes an asymmetric actor-critic within a single network. The commanded twist is executed on the quadruped by a separate locomotion policy πloco .
+
+A. Terrain and Cost-to-Go Map a) Terrains: Figure 3 shows the five procedural families that are designed such that the hazards are not resolvable from a level, forward gaze. islands comprises elevated platforms and moat-ringed level platforms sampled around the spawn and goal, the moats crossable only via narrow bridges. crests is a slope whose three stages are connected by two depressed bridges, visible only up close. pillars 
+
+is a dense field of pillars with traversable and dead-end alleys, making the crossing a search problem. bridges 
+
+joins two decks by two bridges — one traversable, one a decoy whose pit is occluded until the agent draws near. 
+
+decoys spawns the agent on a center platform flanked by two outer platforms, each reachable by three short bridges of which exactly one is clear; the goal’s side is randomized, so gaze must resolve both the side and the viable bridge. All tiles measure 16 ×10 m, additionally receive height jitter and random pit injection, and are discretized as heightmaps at 0.025 m resolution. 
+
+b) Geometric feasibility: The two feasibility constraints from Section III are realized on the grid as follows: (i) cells where the local height range hmax (x) − hmin (x) over a one-cell neighborhood exceeds ∆hmax are marked untraversable; (ii) the agent is simulated as a point at its body center, and the untraversable mask is morphologically dilated by the footprint radius ( 0.15 m), sealing any passage narrower than the body width. The resulting feasible region is visible in Fig. 2. 
+
+B. Observation Space 
+
+At each step the agent receives a depth image from a body-mounted camera with controllable pan-tilt orientation ηt and fixed intrinsics modeling a RealSense D435. 3 Each image is integrated into two egocentric belief maps, a fine short-range map and a coarse long-range map (detailed below), which the policy observes together with the robot state. The maps are yaw-aligned : each is a horizontal grid centered on the agent and rotated about the vertical axis to track the body heading; body pitch and roll do not tilt the map plane. Each cell exposes five channels (ˆ μ, ˆσ, n c, n g , n v ): the mean and standard deviation of the surface height relative to the agent’s foot level (in meters), a ray-hit count nc (the count of rays that update the cell), a goal-hit count ng (incremented by camera rays that intersect the goal marker: a floating sphere of 0.5 m radius at a randomized height), and a visitation trail nv (tracing the agent’s movement). Each depth image is transformed into a point cloud, and each point is accumulated into its cell’s running height mean and variance. The goal location enters the observation only through ng . Concretely, the observation includes:  
+
+> •
+
+a fine belief map BM fine at 0.1 m resolution ( R5×32 ×32 ,covering 3.2×3.2 m around the agent);  
+
+> •
+
+a coarse belief map BM coarse at 0.6 m resolution (R5×32 ×32 , covering 19 .2×19 .2 m);  
+
+> •
+
+the robot state ( R33 ): 
+
+srob  
+
+> t
+
+=  at−1, v t, ˙ψt, . . . , at−4, v t−3, ˙ψt−3,
+
+ˆd cam  
+
+> t
+
+, ˙ηt, z t, ˆgt
+
+,
+
+a four-step window pairing each past raw action aτ (4) with the forward speed vτ +1 and yaw rate ˙ψτ +1 it pro-duced (making the per-episode actuation randomization identifiable), plus the body-frame camera direction ˆd cam 
+
+(3), the actual pan-tilt velocity ˙η (2), body height z (1), and body-frame gravity ˆg (3). Each cell’s exposed height estimate is a posterior under a weak Gaussian prior of flat ground at foot level ( σ0 = 1 m); an unobserved cell therefore reads (0 , 1.0 m , 0, 0, 0) . Before each update, the evidence is decayed by a scale-dependent factor ( αfine = 0 .93 , αcoarse = 0 .99 ), eroding nc toward zero and relaxing stale cells back toward the prior; one                  
+
+> 3200 ×116 px, 87 ◦×58 ◦FOV, 10 m depth clip, zero-mean Gaussian range noise with σ= 0 .004 z2, mounted 0.3m ahead and 0.4m above the body center with gimbal limits of ±85 ◦pan, ±60 ◦tilt. Fig. 4. Policy architecture. The sparse attention mask allows a unified actor-critic network where privileged information is withheld from the actor.
+
+step of isotropic diffusion ( λ = 0 .01 ) then propagates the uncertainty spatially. 
+
+C. Action 
+
+At each timestep the navigation policy emits at =(abody  
+
+> t
+
+, acam  
+
+> t
+
+): a planar body twist and the pan-tilt velocities. The twist is restricted to a unicycle ( vy ≡ 0), leaving the forward speed ( v ∈ [−0.3, 1.5] m/s) and the yaw rate (| ˙ψ| ≤ 1.5 rad/s), so the effective action space is at ∈ R4.The unicycle model ties the body heading to the direction of travel, making active camera control the only way to look away from the heading. The commanded twist is smoothed by an exponential moving average on the body channels and integrated at 10 Hz. The pan-tilt velocities ( ≤ 0.9 rad/s per axis) are integrated and clipped to the gimbal limits. 
+
+D. Navigation Policy Architecture 
+
+The navigation policy πnav maps the observation to the action at ∈ R4 via a Transformer encoder [24] over a sequence of 66 spatial and task tokens, following the Vision Transformer (ViT) patch tokenization scheme [25]. The architecture comprises three stages (Fig. 4): tokenization of the maps and the robot state, a masked encoder shared by actor and critic, and linear decode heads. 
+
+a) Tokenization: Each fine and coarse belief map is tokenized by a non-overlapping 8×8 convolutional projection into 16 patches, yielding 32 belief-map tokens in total. For each scale, a privileged two-channel ground-truth (GT) map at the same resolution and coverage as the corresponding belief map, encoding relative height around the agent and a binary goal-occupancy mask, is tokenized identically dur-ing training, adding another 32 tokens. Learned positional embeddings are added to each patch token, while separate projection weights implicitly encode map type without ded-icated embeddings. Two special tokens prepend the sequence. [CLS] is a linear projection of the robot state srob  
+
+> t
+
+that the policy reads from. [CRITIC] is a linear projection of the privileged terrain vector ( R110 ): terrain type ( 5) and instance one-hots (100 ), the spawn-difficulty di (1), the normalized ϕ at xt (1), and the goal position in the yaw-aligned body frame (3). 4
+
+b) Transformer encoder: A 3-layer Transformer en-coder processes the token sequence. A single forward pass serves both actor and critic: attention masking enforces the asymmetric actor-critic [26] split within the shared encoder. 
+
+[CLS] and the belief-map patches are blocked from at-tending to [CRITIC] and to any GT token, ensuring the actor receives no privileged information through any direct or multi-hop path. [CRITIC] is unmasked and attends to the full sequence, giving the value function access to terrain identity. 
+
+c) Decode: The actor reads the [CLS] output through a linear head, emitting the mean of a diagonal Gaussian over at. The log-standard-deviation is a learned vector inde-pendent of the observation. The critic reads the [CRITIC] 
+
+output through a separate linear value head. 
+
+E. Locomotion Policy 
+
+The locomotion policy πloco emits joint-position targets at 50 Hz for the Unitree Go2 quadruped, conditioned on the base state (linear and angular velocity, projected gravity), joint positions and velocities, the previous action, the planar twist command (randomly sampled during training, supplied at 10 Hz by πnav at deployment), and a local height scan. The training terrains carry the same hazards as the navigation level (pits, planks, steps), and gait-shaping rewards are added to favor a trotting gait with sufficient foot clearance and stride length. The critic observes a rectangular 136-ray height scan ( 1.6×0.7 m at 0.1 m resolution); the actor only a 19-dimensional T-shaped reduction: a forward strip along the commanded path and a lateral bar under the base, the bar guarding against lateral drift over bridge edges. The T-shape confines πloco to terrain compliance along the unicycle corridor, leaving hazard avoidance to πnav : in development runs where the actor observed the full scan, πloco became overly conservative, slowing or refusing twist commands near pits and cliff edges that πnav had already accounted for. During training, the scan is rendered from GT terrain; at test time it is sampled from BM fine . Unobserved cells fall back to the lowest observed height in the scan (a pessimistic prior), and the scan reads ground-truth heights for cells within 1 m of the spawn point, covering the camera’s under-body blind spot; the navigation policy’s belief is never given ground truth. 
+
+F. Training and Implementation 
+
+πnav is trained with Proximal Policy Optimization (PPO) [27] for 900 M steps 5 (≈ 20 h on an NVIDIA A100       
+
+> 4At deployment GT and [CRITIC] tokens are zero-filled and filtered out by the attention mask.
+> 5400 M for GT as it converges earlier (Sec. V). passive sweep active GT
+> 0.000 0.005 0.010 0.015
+> share of gaze time
+> 010 20 30
+> episode time (s)
+
+Passive Sweep Active GT         
+
+> Fig. 5. Gaze allocation. Camera direction distribution per variant (blue; 10 000 held-out episodes each, normalized to unit mass). The overlaid trace is a single episode on a shared pillars tile with the same initial spawn pose and neutral gaze (0 ,0) , colored by time. Passive never moves; Sweep follows its pre-programmed trajectory; Active ( LEAP ) concentrates gaze forward and down, along the direction of travel of the agent; GT drifts into the corner and stops: with free information, looking just atrophies. TABLE I TRAINING HYPERPARAMETERS .
+
+Parallel envs 4096 Discount γ 0.99 
+
+Rollout length 64 GAE λ 0.95 
+
+Minibatches 64 Optimizer Adam Update epochs 4 Value coef. cv 0.5
+
+Control step dt 0.1 s Grad-norm clip 0.2
+
+Episode budget 40 –150 s Curriculum step ±0.05 
+
+Learning rate 5×10 −4 → 0 (lin.) Clip ϵ 0.2
+
+Entropy coef. ce 0.01 → − 0.005 
+
+GPU). Each episode spawns the agent at the curriculum-bound position x0 with heading ψ0 sampled uniformly, and samples randomized actuation bounds: the maximum forward speed and yaw rate are scaled by independent factors uniform in [0 .5, 1] , and the EMA smoothing coefficient α
+
+on the body action is drawn from U[0 .15 , 0.45] : surrogates for the gain and tracking lag of the locomotion stage. The entropy coefficient is annealed from a positive (exploratory) value to a small negative one, shifting the policy from exploration toward a near-deterministic controller late in training. Advantages are estimated with Generalized Advan-tage Estimation (GAE) [28]. Remaining hyperparameters are listed in Table I. 
+
+a) Spawn-distance Curriculum: Each terrain tile carries a waypoint chain, traced from its nominal starting point x∗
+
+> 0
+
+to the goal via gradient descent on ϕ. Each environment i
+
+maintains a difficulty scalar di that places the agent’s spawn location x0 along this chain: di = 1 spawns at x∗ 
+
+> 0
+
+itself, di ≈
+
+0 near the goal. After each terminating episode, di is updated independently per environment: it increases on success and decreases on a struggling failure — a fall or a timeout with-out sufficient progress ( i.e. , ϕ(xT ) > 0.5 ϕ(x0)). The episode time budget scales likewise with the spawn’s cost-to-go, from 
+
+40 s near the goal to 150 s at the farthest nominal spawn. 
+
+b) Cost-to-go solver: ϕ is solved on the heightmap grid by Jacobi iteration with a Godunov upwind scheme, implemented on the GPU with a custom Taichi kernel [29]. 
+
+c) Depth rendering at scale: Each pixel of the depth image is ray-traced through the heightmap with a 2D Digital Differential Analyzer (DDA) [30], accelerated by two precomputed skip maps: a coarse max-pooled height grid for broadphase leaps above terrain, and an L2 distance transform of occupancy that lets a ray leap the full distance to the nearest geometry. Both accelerations are conservative, so the output depth is exact on the discrete heightmap. Implemented as a Taichi [29] kernel batched across all parallel environments, the renderer completes a full depth pass for 4096 environments (200 ×116 rays each) on aconsumer GPU (RTX 4070 Ti Super) at 11 .5 ± 3.0× the throughput of the general-purpose IsaacLab ray-caster [31] on identical scenes (mean ±std over the five terrain families). Substituted for the depth camera in the training pipeline of [1], with the camera model and training configuration unchanged, it yields a 2.2× end-to-end wall-clock speed-up: enabling training over thousands of on-policy environments with depth. The 2.5D heightmap precludes overhangs (none appear in training, as in [1]), and the renderer does not model self-occlusion by the robot body. V. E XPERIMENTS 
+
+The experiments address three questions: (i) does learned gaze control improve goal-reaching over passive and scripted camera sweeps (Sec. V-B); (ii) what gaze strategy emerges, and where blindness or indiscriminate scanning costs the alternatives (Sec. V-C); (iii) does the policy transfer to a full-body quadruped in a robotics simulator with contacts (Sec. V-D)? Four camera-control variants are compared, defined in Table II: Passive , Sweep ,6 Active (LEAP ), and a privileged GT oracle, an upper bound rather than a baseline. 
+
+A. Protocol 
+
+All four variants share the same architecture and obser-vation space; Passive, Sweep, and Active also share the training budget, while GT converges within a shorter one (Sec. IV-F). Passive, Sweep, and Active differ only in the camera control; the GT variant differs from Active only in the attention mask, which additionally allows [CLS] and the 
+
+BM tokens to attend to the GT tokens: architecturally, GT is a superset of Active. With no difference in learning capacity, the gap between the two isolates the cost of having to acquire 
+
+(partial) information. Each variant is trained with five random seeds. Evaluation uses held-out terrain: for each seed, 4
+
+randomized episodes on each of 100 unseen layouts per terrain type ( 2,000 episodes per terrain–variant pair), with the agent spawned at the far end of the waypoint chain ( d = 1 ).           
+
+> 6Sinusoidal sweeps: pan ±85 ◦(12 s period); tilt [−60 ◦,0◦](≈7.4s). The periods are incommensurate and phases randomized per episode, so the pattern never repeats. Peak angular speed limited to the same 0.9rad/s as Active.
+
+TABLE II 
+
+GOAL -REACH SUCCESS (%). MEAN ±STD OVER 5 SEEDS ; PER SEED , 4 RANDOMIZED EPISODES ON EACH OF 100 UNSEEN LAYOUTS PER TERRAIN TYPE . C AMERA -CONTROL VARIANTS : P ASSIVE (FIXED LEVEL GAZE ), S WEEP (PRE -PROGRAMMED SCANNING ), A CTIVE (LEARNED GAZE ; LEAP ),  
+
+> AND
+
+GT ( ORACLE WITH GROUND -TRUTH MAPS ). BOLD : BEST NON -ORACLE SUCCESS RATE PER TERRAIN .
+
+islands crests pillars bridges decoys mean 
+
+Passive 5.8 ± 1.4 2.5 ± 1.9 97 .7 ± 1.2 36 .6 ± 2.8 29 .9 ± 5.0 34 .5 ± 1.6
+
+Sweep 68 .4 ± 3.3 79 .1 ± 2.2 75 .0 ± 16 .6 85 .6 ± 2.0 62 .6 ± 1.9 74 .2 ± 3.3
+
+Active ( LEAP ) 86 .5 ± 3.4 93 .8 ± 1.0 98 .8 ± 1.2 94 .9 ± 1.8 89 .5 ± 1.7 92 .7 ± 0.5
+
+GT 94 .9 ± 0.8 98 .3 ± 1.1 99 .5 ± 0.3 98 .5 ± 0.9 95 .3 ± 1.1 97 .3 ± 0.3
+
+TABLE III 
+
+FULL -BODY TRANSFER (M UJOCO). HELD -OUT SUCCESS (%, 
+
+> MEAN
+
+±STD OVER 5 SEEDS ); IN PARENTHESES , MEDIAN TIME TO GOAL 
+
+(S) OVER SUCCESSFUL EPISODES , AVERAGED OVER SEEDS . BOLD : BEST NON -ORACLE SUCCESS RATE PER TERRAIN .
+
+Passive Sweep Active ( LEAP ) GT 
+
+islands 18 ± 6
+
+> (14 .8)
+
+88 ± 5
+
+> (33 .9)
+
+97 ± 2
+
+> (16 .2)
+
+91 ± 4
+
+> (12 .6)
+
+crests 16 ± 15 
+
+> (15 .3)
+
+90 ± 1
+
+> (23 .6)
+
+90 ± 10 
+
+> (16 .1)
+
+98 ± 0
+
+> (11 .7)
+
+pillars 79 ± 9
+
+> (54 .0)
+
+62 ± 12 
+
+> (106 .4)
+
+88 ± 15 
+
+> (33 .3)
+
+86 ± 7
+
+> (30 .2)
+
+bridges 43 ± 5
+
+> (12 .1)
+
+80 ± 6
+
+> (21 .0)
+
+97 ± 3
+
+> (13 .3)
+
+99 ± 3
+
+> (10 .7)
+
+decoys 36 ± 7
+
+> (10 .6)
+
+76 ± 2
+
+> (22 .0)
+
+87 ± 6
+
+> (12 .1)
+
+96 ± 3
+
+> (13 .2)
+
+mean 38 ± 5 79 ± 2 92 ± 6 94 ± 2
+
+B. Goal-Reaching on Held-Out Terrain 
+
+Table II reports success on 100 unseen layouts. Learned gaze control outperforms the non-privileged variants: Active reaches 92 .7% mean success against 74 .2% for Sweep and 
+
+34 .5% for Passive, and comes within 4.6 points of the GT oracle. Active sensing recovers most of the task-relevant information a fully observable GT map provides. The passive ablation exposes how terrain-dependent the value of gaze control is. On pillars , where the obstacles rise into a level forward view and the body-fixed camera pans with every turn, Passive matches Active ( 97 .7% vs. 98 .8% ). Passive collapses on crests and islands : the crossings that make these terrains traversable lie below a level gaze, and an agent that cannot look down cannot find them. The sweep ablation isolates the coverage factor. Sweep recovers much of what Passive misses, but lacks Active’s 
+
+timing : looking at the bridge at the moment of crossing, or down at the ground while advancing over pits. In these scenarios, the “forgetting” of the belief maps (half-life of 
+
+≈ 1 s for BM fine ) outpaces the indiscriminate gaze. A gaze schedule that ignores the search state wastes its time budget scanning task-irrelevant areas of the scene. One striking case is pillars , where sweeping degrades performance even below Passive ( 75 .0 vs. 97 .7): Sweep pulls the gaze off the forward obstacles that a level view already resolves. 
+
+a) Robustness to spawn distance: Fig. 6 plots success as a function of spawn distance d. Active overtakes Sweep beyond d ≈ 0.35 and degrades more slowly. Active’s weak-ness at small d is a goal-discovery artifact rather than a 0.2 0.4 0.6 0.8 1.0 
+
+> spawn distance (fraction of path)
+> 0.4 0.6 0.8 1.0
+> held-out success
+> Active (LEAP) Sweep GT Passive
+
+Fig. 6. Robustness to spawn distance. Held-out terrain success versus spawn distance d: the fraction of the waypoint chain at which the agent spawns, equal to the difficulty scalar. 
+
+navigation failure: training spawns lie far from the goal, so the policy learns to survey the terrain at episode start, and a near-goal spawn with a randomized goal-marker height demands a steeply upward gaze it rarely practices. Indeed, the fall rate at d=0 .1 matches that at d=1 (6.8% vs. 6.9% ), and the entire success gap is accounted for by the increased timeouts despite the goal proximity ( 7.7% vs. 0.3% ). 
+
+C. Emergent Gaze Strategies 
+
+A belief-conditioned gaze emerges only when the policy must rely on it. Fig. 5 aggregates dwell-time statistics collected over 10 ,000 episodes per variant, complemented with a traced instance of the camera trajectory. Active allocates the gaze asymmetrically: most of the time mass remains under the horizon with a forward pan, consistent with the agent’s predominantly forward motion. The bulk of the camera movement is attributable to goal and terrain surveying. Sweep’s gaze heatmap is symmetrical and broad: it is conditioned on neither the scene nor the completeness of the belief maps. Passive has a locked gaze: its successes concentrate on pillars , where the obstacles are visible at eye level and a fixed viewpoint suffices (Sec. V-B). The GT variant is supporting evidence that the emergent 
+
+active gaze is task-driven rather than a random-saccade artifact of the action space. GT shares the same camera control as Active, yet the gaze drifts and snaps to the gimbal-limit corner. Given privileged maps, the gaze becomes vestigial . Camera control provides no utility and remains “lazy”; it is learned when and because the policy relies on the belief it feeds. 
+
+D. Full-Body Sim2Sim Transfer 
+
+The planar training environment randomizes the actuation, and the body normal tracks the terrain normal, yet it abstracts leg contacts away: the robot cannot trip, slip, or lose its bal-ance; “falls” are geometric rather than dynamic events. The navigation policy is transferred unchanged onto a full Go2 quadruped in MuJoCo [32]. The belief pipeline runs exactly as in training, and πloco ’s height scan is sampled from BM fine 
+
+rather than the simulator (except for GT), so navigation and perception errors compound as they would on hardware. An episode counts as a fall only on physically unrecov-erable states (base tipped > 60 ◦, or a ground-contact force on the base exceeding 25% of body weight). Over 5 training seeds × 20 layouts × 6 episodes, all spawned at d = 1 as in the main protocol, 600 episodes are collected per terrain and variant. Table III shows the ordering survives the transfer intact when averaged over terrains: GT ≻ Active ≻ Sweep 
+
+≻ Passive. Absolute rates are not comparable to Table II: the embodiments are different, the pool of held-out tiles and trials is smaller, and the geometric “falls” that terminate a planar episode are here often recoverable stumbles. VI. C ONCLUSION 
+
+This paper introduced LEAP, a method to learn emergent active perception where gaze control emerges from the task rather than from custom, task-competing sensing rewards. The policy learns where to look, locates goals, and avoids hazards in terrains where passive perception fails. The ability to train successfully hinges on gaze-invariant belief-map representations and a suitable terrain curriculum. In evaluation over held-out terrains, LEAP reaches a 92 .7% 
+
+success rate, against 74 .2% for scripted camera sweeps and 34 .5% for passive perception. As is, LEAP navigation policies can steer separately trained locomotion policies on a full-body quadruped in simulation. The observation design underlies the results. LEAP fuses camera images into gaze-invariant belief maps, so no reachable viewpoint is out of distribution and gaze exploration escapes the calibration penalty. The belief maps also act as a local spatio-temporal memory, sparing the network a recurrent state, but the 2.5D representation cannot capture overhangs. While the interface between navigation and locomotion is currently frozen, with the two policies trained independently, future work could investigate the benefits of training them jointly. LEAP could also be extended to humanoid robots, where the body twist is commanded at the pelvis and the camera sits higher at the head. Their ability to negotiate confined spaces will likely surface new tradeoffs between perception and body motion. REFERENCES [1] X. Cheng, K. Shi, A. Agarwal, and D. Pathak, “Extreme parkour with legged robots,” in Proc. of IEEE Int. Conf. on Robotics and Automation , 2024. [2] E. Chane-Sane, J. Amigo, T. Flayols, L. Righetti, and N. Mansard, “SoloParkour: Constrained reinforcement learning for visual locomo-tion from privileged experience,” in Conf. on Robot Learning , 2024. [3] R. A. Howard, “Information value theory,” IEEE Transactions on Systems Science and Cybernetics , 1966. [4] D. Pathak, P. Agrawal, A. A. Efros, and T. Darrell, “Curiosity-driven exploration by self-supervised prediction,” in Proc. of Int. Conf. on Machine Learning , 2017. [5] T. Chen, S. Gupta, and A. Gupta, “Learning exploration policies for navigation,” in Int. Conf. on Learning Representations , 2019. [6] D. Jayaraman and K. Grauman, “Learning to look around: Intelligently exploring unseen environments for unknown tasks,” in IEEE/CVF Conf. on Computer Vision and Pattern Recognition , 2018. [7] R. Bajcsy, “Active perception,” Proceedings of the IEEE , vol. 76, no. 8, pp. 966–1005, 1988. [8] J. Aloimonos, I. Weiss, and A. Bandyopadhyay, “Active vision,” Int. Journal of Computer Vision , 1988. [9] J. A. Placed, J. Strader, H. Carrillo, N. Atanasov, V. Indelman, L. Carlone, and J. A. Castellanos, “A survey on active simultaneous localization and mapping: State of the art and new frontiers,” IEEE Trans. on Robotics , 2023. [10] S. K. Ramakrishnan, D. Jayaraman, and K. Grauman, “Emergence of exploratory look-around behaviors through active observation comple-tion,” Science Robotics , 2019. [11] R. Cheng, A. Agarwal, and K. Fragkiadaki, “Reinforcement learning of active vision for manipulating objects under occlusions,” in Conf. on Robot Learning , 2018. [12] G. Malczyk, M. Kulkarni, and K. Alexis, “Reinforcement Learning for Active Perception in Autonomous Navigation,” in Proc. of IEEE Int. Conf. on Robotics and Automation , 2026. [13] J. Kerr, K. Hari, E. Weber, C. M. Kim, B. Yi, T. Bonnen, K. Goldberg, and A. Kanazawa, “Eye, Robot: Learning to look to act with a BC-RL perception-action loop,” in Conf. on Robot Learning , 2025. [14] J. Tan, T. Zhang, E. Coumans, A. Iscen, Y. Bai, D. Hafner, S. Bo-hez, and V. Vanhoucke, “Sim-to-Real: Learning agile locomotion for quadruped robots,” in Proc. of Robotics: Science and Systems , 2018. [15] J. Hwangbo, J. Lee, A. Dosovitskiy, D. Bellicoso, V. Tsounis, V. Koltun, and M. Hutter, “Learning agile and dynamic motor skills for legged robots,” Science Robotics , 2019. [16] J. Lee, J. Hwangbo, L. Wellhausen, V. Koltun, and M. Hutter, “Learning quadrupedal locomotion over challenging terrain,” Science Robotics , 2020. [17] T. Miki, J. Lee, J. Hwangbo, L. Wellhausen, V. Koltun, and M. Hutter, “Learning robust perceptive locomotion for quadrupedal robots in the wild,” Science Robotics , 2022. [18] D. Hoeller, N. Rudin, D. Sako, and M. Hutter, “ANYmal parkour: Learning agile navigation for quadrupedal robots,” Science Robotics ,2024. [19] M. Laskin, A. Srinivas, and P. Abbeel, “CURL: Contrastive unsuper-vised representations for reinforcement learning,” in Proc. of Int. Conf. on Machine Learning , 2020. [20] D. Yarats, R. Fergus, A. Lazaric, and L. Pinto, “Mastering visual continuous control: Improved data-augmented reinforcement learning,” in Int. Conf. on Learning Representations , 2022. [21] Y. Ma, T. Wang, X. Bai, H. Yang, Y. Hou, Y. Wang, Y. Qiao, R. Yang, and X. Zhu, “Vision-centric BEV perception: A survey,” IEEE Trans. on Pattern Analysis and Machine Intelligence , 2024. [22] P. Fankhauser, M. Bloesch, and M. Hutter, “Probabilistic terrain mapping for mobile robots with uncertain localization,” IEEE Robotics and Automation Letters , 2018. [23] A. Y. Ng, D. Harada, and S. J. Russell, “Policy invariance under reward transformations: Theory and application to reward shaping,” in Proc. of Int. Conf. on Machine Learning , 1999, pp. 278–287. [24] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin, “Attention Is All You Need,” in 
+
+Advances in Neural Information Processing Systems , 2017. [25] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn et al. , “An image is worth 16x16 words: Transformers for image recognition at scale,” in Int. Conf. on Learning Representations , 2021. [26] L. Pinto, M. Andrychowicz, P. Welinder, W. Zaremba, and P. Abbeel, “Asymmetric actor critic for image-based robot learning,” in Proc. of Robotics: Science and Systems , 2018. [27] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” CoRR ,vol. abs/1707.06347, 2017. [28] J. Schulman, P. Moritz, S. Levine, M. I. Jordan, and P. Abbeel, “High-dimensional continuous control using generalized advantage estimation,” in Int. Conf. on Learning Representations , 2016. [29] Y. Hu, T.-M. Li, L. Anderson, J. Ragan-Kelley, and F. Durand, “Taichi: a language for high-performance computation on spatially sparse data structures,” ACM Trans. on Graphics (TOG) , vol. 38, no. 6, p. 201, 2019. [30] J. Amanatides and A. Woo, “A fast voxel traversal algorithm for ray tracing,” in EG 1987-Technical Papers . Eurographics Association, 1987. [31] M. Mittal, P. Roth, J. Tigue et al. , “Isaac Lab: A GPU-accelerated sim-ulation framework for multi-modal robot learning,” arXiv:2511.04831, 2025. [32] E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in Int. Conf. on Intelligent Robots and Systems ,2012.

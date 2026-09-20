@@ -1,0 +1,638 @@
+Title: TIO-Former: Ultra-Lightweight 6-Directional ToF-Inertial Odometry for Nano-UAVs via a Streaming Causal Transformer
+
+URL Source: https://arxiv.org/pdf/2609.17198v1
+
+Published Time: Wed, 16 Sep 2026 01:37:00 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# TIO-Former: Ultra-Lightweight 6-Directional ToF-Inertial Odometry for Nano-UAVs via a Streaming Causal Transformer 
+
+Yang Liu †1,2 , Yifan He †2 , Wenhao Zhao †2 , Xiangyu Mo 2, Yang Xu 2, Hao Wei 2,Mingze Ma 2, Huan Li 2, Yifan Wu 2, Fei Gao 1,2 , Zipeng Dai 2, Xin Zhou *1,2 
+
+> 1
+
+Zhejiang University, Hangzhou, China 
+
+> 2
+
+Differential Robotics, Hangzhou, China 
+
+> †
+
+These authors contributed equally to this work. 
+
+> *
+
+Corresponding author. E-mail: 923137104@qq.com (Xin Zhou). 
+
+Abstract — Autonomous nano-UAV navigation requires ac-curate ego-motion estimation under stringent size, weight, power, and computing (SWaP-C) constraints, where visual sensors and LiDARs exceed payload limits, optical flow degrades in low-texture scenes, and inertial-only state estimation is susceptible to accumulated drift. While multi-zone time-of-flight (ToF) arrays provide a lightweight metric complement, 6-DoF estimation from merely 384 ranges per frame is challenged by invalid returns, anisotropic observability, and temporal computational scaling. We propose TIO-F ORMER , a camera-free, optical-flow-free, and mapless range-inertial odometry framework driven by an IMU and an ultra-lightweight ( 15 g) payload of six orthogonal 8 × 8 ToF arrays. Our frontend pairs consecutive range grids with a bilateral gated difference, while IMU-guided cross-attention dynamically routes directional features conditioned on platform kinematics. A Streaming Causal Transformer couples an uncompressed Local KV cache with compressed Chunk-FIFO memory, maintaining bounded inference cost and memory footprint independent of flight duration. In real-flight evaluations, TIO-F ORMER reduces open-loop position error by 54 .4% compared to nano-UAV optical flow and by 66 .4% –89 .1% over learned inertial baselines. We also evaluate performance across multiple environments and robustness under severe sensing degradation. Deployed on an edge RISC-V companion computer, TIO-F ORMER achieves a P95 latency of 10 .466 ms and peak resident memory of 
+
+6.324 MiB ( < 5% system RAM), demonstrating that sparse range sensing provides practical geometric anchoring for resource-constrained micro-aerial robots. Code is available at https: //github.com/Ly041021/TIO-Former .
+
+I. I NTRODUCTION 
+
+Deploying autonomous nano-scale unmanned aerial ve-hicles (nano-UAVs) in confined, GPS-denied environments demands accurate and drift-resilient ego-motion estimation under stringent size, weight, power, and computing (SWaP-C) budgets. While visual-inertial odometry (VIO) and Li-DAR SLAM provide rich geometric constraints [1], [2], their physical payload and computational burdens remain prohibitive for gram-scale platforms. Downward optical flow offers a lightweight alternative [3], but degrades severely over low-texture surfaces or in dim lighting; range-based height estimates can also become unreliable over uneven terrain. Inertial-only state estimation operates independently of visual appearance but remains susceptible to accumulated drift. Multi-zone time-of-flight (ToF) arrays present an attractive metric alternative: arranged orthogonally, six 8 × 8 sensors      
+
+> Fig. 1. Overview of TIO-F ORMER . (a) Real-world flight. (b) Six-direction ToF sensing with six 8×8arrays and a 15 g ToF payload. (c) Open-loop 3D trajectory comparison against ground truth (GT), Crazyflie Flow, AirIO, and TLIO. The bottom row summarizes position ATE and onboard latency; streaming inference runs at 15 Hz.
+
+supply 384 direct range measurements per frame with negligible bandwidth overhead. Prior sparse-ToF navigation has largely targeted reactive obstacle avoidance, pre-mapped localization, or planar SLAM assisted by optical flow [4]–[6]. In this paper, we show that such ultra-sparse range sensing can support continuous, standalone 6-DoF range-inertial odometry without cameras, optical flow, or prior maps. Realizing this capability re-quires addressing three coupled challenges: (i) measurement dropouts and invalid returns introduce spurious inter-frame range transitions; (ii) directional observability varies dy-namically with platform motion and scene layout; and (iii) maintaining temporal context over continuous flights quickly breaches onboard memory and latency bounds. Simple zero-padding or heuristic imputation of missing returns creates artificial motion discontinuities across validity transitions. Furthermore, sparse range observations constrain spatial motion axes anisotropically, making uniform fea-ture pooling suboptimal and demanding motion-conditioned geometric fusion. While temporal context is critical to resolve geometric degeneracies, storing an uncompressed arXiv:2609.17198v1 [cs.RO] 15 Sep 2026 key–value history scales linearly with flight duration. A viable estimator must therefore explicitly gate measurement validity, dynamically route directional observations using inertial context, and retain recent temporal detail and compressed earlier context within fixed per-step compute and memory budgets. To address these challenges, we propose TIO-F ORMER 
+
+(Fig. 1), an end-to-end learned range-inertial odometry framework. First, consecutive range grids are coupled with a bilateral gated difference, which weights inter-frame range changes by measurement reliability at both temporal end-points, retaining absolute metric depth while suppressing arti-facts from missing returns. Second, inertial features extracted over a short temporal window dynamically query directional ToF tokens through cross-attention, prioritizing geometri-cally informative views conditioned on the instantaneous motion state. Third, a Streaming Causal Transformer pairs an uncompressed Local KV cache with bounded Chunk-FIFO memory, maintaining bounded per-step inference cost and memory footprint independent of trajectory duration. Finally, multi-horizon trajectory supervision reinforces integrated trajectory consistency on the 𝑆𝐸 (3) manifold alongside step-wise relative pose regression. Our primary contributions are summarized as follows:  
+
+> •
+
+A camera-free, optical-flow-free, and mapless 6-DoF range-inertial odometry framework driven solely by an IMU and six orthogonal 8 × 8 ToF arrays with a total ToF sensor mass of 15 g, enabling continuous metric localization.  
+
+> •
+
+A reliability-gated range frontend and an IMU-guided directional cross-attention module, coupled with a two-tier streaming Transformer that maintains bounded per-step inference cost and memory footprint independent of flight duration.  
+
+> •
+
+Full-stack onboard deployment on a nano-UAV and evaluation across a real-flight benchmark ( > 4.5 km over four distinct indoor scenes), demonstrating real-time edge execution on a low-power RISC-V SoC while significantly outperforming commercial optical flow and learned inertial baselines. II. R ELATED WORK 
+
+A. Lightweight Perception and Sparse Range Sensing 
+
+Visual-inertial odometry (VIO) and LiDAR SLAM deliver robust metric state estimation [1], [2], yet their sensing payloads and computational demands exceed the SWaP-C envelope of nano-UAVs. Downward optical flow enables low-power velocity estimation [3], and PULP-DroNet demon-strates microcontroller-class visual navigation [7]; however, vision-based cues degrade drastically under aggressive ma-neuvers, motion blur, or poor illumination. Multi-zone time-of-flight (ToF) arrays provide direct metric range constraints at ultra-low spatial resolution. Prior studies utilize matrix ToF primarily for reactive obstacle avoidance [4], localization against pre-built maps [5], or planar swarm SLAM aided by optical flow [6]. While dense range-inertial systems have been explored [8], they depend on bulky, high-bandwidth LiDAR sensors. In contrast, our work achieves standalone 6-DoF relative state estimation without cameras, optical flow, or prior maps, operating exclusively on six orthogonal 8 × 8
+
+ToF arrays and a single IMU. 
+
+B. Learned Odometry and Temporal Fusion 
+
+Learned inertial odometry models regress relative dis-placements or synthetic kinematic measurements to mitigate integration drift [9]–[11]. Recent efforts improve IMU fea-ture observability [12], incorporate aerodynamic priors via Transformers and extended Kalman filters [13], optimize microcontroller deployment [14], and learn transferable inertial representations [15]. While these approaches rely solely on proprioceptive sensing, our framework introduces sparse exteroceptive range measurements to continuously anchor dead reckoning against external geometry. Multimodal learning frameworks fuse heterogeneous streams to improve estimation robustness [16]–[18], fre-quently utilizing cross-attention for inter-modal align-ment [19] and causal attention for temporal tracking [20]. Rather than adopting generic feature concatenation, we formulate directional cross-attention where inertial motion queries selectively retrieve spatial tokens across six discrete physical directions, dynamically down-weighting degraded or uninformative views. Recurrent networks summarize history in a fixed-size state, whereas unrestricted causal Transformer caches grow with flight duration. Sliding windows bound this growth but discard older tokens. Our two-tier memory combines an uncompressed Local KV cache with fixed-capacity Chunk-FIFO memory of learned summaries, preserving recent detail and compressed earlier context within bounded inference and memory budgets. III. M ETHODOLOGY 
+
+A. State and Inputs 
+
+Let T𝑡 = (R𝑡 , p𝑡 ) ∈ SE (3) denote the transformation from the body frame to the world frame at time step 𝑡 .At each 15 Hz cycle, the system receives six orthogonal ToF grids D(𝑖 ) 
+
+> 𝑡
+
+∈ R8×8 (𝑖 = 1, . . . , 6), collectively denoted as D𝑡 ,alongside synchronized 200 Hz IMU angular velocities and linear accelerations resampled within the interval [𝜏 𝑡 −1, 𝜏 𝑡 ]
+
+to form I𝑡 ∈ R8×6. Raw millimeter ranges are converted to meters ( 𝑑 = 10 −3 𝑑 mm ) to align with SI inertial units, retaining absolute metric scale without artificial normalization. The relative motion target ΔT𝑡 = T−1 
+
+> 𝑡 −1
+
+T𝑡 comprises the body-frame translation Δp𝑡 = R⊤  
+
+> 𝑡 −1
+
+(p𝑡 − p𝑡 −1) and relative rotation ΔR𝑡 = R⊤ 
+
+> 𝑡 −1
+
+R𝑡 . Given the predicted relative transla-tion Δ ˆp𝑡 and axis-angle rotation vector Δ ˆ𝝓 𝑡 , the trajectory is recursively integrated as: 
+
+Δ ˆR𝑡 = exp ([ Δ ˆ𝝓 𝑡 ]× ),
+
+ˆR𝑡 = ˆR𝑡 −1Δ ˆR𝑡 , ˆp𝑡 = ˆp𝑡 −1 + ˆR𝑡 −1Δ ˆp𝑡 . (1) Here [a]× b = a × b defines the skew-symmetric cross-product matrix, and (·) ∨ is its inverse map, satisfying 
+
+([ a]× )∨ = a. The operators exp and log denote the matrix Fig. 2. Architecture of TIO-F ORMER . Causal imputation and the bilateral gated difference feed a weight-shared CNN and a cross-view Transformer. IMU queries then aggregate the six directional ToF tokens, while a Streaming Causal Transformer combines a Local KV cache with compressed Chunk-FIFO memory for bounded streaming inference. 
+
+exponential and logarithm. Because body-frame translations are accumulated using the estimated orientations, orientation errors also contribute to positional drift, motivating multi-horizon trajectory supervision. 
+
+B. Reliability-Aware ToF Encoding 
+
+The operations below apply independently to each sensor grid; the directional index (𝑖 ) is omitted until inter-view fusion. Let ˜D𝑡 denote a causally imputed range grid and ΔD𝑡 
+
+denote the bilateral gated difference. 
+
+Reliability and causal imputation. Specular reflections, multi-path interference, and out-of-range surfaces frequently cause missing returns or heavy measurement noise in multi-zone ToF sensors. Furthermore, sudden transitions between valid returns and zero/default values induce spurious apparent motion. We decouple geometric structure from measurement validity by constructing a deterministic reliability mask A𝑡 ∈[0, 1]8×8 based on sensor return status 𝑠 and measured range 
+
+𝑑 :
+
+𝑤 (𝑑, 𝑠 ) = I[0.015 ≤ 𝑑 ≤ 4.0]
+
+
+
+1, 𝑠 = 0,
+
+0.5, 𝑠 = 10 ,
+
+0, otherwise ,
+
+(2) where the sensor status flag 𝑠 reflects measurement con-fidence: 𝑠 = 0 indicates a verified valid return, while 
+
+𝑠 = 10 denotes a newly acquired target not detected in the preceding cycle (metrically valid but lacking temporal tracking continuity). All other status codes (e.g., weak signal, excessive noise, or non-detections) indicate invalid measurements ( 𝑤 = 0). Pixels with 𝑠 = 10 are assigned a reduced weight of 0.5 and excluded as spatial interpolation donors. Invalid pixels are causally imputed using valid spatial neighbors and preceding measurements to produce ˜D𝑡 , while their reliability weights remain zero to distinguish imputed estimates from true observations. 
+
+Training perturbations. To improve robustness to observa-tion dropouts and fluctuating returns, we introduce stochastic (a) Causal imputation         
+
+> Current valid neighbors Past observations Fill Filled A = 0 Imputed values remain unreliable; no future inputs.
+> (b) Bilateral gated difference
+> 00
+> At− 1
+> 00
+> At
+> 0000
+> Joint gate
+> 0000
+> ΔDt
+
+# ⊙ = ⊙ (̃ Dt −̃ Dt − 1 )       
+
+> Either endpoint invalid → zero difference
+> Fig. 3. Causal imputation and the bilateral gated difference, illustrated with schematic grid excerpts and binary reliability masks. (a) Invalid entries are filled using current valid neighbors and past observations while retaining zero reliability (hatched orange cells). (b) The element-wise product of the masks at 𝑡 −1and 𝑡 gates the range difference: an invalid endpoint yields zero, while green cells retain differences valid at both endpoints.
+
+degradation masks and autoregressive noise during training. Training sequences undergo corruption with probability 0.6:discrete, spatial-patch, or temporal-burst masks with missing ratios 𝜌 ∈ { 0.1, 0.3, 0.5} zero out both ranges and reliability weights of ⌊𝜌 |Ωvalid |⌋ valid pixels prior to imputation. Re-tained returns are perturbed with autoregressive colored noise 
+
+𝑛 𝑡 = 𝛾𝑛 𝑡 −1 + 𝜖 𝑡 , where 𝛾 = 0.9 and 𝜖 𝑡 ∼ N ( 0, (1 − 𝛾 2)𝜎 2)
+
+with 𝜎 = 0.01 m. 
+
+Bilateral gated difference. Here, bilateral refers to joint gating by the reliability weights at both temporal endpoints, 
+
+𝑡 − 1 and 𝑡 :
+
+ΔD𝑡 = A𝑡 −1 ⊙ A𝑡 ⊙ ( ˜D𝑡 − ˜D𝑡 −1),
+
+X𝑡 = Cat ( ˜D𝑡 −1, ˜D𝑡 , ΔD𝑡 ) ∈ R3×8×8. (3) The three-channel input provides an explicit inductive bias by representing metric scene geometry and inter-frame range changes in separate channels. While consecutive grids 
+
+[ ˜D𝑡 −1, ˜D𝑡 ] anchor absolute distance to obstacle boundaries and surface orientations, requiring standard 2D spatial con-volutions to implicitly deduce motion across input channels forces the network to approximate numerical differentiation over noisy and sparse measurements. Explicitly injecting 
+
+ΔD𝑡 directly exposes first-order inter-frame range-change cues along the sensor boresight, capturing dynamic scene expansion, contraction, and tilt that correlate with platform linear velocity and angular rates. The bilateral gated difference accounts for measurement validity at both temporal endpoints. Although causal imputa-tion provides numerical continuity for 2D convolutions, naive differencing over filled entries would introduce severe false motion artifacts whenever measurement validity transitions occur—such as target re-acquisition or sudden dropouts. The joint endpoint weight A𝑡 −1 ⊙ A𝑡 suppresses a difference when either endpoint is invalid and attenuates it when either endpoint has reduced reliability. Thus, X𝑡 provides the directional encoder with metric spatial information and reliability-weighted range-change cues. 
+
+Spatial view encoding. To minimize the parameter footprint and memory bandwidth on resource-constrained hardware, a single weight-shared 2D CNN 𝑓 𝐷 extracts local spatial features across all six sensor grids. Because local geometric primitives—such as surface normals, obstacle boundaries, and radial range-rate gradients—exhibit identical measurement physics regardless of mounting orientation, weight sharing provides effective cross-view statistical reg-ularization while avoiding separate CNN parameters for each view. To subsequently restore directional identity and decouple local geometric extraction from platform extrinsic orientation, learnable physical view embeddings e(𝑖 ) 
+
+> view
+
+are added to the pooled representations. A cross-view Transformer layer then models omnidirectional spatial dependencies: 
+
+e(𝑖 ) 
+
+> 𝑡
+
+= 𝑓 𝐷 (X(𝑖 ) 
+
+> 𝑡
+
+) + e(𝑖 )
+
+> view
+
+,
+
+F𝑡 = Tr view ([ e(1) 
+
+> 𝑡
+
+, . . . , e(6) 
+
+> 𝑡
+
+]) ∈ R6×𝑑 f , (4) where F𝑡 = [f (1) 
+
+> 𝑡
+
+, . . . , f (6) 
+
+> 𝑡
+
+] denotes the contextualized direc-tional tokens. This omnidirectional self-attention distributes global geometric context across viewpoints before motion-conditioned selection. 
+
+C. IMU-Guided Directional Fusion 
+
+Following AI-IO [13], we deploy a three-layer 1D CNN as the inertial encoder, mapping I𝑡 to a local inertial feature 
+
+h𝐼 𝑡 = 𝑓 𝐼 (I𝑡 ) that captures high-frequency body dynamics across the sampling window. The motion information provided by each directional range view depends on the scene geometry and the vehicle motion. For instance, forward acceleration induces pronounced range-rate variations along the frontal boresight, whereas lateral views parallel to planar walls or open corridors yield geometrically degenerate returns. Uniform pooling assigns equal weights to all views, whereas channel concatenation does not explicitly compute motion-conditioned view weights. Motivated by these differences and prior cross-modal attention methods in visual-inertial state estimation [19], we use IMU-guided cross-attention to weight directional ToF features. Using inertial features as queries, the module attends to the six directional ToF tokens: directions aligned with dominant motion axes or strong geometric parallax are dynamically emphasized, while degenerate or noise-corrupted views are suppressed before temporal propagation. With linear projections q𝑡 = W𝑄 h𝐼 𝑡 , k(𝑖 ) 
+
+> 𝑡
+
+= W𝐾 f (𝑖 ) 
+
+> 𝑡
+
+,and v(𝑖 ) 
+
+> 𝑡
+
+= W𝑉 f (𝑖 ) 
+
+> 𝑡
+
+, cross-attention weights across the six directional tokens are given by: 
+
+𝛼 (𝑖 ) 
+
+> 𝑡
+
+= exp (q⊤ 
+
+> 𝑡
+
+k(𝑖 ) 
+
+> 𝑡
+
+/√𝑑 head )
+
+Í6 
+
+> 𝑗 =1
+
+exp (q⊤ 
+
+> 𝑡
+
+k( 𝑗 ) 
+
+> 𝑡
+
+/√𝑑 head ) , (5) evaluated per attention head with head dimension 𝑑 head .Stacking the directional keys and values into K𝑡 and V𝑡 ,multi-head attention is computed with a residual connection and layer normalization: 
+
+z𝑡 = LN  q𝑡 + MHA (q𝑡 , K𝑡 , V𝑡 ) ∈ R𝑑 f . (6) Pixel-level gating suppresses invalid range differences, while cross-attention reweights directional features according to the current platform motion. The residual connection ensures an uninterrupted inertial pathway if exteroceptive range observations become degenerate across all directions. 
+
+D. Streaming Causal Transformer with Bounded Memory 
+
+Online state estimation on physical robots demands strictly autoregressive inference aligned with chronological sensor telemetry, preventing non-causal future information leak-age [20]. While recurrent architectures (e.g., GRUs) naturally enforce causality, their single hidden state creates an infor-mation bottleneck that suffers from gradient degradation and memory fading during prolonged maneuvers. Conversely, Transformers capture expressive multi-time-scale kinematic dependencies, but standard self-attention incurs quadratic complexity and acausal dependencies unless strictly con-strained. To reconcile causal online execution with long-horizon temporal modeling under severe SWaP-C constraints, we formulate the temporal backbone as a Streaming Causal Transformer governed by a two-tier bounded memory archi-tecture. In continuous flight, retaining all past key–value (KV) pairs causes cache memory and per-step attention cost to grow linearly with the number of processed frames, increasing pressure on embedded memory and latency budgets. Sliding-window truncation circumvents memory growth but entirely discards distant trajectory history. We resolve this trade-off by decoupling temporal resolution: recent key–value pairs are retained without compression to track agile accelerations, while evicted tokens are progressively compressed into fixed-capacity Chunk-FIFO memory. Each Transformer layer maintains an uncompressed Local KV cache L𝑡 of capacity 𝐶 for recent key–value pairs. When 
+
+L𝑡 reaches capacity, the oldest 𝐺 pairs are evicted, pooled, and transformed by a lightweight projection MLP 𝜙 𝑚 :
+
+[ ¯k𝑟 ; ¯ v𝑟 ] = 𝜙 𝑚 ©«
+
+1
+
+𝐺 
+
+> 𝐺
+
+∑︁ 
+
+> 𝑗 =1
+
+[k𝑟 , 𝑗 ; v𝑟 , 𝑗 ]ª®¬
+
+. (7) The resulting summary token is enqueued into Chunk-FIFO memory M𝑡 of capacity 𝑆 , discarding the oldest summary upon overflow. The causal attention mechanism then queries the concatenated context: 
+
+C𝑡 = L𝑡 ∪ M 𝑡 , |L 𝑡 | ≤ 𝐶, |M 𝑡 | ≤ 𝑆, (8) where lower-triangular causal masking ensures that the query token at step 𝑡 attends solely to preceding historical states, strictly preventing lookahead bias. With hyperparameter settings 𝐶 = 8, 𝐺 = 4, and 𝑆 = 4, this memory design spans 24 frames of temporal history ( ≈ 1.6 sat 15 Hz) while attending to only 12 retrieval tokens per step. Because the cache capacities and model dimensions are fixed, per-step inference cost and memory footprint remain bounded independently of flight duration. Finally, a lightweight MLP pose head maps the contextualized state to incremental 6-DoF motion estimates (Δ ˆp𝑡 , Δ ˆ𝝓 𝑡 ).
+
+E. Trajectory Supervision 
+
+To mitigate drift accumulated during pose integration, we employ multi-horizon trajectory supervision [15], cou-pling step-wise pose regression with multi-scale manifold constraints, global path-length regularization, and residual smoothness. Let SL1 𝛽 denote the component-averaged Smooth L1 loss with threshold 𝛽 . Defining the step errors as e𝑝 𝑡 = Δ ˆp𝑡 − Δp𝑡 
+
+and e𝜙 𝑡 = Δ ˆ𝝓 𝑡 − [ log (ΔR𝑡 )] ∨ with rotation vector mapping 
+
+[·] ∨, the local regression objective is formulated as: 
+
+Lstep = mean 
+
+> 𝑡
+
+ SL1 0.05 (e𝑝 𝑡 ) + SL1 0.02 (e𝜙 𝑡 ) . (9) Because small translational biases and orientation drifts compound rapidly, multi-horizon objectives supervise com-posed motion across horizons H𝑝 = {4, 8, 16 , 32 } and H𝑅 =
+
+{4, 8, 16 }:
+
+L 𝑝  
+
+> mh
+
+= mean   
+
+> ℎ∈ H 𝑝 ,𝑡
+
+SL1 0.05 
+
+ ( ˆp𝑡 +ℎ − ˆp𝑡 ) − ( p𝑡 +ℎ − p𝑡 ),
+
+L𝑅  
+
+> mh
+
+= mean   
+
+> ℎ∈ H 𝑅 ,𝑡
+
+[log (Δ ˆR⊤
+
+> 𝑡 ,ℎ
+
+ΔR𝑡 ,ℎ )] ∨
+
+> 2
+
+, (10) where integrated positions ˆp𝑡 = ˆp0 + Í𝑡 𝜏 =1 ˆR𝜏 −1Δ ˆp𝜏 accu-mulate body-frame translations rotated into the world frame, 
+
+ΔR𝑡 ,ℎ = ΔR𝑡 +1 · · · ΔR𝑡 +ℎ denotes chronological 𝑆𝑂 (3)
+
+composition, and L𝑅  
+
+> mh
+
+penalizes the canonical 𝑆𝑂 (3) geodesic distance. Errors are averaged uniformly across valid horizons. To constrain global scale fidelity and suppress high-frequency prediction jitter, we incorporate trajectory scale and residual smoothness objectives: 
+
+Lscale = SL1 0.10 
+
+ Í𝑡 ∥Δ ˆp𝑡 ∥2
+
+max (Í𝑡 ∥Δp𝑡 ∥2, 10 −6) − 1
+
+
+
+,
+
+Lres = mean   
+
+> 𝑡 ≥2
+
+SL1 0.02 (e𝑝 𝑡 − e𝑝 𝑡 −1).
+
+(11) 
+
+Lscale penalizes path-length bias, while Lres penalizes step-to-step changes in translation error, reducing high-frequency prediction jitter without directly penalizing rapid vehicle motion. The joint training objective is: 
+
+L = Lstep + 0.02 L 𝑝  
+
+> mh
+
++ 0.005 (L 𝑅  
+
+> mh
+
++ L scale + L res ). (12) IV. E XPERIMENTS AND RESULTS 
+
+We evaluate tracking accuracy, multi-environment per-formance, robustness under severe sensing degradation, individual architectural components, and onboard real-time execution. 
+
+A. Experimental Setup and Evaluation Protocol 
+
+1) Flight Benchmark (Crazyflie Platform): Flight exper-iments were conducted on a Crazyflie nano-UAV equipped with a custom sensor expansion deck (Fig. 4). The onboard companion computer (LicheeRV Nano with an SG2002 SoC) samples the six-axis IMU via CPX at 200 Hz and queries six TOFSense-M sensors over UART to acquire orthogonal 8 × 8 range grids at 15 Hz. Each sensor module has a mass of 2.5 g, contributing an aggregate exteroceptive payload of only 15 g. Ground-truth poses were recorded via an external motion capture system across both canonical geometric trajectories (circles, figure-eights, squares, straight lines) and random 3D flights. The benchmark comprises 
+
+9,492 .01 s of flight across 2,195 .22 m of total trajectory length, with canonical paths accounting for 20% of the dataset and random flights constituting the remaining 80% . Random flights are partitioned into training, validation, and test sets (70 : 15 : 15 ); all canonical paths and held-out test sequences (standardized to 4–7 m trajectory lengths) are strictly reserved for testing. To ensure multi-sensor temporal synchronization, IMU timestamps are mapped to the SG2002 monotonic clock using four-timestamp bidirectional clock synchronization between the flight controller and companion computer, aligning inertial telemetry with the multi-view ToF acquisitions. Network inputs adhere to a fixed spatial order: front, right, back, down, left, and up.  
+
+> Fig. 4. Crazyflie nano-UAV platform equipped with six orthogonal TOFSense-M arrays, an onboard 200 Hz IMU, and a LicheeRV Nano companion computer for time-synchronized streaming inference.
+
+2) Multi-Environment Dataset: To assess performance across diverse spatial geometries, the identical sensing payload was deployed on an extended-endurance aerial platform across four distinct real-world scenes spanning 2,362 m of active flight: multiple office spaces ( 1,368 m, dense non-convex clutter), a pantry ( 524 m, reflective tiles and specular surfaces), a long corridor ( 194 m, longitudinal geometric degeneracy), and a meeting room ( 276 m). Each environment is partitioned under the identical 70 : 15 : 15 protocol TABLE I OPEN -LOOP TRACKING ACCURACY ON THE TEST SET .         
+
+> Method / Input ATE 𝑝
+> (m) ↓
+> RPE 𝑝
+> (m) ↓
+> RPE 𝑅
+> (deg) ↓
+> EDR (%) ↓
+> Crazyflie Flow 0.259 0.0079 0.576 11 .65
+> TLIO [11] (IMU) 1.084 ±0.011 0 .0519 ±0.0002 0 .603 ±0.001 57 .46 ±0.32
+> AirIO [12] (IMU) 0.351 ±0.050 0 .0067 ±0.0007 0 .571 ±0.002 24 .49 ±3.49
+> Naive ToF+IMU 0.462 ±0.075 0 .0069 ±0.0004 0 .532 ±0.009 28 .46 ±3.47
+> TIO-F ORMER (Ours) 0.118 ±0.007 0 .0039 ±0.0001 0 .504 ±0.001 7 .18 ±0.37
+
+with test trajectories ranging from 4 to 7 m, providing a standardized benchmark for multi-environment evaluation. 
+
+3) Baselines and Evaluation Metrics: We benchmark TIO-F ORMER against three representative paradigms: 1) 
+
+Crazyflie Flow , the commercial baseline combining down-ward optical flow, single-point ToF, and complementary filter-ing; 2) learning-based inertial odometry baselines TLIO [11] 
+
+and AirIO [12] ; and 3) Naive ToF+IMU , an ablative baseline processing identical multi-view ToF and IMU streams via static channel concatenation without cross-attention or temporal memory.     
+
+> GT Ours Flow AirIO TLIO
+
+Fig. 5. Qualitative dead-reckoning trajectory comparisons across canonical paths (circle, square, figure-eight) and random flights. All trajectories represent unaligned open-loop integrations from the initial pose. 
+
+Tracking accuracy is quantified using position Absolute Trajectory Error ( ATE 𝑝 ), frame-to-frame relative translation and rotation errors ( RPE 𝑝 , RPE 𝑅 at 66 .7 ms), and Endpoint Drift Rate EDR = ∥ ˆp𝑇 − p𝑇 ∥2/𝐿 gt × 100% . ATE and RPE are computed as per-sequence RMSE and averaged over the test set. For learning-based models, tables report the mean and standard deviation over three random seeds. 
+
+B. System-Level Tracking and Multi-Environment Evaluation 
+
+Table I shows that TIO-F ORMER achieves 0.118 m position ATE, reducing error by 54 .4% relative to Crazyflie Flow and by 66 .4% –89 .1% relative to the learned inertial baselines. Lower endpoint drift supports the role of sparse range measurements as external geometric constraints on inertial integration. The higher error of Naive ToF+IMU suggests that direc-tional fusion and temporal context help exploit range geometry 
+
+TABLE II MULTI -ENVIRONMENT ACCURACY (ATE 𝑝 , M; MEAN ±STD OVER THREE SEEDS ).                     
+
+> Method Corridor Office Pantry Meeting room TLIO [11] (IMU) 1.241 ±0.038 0.985 ±0.021 1.152 ±0.045 1.026 ±0.019
+> AirIO [12] (IMU) 0.412 ±0.035 0.345 ±0.028 0.389 ±0.032 0.356 ±0.024
+> Naive ToF+IMU 0.531 ±0.082 0.418 ±0.063 0.412 ±0.091 0.443 ±0.055
+> Ours 0.142 ±0.009 0.158 ±0.012 0.091 ±0.006 0.114 ±0.007
+
+beyond simply adding sensor inputs. Fig. 5 shows better preservation of loops and sharp corners with TIO-F ORMER .
+
+Multi-Environment Performance: Table II reports the lowest ATE for TIO-F ORMER in all four scenes ( 0.091 –
+
+0.158 m). These results establish performance on held-out sequences within each environment. The lowest error in the pantry may reflect stronger geometric constraints from nearby surfaces. Crazyflie Flow is omitted because of frequent tracking divergence on low-texture surfaces. 
+
+C. Robustness Under Directional Blind Spots and Sensing Degeneracy 
+
+Physical deployments frequently encounter sensor dropouts, structural openings, and non-reflective surfaces. We evaluate robustness under these sensing conditions. 
+
+1) Dynamic Routing Robustness under Directional Loss: 
+
+Under nominal sensing, cross-attention reduces position ATE by 7.8% relative to concatenation ( 0.118 m vs. 0.128 m). Its advantage broadens substantially under directional view dropouts (Fig. 6): across one to five missing views, the average relative ATE increase is restricted to 57 .19% for cross-attention, compared to 151 .84% for concatenation. When five of the six directional sensors are masked out, cross-attention retains an ATE of 0.307 m and a failure rate of 
+
+22 .12% , whereas concatenation yields an ATE of 0.569 mand a failure rate of 53 .31% . These results demonstrate that motion-conditioned cross-attention maintains lower trajectory error and failure rates than concatenation under directional observation loss. 0 1 2 3 4 5       
+
+> Missing ToF views
+> 0100 200 300
+> ATE increase (%)
+> (a)
+> 136 213 346
+> 012345
+> Missing ToF views
+> 020 40 60
+> Failure rate (%)  (b)
+> 22.1 31.5 53.3
+> Cross-Attn. Avg. Pooling Concat.
+
+Fig. 6. Fusion robustness under directional observation degradation. (a) Relative ATE 𝑝 degradation; (b) failure rate ( EDR > 20% ). Curves aggregate persistent, random, and burst failures; shading marks the extreme five-view-loss setting. 
+
+Motion-Conditioned Attention Visualization: To interpret the learned behavior of the IMU-guided cross-attention module, we analyze the directional attention distributions 𝛼 (𝑖 )
+
+> 𝑡
+
+conditioned on dominant body-frame translational kinematics across the test set (Fig. 7). Flight intervals are grouped by six translation directions (forward, backward, leftward, rightward, upward, and downward) using ground-truth velocity, with F B L R U DForward Backward Leftward Rightward Upward Downward                               
+
+> 0.193 0.174 0.170 0.171 0.147 0.145 0.163 0.194 0.178 0.168 0.149 0.149 0.170 0.173 0.202 0.162 0.147 0.146 0.162 0.176 0.169 0.202 0.145 0.145 0.149 0.150 0.161 0.160 0.182 0.198 0.149 0.153 0.163 0.154 0.187 0.194
+> 0.12 0.17 0.22 Mean attention weight
+
+Fig. 7. Directional cross-attention weights conditioned on dominant translational kinematics, evaluated on the test set (mean over three seeds). Red boxes highlight row-wise maxima. F, B, L, R, U, and D denote front, back, left, right, up, and down directions, respectively. 
+
+attention weights averaged over all heads, temporal intervals, and three random seeds. As shown in Fig. 7, the routing module exhibits pronounced motion-correlated directional selectivity. During horizontal motion, IMU-guided attention assigns the highest average weights to views aligned with the motion direction, producing the diagonal pattern across F, B, L, and R. In contrast, during vertical maneuvers (both upward and downward), the network consistently concentrates the highest attention on the downward sensor. This preference may be explained by more consistent range returns from nearby floors, whereas upward measurements can be affected by ceiling distance and fixtures. 
+
+2) Resilience to Measurement Corruption via Stochastic Augmentation: Fig. 8 compares training with and without stochastic degradation augmentation. Under missing pixel ratios of 30% and 50% , the augmented model maintains low ATEs of 0.154 m and 0.174 m, respectively. Even under extreme out-of-distribution corruption with 70% missing measurements, the augmented model maintains an ATE of 
+
+0.245 m with a 12 .0% failure rate, whereas the unaugmented baseline diverges rapidly ( 0.760 m ATE, 74 .3% failure rate). 0 30 50 70     
+
+> Missing ratio (%)
+> 0.2 0.4 0.6 0.8
+> ATE RMSE (m)  (a)
+> 0.760 0.245
+> 030 50 70
+> Missing ratio (%)
+> 025 50 75
+> Failure rate (%)  (b)
+> 74.3% 12.0%
+> No augmentation Augmented
+
+Fig. 8. Ablation of controlled degradation augmentation under varying missing rates. (a) ATE 𝑝 RMSE; (b) failure rate ( EDR > 20% ). Curves and uncertainty bands denote mean and standard deviation across three degradation modes; background shading marks the extreme 𝜌 = 70% out-of-distribution (OOD) condition withheld during training. 
+
+D. Ablation Study on Core Architectural Mechanisms 
+
+Ablations on the benchmark test set isolate the contributions of individual subsystems (Tables III and IV). 
+
+1) Sensor Modality and Spatial View Coverage: Table III shows that both modalities contribute, with a larger penalty when ToF is removed. Four lateral views approach six-view 
+
+TABLE III COMPONENT ABLATIONS ON THE TEST SET . 
+
+> Component Variant ATE 𝑝
+> (m)
+
+↓
+
+> EDR (%)
+
+↓  
+
+> Reference TIO-Former (Ours)
+
+0.118 ±0.007 7.18 ±0.37  
+
+> Sensor Modality IMU-only baseline
+
+0.816 ±0.023 39 .48 ±1.53  
+
+> ToF-only baseline
+
+0.156 ±0.009 8.76 ±0.13  
+
+> Spatial Coverage Down-view only
+
+0.937 ±0.003 47 .52 ±1.92  
+
+> Four lateral views only
+
+0.129 ±0.002 7.29 ±0.28  
+
+> Range Rep. Single frame
+
+D𝑡 0.306 ±0.004 14 .29 ±0.58  
+
+> Metric pair
+
+[D𝑡 −1 , D𝑡 ] 0.158 ±0.004 8.78 ±0.73  
+
+> Cross Fusion Channel Concatenation
+
+0.128 ±0.002 7.82 ±0.25  
+
+> Masked Average Pooling
+
+0.126 ±0.007 7.46 ±0.31   
+
+> View Enc. W/o View Transformer
+
+0.129 ±0.003 7.25 ±0.71  
+
+> Loss & Training Single-step
+
+Lstep only 0.159 ±0.005 9.39 ±0.72  
+
+> W/o
+
+Lscale & Lres terms 0.132 ±0.004 8.12 ±0.41 
+
+TABLE IV TEMPORAL MEMORY : ACCURACY AND ONBOARD EXECUTION . 
+
+> (a) Trajectory accuracy
+> Backbone Tok./Hist. ATE 𝑝
+> (m)
+
+↓
+
+> EDR (%)
+
+↓  
+
+> Memoryless 0 / 1
+
+0.525 ±0.125 32 .04 ±6.32   
+
+> GRU2 —
+
+0.206 ±0.083 12 .28 ±5.41   
+
+> KV8 8 / 8
+
+0.134 ±0.008 7.39 ±0.12   
+
+> KV12 12 / 12
+
+0.134 ±0.002 7.58 ±0.36   
+
+> KV24 24 / 24
+
+0.133 ±0.006 7.59 ±0.23   
+
+> KV32 32 / 32
+
+0.130 ±0.007 7.36 ±0.25   
+
+> KV8+FIFO4 (Avg.) 12 / 24
+
+0.129 ±0.006 7.35 ±0.38   
+
+> KV8+FIFO4 (Ours) 12 / 24
+
+0.118 ±0.007 7.18 ±0.37 
+
+> (b) Reference accuracy and deployment
+> Backbone ATE ref
+> (m)
+
+↓
+
+> P95 (ms)
+
+↓
+
+> RSS (MiB)
+
+↓
+
+𝛿 max 
+
+> (mm)
+
+↓ 
+
+> Memoryless
+
+2.908 ±0.709 6.413 6.281 22.80 GRU2 1.675 ±0.664 7.732 4.26 19.35 KV8 0.526 ±0.086 8.767 6.301 25.86 KV12 0.486 ±0.058 8.853 6.316 10.09 KV24 0.475 ±0.082 9.059 6.363 10.36 KV32 0.518 ±0.033 9.216 6.395 10.87 KV8+FIFO4 (Avg.) 0.456 ±0.108 9.661 5.69 17.41  
+
+> KV8+FIFO4 (Ours)
+
+0.389 ±0.013 10.466 6.324 5.41 
+
+accuracy, whereas downward-only sensing produces severe drift. Over planar ground, downward ranges mainly constrain altitude and tilt; lateral views provide additional constraints on horizontal motion. 
+
+2) Causal Imputation and Bilateral Gated Difference: 
+
+Building on the metric pair, causal imputation and the bilateral gated difference reduce ATE by 25 .3% . Imputation fills missing entries while preserving observed metric ranges, and the gated difference provides explicit range-change cues while suppressing artifacts from validity transitions. 
+
+3) Multi-Horizon Trajectory Supervision: Multi-horizon supervision improves ATE by 25 .8% over single-step training. Scale and residual regularization further improve accuracy: the former penalizes path-length bias, while the latter discourages abrupt changes in prediction error. Together with multi-horizon supervision, they target accumulated drift and local jitter. 
+
+4) Streaming Temporal Memory Trade-Offs: In Ta-ble IV(a), Tok./Hist. denotes retrieved tokens/history frames, and Avg. denotes unprojected mean pooling. Memoryless estimation accumulates severe drift ( 0.525 m ATE), while GRU2 exhibits greater variability across random seeds. In contrast, linearly expanding the uncompressed KV window from 8 to 32 tokens yields diminishing accuracy gains (0.134 m to 0.130 m) while scaling memory consumption. Under a fixed 12-token retrieval budget, KV8+FIFO4 extends context to 24 frames and outperforms KV12 and unprojected mean pooling. It also improves accuracy by 
+
+11 .3% over uncompressed KV24 while halving active token retrieval, showing that compressed history is more useful than a larger uncompressed cache under the real-time deadline. 
+
+Edge Deployment Consistency: Table IV(b) evaluates five 20 m random flights. The maximum cumulative position discrepancy between onboard mixed-precision and Python FP32 outputs is 𝛿 max = max 𝑡 ∥ ˆpboard  
+
+> 𝑡
+
+− ˆpPython  
+
+> 𝑡
+
+∥2. TIO-FORMER achieves the lowest 𝛿 max (5.41 mm) and reference ATE ( 0.389 ±0.013 m), confirming accurate long-horizon streaming under mixed-precision deployment. 
+
+E. Onboard Real-Time Streaming Deployment on Edge Hardware 
+
+TABLE V ONBOARD RESOURCE USE AND TIMING OF TIO-F ORMER .               
+
+> Metric Value Embedded Hardware SoC SG2002 (C906@850 MHz + CV181x TPU) Heterogeneous Pipeline TPU (BF16) + CPU RVV (FP32) Model Parameters / Storage Footprint 1.117 M / 3.958 MiB Peak Resident Set Size (RSS) 6.324 MiB (4.94% of 128 MiB RAM) Per-Step Latency (Mean / P95) 10.038 ms / 10.466 ms
+> Maximum Observed Latency 20.609 ms (30.90% of budget) Single-Core CPU Utilization 14.89% Inverse Mean Compute Time 99.62 Hz Deadline Overruns ( >66 .7ms) 0 / 5,000 (0.000%)
+
+On the SG2002, the ToF CNN runs on the TPU in BF16, while IMU encoding, directional fusion, and streaming memory run on the 850 MHz RISC-V CPU using FP32 RVV. Table V reports a P95 latency of 10 .466 ms, a peak RSS of 
+
+6.324 MiB, and zero deadline overruns across 5,000 cycles, confirming real-time streaming under the tested conditions. V. C ONCLUSION 
+
+We presented TIO-F ORMER , a camera-free, optical-flow-free, and mapless 6-DoF range-inertial odometry framework for nano-UAVs. The bilateral gated difference, IMU-guided directional fusion, and two-tier temporal memory jointly improve tracking over optical-flow and learned inertial baselines in the evaluated flights. Fixed cache capacities bound per-step inference cost and memory independently of flight duration; onboard measurements demonstrate real-time processing under the tested conditions. Limited sensing range and geometric degeneracy remain challenges for open-loop estimation. Future work will explore lightweight loop closure and self-supervised pretraining to improve long-term robustness. REFERENCES [1] T. Qin, P. Li, and S. Shen, “VINS-Mono: A robust and versatile monocular visual-inertial state estimator,” IEEE Trans. Robot. , vol. 34, no. 4, pp. 1004–1020, 2018. [2] C. Campos, R. Elvira, J. J. G. Rodríguez, J. M. M. Montiel, and J. D. Tardós, “ORB-SLAM3: An accurate open-source library for visual, visual-inertial, and multimap SLAM,” IEEE Trans. Robot. , vol. 37, no. 6, pp. 1874–1890, 2021. [3] K. McGuire, G. de Croon, C. D. Wagter, K. Tuyls, and H. Kappen, “Efficient optical flow and stereo vision for velocity estimation and obstacle avoidance on an autonomous pocket drone,” IEEE Robot. Autom. Lett. , vol. 2, no. 2, pp. 1070–1076, 2017. [4] H. Müller, V. Niculescu, T. Polonelli, M. Magno, and L. Benini, “Robust and efficient depth-based obstacle avoidance for autonomous miniaturized UAVs,” IEEE Trans. Robot. , vol. 39, no. 6, pp. 4935–4951, Dec. 2023. [5] H. Müller et al. , “Fully on-board low-power localization with multizone time-of-flight sensors on nano-UAVs,” in Proc. Design, Autom. Test Eur. Conf. Exhib. (DATE) , 2023, pp. 1–6. [6] C. Friess, V. Niculescu, T. Polonelli, M. Magno, and L. Benini, “Fully onboard SLAM for distributed mapping with a swarm of nano-drones,” 
+
+IEEE Internet Things J. , vol. 11, no. 20, pp. 32 363–32 380, 2024. [7] D. Palossi, A. Loquercio, F. Conti, E. Flamand, D. Scaramuzza, and L. Benini, “A 64-mW DNN-based visual navigation engine for autonomous nano-drones,” IEEE Internet Things J. , vol. 6, no. 5, pp. 8357–8371, 2019. [8] K. Koide, A. Takanose, S. Oishi, and M. Yokozuka, “Tightly coupled range-inertial odometry and mapping with exact point cloud down-sampling,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2025, pp. 2642–2648. [9] C. Chen, X. Lu, A. Markham, and N. Trigoni, “IONet: Learning to cure the curse of drift in inertial odometry,” in Proc. AAAI Conf. Artif. Intell. , vol. 32, no. 1, 2018, pp. 6468–6476. [10] S. Herath, H. Yan, and Y. Furukawa, “RoNIN: Robust neural inertial navigation in the wild,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) ,2020, pp. 3146–3152. [11] W. Liu et al. , “TLIO: Tight learned inertial odometry,” IEEE Robot. Autom. Lett. , vol. 5, no. 4, pp. 5653–5660, 2020. [12] Y. Qiu, C. Xu, Y. Chen, S. Zhao, J. Geng, and S. Scherer, “AirIO: Learning inertial odometry with enhanced IMU feature observability,” 
+
+arXiv preprint arXiv:2501.15659 , 2025. [13] J. Cui, F. Yu, L. Zhang, Y. Hu, and D. Zou, “AI-IO: An aerodynamics-inspired real-time inertial odometry for quadrotors,” arXiv preprint arXiv:2603.00597 , 2026. [14] S. S. Saha, S. S. Sandha, L. A. Garcia, and M. Srivastava, “TinyOdom: Hardware-aware efficient neural inertial navigation,” Proc. ACM Interact. Mobile Wearable Ubiquitous Technol. , vol. 6, no. 2, pp. 1–32, 2022. [15] S. Zhao, S. Zhou, R. Blanchard, Y. Qiu, W. Wang, and S. Scherer, “Tartan IMU: A light foundation model for inertial positioning in robotics,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2025, pp. 22 520–22 529. [16] R. Clark, S. Wang, H. Wen, A. Markham, and N. Trigoni, “VINet: Visual-inertial odometry as a sequence-to-sequence learning problem,” in Proc. AAAI Conf. Artif. Intell. , vol. 31, no. 1, 2017, pp. 3998–4005. [17] C. Chen et al. , “Selective sensor fusion for neural visual-inertial odometry,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2019, pp. 10 542–10 551. [18] C. X. Lu et al. , “milliEgo: Single-chip mmWave radar-aided egomotion estimation via deep sensor fusion,” in Proc. ACM Conf. Embedded Networked Sensor Syst. (SenSys) , 2020, pp. 109–122. [19] W. Wei et al. , “BotVIO: A lightweight transformer-based visual-inertial odometry for robotics,” IEEE Trans. Robot. , vol. 41, pp. 3760–3778, 2025. [20] Y. B. Kurt, A. Akman, and A. A. Alatan, “Causal transformer for fusion and pose estimation in deep visual-inertial odometry,” arXiv preprint arXiv:2409.08769 , 2024.
