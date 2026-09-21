@@ -1,0 +1,311 @@
+Title: ASGARD: Action-Space Guard for UAV Resilience via Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2609.20982v1
+
+Published Time: Mon, 21 Sep 2026 00:07:45 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# ASGARD : Action-Space Guard for UAV Resilience via Reinforcement Learning 
+
+Mohsen Salehi The University of British Columbia Vancouver, Canada msalehi@ece.ubc.ca Karthik Pattabiraman The University of British Columbia Vancouver, Canada karthikp@ece.ubc.ca 
+
+Abstract — Reinforcement learning (RL) controllers have been recently adopted for Unmanned Aerial Vehicles (UAV) navigation and control. However, they are susceptible to action-space attacks that overwrite the action commands after the policy generates them and before the actuators execute them. While most existing defenses target attacks on the policy’s inputs, those addressing action-space attacks retrain the policy at training time and are not resilient to corrupted actions at runtime. We propose ASGARD , a two-phase teacher–student pipeline for making RL-based UAV control resilient to action-space attacks . In the teacher phase, an encoder combines the UAV’s physical state with action-attack-related privileged information to produce an action-attack-aware latent that trains the RL control policy and a monitor that outputs corrected action commands to the actuators. In the student phase, both the encoder and the monitor are trained via supervised learning from their teacher counterparts to run on-board using only the UAV’s physical state history. We evaluate ASGARD across attack scenarios targeting different action commands on UAV. We find that ASGARD is resilient to action-space attacks and completes the missions despite the attack. We further find that 
+
+ASGARD generalizes to unseen attacks and remains resilient against stealthy attacks. 
+
+I. I NTRODUCTION 
+
+Unmanned Aerial Vehicles (UAVs) consist of control soft-ware and hardware that rely on onboard sensors to observe the vehicle’s physical state and on actuators to execute the commands that drive autonomous navigation. The safety and correctness of this entire pipeline, from sensing and control software to actuation, are critical to mission success, yet UAVs remain vulnerable to a range of attacks [1]. In particular, physical attacks such as GPS spoofing that inject noise into the physical channel [2], [3], and action-space attacks that modify the control action commands [4], [5] (e.g., roll and pitch), threaten mission safety. In recent years, model-free reinforcement learning (RL) has been widely adopted across the UAV stack, from low-level control to autonomous navigation, because it adapts well to diverse and complex environments [6], [7], [8]. Building on this line of work, robust-RL methods such as ARMOR [3] and robust adversarial reinforcement learning (RARL) [9] train control policies that remain reliable under sensor spoofing, offering a defense against physical attacks .While physical attacks have been addressed by existing techniques, attackers can still modify control action com-mands after the control policy has generated the commands - these are known as action-space attacks [4]. For example, modifying a single action command such as roll or pitch after inference can cause crashes or drive a UAV off its planned trajectory. The attacker can achieve this through different means, such as data-only attacks [10], [11], [5] (a type of software-based memory corruption attack), which modify the action commands after the control policy has generated them. As a result, the control policy keeps producing action commands that look safe and correct on the surface, but the vehicle sees the corrupted actions and performs them. Because these attacks occur after the control policy has generated the actions, they cannot be detected by input-side resilient learning policies such as ARMOR and RARL. Defenses that target action-space attacks instead harden the policy against action perturbations encountered during training [12], [13], [14]; once deployed, they forward every action the policy produces directly to the actuators, with no mechanism to intervene if that action has been corrupted. To close this gap, we propose ASGARD 1, an RL-based control pipeline that makes UAV controllers resilient to 
+
+action-space attacks . ASGARD is built on three innovations. First, inspired by prior work [7], [3], ASGARD uses a two-phase teacher –student training scheme. ASGARD first uses a teacher encoder with privileged information about action-space attacks , such as the target action and attack duration, to generate an action-attack-aware latent, which is then used to train the RL controller . The teacher encoder then supervises a student encoder that runs on the device at inference time, generating a matching latent from only the UAV’s physical state, so that the RL controller can operate without privileged information at deployment. Second, ASGARD places a lightweight multilayer percep-tron (MLP), called monitor , between the RL controller and the actuators. The monitor is trained under the same teacher– student scheme as the RL controller: a teacher monitor 
+
+is trained on the teacher encoder’s output, and a student monitor is trained on the student encoder’s output under supervision from the teacher monitor. Its lightweight design keeps the pipeline within the real-time constraints of onboard UAV control. Further, its placement shortens the attacker’s effective tampering window and introduces a trust boundary between the RL policy and the actuators.  
+
+> 1ASGARD stands for Action-Space GuARD, and is named after the walled realm of the Norse gods. arXiv:2609.20982v1 [cs.LG] 17 Sep 2026
+
+Third, unlike detection-only defenses that halt or land when they suspect an attack, ASGARD ’s monitor actively corrects the RL controller’s outputs at every step and for-wards safe action commands to the actuators, so the UAV keeps flying under a safe control signal rather than falling back to a degraded mode or hovering and finally crashing. 
+
+ASGARD has three advantages over conventional tech-niques. First, because it is trained end-to-end on both clean and attacked timesteps, the monitor learns to pass safe action commands through unchanged and repair modified ones before they reach the actuators, without a separate detection step. Furthermore, since the teacher already sees the attack context through its privileged inputs, ASGARD does not need to keep generating fresh attacks during training, which keeps training costs low. Finally, a trained ASGARD model can handle even attacks it did not see during training, without requiring re-training, thereby making it robust to new attacks. 
+
+Contributions. We make three contributions as follows.  
+
+> •
+
+We provide resilience against action-space attacks on RL-based UAV controllers by recovering action com-mands that are corrupted at runtime after they are generated by the policy, unlike existing action-space defenses, which retrain the policy against perturbations at training time instead of recovering corrupted actions.  
+
+> •
+
+We propose ASGARD , a two-phase teacher –student 
+
+control pipeline in which a teacher based on a Varia-tional Autoencoder (VAE) with access to action-attack-aware privileged information supervises a runtime stu-dent, implemented as a Long Short-Term Memory (LSTM) network, that adapts the trained RL controller to rely only on the history of UAV physical states.  
+
+> •
+
+We introduce the monitor, a small multilayer perceptron (MLP) placed between the RL controller and the actu-ators that actively corrects each outgoing action com-mand rather than merely detecting attacks. The monitor is trained under the same teacher–student scheme: a teacher monitor conditioned on the teacher’s attack-aware latent supervises a student monitor that relies on the student latent at deployment, letting safe commands through unchanged and repairing corrupted ones before they reach the actuators. The results show that ASGARD is resilient against action-space attacks, completing 95% of missions with no crashes when a single action command is corrupted, where an RL-only controller and ARMOR (the state-of-the-art resilient RL controller) complete 40% and 50% respectively and crash in 47% to 36% of missions. When all four commands are cor-rupted at once and both prior techniques fail every mission, 
+
+ASGARD completes 67%. ASGARD further generalizes to remain resilient to attack channels unseen during training and maintains resilience against stealthy attack patterns. II. B ACKGROUND 
+
+A. UAV Controller 
+
+UAVs consist of control software (controller) and hard-ware, including sensors such as GPS and IMU that observe the environment, and actuators (the motors) that execute the action commands (e.g., roll and pitch channels) generated by the controller to complete a mission. At each control step t,an onboard estimator fuses these sensor measurements into a physical state st (e.g., position pt = ( x, y, z ) and velocity 
+
+vt = ( ˙ x, ˙y, ˙z)). Given st and a reference gt drawn from the mission’s waypoint list, the control policy π produces the action commands at = π(st, g t), which are sent to the actuators. The action command is a tuple of four values: pitch apt , roll art , thrust aTt , and gain aKt . The four channels together parameterize the vehicle’s intended motion: apt
+
+commands the forward/backward movement, art the lateral movement, aTt the vertical movement, and aKt scales the overall speed at which the UAV moves toward its destination. A mission is safe and successful when the UAV reaches every waypoint while staying within a mission-specific safety radius ϵ of the reference, i.e., when the tracking error ∆pt =
+
+∥pt − gt∥ ≤ ϵ for all t.
+
+B. Action-Space Attacks Action-space attacks intercept the RL controller’s action commands after the control policy has produced them, and modify the values before they reach the actuators. To carry out this attack, attackers can use existing techniques such as memory corruption exploits (e.g., data-only attacks ) [10], [5]. In a UAV controller, the action commands at = π(st, g t)
+
+live in memory between the moment the control policy writes them and the moment the actuator reads them, so an attacker who can overwrite them replaces at with modified commands ˜at (e.g., an additive bias ˜at = at + bt chosen by the attacker) during this window. Thus, the control policy and any check performed on its inputs still appear normal, and the unsafe behavior appears only in the physical world. The damage depends on which action channel is targeted. For instance, a perturbation of apt or art causes unintended forward or sideways motion, while tampering with aTt or 
+
+aKt drives it up, down, or past the destination; in either case, the UAV eventually deviates from the planned trajectory or crashes. Hardware-level safety interlocks, if present, are designed to catch catastrophic failures (e.g., complete motor loss) and are therefore ineffective against the subtle, gradual action corruptions we consider. 
+
+C. Threat Model 
+
+We consider an adversary that can overwrite the action commands at after the control policy π has produced them and before the actuators execute the actions. For instance, at each control step, the adversary may replace at with modified commands ˜at = at + bt, where bt is an attacker-chosen bias applied to one or more of the four action channels (pitch apt , roll art , thrust aTt , and gain aKt ) with varying severity, patterns, and duration. We assume the attacker can act stealthily by applying small biases bt that cause gradual drift from the intended trajectory. The encoder, the control policy, and the monitor are immutable after training, and hence we assume they reside in read-only memory at deployment and cannot be modified by the adversary. Action commands, in contrast, are recomputed at every control step and must hence be stored in writable memory, leaving them exposed to corruption by attackers. Physical attacks on sensors, such as GPS spoofing, are outside our scope; they target a different point in the pipeline and are addressed by prior work [3], [9] Attacks on the ground station, the mission plan, or the communication link between them are likewise out of scope. III. R ELATED WORK 
+
+We classify related work into two broad categories. 
+
+Model-free Reinforcement Learning Recent advances in reinforcement learning (RL) have made learned policies a leading approach for robotic control, replacing hand-tuned controllers with end-to-end training on interaction data. Ap-plications range from low-level quadrotor stabilization [8] and championship-level drone racing [15] to legged locomo-tion over challenging terrain [7]. Extending this line of work, other approaches adapt RL to robust and safe operation: co-training the policy against a perturbing adversary [9], learning under environmental uncertainty [16], [17] to adapt the robot’s behavior in unseen environments, or keeping the system in a safe state using manually defined, fixed bound-aries of unsafe actions [18], which require anticipating unsafe regions in advance and are therefore not designed for action-space attacks that occur after the action is generated by the control policy, the threat model considered by ASGARD .
+
+Attacks on Robots Adversarial attacks on RL-based techniques span several categories [1], [19], including per-turbations to observed states, manipulations of the training environment, and attacks on the action space. Due to space constraints, we focus on the two most relevant to this work. 
+
+1. Physical Attacks perturb the sensor measurements that feed the policy, such as GPS spoofing [2]. Robust Adversarial RL (RARL) [9] co-trains a policy against an adversary that injects adversarial perturbations as external forces on the agent’s body, modeling physical-layer disturbances such as mass or friction mismatch; ARMOR [3] trains a UAV controller under a teacher–student scheme with privileged information about sensor spoofing. 
+
+2. Action-Space Attacks target the action space of an RL control policy. Lee et al. [4] explore action-space adversar-ial attacks under spatial and temporal budgets, comparing an attack that perturbs actions independently at each step against one that plans across multiple steps using the agent’s dynamics. They show these attacks are effective at degrading a Deep RL (DRL) agent’s performance in simulated envi-ronments. However, their work focuses purely on crafting stronger attacks, with no defense or resilience mechanism proposed. Several papers have proposed robustifying DRL agents against action-space perturbations by training the policy against adversarial or worst-case perturbations to its actions [12], [13]. Similarly, Lee et al. [14] investigate black-box targeted attacks using a learned adversarial policy and show that fine-tuning the nominal policy via adversarial training can partially mitigate such attacks, though it does not fully eliminate their success. However, these approaches retrain the policy against such attacks at training time rather than addressing corrupted actions at runtime after they are generated by the policy, which is the problem ASGARD 
+
+addresses. Different attack techniques can be used to corrupt the RL controller’s action commands, including non-control-data attacks [10], software-based exploits that manipulate program data (e.g., action commands in UAVs). IV. D ESIGN : ASGARD 
+
+We first present an overview of the design of ASGARD ,followed by a deep dive into the teacher and student phases. 
+
+A. ASGARD: Overview 
+
+Figure 1 shows an overview of ASGARD , a two-phase teacher–student pipeline with three components in each phase for defending against action-space attacks . In the teacher phase, the teacher encoder consumes the UAV’s physical state ( ot) along with action-attack-related privileged information ( xt) (e.g., target action) to produce an action-attack-aware latent (¯lt). This latent trains the RL control policy, which in turn outputs both an action ( ¯at) and an expected next state, jointly training the teacher monitor on the latent, the action, and the expected state to output a corrected action ( ˜¯at). The three components are trained end-to-end on a mix of clean and attacked trajectories, so the monitor learns both to forward safe commands and to repair corrupted ones ( ¯a´t). In the student phase, the pipeline is adapted for onboard deployment, where privileged information is unavailable. The student encoder is trained via supervised learning from the teacher encoder to match its attack-aware latent from only the UAV’s physical state history (H), and the student monitor is trained under supervision from the teacher monitor using the student latent ( lt), the policy’s expected state, and the generated action commands. The control policy is carried over from the teacher phase and now consumes the student latent to produce action commands ( at). At runtime, the student encoder, control policy, and student monitor execute together on the onboard device; at each step, the monitor forwards the correct action commands to the actuators ( ˜at). 
+
+B. ASGARD: Teacher Phase 
+
+Like prior work [7], [20], we formulate the control prob-lem as a Markov Decision Process (MDP), defined by the tuple (S, A, P, r ), corresponding respectively to the state space, action space, transition probability P : S × A → S ,and scalar reward function r. Training proceeds by selecting an action at from a control policy π(at | st), receiving a reward rt, and maximizing the expected discounted sum of rewards over time. In the first phase of training pipeline, ASGARD teacher assumes access to both the UAV’s physical state ot in-cluding the UAV’s position, orientation, linear velocity, and angular velocity ( ot =
+
+h
+
+x, y, z, ϕ, θ, ψ, ˙x, ˙y, ˙z, ˙ϕ, ˙θ, ˙ψ
+
+i
+
+) and privileged information xt describing the action-space attacks 
+
+information and its corrupted physical states, the corruption bias currently applied, and its duration. The teacher’s full Phase 1:  Teacher training with   
+
+> privileged information
+> - target action
+> - corrupted states
+> - attack duration
+> - attack bias
+> Phase 2: Student training with history of
+> sensor and action data, and expected state
+> ...
+> Student Encoder
+> TVAE/LSTM
+> VAE
+> Teacher Encoder
+> Control Policy
+> action
+> action
+> RL algorithm
+> robot
+> state
+> robot
+> state
+> Monitor
+> Monitor Expected state
+> Reward
+> Expected state
+
+Fig. 1: Overview of ASGARD ’s operation. (1) Teacher Phase: the Teacher encoder combines privileged information with the UAV’s physical state to produce an action-attack-aware latent that trains the RL control policy and the Teacher monitor, which outputs corrected action commands to the actuators. (2) Student Phase: the Student encoder and Student monitor are trained via supervised learning from their Teacher counterparts, using only the UAV’s physical state history as input; these three components (Student Encoder, Control Policy, Student monitor) run together on-board at deployment. state is thus st := ⟨ot, x t⟩. The teacher encoder Eteacher ,implemented as a variational autoencoder (VAE) [21], maps 
+
+st (Eteacher (ot, x t)) to an action-attack-aware latent repre-sentation ¯lt, the input reconstruction ˆst and the prediction of type of attack ˆyt.The control policy π(at | ¯lt) is trained via Proximal Policy Optimization (PPO) [22], using ¯lt as input to pro-duce the intended action ¯at. For estimating and correcting action commands, alongside the policy, we train an auxiliary 
+
+expected-state head F (ˆst+1 = F (¯lt)), which predicts the physical state the UAV should reach immediately following 
+
+¯at. The expected state will help the monitor in the next step to correct or unchange the received action commands based on the current latent. 
+
+F is trained via supervised regression against the UAV’s true next state, observed one step ahead under clean, unattacked dynamics since policy produces action com-mands, it has access to uncorrupted ones: 
+
+Lstate = F (¯lt) − sclean  
+
+> t+1
+> 2
+
+(1) computed on uncorrupted commands, so that ˆst+1 always re-flects the physically correct outcome, independent of whether an attack occurs at t.The teacher monitor ( Mteacher ) is the core mechanism enabling ASGARD to recover from action-attacks. At every timestep, the attacker may overwrite the policy’s intended action ¯at with a corrupted action ¯a´t. Mteacher observes the latent ¯lt, the received (possibly corrupted) action ¯a´t, and the expected next state ˆst+1 , and outputs a corrected action: 
+
+˜¯at = Mteacher (¯lt, ¯a´t, ˆst+1 ) (2) 
+
+Mteacher is trained via supervised regression toward the un-corrupted action using a mixture of clean timesteps (where 
+
+¯a´t = ¯ at) and attacked timesteps (where ¯a´t̸ = ¯ at). Training on both populations with accessing to privileged action attack information helps Mteacher to train on both scenarios and send commands consistent with the uncorrupted intent to the actuators. At every timestep of teacher-phase training, the executed action is ˜¯at, meaning Mteacher ’s correction directly determines the UAV’s physical trajectory, not merely a diagnostic signal computed alongside it. The reward rt that shapes the policy’s training reflects progress toward the current target waypoint 
+
+gt, adopted by prior work: 
+
+rt = Rgoal · exp ( −λ∥pt − gt∥)
+
+| {z }
+
+> sharp reward as UAV nears goal
+
+− α∥pt − pt−1∥
+
+| {z }
+
+> penalize large position changes
+
+− βθ t
+
+|{z} 
+
+> penalize excessive tilt
+
+− γ∥at − at−1∥2
+
+| {z }
+
+> penalize abrupt control changes
+
+(3) where pt is the UAV’s position and penalty weights shown with α for deviation from target, β for instability, γ for sudden movement; upon reaching the final waypoint, aterminal bonus proportional to the remaining time steps in the episode rewards early, successful completion of the mission. 
+
+C. ASGARD: Student Phase 
+
+For onboard deployment, where privileged information 
+
+xt is unavailable, we train a student encoder Estudent us-ing only the UAV’s recent physical state history Ht := 
+
+{ot−N , . . . , o t−1}, together with the UAV’s own previously executed actions {at−N , . . . , a t−1}, allowing the student to account for the consequences of its own recent commands when estimating the current action-attack-aware latent ( lt =
+
+Estudent (Ht)). Given that the underlying data forms a sequence of time-dependent measurements, Estudent is implemented as a tem-poral variational autoencoder (TVAE) using a recurrent Long Short-Term Memory (LSTM) network, trained via supervised regression to approximate the teacher’s latent. 
+
+Lfeat = lt − ¯lt 
+
+> 2
+
+(4) We additionally minimize the discrepancy between the ac-tions the shared control policy produces from each latent: 
+
+Lact = π(lt) − π(¯lt) 2 (5) so that the student latent is optimized not only to numerically resemble ¯lt, but to also yield the same downstream control decisions. Overall, the student encoder tries to approximate the teacher encoder’s output using supervised learning, and correspondingly produce similar actions generated by the policy, by minimizing the loss: Lfeat + Lact + Lattack , where 
+
+Lattack is the attack classification loss. The student monitor Mstudent shares Mteacher ’s architecture. Given the student latent lt, the received action a´t, and the student’s own expected-state prediction, Mstudent is trained to match the teacher monitor’s correction for the same underlying scenario: 
+
+Lstudent monitor = Mstudent (lt, a ´t, ˆsstudent  
+
+> t+1
+
+) − Mteacher (¯lt, ¯a´t, ˆst+1 ) 2
+
+(6) where the same attack is applied to both the teacher’s and student’s action at each training step, ensuring the two moni-tors are supervised on matching scenarios. The control policy 
+
+π is reused unchanged from the teacher phase, since both phases share an identical action space and reward objective. At deployment, only Estudent , π, and Mstudent execute onboard: at each timestep, Mstudent consumes the policy’s action and either forwards it unchanged or replaces it with ˜at before it reaches the actuators. In particular, at each control step, the student encoder com-putes lt from the sensor and action history; the control policy produces at = π(lt); and Mstudent receives (lt, a ´t, ˆst+1 )
+
+unconditionally, on every step, regardless of whether an attack is present ( a´t = at or a´t̸ = at). Mstudent outputs an action command that is used directly by the actuators, adapting toward the uncorrupted command the control policy would have produced, even if an attack occurs at that step. V. ASGARD EVALUATION 
+
+This section first presents the experimental setup, and then evaluates ASGARD along four aspects: (i) the training performance of the teacher–student pipeline (§V-B), (ii) AS-GARD ’s behavior under action-space attacks compared with prior techniques (§V-C, §V-D), (iii) zero-shot performance against unseen attacks (§V-E), and (iv) resilience against stealthy attacks (§V-F). 
+
+A. Experimental Setup 
+
+For training and evaluation, we target a waypoint-following task where a quadcopter (shown on the right) 
+
+reaches randomly-selected 3D goal posi-tions under coupled translational-rotational dynamics. We build the environment on 
+
+gym-pybullet [23], a PyBullet-based quadro-tor simulator with an OpenAI Gym interface [24] and real-istic rigid-body dynamics, matching the setup used in prior UAV RL work [25], [3]. For ASGARD , we extend this environment with three custom components: an action-attack injection mechanism, a channel for privileged action-context observations, and a monitor correction interface. We adopt ARMOR’s publicly available implementation for the teacher encoder and control policy [3], modifying them to support our innovations in order to be resilient against action-space attacks . We imple-ment the teacher–student encoder architecture in the training pipeline with a 15-dimensional latent, and the student en-coder takes an 80-timestep history of the UAV’s physical state as input. Further, the RL control policy is trained with PPO, and the monitors are implemented as lightweight MLPs. Although ASGARD can be applied to other types of vehicles, we restrict our evaluation to a single quadrotor model due to space constraints, prioritizing depth of analysis on action-space attacks over breadth across platforms. Table I summarizes the five attack configurations we use to evaluate ASGARD ’s resilience across a broad range of action-attack scenarios, each targeting a different action channel with its own bias range and duration. A Pitch attack disrupts the UAV’s forward progress, at times reversing its direction of travel outright, while a Roll attack turns what should be a small, controlled sideways adjustment into a hard, unintended lean. Thrust attacks strike at the UAV’s climb and descent rate, disrupting vertical stability over an extended period. Gain attacks act differently still, distorting not the direction of the UAV’s movement but its strength, leaving it barely responsive one moment and lurching the next. Finally, we evaluate a combined attack that applies all four simultaneously, representing a worst-case adversary that corrupts every command at once and drives the UAV off-course along all four control dimensions in parallel.                   
+
+> Target Action Bias Range Attack Duration Explain
+> Pitch (-4)-(4) max 90s Disrupts or reverses forward progress Roll (-1)-(1) max 90s Turns a small adjustment into a hard, unintended lean Thrust (-5)-(5) max 120s Disrupts climb/descent rate Gain (-15)-(15) max 150s Distorts movement strength All (-1)-(1) max 60s All four simultaneously, worst-case scenario
+
+TABLE I: Different types of attacks on each action command for evaluating ASGARD .For comparison, we consider two additional techniques. The state-of-the-art RL resilience approach ARMOR [3] uses a similar teacher–student training pipeline but targets 
+
+physical attacks on the sensor inputs of the RL control policy, and forwards its action commands to the actuators without any correction step. Other adversarial training defenses [26], [9] share the same idea, jointly training a control policy alongside an adversary that corrupts the observations fed to the control policy. ARMOR has been shown to outperform such approaches, so we use it as the state-of-the-art baseline for our comparison. Further, as an Ablation Study to show the effectiveness of ASGARD ’s two-stage training pipeline, including the encoders and monitor, we consider a Baseline-RL controller that removes both from ASGARD ’s architecture in two settings: one with access to privileged action-attack information during training, and one without. The results show that both settings perform comparably, confirming that training with privileged information alone, without the encoder (no latent representation in either case) and monitor, is not sufficient for resilience against action-space attacks ;we therefore report both under the single label Baseline-RL .We adapt the prior work definition of metrics to evaluate ASGARD and its comparisons with prior work. Mission Success Rate is the fraction of evaluated episodes in which the UAV reaches within its designated waypoint threshold ( ϵ
+
+= 5m [27], [3]) before the episode ends ( ∥dest − pos ∥ ≤ ϵ,where dest is the target waypoint and pos is the UAV’s current position), without having triggered a crash or timeout termination first. State Drift is the mean Euclidean dis-tance, in meters, between pos and dest, computed at each timestep during the attack and averaged across evaluation episodes. Crash Rate is the fraction of evaluated episodes that terminate specifically because the UAV’s state exceeds a predefined safety bound, such as leaving the valid flight volume or tilting beyond a safe orientation, causing a crash. For brevity, we use Teacher and Student to refer to AS-GARD ’s full pipeline (encoder, control policy, and monitor) at each phase. 
+
+B. ASGARD Training Performance 
+
+To evaluate whether ASGARD ’s Student can adapt to the Teacher’s performance, we train the baseline-RL and 
+
+ASGARD ’s Teacher over 10 × 10 5 timesteps under nominal (attack-free) conditions, and then train ASGARD ’s Student under the Teacher’s supervision. All training curves in Figure 2 are averaged over five runs with random seeds. Figure 2(a) shows the results. We make two observations. First, ASGARD ’s Teacher (blue) and Student (yellow) both reach the maximum episodic reward (approximately 4000) within about 3 × 10 5 timesteps, whereas the baseline-RL approach (green) requires roughly 7 × 10 5 timesteps to reach the same level. Second, the Student closely tracks the Teacher throughout training and both reach the same maximum re-ward as the baseline-RL. This shows that the teacher–student encoding preserves learning performance under attack-free conditions. 
+
+Fig. 2: Training performance comparison. Left (a): Nominal conditions, all methods achieve similar final performance. 
+
+Right (b): Adversarial conditions with action-space attacks ,both ASGARD Teacher and Student converge faster than ARMOR while ARMOR has many fluctuations. To evaluate ASGARD ’s effectiveness under action-space attacks , we train both ASGARD and ARMOR under equiva-lent conditions, giving each teacher access to the privileged information and then supervising their respective students. Figure 2(b) shows the resulting training curves, with shaded regions indicating variation across the five runs. We can see that ARMOR’s Teacher and Student both struggle to converge, reaching a maximum episodic reward of approx-imately 4000 after 100 × 10 5 timesteps and with large fluctuations across runs. ASGARD , in contrast, converges to a higher episodic reward of approximately 4500 in under 
+
+20 × 10 5 timesteps ( 5× faster) with much tighter variance across runs. Overall, these results show that ASGARD is effective under both nominal and adversarial conditions, outperforming both ARMOR and the baseline-RL, and that the Student reproduces the Teacher’s action-attack resilience while relying on only the UAV’s physical state history. In the remaining subsections, we focus on the Student (the pipeline actually deployed on the device) and refer to it as ASGARD .
+
+C. ASGARD under Action Attacks 
+
+To evaluate ASGARD ’s effectiveness under action-space attacks , we run the four single-channel attacks (Pitch, Roll, Thrust, Gain) and the combined All attack from Table I. As Table II shows, ASGARD successfully completes an average of 95% of missions across the four single-channel attacks without any crashes, while achieving the lowest state drift (∼0.30m on average). Furthermore, under the All attack, which is also difficult for an attacker to carry out in practice, 
+
+ASGARD successfully finishes 67% of missions with only a 10% crash rate while keeping the state drift small ( ∼0.26m). To visualize ASGARD ’s actions against one of the action-space attacks discussed in Table I, we run the All action attack on a mission that follows the blue line and then turns right along the red line, shown in Figure 3 together with each technique’s resulting trajectory in orange, for all three techniques: baseline-RL (top), ARMOR (middle), and 
+
+ASGARD (bottom). We can see that both baseline-RL and ARMOR cause the UAV to become unstable and crash, failing to finish the mission, while ASGARD maintains the UAV’s flight and stays on course until the mission completes. 
+
+Fig. 3: Flight trajectories under all action attack. Top: 
+
+Baseline-RL, Middle: ARMOR, and Bottom: ASGARD ,which keeps its intended trajectory despite the attack. 
+
+D. Comparison with ARMOR and Baseline-RL 
+
+We compare ASGARD against ARMOR and baseline-RL controller on the five action-space attacks configurations from Table I, with results shown in Table II. Across the four single-channel attacks, compared to the baseline-RL controller, ARMOR increases the average success rate from 40.5% to around 50% and reduces the average crash rate from 47% to 36.5%, with average state drifts of ∼0.41m and ∼0.39m, respectively. Under the All attack, however, both techniques cause every mission to fail (0% success, 100% crash), with state drifts of ∼0.36m and ∼0.37m. In contrast, ASGARD achieves an average of 95% success with no crashes across the four single-channel attacks, and 67% success with a 10% crash rate under the All attack, with the lowest average state drift of ∼0.30m and ∼0.26m, respectively, for the single channel and all attack. 
+
+Takeaway: These results show that using only RL (i.e., the baseline-RL controller), or its refinement with a two-phase teacher–student pipeline as in ARMOR, is insufficient against action-space attacks and leaves the UAV vulnerable to action-space attacks. In contrast, ASGARD makes the UAV resilient to action-space attacks, across all five configurations. 
+
+Fig. 4: Attitude errors (degree) under Thrust action attack for Baseline-RL (left), ARMOR (middle), and ASGARD (right). Figure 4 illustrates this trend visually, showing the atti-tude error of the three techniques under the Thrust attack. Baseline-RL’s error exceeds ±10 ◦ on average, and ARMOR only marginally reduces it to around ±10 ◦, with both exhibit-ing large fluctuations and errors that cause crashes, consistent with the results in Table II. ASGARD , in contrast, keeps the average attitude error below ±4◦ throughout the attack, demonstrating its resilience against action-space attacks such as the Thrust attack. 
+
+E. ASGARD Zero-Shot Performance 
+
+We evaluated the generalization of ASGARD by testing whether it remains resilient against action-space attacks on action channels that were not part of its training data. We consider two zero-shot scenarios: in each, we train ASGARD 
+
+and ARMOR on a single randomly picked action attack (Pitch in one scenario, Gain in the other) and evaluate them on the attacks on the remaining three action channels from Table I. 
+
+Pitch-trained. We train ASGARD and ARMOR using Pitch as the training attack and evaluate on Roll, Thrust, and Gain, with the results in Table III. ARMOR finishes an average of 49% of missions with a 35% crash rate, while 
+
+ASGARD finishes 77% of missions with only 7% crashes and a lower average state drift ( ∼0.33m vs. ∼0.44m for ARMOR). TABLE III: ASGARD and ARMOR effectiveness when trained on Pitch action attacks only and tested on unseen attacks ( Zero-shot ).                                   
+
+> Techniques Metrics Roll Thrust Gain
+> ARMOR Success 18% 50% 80% Crash 81% 10% 15% State Drift (m) 0.430 ±0.014 0.597 ±0.036 0.295 ±0.001
+> ASGARD
+> Success 80% 60% 91% Crash 12% 6% 5% State Drift (m) 0.375 ±0.063 0.356 ±0.072 0.270 ±0.016
+
+Gain-trained. We use Gain as the training attack and evaluate on Pitch, Roll, and Thrust, with the results in Ta-ble IV. ARMOR finishes 31% of missions with a 57% crash rate, whereas ASGARD finishes around 74% of missions with only 9% crashes and a lower average state drift ( ∼0.34m vs. 
+
+∼0.44m for ARMOR). TABLE IV: ASGARD and ARMOR effectiveness when trained on Gain action attacks only and tested on unseen attacks ( Zero-shot ).                                   
+
+> Techniques Metrics Pitch Roll Thrust
+> ARMOR Success 16% 14% 64% Crash 82% 86% 4% State Drift (m) 0.315 ±0.009 0.436 ±0.008 0.579 ±0.050
+> ASGARD
+> Success 44% 81% 96% Crash 10% 18% 0% State Drift (m) 0.231 ±0.006 0.385 ±0.002 0.395 ±0.000
+
+Takeaway: Training on a single action attack is sufficient for ASGARD to generalize to unseen attack channels, achiev-ing roughly 2–3× ARMOR’s success rate and a 5–6× lower crash rate. 
+
+F. ASGARD under Stealthy Attacks 
+
+To evaluate the effectiveness of ASGARD against stealthy attacks, we adapt two attack profiles from prior work [3] — continuously increases the bias at a fixed rate, and increases the bias in discrete increments at fixed intervals — to action-space attacks , within the ranges discussed in Table I. As can be seen in Table V, under these gradually accumulating attacks for Roll, ASGARD maintains a mission success rate of 100% with no crashes, while ARMOR fails on every evaluated episode, resulting in a 0% success rate and a 100% crash rate. 
+
+Takeaway. ASGARD ’s pipeline encodes the history of actions into the student latent; the monitor reads this latent and continuously tracks the bias as it accumulates, adjusting its corrections as the disturbance grows and preventing large deviations. In contrast, ARMOR lacks any runtime correction mechanism and fails regardless of how gradually the attack develops. This suggests that the absence of an active correc-tion stage, rather than the abruptness of the disturbance, is the primary factor behind ARMOR’s vulnerability to action-space attacks .TABLE V: ASGARD and ARMOR performance under stealthy action-space attacks .             
+
+> Techniques Success Crash State Drift (m)
+> ARMOR 0% 100% 0.419 ±0.002
+> ASGARD 100% 0% 0.392 ±0.002
+
+TABLE II: Performance comparison of Baseline-RL, ARMOR, and ASGARD under action attacks against five UAV action targets. 
+
+Target action Baseline-RL ARMOR ASGARD 
+
+Success Crash State Drift (m) Success Crash State Drift (m) Success Crash State Drift (m) 
+
+Pitch 18% 69% 0.307 ± 0.012 25% 57% 0.287 ± 0.008 95% 0% 0.159 ± 0.004 Roll 19% 80% 0.418 ± 0.003 23% 75% 0.428 ± 0.010 94% 0% 0.393 ± 0.003 Thrust 61% 3% 0.608 ± 0.010 68% 0% 0.567 ± 0.034 97% 0% 0.394 ± 0.001 Gain 64% 35% 0.304 ± 0.001 85% 14% 0.295 ± 0.001 94% 0% 0.267 ± 0.001 All 0% 100% 0.359 ± 0.001 0% 100% 0.368 ± 0.001 67% 10% 0.259 ± 0.001 
+
+VI. D ISCUSSION & C ONCLUSION 
+
+RL controllers for UAVs are vulnerable to action-space attacks , and while prior work addresses this by robustifying the policy through adversarial training, these defenses for-ward every action directly to the actuators once deployed — with no mechanism to intercept a command that has already been corrupted. ASGARD closes this gap through three innovations: an action-attack-aware latent trained with attack-specific privileged information, a two-phase teacher– student scheme that, as shown in Figure 2(b), trains more efficiently and with fewer fluctuations than prior work while distilling this capability to a student that runs from physical-state and action history alone at deployment, and a monitor placed between the control policy and the actuators that uses this latent to intercept and correct corrupted commands before they reach the hardware. Across attack scenarios where neither ARMOR nor an RL-only controller is resilient, 
+
+ASGARD completes over 95% of missions under single-channel attacks and 67% under a combined attack on all four channels. ASGARD further generalizes to attack channels un-seen during training and maintains resilience against stealthy attack patterns. However, extending ASGARD to other types of robotic systems and sim-to-real transfer remains an open direction for future work. REFERENCES [1] I. Ilahi, M. Usama, J. Qadir, M. U. Janjua, A. Al-Fuqaha, D. T. Hoang, and D. Niyato, “Challenges and countermeasures for adversarial at-tacks on deep reinforcement learning,” IEEE Transactions on Artificial Intelligence , vol. 3, no. 2, pp. 90–109, 2021. [2] T. E. Humphreys, B. M. Ledvina, M. L. Psiaki, B. W. O’Hanlon, P. M. Kintner, et al. , “Assessing the spoofing threat: Development of a portable gps civilian spoofer,” in Proceedings of the 21st International technical meeting of the satellite division of the institute of navigation (ION GNSS 2008) , 2008, pp. 2314–2325. [3] P. Dash, E. Chan, N. P. Lawrence, and K. Pattabiraman, “Armor: Robust reinforcement learning-based control for uavs under physical attacks,” arXiv preprint arXiv:2506.22423 , 2025. [4] X. Y. Lee, S. Ghadai, K. L. Tan, C. Hegde, and S. Sarkar, “Spa-tiotemporally constrained action space attacks on deep reinforcement learning agents,” in Proceedings of the AAAI conference on artificial intelligence , vol. 34, no. 04, 2020, pp. 4577–4584. [5] H. Alemzadeh, D. Chen, X. Li, T. Kesavadas, Z. T. Kalbarczyk, and R. K. Iyer, “Targeted attacks on teleoperated surgical robots: Dynamic model-based detection and mitigation,” in 2016 46th annual IEEE/I-FIP international conference on dependable systems and networks (DSN) . IEEE, 2016, pp. 395–406. [6] D. Chen, B. Zhou, V. Koltun, and P. Kr¨ ahenb¨ uhl, “Learning by cheating,” in Conference on robot learning . PMLR, 2020, pp. 66–75. [7] J. Lee, J. Hwangbo, L. Wellhausen, V. Koltun, and M. Hutter, “Learning quadrupedal locomotion over challenging terrain,” Science robotics , vol. 5, no. 47, p. eabc5986, 2020. [8] J. Hwangbo, I. Sa, R. Siegwart, and M. Hutter, “Control of a quadrotor with reinforcement learning,” IEEE Robotics and Automation Letters ,vol. 2, no. 4, pp. 2096–2103, 2017. [9] L. Pinto, J. Davidson, R. Sukthankar, and A. Gupta, “Robust adver-sarial reinforcement learning,” in International conference on machine learning . PMLR, 2017, pp. 2817–2826. [10] S. Chen, J. Xu, E. C. Sezer, P. Gauriar, and R. K. Iyer, “Non-control-data attacks are realistic threats,” in 14th USENIX Security Symposium (USENIX Security 05) , 2005. [11] L. Szekeres, M. Payer, T. Wei, and D. Song, “Sok: Eternal war in memory,” in 2013 IEEE Symposium on Security and Privacy . IEEE, 2013, pp. 48–62. [12] C. Tessler, Y. Efroni, and S. Mannor, “Action robust reinforcement learning and applications in continuous control,” in International Conference on Machine Learning . PMLR, 2019, pp. 6215–6224. [13] K. L. Tan, Y. Esfandiari, X. Y. Lee, S. Sarkar, et al. , “Robustifying reinforcement learning agents via action space adversarial training,” in 2020 American control conference (ACC) . IEEE, 2020, pp. 3959– 3964. [14] X. Y. Lee, Y. Esfandiari, K. L. Tan, and S. Sarkar, “Query-based targeted action-space adversarial policies on deep reinforcement learn-ing agents,” in Proceedings of the ACM/IEEE 12th international conference on cyber-physical systems , 2021, pp. 87–97. [15] E. Kaufmann, L. Bauersfeld, A. Loquercio, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Champion-level drone racing using deep reinforce-ment learning,” Nature , vol. 620, no. 7976, pp. 982–987, 2023. [16] T. Fan, P. Long, W. Liu, J. Pan, R. Yang, and D. Manocha, “Learning resilient behaviors for navigation under uncertainty,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2020, pp. 5299–5305. [17] D. Sacerdoti, F. Benzi, and C. Secchi, “A reinforcement learning-based control strategy for robust interaction of robotic systems with uncertain environments,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 5788–5794. [18] R. Cheng, G. Orosz, R. M. Murray, and J. W. Burdick, “End-to-end safe reinforcement learning through barrier functions for safety-critical continuous control tasks,” in Proceedings of the AAAI conference on artificial intelligence , vol. 33, no. 01, 2019, pp. 3387–3395. [19] S. Huang, N. Papernot, I. Goodfellow, Y. Duan, and P. Abbeel, “Adversarial attacks on neural network policies,” arXiv preprint arXiv:1702.02284 , 2017. [20] E. Aljalbout, F. Frank, M. Karl, and P. van der Smagt, “On the role of the action space in robot manipulation learning and sim-to-real transfer,” IEEE Robotics and Automation Letters , vol. 9, no. 6, pp. 5895–5902, 2024. [21] D. P. Kingma and M. Welling, “Auto-encoding variational bayes,” 
+
+arXiv preprint arXiv:1312.6114 , 2013. [22] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [23] J. Panerati, H. Zheng, S. Zhou, J. Xu, A. Prorok, and A. P. Schoellig, “Learning to fly—a gym environment with pybullet physics for reinforcement learning of multi-agent quadcopter control,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2021, pp. 7512–7519. [24] G. Brockman, V. Cheung, L. Pettersson, J. Schneider, J. Schul-man, J. Tang, and W. Zaremba, “Openai gym,” arXiv preprint arXiv:1606.01540 , 2016. [25] Z. Yuan, A. W. Hall, S. Zhou, L. Brunke, M. Greeff, J. Panerati, and A. P. Schoellig, “Safe-control-gym: A unified benchmark suite for safe learning-based control and reinforcement learning in robotics,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 11 142–11 149, 2022. [26] F. Fei, Z. Tu, D. Xu, and X. Deng, “Learn-to-recover: Retrofitting uavs with reinforcement learning-assisted flight control under cyber-physical attacks,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2020, pp. 7358–7364. [27] P. Dash, E. Chan, and K. Pattabiraman, “Specguard: Specification aware recovery for robotic autonomous vehicles from physical at-tacks,” in Proceedings of the 2024 on ACM SIGSAC Conference on Computer and Communications Security , 2024, pp. 1849–1863.

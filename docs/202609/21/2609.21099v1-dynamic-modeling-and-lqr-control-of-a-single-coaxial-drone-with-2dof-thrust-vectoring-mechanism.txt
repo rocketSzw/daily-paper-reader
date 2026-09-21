@@ -1,0 +1,508 @@
+Title: Dynamic Modeling and LQR Control of a Single Coaxial Drone with 2DOF Thrust Vectoring Mechanism
+
+URL Source: https://arxiv.org/pdf/2609.21099v1
+
+Published Time: Mon, 21 Sep 2026 00:15:41 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+Proceedings of the 13th RSI International Conference on Robotics and Mechatronics (ICRoM 2025), Dec. 16-18, 2025, Tehran, Iran 
+
+# Dynamic Modeling and LQR Control of a Single-Coaxial Drone with 2-DOF Thrust Vectoring Mechanism 
+
+Ali Jokar 
+
+Sharif AgRoLab School of Mechanical Engineering Sharif University of Technology 
+
+Tehran, Iran ali.jokar@sharif.edu 
+
+Amin Talaeizadeh 
+
+Sharif AgRoLab School of Mechanical Engineering Sharif University of Technology 
+
+Tehran, Iran amin.talaeizadeh@sharif.edu 
+
+Aria Alasty 
+
+Sharif AgRoLab School of Mechanical Engineering Sharif University of Technology 
+
+Tehran, Iran aalasti@sharif.edu 
+
+Abstract —Coaxial rotor drones have generated considerable interest because of energy efficiency and small size, but they are afflicted with inherent underactuation for roll and pitch control, although systems like swashplates have circumvented this limitation at the cost of greater mechanical complexity. This work presents a novel coaxial drone supplemented by a two-degrees-of-freedom pendulum mechanism for active thrust vectoring that offers a less mechanically complicated alternative. We develop a comprehensive Lagrangian dynamic model that does not ignore the inertial contributions of all the components, including body, servo arms, and motor assembly. A Linear Quadratic Regulator (LQR) is designed based on the linearized dynamics around the hover equilibrium. High-fidelity simulations taking actuator dynamics and sensor noise into account validate the proposed architecture. An Extended Kalman Filter (EKF) blends GPS, barometer, and IMU estimates with high accuracy for state estimation. The findings verify the potential and reliability of this approach for power-saving, rapid coaxial UAVs. 
+
+Index Terms —Coaxial Drone, LQR Controller, 2-DOF Pendu-lum Mechanism, EKF 
+
+I. I NTRODUCTION 
+
+Coaxial rotor drones gained significant attention because of their mechanical complexity, compact size, and energy efficiency compared to quadcopters [1], [2]. However, their intrinsic underactuation—no roll and pitch control indepen-dently—has long limited their maneuverability and practical applications. Overcoming this intrinsic drawback, several so-lutions have been proposed by researchers including auxiliary control surfaces [3], tilting rotors [4], [5], and swashplate mechanisms. Such approaches have yielded mixed success in terms of attitude control, but at the common cost of increased mechanical complexity or reduced efficiency. Other somewhat more recent efforts have been directed at coaxial configurations with active thrust-vectoring capability. North [6] documented a coaxial UAV model with hardware realization but with linearized simplified dynamics and with no allowance for the complete inertial effects of translating parts. Chen et al. [2] designed a coaxial quadcopter using two servo motors to tilt the thrust axis and control pitch and roll. Although they derived the dynamics and experimentally verified their design by simulations and flight tests, the model neglected inertial contributions of the motor assembly and servos, which are generally large for aggressive maneuvers. Other pertinent works include Glida et al. [7], who de-veloped a terminal sliding mode controller without a model for a coaxial UAV; Wei et al. [8], who simulated a hybrid PID-sliding mode controller on a prototype; and Bernardes et al. [9], who simulated a single-rotor UAV with a swashplate. Besides, coaxial rotor aerodynamics articles [10], [11], [12] and underactuated systems control articles [13], [14], [15] are basic works. Despite these advances, a full dynamic model of inertial coupling of all flight masses in a coaxial thrust-tilting UAV remains yet unknown. The paper fills the gap by:  
+
+> •
+
+Establishing a full Lagrangian model of body masses and inertias, both the servo arms, and motor-prop assembly.  
+
+> •
+
+Deriving an LQR controller from the linearized model around hover.  
+
+> •
+
+High-fidelity validation of simulation system with actua-tor dynamics, ground contact, and sensor noise utilizing EKF-based state estimation. The main contribution of this work is the use of a two-degrees-of-freedom pendulum mechanism for thrust vectoring, which is mechanically simpler and potentially more robust than the conventional swashplate system but with identical attitude control authority. The paper has been organized in the following manner: Section II addresses dynamic modeling of the UAV by La-grangian formulation. Section III presents controller design through linearization and LQR. Section IV presents simulation results with system performance. Section V finally reports the findings and concludes with suggestions on future work. II. D YNAMIC MODELING VIA LAGRANGIAN 
+
+FORMULATION 
+
+Figure 1 illustrates the mechanical architecture of the pro-posed coaxial UAV, detailing the main body, servo arms, 
+
+Proceedings of the 13th RSI International Conference on Robotics and Mechatronics (ICRoM 2025), Dec. 16-18, 2025, Tehran, Iran arXiv:2609.21099v1 [cs.RO] 17 Sep 2026 Fig. 1. Schematic of a coaxial drone with coordinates indicating the pendulum mechanism structure 
+
+and motor-propeller assembly. The core innovation is a two-degree-of-freedom pendulum mechanism that enables thrust vectoring. This is achieved by actuating servo motor S2 to adjust the pitch angle θp (rotation about the ys2 axis) and servo motor S1 to adjust the roll angle θr (rotation about the xs1
+
+axis). This coordinated tilting of the motor assembly provides a mechanically elegant solution to the roll and pitch control problem inherent in conventional coaxial designs. The UAV is modeled as a four rigid-body system: body (of mass mb), two servo arms (of masses ms2 and ms1 ), and motor-propeller assembly (of mass mm). The generalized coordinates are: 
+
+q = [ x, y, z, ϕ, θ, ψ ]T , (1) where (x, y, z ) is the position of the main body center of mass, 
+
+(ϕ, θ, ψ ) are Euler angles (roll, pitch, yaw) in the z − y′ −
+
+x′′ rotation sequence, and θp, θr are the pitch and roll servo angles. 
+
+A. Kinetic and Potential Energy 
+
+The rotation about the local axes z − y′ − x′′ included, the rotation matrix from the body frame to the inertial frame with the roll ( ϕ), pitch ( θ), and yaw ( ψ) angles is given by Equation (2): 
+
+Rib = Rx(ϕ)Ry (θ)Rz (ψ) = 
+
+
+
+CψCθ CψSϕSθ − CϕSψ SψSϕ + CϕCψSθ CθSψ CϕCψ + SϕSθSψ CϕSψSθ − CψSϕ 
+
+−Sθ CθSϕ CθCϕ 
+
+ , (2) where Rib is the rotation matrix of body-to-inertial frame. S and C stand for sine and cosine respectively in Equation (2) and the same notation will be employed throughout the text. The rotation matrices about each axis used in change of secondary to primary frame are as follows: 
+
+Rx =
+
+
+
+1 0 00 Cβ −Sβ 
+
+0 Sβ Cβ 
+
+ , (3) 
+
+Ry =
+
+
+
+Cβ 0 Sβ 
+
+0 1 0
+
+−Sβ 0 Cβ 
+
+ , (4) 
+
+Rz =
+
+Cβ −Sβ 0
+
+Sβ Cβ 00 0 1
+
+ . (5) Total kinetic energy T is the sum of translational and rotational energy of all elements. Consider position vectors: 
+
+rb = [ x, y, z ]T , (6) 
+
+rGs2 = rb + Rib
+
+
+
+00
+
+d3
+
+ , (7) 
+
+rGs1 = rb + Rib
+
+ 00
+
+d3
+
+ + Rθp
+
+> y
+
+
+
+00
+
+d2
+
+ , (8) 
+
+rGm = rb + Rib
+
+ 00
+
+d3
+
+ + Rθp
+
+> y
+
+ 00
+
+d2
+
+ + Rθp 
+
+> y
+
+Rθr
+
+> x
+
+
+
+00
+
+d1
+
+ ,
+
+(9) where d1, d 2, d 3 are structural offsets. The angular velocities are: 
+
+ωb = [ ˙ϕ, ˙θ, ˙ψ]T ,ωs2 = ωb,ωs1 = ωb + [0 , ˙θp, 0] T ,ωm = ( Rθp 
+
+> y
+
+)T (ωb + [0 , ˙θp, 0] T ) + [ ˙θr , 0, 0] T .
+
+(10) The total kinetic energy is: 
+
+T = 12 mb∥ ˙rb∥2 + 12 ms2 ∥ ˙rGs2 ∥2 + 12 ms1 ∥ ˙rGs1 ∥2+12 mm∥ ˙rGm ∥2 + 12 ωTb Ibωb + 12 ωTs1 Is1 ωs1 +12 ωTs2 Is2 ωs2 + 12 ωTmImωm.
+
+(11) The potential energy is: 
+
+V = g(mbz + ms2 (rGs2 · ˆzi)+ 
+
+ms1 (rGs1 · ˆzi) + mm(rGm · ˆzi)) . (12) 
+
+B. Equations of Motion 
+
+The Lagrangian is L = T − V . Equations of motion are obtained from: 
+
+ddt 
+
+ ∂L ∂ ˙qi
+
+
+
+− ∂L ∂q i
+
+= Qi, (13) where Qi are generalized forces and moments computed by the principle of virtual work. For the translational coordinates ( x, y, z ), the generalized forces are derived from the thrust vector projected into the inertial frame: 
+
+Qi = F · ∂r Gm
+
+∂q i
+
+, (14) where F is given by: 
+
+F =
+
+
+
+00
+
+kf ( ˙θ12 + ˙θ22)
+
+ ,
+
+where ˙θ1 , ˙θ2 are angular velocity of propeller, and kf is the thrust coefficient. The force F must be expressed in the inertial frame as follows: 
+
+F i = RibRθp 
+
+> y
+
+Rθr 
+
+> x
+
+F, (15) Here, qi for i = 1 , 2, 3 correspond to x, y, z .For the rotational coordinates (ϕ, θ, ψ ), the generalized moments are obtained by virtual work as: 
+
+Qi = M i 
+
+> 1
+
+· ∂ω m1
+
+∂ ˙qi
+
+− M i 
+
+> 2
+
+· ∂ω m2
+
+∂ ˙qi
+
++ M i 
+
+> 3
+
+· ∂ω m
+
+∂ ˙qi
+
+, (16) where M1 and M2 are given by: 
+
+M1 =
+
+
+
+00
+
+kt ˙θ12
+
+ , M2 =
+
+
+
+00
+
+kt ˙θ22
+
+ , (17) 
+
+kt is the drag coefficient. M1 and M2 are expressed in the inertial frame as: 
+
+M i 
+
+> 1
+
+= RibRθp 
+
+> y
+
+Rθr 
+
+> x
+
+M1, M i 
+
+> 2
+
+= RibRθp 
+
+> y
+
+Rθr 
+
+> x
+
+M2, (18) The term M i 
+
+> 3
+
+is computed as: 
+
+M i 
+
+> 3
+
+= Rib
+
+
+
+00
+
+d3
+
+ + Rθp
+
+> y
+
+
+
+00
+
+d2
+
+ + Rθp 
+
+> y
+
+Rθr
+
+> x
+
+
+
+00
+
+d1
+
+×Rθp 
+
+> y
+
+Rθr 
+
+> x
+
+F, 
+
+(19) Here, qi for i = 4 , 5, 6 correspond to ϕ, θ, ψ .Applying the Lagrange formulation results in the following system: 
+
+M (q)¨ q + C(q, ˙q) ˙q + G(q) = Q, (20) This system was implemented symbolically in MATLAB and converted to numerical functions. 
+
+C. System Parameters 
+
+The physical parameters of the system are shown in Tables I-V.The parameters include masses, inertias, geometric dimen-sions, and aerodynamic coefficients that characterize the UAV dynamics. 
+
+TABLE I PHYSICAL AND AERODYNAMIC SYSTEM PARAMETERS 
+
+Parameter Value Unit 
+
+Gravitational acceleration ( g) 9.81 m/s 2
+
+Structural offset d1 0.05 mStructural offset d2 0.09 mStructural offset d3 0.30 mThrust coefficient ( kf ) 1.3 × 10 −3 N · s2
+
+Torque coefficient ( kt) 6.7 × 10 −4 N · m · s2
+
+TABLE II MAIN BODY PHYSICAL SPECIFICATIONS 
+
+Parameter Value Unit 
+
+Body mass ( mb) 0.45 kg Moment of inertia Ixx 0.002 kg · m2
+
+Moment of inertia Iyy 0.001 kg · m2
+
+Moment of inertia Izz 0.002 kg · m2
+
+TABLE III FIRST SERVO ARM PHYSICAL SPECIFICATIONS 
+
+Parameter Value Unit 
+
+Servo arm mass ( ms1 ) 0.07 kg Moment of inertia Ixx 0.00002 kg · m2
+
+Moment of inertia Iyy 0.000025 kg · m2
+
+Moment of inertia Izz 0.00003 kg · m2
+
+TABLE IV SECOND SERVO ARM PHYSICAL SPECIFICATIONS 
+
+Parameter Value Unit 
+
+Servo arm mass ( ms2 ) 0.07 kg Moment of inertia Ixx 0.00002 kg · m2
+
+Moment of inertia Iyy 0.000025 kg · m2
+
+Moment of inertia Izz 0.00003 kg · m2
+
+TABLE V MOTOR ASSEMBLY PHYSICAL SPECIFICATIONS 
+
+Parameter Value Unit 
+
+Motor mass ( mm) 0.16 kg Moment of inertia Ixx 0.00006 kg · m2
+
+Moment of inertia Iyy 0.00004 kg · m2
+
+Moment of inertia Izz 0.00006 kg · m2
+
+III. C ONTROLLER DESIGN : L INEARIZATION AND LQR 
+
+A. Linearization 
+
+Defining the state as X = [ qT , ˙qT ]T ∈ R16 and control input as u = [ τp, τ r , ˙θ1, ˙θ2]T , where τp, τr are servo motor torques and ˙θ1, ˙θ2 are angular velocities of propellers. The space model for equations as follows: 
+
+˙X = f (X, u ) = 
+
+ ˙q
+
+M −1(Q − C(q, ˙q) ˙q − G(q)) 
+
+
+
+. (21) The nonlinear dynamics are linearized around the hover equilibrium: 
+
+q0 = [0 , 0, 0, 0, 0, 0] T , ˙q0 = 0 , (22) with equilibrium inputs: 
+
+τp0 = τr0 = 0 , ˙θ10 = ˙θ20 =
+
+r mtot g
+
+2kf
+
+, (23) where mtot = mb + ms1 + ms2 + mm = 0 .75 kg. so the linearized model is: 
+
+˙X = A(X − X0) + B(u − u0), (24) where A = ∂f 
+
+> ∂X
+
+and B = ∂f 
+
+> ∂u
+
+are Jacobians evaluated at equilibrium. B. LQR Design 
+
+The LQR controller minimizes: 
+
+J =
+
+Z ∞
+
+> 0
+
+ δX T QδX + δu T Rδu  dt, (25) with δX = X − Xd, δu = u − u0. The weighting matrices are: 
+
+Q = diag (200 , 200 , 50 , 5, 5, 2, 10 , 10 , 1, 1, 1, 1) ,
+
+R = diag (4 , 4, 2, 2) ,
+
+emphasizing position tracking over attitude and penalizing servo angles less than rotor speeds. The optimal gain K =
+
+R−1BT P is computed by solving the Algebraic Riccati Equation (26). 
+
+AT P + PA − PBR −1BT P + Q = 0 . (26) IV. S IMULATION RESULTS 
+
+A. Simulation with Torque Inputs 
+
+The simulation parameters for the torque input are detailed in Table VI.         
+
+> TABLE VI SIMULATION PARAMETERS FOR THE TORQUE INPUT SCENARIO
+> Parameter Value Unit
+> Solver ode45 -Time step ( ∆t)0.001 sSimulation duration ( t)[-2, 60] s
+
+Figures 2, 3, and 4 show the three-dimensional trajectory, body attitudes, and position of the UAV in this simulation. The results confirm that the UAV is able to take off, hold steady hover, and subsequently follow the circular trajectory with rising altitude. Tracking errors are small, although there is a slight lag in the x-direction when in circular motion. Figure 5 shows control signals, where exhibit torque inputs have reached saturation that has been applied in simulation. The abrupt change at 15 seconds corresponds to the switching between hover mode and the ascending circular trajectory. 
+
+B. Simulation with Sensor Noise and EKF 
+
+A constant altitude square reference trajectory was used in this simulation. The results completely demonstrate the performance of the Extended Kalman Filter for estimating system states. The 3D path of the UAV (Figure 6) and the time positions (Figure 7) confirm that the filtered estimates enable the controller to achieve excellent performance, causing the UAV to follow the reference trajectory with excellent precision. The roll, pitch, and yaw Euler angles (Figure 8) also exhibit good stability in the rotational dynamics of the UAV. Control signals used (Figure 9) are optimal but oscillatory due to sensor noise. Overall, the results show proper controller operation along with the filter. Raw IMU sensor readings (Figure 10) and GPS/barometer readings (Figure 11) show that the EKF can successfully reduce measurement noise by a significant amount and provide state estimates with high                        
+
+> Fig. 2. 3D trajectory of the UAV with torque inputs as control signals -10 010 20 30 40 50 60 -3 -2 -1 012-10 010 20 30 40 50 60 -6 -4 -2 024-10 010 20 30 40 50 60 -20 -10 010 20
+> Fig. 3. Roll, pitch, and yaw angles of the UAV with torque inputs as control signals
+
+accuracy. Sensor data fusion of these sensors leads to asignificant improvement in position and angle estimation. V. D ISCUSSION AND CONCLUSION 
+
+The study challenged the inherent underactuation of coaxial UAVs using the innovative two-degrees-of-freedom pendulum thrust vectoring mechanism. The key contribution is a clear-cut Lagrangian dynamic model that for the first time fully captures the inertial effects of all the actuated units and provides a firm basis for control synthesis. Based on this model, an LQR controller was simulated and verified by high-fidelity simulations, accomplishing complex maneuvers such as takeoff, hover, and 3D trajectory following. An Extended Kalman Filter (EKF) extension was also applied, which further -10 0 10 20 30 40 50 60 -2 -1 012-10 0 10 20 30 40 50 60 -2 -1 012-10 0 10 20 30 40 50 60 -2 0246Fig. 4. Position of the UAV with torque inputs as control signals -10 0 10 20 30 40 50 60 -0.5 00.5                            
+
+> -0.1 00.1 -0.5 00.5 15 15.2 -0.5 00.5
+> -10 010 20 30 40 50 60 -0.5 00.5
+> -0.1 00.1 -0.5 00.5 15 15.2 -0.04 -0.02 0
+> -10 010 20 30 40 50 60 500 550 600 -10 010 20 30 40 50 60 500 550
+
+Fig. 5. Control signals of the UAV with torque inputs as control signals 
+
+enhanced performance by allowing robust state estimation with realistic sensor noise. The active thrust vectoring provided by the proposed 2-DOF pendulum mechanism resolves the inherent underactuation in a mechanically elegant design and offers full roll and pitch control. Further, our EKF plays an important role in making the LQR controller reliable by providing multi-sensor data fusion-based accurate state estimates which are robust against real-world noise and dynamics. While these simulations confirm the framework, experimen-tal verification is the primary limitation. Physical realization of the system is therefore the subsequent step. This involves the development of a model and performing flight tests to examine the theoretical models against actual conditions, including 
+
+Fig. 6. 3D trajectory of the UAV with EKF 0 10 20 30 40 50 60 00.5 11.5 20 10 20 30 40 50 60 00.5 11.5 20 10 20 30 40 50 60 00.5 11.5 22.5 
+
+Fig. 7. Position of the UAV with EKF 
+
+aerodynamic disturbances and hardware constraints. Further research will also examine modeling enhancement of the aerodynamic model and use of advanced nonlinear controllers as one way of increasing the platform’s robustness and agility in real-world applications. REFERENCES [1] Giernacki, W., Go´ sli´ nski, J., Go´ sli´ nska, J., Espinoza-Fraire, T., Rao, J. (2021). Mathematical modeling of the coaxial quadrotor dynamics for its attitude and altitude control. Energies, 14(5), 1232. [2] Chen, L., Xiao, J., Zheng, Y., Alagappan, N. A., Feroskhan, M. (2024). Design, modeling, and control of a coaxial drone. IEEE Transactions on Robotics, 40, 1650-1663. [3] Dominguez, V. H., Garcia-Salazar, O., Amezquita-Brooks, L., Reyes-Osorio, L. A., Santana-Delgado, C., Rojo-Rodriguez, E. G. (2022). Micro coaxial drone: flight dynamics, simulation and ground testing. Aerospace, 9(5), 245. 0 10 20 30 40 50 60 -1 0120 10 20 30 40 50 60 -1 0120 10 20 30 40 50 60 -2 -1 012 10 -3 Fig. 8. Roll, pitch, and yaw angles of the UAV with EKF 0 10 20 30 40 50 60 -0.5 00.5 0 10 20 30 40 50 60 -0.5 00.5 0 10 20 30 40 50 60 500 510 520 0 10 20 30 40 50 60 500 510 520 
+
+Fig. 9. Control signals of the UAV with EKF [4] HajiAbedini, M., Zargarbashi, F., Talaeizadeh, A., Pishkenari, H. N., Alasty, A. (2021, November). Design and implementation of a novel over-actuated quadrotor with variable dihedral angle. In 2021 9th RSI international conference on robotics and mechatronics (ICRoM) (pp. 391-398). IEEE. [5] Rashad, R., Goerres, J., Aarts, R., Engelen, J. B., Stramigioli, S. (2020). Fully actuated multirotor UAVs: A literature review. IEEE Robotics and Automation Magazine, 27(3), 97-107. [6] North, A. (2023). Modeling, Control, and Hardware Development of a Thrust-Vector Coaxial UAV. [7] Glida, H. E., Sentouh, C., Rath, J. J. (2023). Optimal model-free finite-time control based on terminal sliding mode for a coaxial rotor. Drones, 7(12), 706. [8] Wei, Y., Chen, H., Li, K., Deng, H., Li, D. (2019). Research on the control algorithm of coaxial rotor aircraft based on sliding mode and PID. Electronics, 8(12), 1428. [9] Bernardes, E., Boyer, F., Viollet, S. (2023). Modelling, control and simulation of a single rotor UAV with swashplateless torque modulation. Aerospace Science and Technology, 140, 108433. [10] Kim, D. K., Yoon, B. I., Song, Y. H., Song, J. (2018). An experimental 0 10 20 30 40 50 60 -2 -1 0120 10 20 30 40 50 60 -2 -1 0120 10 20 30 40 50 60 -0.5 00.5 
+
+Fig. 10. Filtering IMU sensor data using the EKF 0 10 20 30 40 50 60 -2 0240 10 20 30 40 50 60 -2 0240 10 20 30 40 50 60 01234
+
+Fig. 11. Fusion of GPS and barometer data using the EKF study on the hover performance characteristics of the coaxial propellers configuration for the drone. [11] Yoon, S., Chan, W. M., Pulliam, T. H. (2017). Computations of torque-balanced coaxial rotor flows. In 55th AIAA aerospace sciences meeting (p. 0052). [12] Panjwani, B., Quinsard, C., Przemysław, D. G., Furseth, J. (2020). Virtual Modelling and Testing of the Single and Contra-Rotating Co-Axial Propeller. Drones, 4(3), 42. [13] Li, K., Wei, Y., Wang, C., Deng, H. (2019). Longitudinal attitude control decoupling algorithm based on the fuzzy sliding mode of a coaxial-rotor UAV. Electronics, 8(1), 107. [14] Wang, S., Li, K., Chen, H., Deng, H. (2019, October). Attitude control of small coaxial twin-rotor aircraft. In 2019 IEEE International Conference on Unmanned Systems (ICUS) (pp. 558-562). IEEE. [15] Wang, Y., Wang, Z., Wang, G., Chen, L. (2024). Modeling and Con-trol of A Coaxial Pendulum Drone. IEEE Transactions on Intelligent Vehicles.

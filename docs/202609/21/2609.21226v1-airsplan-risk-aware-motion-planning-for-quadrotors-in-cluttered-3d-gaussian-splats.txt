@@ -1,0 +1,459 @@
+Title: AirSplan: Risk-Aware Motion Planning for Quadrotors in Cluttered 3D Gaussian Splats
+
+URL Source: https://arxiv.org/pdf/2609.21226v1
+
+Published Time: Mon, 21 Sep 2026 00:28:33 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# AirSplan: Risk-Aware Motion Planning for Quadrotors in Cluttered 3D Gaussian Splats 
+
+Seth Isaacson, William Hong, Katherine A. Skinner, and Ram Vasudevan 
+
+Abstract — Quadrotors are increasingly deployed in applica-tions such as agriculture, infrastructure inspection, and main-tenance. In each of these applications, the robot must navigate complex scene geometry while remaining strictly collision-free. Unlike in ground domains, even minor collisions for aerial vehi-cles can result in the loss of the robot. This safety requirement induces a pair of technical challenges. First, the environment must be represented with sufficient fidelity to encode complex structure, even when no ground-truth obstacle data is available. Second, a motion planner must leverage this representation to determine a collision-free path to the goal. This paper proposes a system that addresses these complementary challenges. The proposed method, AirSplan, adopts a normalized variant of 3D Gaussian Splatting that encodes high-fidelity scene geometry. It then applies a novel reachability-based motion planner that leverages the differential flatness of quadrotors to compute continuous-time collision constraints that tightly overapprox-imate the robot’s occupancy. Experiments demonstrate that AirSplan successfully finds a path in 81.2% of challenging test cases, a significant improvement over the nearest baseline method’s 51.2%. 
+
+I. I NTRODUCTION 
+
+Quadrotors enable robotic operation in environments in-accessible to ground-restricted platforms, enabling applica-tions such as crop monitoring, infrastructure inspection, and navigation in confined or elevated spaces. However, ensuring safe operation in cluttered environments remains a significant challenge. Unlike ground robots, even minor collisions can result in catastrophic failure for aerial vehicles. Achieving safety and reliable operation therefore requires accurately modeling the robot’s occupied volume, representing com-plex scene geometry, and planning motions that guarantee separation between the two. Existing collision avoidance methods for aerial vehicles typically approximate the robot as spherical or convex [1]– [8]. This conservative approximation simplifies computation, but impedes the ability of the robot to operate in cluttered environments. Another category of planners enforce collision avoidance only at discrete time points using sampling-based planners, inducing a trade-off between safety and computa-tional cost [9]–[12]. This work addresses these limitations by exploiting quadrotors’ differential flatness to construct a continuous-time safety representation that tightly overap-proximates a robot’s swept volume. Accurate scene representation presents an additional chal-lenge. Many planning methods assume access to ground-
+
+> This work was supported by MCity at the University of Michigan Seth Isaacson, William Hong, Katherine A. Skinner, and Ram Vasudevan are with the Department of Robotics, University of Michigan, Ann Arbor, MI 48109.
+> {sethgi, billhong, kskin, ramv }@umich.edu
+
+Fig. 1: AirSplan generates safe quadrotor trajectories in cluttered environments. The robot occupancy is tightly overapproximated using a reachable set (shown in pink) based on differential flatness. The scene is modeled as a Normalized 3D Gaussian Splat. A sampling-based planner jointly reasons over both representations to compute safe paths between waypoints (yellow) to the goal (red). 
+
+truth scene geometry, which is unavailable in many real-world deployments. To solve this problem, robotics re-searchers have increasingly turned their attention to radiance field models such as NeRFs [13] and 3D Gaussian Splats [14] due to their ability to accurately reconstruct complex scene geometry directly from camera data. However, existing radiance field planners for quadrotors rely on spherical robot approximations [1], [2]. As illustrated in this paper, this spherical overapproximation limits quadrotors’ ability to navigate highly cluttered scenes. This work addresses these challenges by introducing an optimized continuous-time collision-checking method for quadrotors and scenes represented as normalized 3D Gaussian Splats. In summary, the contributions of this work are as follows: 1) A differential flatness-based reachability formulation that constructs a continuous-time forward reachable set for quadrotors, accounting for the full geometry of the robot. 2) An optimized collision checking method between the forward reachable set and scenes represented as Nor-malized 3D Gaussian Splats. The two contributions above are implemented in AirSplan, a receding-horizon trajectory optimization framework that integrates them to synthesize safe motions in complex envi-ronments. Experiments demonstrate state-of-the-art collision avoidance performance for quadrotors across diverse clut-tered environments. arXiv:2609.21226v1 [cs.RO] 18 Sep 2026 2. Accelerated 3DGS Collision Checking 3. Parallel Sampling-Based Optimizer 1.Differentially Flat Reachability 
+
+> Dynamic Maneuver Tight Spherical Approximation Fig. 2: AirSplan plans safe quadrotor trajectories through cluttered environments represented as normalized Gaussian Splats. It combines three key components. First, differential flatness is used to construct a tight sphere-based overapproximation of the robot volume along a trajectory. Second, the collision probability between each sphere and the normalized 3D Gaussian Splat is efficiently computed using a Bounding Volume Hierarchy (visualized with gray wireframe boxes). Third, a GPU-parallel sampling-based optimizer evaluates many candidate trajectories to efficiently find safe paths through dense environments.
+
+II. R ELATED WORKS 
+
+This paper describes a method that combines collision avoidance for quadrotors, planning in radiance field represen-tations, and reachability-based motion planning. The relevant literatures are summarized below. 
+
+A. Quadrotor Collision Avoidance 
+
+Quadrotors and other aerial vehicles must remain strictly collision-free during operation; yet generating safe plans through cluttered environments remains challenging. Aprominent category of works constructs a global map of geo-metric primitives and optimizes collision-free plans within it [5]–[7], [15]. These methods require explicit representations of scene occupancy, such as voxel grids or octrees [5], [6], zonotopes [3], or polytopes [7]. Polytopes and zonotopes admit efficient constraint formulations but are difficult to construct from sensor data. Voxel grids and octrees avoid this difficulty but carry high memory overhead in dense, cluttered scenes. A second category operates reactively to local ob-stacles without maintaining a global map [16], [17]. While effective with local sensing data, reactive planning makes safety guarantees difficult to establish. This paper addresses both limitations by performing risk-aware planning directly in high-fidelity radiance fields, which can be reconstructed from sensor data while supporting rigorous safety guarantees. A recurring pattern in existing methods is overapproxi-mating the robot with a simple primitive such as a sphere [5]–[7], [18], [19], superellipsoid [16], or zonotope [3]. While computationally efficient, this simplification limits safe planning for vehicles with complex geometry in tight spaces. A common workaround is to employ sampling: either checking for collisions at poses sampled along the path [12], or sampling points on the robot’s surface [11]. Sampling, however, makes collision-avoidance guarantees difficult to establish. In contrast, this paper leverages the differential flatness of quadrotors to compute forward reachable sets, yielding tight, continuous-time overapproximations of the robot’s swept volume. 
+
+B. Planning in Radiance Fields 
+
+While many safe motion planners assume ground-truth knowledge of obstacle locations, such information is often not available. Several works have proposed planning methods that operate directly on NeRF reconstructions. NeRF-Nav [11] plans dynamically-feasible trajectories for quadrotors by sampling a finite set of points from the robot body, and applying a penalty to the density integrated along those points’ paths. While NeRF-Nav demonstrates the promise of radiance field planning, this approach relies on a discrete approximation of robot geometry and does not provide probabilistic safety guarantees. CATNIPS overcomes these limitations by relating NeRFs to a Poisson Point Process, and using this relation to convert the NeRF into an occupancy grid [1]. While NeRFs use neural networks to approximate radiance fields, 3D Gaussian Splatting represents the same informa-tion using a set of unnormalized 3D Gaussians [14]. Splat-Nav plans in 3D Gaussian Splats by building safe flight corridors that avoid the 1σ level sets of these Gaussians [2]. Other planning methods avoid collisions with the splats by sampling trajectory points [20] or applying a soft collision penalty [21]. These offer useful heuristics but assume a spherical robot and provide no continuous-time collision-avoidance guarantees. Further, it remains unclear how to extend existing methods to robots that are not tightly ap-proximated as spheres. In contrast to these approaches, Splanning uses a nor-malized formulation of 3D Gaussian Splatting and applies reachability analysis to overapproximate the continuous-time swept volume of a robot manipulator [22]. It then solves a trajectory optimization that bounds the probability of intersection between the robot and the scene. Still, Splanning relies on a manipulator fixed to a workspace. To address these limitations, this paper develops improved reachability, collision-checking, and trajectory optimization methods that enable quadrotors to navigate highly cluttered environments. C. Reachability-Based Motion Planning 
+
+Reachability-based Trajectory Design (RTD) gener-ates safe, receding-horizon trajectories by constructing a continuous-time representation of the robot’s swept volume along candidate trajectories [15]. This swept volume, called a Forward Reachable Set (FRS), is checked for collisions with obstacles to provably guarantee safety. RTD has been applied to ground vehicles [15], quadrotors [3], and manip-ulators [23], [24]. It has also been extended to risk-aware planning with uncertain obstacles [25], and to planning in radiance fields represented by 3D Gaussian Splatting [22]. Finally, Kwon et al. replace explicit FRS construction with a neural network approximation and use conformal prediction to guarantee conservativeness [26]. This work extends the literature on reachability-based motion planning by leverag-ing quadrotor differential flatness to construct a tight safety representation for aerial vehicles, which can be efficiently integrated over a Normalized Gaussian Splat to compute the probability of collision. III. B ACKGROUND 
+
+This section provides a brief technical background on three components of the proposed method: quadrotor trajectory design, reachability analysis, and the scene representation used for obstacle avoidance. 
+
+A. Differential Flatness of Quadrotors 
+
+Although quadrotors are underactuated in their full SE (3) 
+
+state, they are differentially flat [27]: the state and control inputs are algebraic functions of four flat outputs and their derivatives, namely the position p(t) ∈ R3 and yaw ψ(t) ∈
+
+SO (2) [28]. Any sufficiently smooth curve in R3 × SO (2) 
+
+with bounded derivatives therefore corresponds to a dy-namically feasible trajectory, reducing trajectory planning to constructing smooth functions p and ψ. The attitude is recovered as follows. Let g = [0 , 0, g ]⊤ be the gravity vector in the world frame. The body-frame z-axis aligns with the total thrust direction: 
+
+zB = ¨p + g
+
+∥¨p + g∥ . (1) Given ψ, the remaining body axes are 
+
+xC =
+
+
+
+cos ψ
+
+sin ψ
+
+0
+
+ , yB = zB × xC
+
+∥zB × xC ∥ , xB = yB × zB ,
+
+(2) where C denotes a frame coincident with the center-of-mass frame B but with zero roll and pitch. These relations uniquely determine the body rotation RB = [ xB yB zB ]:roll and pitch follow entirely from ¨p and ψ. Planning can thus occur in R3 × SO (2) , where the quadrotor is fully actuated, while uniquely recovering the full SE (3) trajectory. 
+
+B. Polynomial Zonotopes for Reachability Analysis 
+
+Reachability analysis computes an overapproximation of the states a system may attain over a time interval. In config-uration space, this yields a joint reachable set (JRS), which forward kinematics propagates into the FRS, a conservative overapproximation of the robot’s swept volume. Assuming precise trajectory tracking, this yields a guaranteed bound on swept occupancy for collision checking. Polynomial zonotopes (PZs) are a set representation that captures nonlinear dependence between variables [24], [29], [30]. They support exact propagation through addition and multiplication, corresponding to Minkowski sums and set products. General nonlinear functions acting on a polynomial zonotope can be efficiently overapproximated, producing a new polynomial zonotope that contains the true image. In particular, for an analytical function f : RN → RM , it is possible to evaluate f on a PZ S ⊂ RN to obtain a PZ 
+
+Q ⊂ RM such that {f (x) | x ∈ S} ⊆ Q, where we write f (S) = Q by an abuse of notation. For brevity, the mathematical formulation of PZs is omitted; we refer readers instead to [24], [29] for a comprehensive treatment. 
+
+C. Scene Representation 
+
+Following [22], AirSplan represents scenes using a nor-malized 3D Gaussian Splat, a form of radiance field rep-resentation that allows probabilistic interpretation of rigid body collisions. The properties of this representation are summarized below. 
+
+1) Normalized 3D Gaussian Splatting: A radiance field is a function L : ( x, d) 7 → (r, g, b, σ ) mapping position x ∈
+
+R3 and direction d ∈ S2 to color and density σ ∈ R+.Radiance fields can be learned from images via differentiable rendering. For collision avoidance, color is irrelevant; only 
+
+σ is needed. Because it is independent of d, we write σ(x).In a Normalized 3D Gaussian Splat, σ is represented as 
+
+σ(x) = 
+
+> N
+
+X
+
+> n=1
+
+wnGn(x), (3) where wn ∈ R+ and Gn : R3 → R is a Gaussian with mean 
+
+μn and covariance Σn:
+
+Gn(x) = 1
+
+p(2 π)3|Σn| exp 
+
+
+
+− 12 (x − μn)T Σ−1 
+
+> n
+
+(x − μn)
+
+
+
+.
+
+(4) 
+
+2) Collision Probability: One can bound the probability that a sphere collides with a 3D Gaussian Splat: 
+
+Theorem 1. [22, Theorem 6] Consider, without loss of generality, a ball S = B2(0 , ρ ) of radius ρ centered at the origin. Let β ∈ [0 , 1] denote a user-set risk threshold. Then, the probability P( C(S)) that the ball S collides with the environment is bounded above by 
+
+P( C(S)) ≤ 1
+
+β
+
+
+
+1 − exp 
+
+
+
+− 14π H(S)
+
+ 
+
+(5) 
+
+where 
+
+H(S) = 
+
+> nG
+
+X
+
+> n=1
+
+η′
+
+> n
+
+wn·
+
+> 3
+
+Y
+
+> ℓ=1
+
+s
+
+πλ ′
+
+> n,ℓ
+
+2
+
+erf 
+
+ ρ − μ′
+
+> n,ℓ
+
+q
+
+2λ′
+
+> n,ℓ
+
+ − erf 
+
+ ρ + μ′
+
+> n,ℓ
+
+q
+
+2λ′
+
+> n,ℓ
+
+ .
+
+(6) Above, μ′
+
+> n
+
+, λ′
+
+> n
+
+, and η′ 
+
+> n
+
+denote the mean, eigenvalues, and normalization constant of the Gaussian G′ 
+
+> n
+
+obtained by rotating Gn by RTn , i.e., μ′ 
+
+> n
+
+= RTn μn and Σ′ 
+
+> n
+
+= RTn ΣnRn.
+
+This bound provides a computationally efficient manner to bound the probability of collision between a rigid body and the scene. IV. M ETHOD 
+
+This section introduces AirSplan, a method for risk-aware trajectory generation in scenes reconstructed from camera data. 
+
+A. System Overview 
+
+AirSplan synthesizes motion plans by solving the follow-ing optimization problem in a receding-horizon manner: 
+
+min  
+
+> k∈K
+
+cost (k) (7) 
+
+P ( FRS (q(t; k, x 0)) ∩ E̸ = ∅) ≤ β ∀t ∈ T (8) A trajectory parameter k is chosen from a parameter space 
+
+K, the cost in (7) encourages the robot to reach a specified goal configuration, and (8) encodes a risk-aware obstacle avoidance constraint, enforcing that the probability of the robot’s FRS intersecting the environment E may not exceed a risk threshold β. Here x0 denotes the robot’s initial state (e.g., position, velocity, and acceleration), which is fixed at planning time and not optimized over. Section IV-B describes the trajectory parameterization and construction of an FRS for an aerial vehicle, while Section IV-C describes an optimized form of the collision check in Theorem 1, and Section IV-D describes a GPU-parallelized trajectory optimization. 
+
+B. Trajectory Parameterization and Reachability Analysis 
+
+We compute an FRS for the quadrotor as a union of spheres in three steps: (1) constructing reachable sets of the flat outputs, (2) propagating them to the full system state using differential flatness, and (3) approximating the resulting FRS with a neural network for efficient online evaluation. 
+
+1) Trajectory Parameterization and JRS Construction: 
+
+Each flat output is parameterized as a degree-5 Bernstein polynomial in time, whose coefficients depend on both the initial state x0 and trajectory parameter kd:
+
+qd(t; x0, k d) = 
+
+> 5
+
+X
+
+> l=0
+
+Bd,l (x0, k d) bl(t), (9) where bl are the Bernstein Basis Functions [30, Example 15]. To ensure safe receding-horizon planning, the planning horizon T is divided into two intervals: the first corresponds to the planned motion, and the second to a braking maneuver that brings the system to zero velocity and acceleration. During execution of the first interval, the system plans the next horizon; if successful, the braking maneuver is discarded and planning continues in a receding-horizon manner. For convenience, we set T = 1 second and divide it equally between the two intervals. Because the robot executes the previously planned tra-jectory while replanning, x0 is known at planning time. Furthermore, since every trajectory must end in a braking maneuver, the terminal velocity and acceleration are fully determined. Together, these boundary conditions fix five of the six Bernstein coefficients. We parameterize the remaining coefficient, which we choose without loss of generality to be the last coefficient in (9), as 
+
+Bd, 5(kd) = ηd, 1kd + ηd, 2, (10) where ηd, 1, η d, 2 ∈ R are user-specified constants. As a result, 
+
+qd(t; x0, k d) is polynomial in kd and t. By representing [0 , T ]
+
+as a PZ and evaluating (9), we obtain a PZ Qd that bounds all reachable configurations of DOF d over the planning horizon as a function of kd. We refer to Qd as the JRS of the dth 
+
+DOF of the system. In practice, the JRS of the quadrotor system is built by assembling four of the individual Qd
+
+objects. Each position dimension is represented by a single JRS axis. Yaw is represented using separate JRSs for sin( ψ)
+
+and cos( ψ) to reduce nonlinear overapproximation error, as is common in reachability-based methods [24]. We refer to the 5-DOF JRS of the quadrotor’s position and yaw as Q.
+
+2) Computing the SE(3) FRS: While Q bounds the set of states that the robot’s position and yaw will occupy during a trajectory, there remains ambiguity in the roll and pitch angles. While prior works commonly avoid this ambiguity by overapproximating the robot with a sphere [1], [2] or zonotope [3], we instead propagate the JRS through differential flatness relations (1)–(2), yielding a reachable rigid-body transform PZ TW B .To obtain an FRS that bounds the quadrotor conservatively, we pack the robot body with body-fixed spheres with centers 
+
+{cm} and radii {rm} generated using the method of [31]. Each center is propagated through the set of reachable rigid body transformations: 
+
+Cm = TW B cm. (11) This produces a reachable set for each sphere center. Each set Cm is then overapproximated by a bounding sphere with center cm and radius δm. The corresponding robot volume is obtained by inflating this radius by the body-fixed sphere radius, yielding a final radius 
+
+Rm = δm + rm. (12) Finally, the robot FRS over the time interval is given by the union of the spheres B(cm, R m) over all m. In practice, the planning horizon is split into several sub-intervals, and the spheres from all sub-intervals are accumulated to form the full FRS. The resulting spheres bound the swept volume of the aerial base. The overapproximativeness of this bound follows closely from [24, Theorem 10], where we apply the differential flatness relations instead of the forward kinematics of arms. 
+
+3) Neural Network Approximation: The computation above yields an overapproximation of the robot’s occupancy. In practice, however, PZs come with a trade-off between the tightness of the overapproximation and computational complexity. The compute requirements of highly-accurate PZs limit applicability to the sampling-based planner we describe in Section IV-D. To reduce online computation, we adopt the method of [26] and train a neural network to approximate the spherical FRS. With these values, the corresponding spherical FRS is computed using the exact reachability pipeline. The network predicts sphere centers and radii as functions of these inputs, and conformal pre-diction is applied to conservatively inflate the outputs and preserve safety guarantees. 
+
+C. Parallel Collision Detection 
+
+In practice, each FRS contains hundreds to thousands of spheres per planning horizon. The sampling-based planner described in Section IV-D may consider up to 100 candidate trajectories, requiring collision checking on up to hundreds of thousands of spheres per iteration. Further, the environment representation may contain millions of Gaussians. Naively evaluating the collision constraint in (5) across all sphere-Gaussian pairs is therefore computationally prohibitive. To overcome this problem, Splanning [22] ignores Gaussians outside the reachable workspace of the fixed manipulator. Yet, this solution does not handle a mobile vehicle and conservatively assumes that all spheres interact with the same set of Gaussians. Instead, we use a Bounding Volume Hierarchy (BVH) to accelerate collision queries by restricting evaluation to nearby Gaussians [32]. 
+
+1) BVH construction: For each Gaussian, an axis-aligned bounding box (AABB) is computed corresponding to the Gaussian’s nσ confidence region. A linear BVH is then constructed over these AABBs using an open-source im-plementation 1 of the method in [32]. This pre-processing happens once per scene. 
+
+2) Query procedure: Each sphere is processed by a GPU thread. During a query, the sphere’s AABB is computed, then the BVH traversed to identify overlapping Gaussians. Each thread stores candidate Gaussians in a per-thread buffer of size nB , capping the number of Gaussians considered for that sphere. Let nK,i ≤ nB denote the number of Gaussians retrieved for sphere i. The collision risk is computed by evaluating the closed-form integral from Theorem 1 over this candidate set. If the buffer capacity is exceeded during traversal (i.e., more than nB Gaussians overlap the sphere), the trajectory candidate is immediately flagged as unsafe. 
+
+3) Parallelization and Complexity: The BVH reduces the number of Gaussian evaluations per sphere from nG to 
+
+nK,i ≪ nG, yielding O(log nG + nK,i ) time complexity and O(nB ) memory complexity for each sphere query. 
+
+D. Trajectory Optimization 
+
+Most reachability-based motion planners leverage interior point methods to optimize trajectories subject to collision avoidance constraints [22]. In practice, this style of opti-mization fails to converge on the differentially flat quadrotor 
+
+> 1https://github.com/ToruNiina/lbvh
+
+Algorithm 1 Sampling-Based Trajectory Optimization 
+
+Require: Mean μ0, covariance Σ, temperature λ, samples 
+
+nS , iterations nI , max time Tmax , collision weight wcol ,tolerance β
+
+Ensure: Trajectory parameter k∗, or ∅ if none is safe  
+
+> 1:
+
+k∗ ← ∅, c ∗ ← ∞  
+
+> 2:
+
+for i = 0 , . . . , n I − 1 do  
+
+> 3:
+
+if elapsed time > T max then break  
+
+> 4:
+
+end if  
+
+> 5:
+
+for j = 1 , . . . , n S (in parallel) do  
+
+> 6:
+
+kj ∼ N (μi, Σ) , clipped to [−1, 1]  
+
+> 7:
+
+cost j ← cost (kj ) + wcol ccol (kj ) 
+
+> 8:
+
+end for  
+
+> 9:
+
+j′ ← arg min j cost j 
+
+> 10:
+
+if cost j′ < c ∗ then  
+
+> 11:
+
+k∗ ← kj′ , c ∗ ← cost j′ 
+
+> 12:
+
+end if  
+
+> 13:
+
+wj ← exp( −cost j /λ ) P  
+
+> ℓ
+
+exp( −cost ℓ/λ ) 
+
+> 14:
+
+μi+1 ← P 
+
+> ℓ
+
+wℓ kℓ 
+
+> 15:
+
+end for  
+
+> 16:
+
+if k∗ = ∅ or ccol (k∗) > β then  
+
+> 17:
+
+return ∅ 
+
+> 18:
+
+end if  
+
+> 19:
+
+return k∗
+
+system. We suspect this is because there are spurious local minima in the optimization problem. Hence, we instead use a sampling-based trajectory optimizer based on a soft cross-entropy method [33], [34]. As described in Algorithm 1, trajectories are iteratively refined using importance-weighted averaging of Gaussian samples. The user-specified cost is augmented with a collision penalty computed as described in Section IV-C. Trajectories are rejected if the final collision probability exceeds the risk threshold. V. E XPERIMENTS 
+
+Two experiments were run to evaluate the proposed methodology. First, the optimized collision checker was evaluated for speed and accuracy. Second, the proposed planner was evaluated end-to-end against relevant baselines. All experiments were run on a machine with an AMD 5950x CPU and NVIDIA RTX Pro 6000 GPU. 
+
+A. Collision Constraint 
+
+The collision constraint was evaluated according to the procedure described in [22]. The collision comparison op-erates on the randomized scenes with cube obstacles. In-dividual spheres were randomly sampled that were either in collision, near collision, or collision-free with an equal distribution of each. Each method then evaluates whether each sphere is in collision with the environment. 
+
+1) Collision Baselines: Three baseline methods were evaluated. First, the collision constraint from CATNIPS between a sphere and a NeRF was run using the reference implementation and the default settings [1]. Second, collision comparisons between a standard, un-normalized 3DGS and Fig. 3: Examples of images used to reconstruct the tree envi-ronments used in planning experiments. Trees were procedurally generated using L-Systems. 3DGS models were reconstructed from these simulated observations. 
+
+a sphere was evaluated using the constraint in Splat-Nav [2]. For Splat-Nav, the constraint was evaluated by checking for collisions between the sphere and multiple nσ ellipsoids of the un-normalized Gaussians using the reference implemen-tation. Next, the Splanning constraint between spheres and a normalized 3D Gaussian Splat [22] was evaluated at multiple risk thresholds β (See Thm 1 for a definition of β). Finally, the optimized Splanning constraint proposed in this method was evaluated. Note that while the constraint in [22] and that proposed in this paper are theoretically identical, differences in the logic for ignoring far-away Gaussians and numerical implementation may cause slight discrepancies. 
+
+2) Metrics: Each collision checker was treated as a classi-fier of free space vs collision, and both precision and recall were evaluated at a range of parameters. Furthermore, for the Splanning constraint and our method, the time required to evaluate the constraint was measured. For Splat-Nav and CATNIPS, the compute time was not measured because the methodology required to isolate the collision constraint from the rest of the planner significantly affected their runtime performance. 
+
+B. Motion Planning 
+
+To create realistic, challenging obstacle-avoidance envi-ronments, we procedurally generate three-dimensional trees using L-systems, representing each segment as a ten-sided zonotope. Scenes are rendered in PyRender with cameras arranged spherically around each tree, emulating images captured by an aerial vehicle at a safe distance (Figure 3). These images are used to train a normalized 3D Gaussian Splat for AirSplan, a standard 3D Gaussian Splat [14] for Splat-Nav [2], and a NeRF [13] for CATNIPS [1]. Only our method and CATNIPS used depth supervision, as Splat-Nav’s Nerfstudio pipeline does not support it for 3D Gaussian Splatting [35]. We generate 100 unique tree scenes, each with five pairs of collision-free start and goal configurations for a simulated quadrotor, though a collision-free path between them is not guaranteed to exist. The simulator verifies successfully generated trajectories of each method by checking for intersections between the robot and the ground truth obstacle meshes. In the case of AirSplan, the simulator checks for collisions after each time horizon, while for [2] and [1], collision comparisons are performed post-hoc using the optimized trajectories. In these experiments, AirSplan is run with high-level waypoints                       
+
+> TABLE I: Key planning, reachability, and collision-checking pa-rameters used in the motion planning experiments
+> Symbol Description Value
+> nσGaussian culling level 10
+> nBBVH buffer size 16,384
+> βRisk threshold 0.01
+> TPlanning horizon 1s
+> nSNumber of trajectory samples 96
+> nIMax optimizer iterations 20
+> Tmax Optimizer Timeout 0.45s
+> λCross-entropy temperature 1.0
+> wcol Collision penalty weight 10 4
+> nsph Num. spheres in spherepacking 25
+
+computed with a Bidirectional RRT [12] where constraint evaluation is implemented using the same constraint as defined in Theorem 1. The optimizer defined in Algorithm 1 is run in a receding-horizon fashion and the optimizer is constrained to 0.45s to compute each second of motion; if this optimizer fails, the safe braking maneuver is executed, and the planner continues. If after ten planning horizons the vehicle has not moved more than 10cm, the RRT is re-run from the current state. Each trial is run for a maximum of 150 planning horizons. A success indicates that the quadrotor reached the goal with zero collisions. Failures are counted if the robot fails to reach the goal or if the planned path results in a collision. The parameters used in the motion planning experiments are listed in Table I. 
+
+C. Ablation Study 
+
+Two key features of the system were individually as-sessed for their contribution to the overall system. First, the flatness-based FRS was replaced with a simple single-sphere overapproximation, mirroring a common approach in the literature [1], [2], [5]–[7]. Second, the PZ reachability pipeline proposed in this paper was replaced with that of [3]. However, unlike [3] which over-approximates the robot with a single zonotope, we instead use a sphere to maintain compatibility with the 3DGS collision check. VI. R ESULTS 
+
+This section summarizes the results of our experimental evaluations. 
+
+A. Collision Constraint 
+
+Figure 4 shows the precision-recall curves computed for each collision constraint. CATNIPS achieves high recall but lower precision than other baselines, indicating that it will result in safe but conservative trajectories. Splat-Nav provides a reasonable balance between precision and recall; however, the comparatively low precision suggests overly conservative behavior. Splanning and our method produce nearly identical results, as is expected due to their shared probabilistic formulation. In a finding consistent with that of Splanning [22], the collision bound of Theorem 1 provides more accurate collision detection than other baselines. Benchmarking results are found in Table II. The BVH-accelerated collision check is, on average, nearly three times Fig. 4: The precision and recall of various collision-checking methods between spheres and radiance fields are evaluated with multiple risk parameters; outlined entries indicate the values used by each method during planning. The proposed collision check yields results that are equivalent to or better than the baselines, with significantly lower computational complexity. TABLE II: Mean and standard deviation of time required to evaluate the collision constraint.       
+
+> Method Mean Time Std. Dev. Splanning 122.1 ms 89.1 ms Ours 42.2 ms 4.9 ms
+
+faster than the naive PyTorch implementation, with signif-icantly lower standard deviation. We believe that most of this improvement comes from avoiding the materialization of large intermediate matrices required by the PyTorch implementation. 
+
+B. Planning 
+
+Table III summarizes the end-to-end planning results across 100 procedurally generated tree scenes with 5 start and goal configurations per scene. In addition to success, stuck, and collision rates, we further report the success weighted by path length (SPL) [36]. Splat-Nav achieves a success rate of 51.2%, and becomes stuck on the remaining 48.8% of trials. The ‘stuck’ trials resulted from Splat-Nav classifying the start or goal positions as infeasible, indicating the spherical overapproximation of the robot was too conservative for the highly cluttered test scenes. CATNIPS similarly becomes stuck in 70.4% of the scenes, which is consistent with the finding in Figure 4 that the CATNIPS constraint has high recall but comparatively low precision. In contrast, AirSplan succeeds in 81.2% of scenes without collisions, demonstrating its ability to safely navigate cluttered scenes. 
+
+C. Ablation Study 
+
+Results of the ablation study are presented in Table IV. In the first row, we replace our proposed PZ reachability                                               
+
+> TABLE III: Each planner ran 500 trials total, then collision-checked against the scene. SPL is success weighted by path length [36].
+> Method % Success % Stuck % Collide SPL Splat-Nav 51.2% 48.8% 0%0.47 CATNIPS 28.8% 70.4% 0.8% 0.26 Ours 81.2% 18.8% 0% 0.66
+> TABLE IV: Ablation study over key system components. Each row replaces proposed components with existing baselines.
+> Flat PZ Samp. Success Stuck Collision FRS Reach. Opt. %%%
+> ✗✗✗16.2% 83.8% 0%
+> ✗✓✓49.8% 50.2% 0%
+> ✓✓✗25.2% 74.8% 0%
+> ✓✓✓81.2% 18.8% 0%
+
+pipeline with the zonotope reachability method of [3]. This produces a significantly more conservative planner, with success dropping to 16.2% and the robot becoming stuck in 83.8% of trials. Enabling PZ reachability and the sampling-based opti-mizer raises the success rate to 49.8%. This indicates that polynomial zonotopes provide a less conservative safety representation, even without the flatness-based FRS, but still do not overcome the conservativeness of a single-sphere robot approximation. Enabling flatness-based reachability with a tight sphere packing of the robot but disabling the sampling optimizer reduces the success rate to 25.2%. This reinforces the importance of the sampling-based optimizer. Finally, enabling all proposed features increases the success rate to 81.2%, outperforming all ablations and baselines. VII. C ONCLUSIONS AND FUTURE WORK 
+
+This paper introduced AirSplan, a novel method that synthesizes risk-aware trajectories for quadrotors in scenes represented using radiance fields. Three key contributions were presented. First, this paper introduced a novel reacha-bility method that leverages differential flatness to tightly overapproximate the robot’s forward reach set. Second, a highly parallelizable method was developed for collision checking between spheres and a normalized 3D Gaussian Splat. Finally, a sampling-based optimizer was presented that leveraged the parallel collision check and tight reachability analysis to synthesize risk-aware plans for quadrotors. Experiments demonstrate that, unlike state-of-the-art methods, the proposed system plans effectively in cluttered environments. Across 500 planning problems in procedurally generated tree structures, AirSplan successfully found a path in 81.2% of cases, a substantial improvement over the strongest baseline, which achieved a 51.2% success rate. A key takeaway from both the planning experiments and the ablation study is that overapproximating an aerial vehicle with a single sphere limits its ability to generate plans in highly cluttered environments. These results suggest that coupling high-fidelity scene representations with continuous-time reachability analysis enables aerial robots to identify safe paths that would otherwise be rejected by conservative geometric approximations. Despite the promising results, the current work has lim-itations that should be addressed in future work. First, as with other safe motion planners operating in radiance fields [1], [2], [22], AirSplan assumes that the robot has access to an accurate radiance field representing the scene. While these can be constructed from sensor data, future work will focus on synthesizing plans in incomplete maps generated by radiance-field-based SLAM algorithms. Similarly, current evaluations are limited to simulation. While prior works demonstrate that 3DGS as a representation transfers well between simulation and the real world [22], future work will validate AirSplan on hardware. Furthermore, the current method assumes that the robot can accurately track the planned motion. Methods for incor-porating tracking error should be considered in the future to increase robustness in real-world deployments [3], [30]. Finally, the method’s computational cost currently requires offboard planning; mitigating this remains future work. REFERENCES [1] T. Chen, P. Culbertson, and M. Schwager, “Catnips: Collision avoid-ance through neural implicit probabilistic scenes,” IEEE Trans. Robot. ,vol. 40, pp. 2712–2728, 2024. [2] T. Chen, O. Shorinwa, J. Bruno, A. Swann, J. Yu, W. Zeng, K. Nagami, P. Dames, and M. Schwager, “Splat-nav: Safe real-time robot naviga-tion in gaussian splatting maps,” IEEE Trans. Robot. , vol. 41, pp. 2765–2784, 2025. [3] S. Kousik, P. Holmes, and R. Vasudevan, “Safe, aggressive quadrotor flight via reachability-based trajectory design,” in Dynamic Systems and Control Conference , 10 2019, p. V003T19A010. [4] Y. S. Shao, C. Chen, S. Kousik, and R. Vasudevan, “Reachability-based trajectory safeguard (rts): A safe and fast reinforcement learning safety layer for continuous control,” IEEE Robot. Autom. Lett. , vol. 6, no. 2, pp. 3663–3670, 2021. [5] C. Richter, A. Bry, and N. Roy, “Polynomial trajectory planning for aggressive quadrotor flight in dense indoor environments,” in Int. Symp. Robot. Res. (ISRR) , 2016. [6] J. Tordesillas, B. T. Lopez, M. Everett, and J. P. How, “Faster: Fast and safe trajectory planner for navigation in unknown environments,” 
+
+IEEE Trans. Robot. , vol. 38, pp. 922–938, 2020. [7] V. Freire and X. Xu, “Flatness-based quadcopter trajectory planning and tracking with continuous-time safety guarantees,” IEEE Trans. Control Syst. Technol. , vol. 31, no. 6, pp. 2319–2334, 2023. [8] Y. Ren, F. Zhu, W. Liu, Z. Wang, Y. Lin, F. Gao, and F. Zhang, “Bubble planner: Planning high-speed smooth quadrotor trajectories using receding corridors,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2022, pp. 6332–6339. [9] R. Ragel, I. Maza, F. Caballero, and A. Ollero, “Comparison of motion planning techniques for a multi-rotor uas equipped with a multi-joint manipulator arm,” in 2015 Workshop Res., Educ. Develop. Unmanned Aerial Syst. (RED-UAS) , 2015, pp. 133–141. [10] H. Kim, H. Seo, J. Kim, and H. J. Kim, “Sampling-based motion planning for aerial pick-and-place,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2019, pp. 7402–7408. [11] M. Adamkiewicz, T. Chen, A. Caccavale, R. Gardner, P. Culbertson, J. Bohg, and M. Schwager, “Vision-only robot navigation in a neural radiance world,” IEEE Robot. Autom. Lett. , vol. 7, no. 2, pp. 4606– 4613, 2022. [12] I. A. S ¸ ucan, M. Moll, and L. E. Kavraki, “The Open Motion Planning Library,” IEEE Robot. Autom. Mag. , vol. 19, no. 4, pp. 72–82, 12 2012. [13] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron, R. Ra-mamoorthi, and R. Ng, “Nerf: Representing scenes as neural radiance fields for view synthesis,” in Proc. Eur. Conf. Comput. Vis. (ECCV) ,A. Vedaldi, H. Bischof, T. Brox, and J.-M. Frahm, Eds. Cham: Springer International Publishing, 2020, pp. 405–421. [14] B. Kerbl, G. Kopanas, T. Leimk¨ uhler, and G. Drettakis, “3d gaussian splatting for real-time radiance field rendering,” ACM Trans. Graph. ,vol. 42, no. 4, jul 2023. [15] S. Kousik, S. Vaskov, M. Johnson-Roberson, and R. Vasudevan, “Safe trajectory synthesis for autonomous driving in unforeseen environ-ments,” in Dynamic Systems and Control Conference , 10 2017, p. V001T44A005. [16] Q. Lin, Z. Miao, X. Wang, W. He, Y. Wang, and P. Shi, “Collision-free coordination for quadrotors based on differential flatness,” IEEE Trans. Ind. Electron. , vol. 72, no. 12, pp. 13 729–13 740, 2025. [17] N. Bucki, J. Lee, and M. W. Mueller, “Rectangular pyramid parti-tioning using integrated depth sensors (rappids): A fast planner for multicopter navigation,” IEEE Robot. Autom. Lett. , vol. 5, no. 3, pp. 4626–4633, 2020. [18] M. Tayal, R. Singh, J. Keshavan, and S. Kolathaya, “Control barrier functions in dynamic uavs for kinematic obstacle avoidance: A col-lision cone approach,” in 2024 American Control Conference (ACC) ,2024, pp. 3722–3727. [19] B. G. Goswami, M. Tayal, K. Rajgopal, P. Jagtap, and S. Kolathaya, “Collision cone control barrier functions: Experimental validation on ugvs for kinematic obstacle avoidance,” in 2024 American Control Conference (ACC) , 2024, pp. 325–331. [20] Y. Tao, D. Ong, V. Murali, I. Spasojevic, P. Chaudhari, and V. Kumar, “Rt-guide: Real-time gaussian splatting for information-driven explo-ration,” IEEE Robot. Autom. Lett. , vol. 10, no. 11, pp. 11 594–11 601, 2025. [21] R. Jin, Y. Gao, Y. Wang, Y. Wu, H. Lu, C. Xu, and F. Gao, “Gs-planner: A gaussian-splatting-based planning framework for active high-fidelity reconstruction,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2024, pp. 11 202–11 209. [22] J. Michaux, S. Isaacson, C. E. Adu, A. Li, R. K. Swayampakula, P. Ewen, S. Rice, K. A. Skinner, and R. Vasudevan, “Let’s make a splan: Risk-aware trajectory optimization in a normalized gaussian splat,” IEEE Trans. Robot. , pp. 1–19, 2025. [23] P. Holmes, S. Kousik, B. Zhang, D. Raz, C. Barbalata, M. Johnson-Roberson, and R. Vasudevan, “Reachable Sets for Safe, Real-Time Manipulator Trajectory Design,” in Robotics: Science and Systems ,Corvalis, Oregon, USA, 7 2020. [24] J. Michaux, A. Li, Q. Chen, C. Chen, B. Zhang, and R. Vasudevan, “Safe planning for articulated robots using reachability-based obstacle avoidance with spheres,” in Robotics: Science and Systems , Delft, Netherlands, 7 2024. [25] J. Liu, C. E. Adu, L. Lymburner, V. Kaushik, L. Trang, and R. Va-sudevan, “Radius: Risk-aware, real-time, reachability-based motion planning,” in Robotics: Science and Systems , 2023. [26] Y. Kwon, J. Michaux, S. Isaacson, B. Zhang, M. Ejakov, K. A. Skinner, and R. Vasudevan, “Conformalized reachable sets for obstacle avoidance with spheres,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2025. [27] M. van Nieuwstadt and R. M. Murray, “Real time trajectory generation for differentially flat systems,” IFAC Proc. Vol. , vol. 29, no. 1, pp. 2301–2306, 1996, 13th World Congress of IFAC. [28] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2011, pp. 2520–2525. [29] N. Kochdumper and M. Althoff, “Sparse polynomial zonotopes: A novel set representation for reachability analysis,” IEEE Trans. Autom. Control , vol. 66, no. 9, pp. 4043–4058, 2020. [30] J. Michaux, P. Holmes, B. Zhang, C. Chen, B. Wang, S. Sahgal, T. Zhang, S. Dey, S. Kousik, and R. Vasudevan, “Can’t touch this: Real-time, safe motion planning and control for manipulators under uncertainty,” arXiv preprint arXiv:2301.13308, 2023. [31] S. Coumar, G. Chang, N. Kodkani, and Z. Kingston, “Foam: A tool for spherical approximation of robot geometry,” arXiv preprint arXiv:2503.13704, 2025. [32] T. Karras, “Maximizing parallelism in the construction of bvhs, octrees, and k-d trees,” in Proc. 4th ACM SIGGRAPH/Eurographics Conf. High-Perform. Graph. , ser. EGGH-HPG’12. Goslar, DEU: Eurographics Association, 2012, pp. 33–37. [33] R. Y. Rubinstein and D. P. Kroese, The Cross-Entropy Method: A Unified Approach to Combinatorial Optimization, Monte-Carlo Simulation, and Machine Learning . Springer, 2004, vol. 133. [34] G. Williams, P. Drews, B. Goldfain, J. M. Rehg, and E. A. Theodorou, “Information-theoretic model predictive control: Theory and applica-tions to autonomous driving,” IEEE Trans. Robot. , vol. 34, no. 6, pp. 1603–1622, 2018. [35] M. Tancik, E. Weber, E. Ng, R. Li, B. Yi, J. Kerr, T. Wang, A. Kristoffersen, J. Austin, K. Salahi, A. Ahuja, D. McAllister, and A. Kanazawa, “Nerfstudio: A modular framework for neural radiance field development,” in ACM SIGGRAPH 2023 Conf. Proc. ,ser. SIGGRAPH ’23, 2023. [36] P. Anderson, A. Chang, D. S. Chaplot, A. Dosovitskiy, S. Gupta, V. Koltun, J. Kosecka, J. Malik, R. Mottaghi, M. Savva, and A. R. Zamir, “On evaluation of embodied navigation agents,” arXiv preprint arXiv:1807.06757, 2018.
