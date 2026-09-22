@@ -1,0 +1,508 @@
+Title: WOLF: World Model Guided LiDAR Exploration with Predictive Frontiers
+
+URL Source: https://arxiv.org/pdf/2609.23656v1
+
+Published Time: Tue, 22 Sep 2026 01:36:13 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# WOLF: World Model Guided LiDAR Exploration with Predictive Frontiers 
+
+Yuyang Tian 1,2,∗, Penghui Yang 2,3,∗, Pengyuan Wu 2,4, Haoran Yang 1,2,Chenhui Li 2, Pengfei Han 2, Dong Wang 2, Zhigang Wang 2,Bin Zhao 2,5, and Xuelong Li 6, Fellow, IEEE 
+
+Abstract — LiDAR-based unmanned aerial vehicle (UAV) ex-ploration builds maps by continually selecting where to observe next. However, decisions based on the measured map provide limited foresight into spatial continuations behind occlusions, leaving potentially informative directions unrecognized. We present WOLF, a world-model-guided framework that predicts future observations to enhance autonomous exploration. In the training stage, a recurrent world model learns observation dynamics from exploration trajectories, with recurrent memory retaining the spatial context needed to interpret partial observa-tions across successive views. Building on this context, the model combines observation history with candidate motions during exploration to predict local occupancy and visibility. To guide further sensing, a predictive frontier generation mechanism then aligns and fuses these predictions using confidence, branch agreement, and observation quality to identify promising re-gions. The resulting predictive frontiers join measured ones to guide geometric viewpoint selection and trajectory generation, while new scans update subsequent predictions. In simulations, our method reduces mean terminal time by 10.9% relative to EPIC in Garage at comparable coverage and increases mean coverage from 42.12% to 98.35% in Tunnel. Real-world experiments further demonstrate onboard deployment of the learned model for online inference during physical flight. 
+
+I. I NTRODUCTION 
+
+Advances in perception, planning, and control have en-abled unmanned aerial vehicles (UAVs) to navigate complex environments and support inspection, search and rescue, and three-dimensional mapping [1], [2]. Many of these missions take place in spaces for which no prior map is available. A robot operating in such settings must decide where to go, what to observe, and how to extend its knowledge of the environment as the mission unfolds. Autonomous exploration brings these decisions together: the UAV must continually discover useful destinations while building a map through its own actions. Exploration is therefore essential for autonomous missions in unfamiliar environments. Geometric exploration methods [3], [4], [5] organize this process through online mapping, frontier detection, infor-mation gain estimation, and motion planning. Advances in incremental map management and global planning have 
+
+> ∗Yuyang Tian and Penghui Yang contributed equally to this work.
+> 1University of Science and Technology of China, Hefei, China.
+> 2Shanghai Artificial Intelligence Laboratory, Shanghai, China.
+> 3East China University of Science and Technology, Shanghai, China.
+> 4Zhejiang University, Hangzhou, China.
+> 5Northwestern Polytechnical University, Xi’an, China.
+> 6TeleAI, China.
+
+substantially improved exploration efficiency and the scale of deployable systems. These methods share a common foundation: they extract candidate observation targets from measured geometry and organize their visitation according to expected information gain and travel cost. This founda-tion connects exploration decisions to the spatial structure available from onboard sensing. The remaining challenge is to reason about the value of di-rections whose structure is still hidden. A small opening may lead to a large unexplored region, whereas a direction with substantial immediate gain may soon terminate. The current map provides only partial evidence for distinguishing these possibilities. Over a long mission, these choices determine both the information obtained immediately and the regions that become accessible for subsequent exploration. Imme-diate information gain alone therefore gives an incomplete account of a direction’s value. Efficient exploration requires anticipating how motion will reveal further space, so that decisions reflect the potential beyond current observations. World models provide a predictive description of an agent’s environment, learning how observations evolve in response to actions [6]. By integrating observation history, they retain context that is absent from an individual view and predict possible outcomes before an action is executed. Recent research has substantially advanced world model-based flight and navigation, bringing predictive environmen-tal representations into aerial decision making [7], [8], [9]. For exploration, the central challenge is to make predicted spatial structure useful for deciding where to observe next. Anticipating the continuation of a passage or the space behind an opening can reveal opportunities that are not yet evident in the measured map. Connecting these predictions to geometric planning enables future observations to inform the exploration route as the environment is revealed. We propose WOLF, a world model guided framework for LiDAR-based aerial exploration. Its central idea is to bring learned spatial prediction into the formation of exploration targets. A recurrent world model learns from trajectories across multiple environments and predicts local observations along candidate motions. We convert these predictions into 
+
+predictive frontiers , which expose potential spatial continu-ations as explicit targets for further sensing. Planning over both measured and predictive frontiers allows the UAV to consider opportunities suggested by experience alongside those already evident in the map. arXiv:2609.23656v1 [cs.RO] 20 Sep 2026 The framework integrates spatial prediction into geometric planning. The world model informs which additional regions merit observation, while measured geometry supports view-point selection, reachability analysis, and trajectory genera-tion. Executed motion produces new observations that update the model state and revise the available targets. Through this interaction, learned experience influences the exploration route, and incoming measurements continually refine its direction. Predictive frontiers provide the connection from local spatial anticipation to the progress of an extended exploration mission. Experiments across complementary environments demon-strate that this integration improves exploration capabil-ity: the UAV reaches broad coverage more efficiently and sustains exploration into a larger portion of an unfamiliar environment. The results support using spatial prediction to guide more effective exploration routes and discover useful directions as the mission progresses. Real-world flight further shows that predicted spatial continuations are supported by subsequent LiDAR observations, connecting the learned predictions to space encountered during physical exploration. The main contributions of this work are:  
+
+> •
+
+We introduce an exploration oriented world model that learns spatial observation dynamics from experience across environments, enabling predictions of sensing outcomes along candidate directions.  
+
+> •
+
+We develop a predictive frontier generation mechanism that combines spatial prediction with geometric ex-ploration, allowing predicted structure to contribute to effective route planning.  
+
+> •
+
+Experimental results show improved exploration effi-ciency and coverage in simulation and successful on-board model inference in real-world flights. II. R ELATED WORK 
+
+A. Geometric Aerial Exploration 
+
+Frontier and next-best-view methods select sensing loca-tions that reveal unknown space. NBVP [10] evaluates infor-mative branches in a receding-horizon sampling tree. Sub-sequent work develops efficient frontier extraction, history-aware recovery, and informative trajectory optimization [11], [12], [13], [2]. Local information gain can be combined with global connectivity to support exploration over larger envi-ronments, as in AEP [14] and graph-based exploration [1]. FUEL [3] maintains an incremental frontier structure and coordinates global viewpoint ordering with local trajectory planning. Bubble Explorer [15] constructs occlusion-free spheres for viewpoint generation, while next-best-trajectory planning jointly considers motion and observation util-ity [16]. FALCON [4] introduces online coverage paths to guide exploration across regions. EPIC [5] uses point-surface observation quality and an incrementally maintained point cloud topological graph for large-scale LiDAR exploration. These developments address complementary aspects of ex-ploration, including target extraction, map representation, global organization, and trajectory execution. 
+
+B. Prediction-Assisted Exploration 
+
+Learned spatial predictions provide additional informa-tion for evaluating where a robot should observe. Learned Map Prediction [17] completes unseen regions of a two-dimensional map and uses those completions to guide mobile robot exploration. SEER [18] predicts local unseen occu-pancy and estimates viewpoint information gain for aerial exploration. PredRecon [19] uses coarse surface predictions to organize viewpoints for autonomous reconstruction. At a larger spatial scale, MapEx [20] samples global map comple-tions and evaluates observation utility through probabilistic information gain. PIPE [21] integrates predicted informa-tion gain along candidate paths to account for overlapping observations and gain estimation. Together, these methods investigate how spatial prediction, visibility, and uncertainty inform sensing decisions. 
+
+C. World Models for Aerial Autonomy 
+
+World models learn predictive states from observation and action sequences. DreamerV3 [6] combines recurrent latent dynamics with policy learning in imagined trajectories across diverse tasks. Model-based learning for quadrotors has also addressed low-level control and latent vehicle dy-namics [22], [23]. More recent aerial systems use world models to connect visual observations, temporal context, and flight decisions. Dream to Fly [7] learns racing policies from RGB observations and evaluates transfer through a hardware-in-the-loop quadrotor setup. SkyDreamer [24] investigates interpretable representations for vision-based drone racing. AirDreamer [8] learns an environment representation from depth and proprioception and trains a navigation policy with sparse rewards. MAD [9] supervises recurrent states with local occupancy, visibility, and proprioception and evaluates their use across policy learning algorithms and flight tasks. FlowPilot [25] jointly models future depth observations and executable trajectories for onboard navigation. III. M ETHOD 
+
+A. Problem Definition 
+
+We consider LiDAR-based exploration of an initially un-known environment. At step t, a UAV acquires a scan ot at pose xt = ( pt , ψt ), where pt ∈ R3 is the position and ψt is the yaw angle, and updates the accumulated measured map 
+
+Gt . The objective is to select sensing poses that increase surface coverage while accounting for travel cost and motion feasibility. Occlusions limit the geometry available in Gt ,leaving the spatial extent that a candidate motion may reveal only partially known. To predict what lies beyond the observed geometry, WOLF uses action conditioned observation prediction to identify additional sensing targets (Fig. 1). A recurrent world model is trained offline on exploration trajectories to capture how local observations change with UAV motion. During exploration, the model integrates the latest scan into its recurrent state and predicts future local observations under candidate pose increments. These predictions are aligned and fused to extract 
+
+predictive frontiers , which are planned jointly with frontiers derived from measurements. The world model supplies ad-ditional regions to observe, while the geometric planner [5] uses measured geometry to select feasible viewpoints and generate trajectories. Executed motion and new scans update the model state and map for the next planning cycle. 
+
+B. World Model Training 
+
+The world model represents local observations and mo-tion between scans in a common world-aligned frame. A recurrent latent state retains spatial context across successive views and supports both observation updates and action conditioned prediction. 
+
+a) Observation space: We rasterize each LiDAR scan into a local bird’s-eye-view occupancy map: 
+
+Ot = R(ot , xt ) ∈ CH×W , C = {unk , free , occ }, (1) where R considers LiDAR returns within a vertical slab around the flight region. Ray traversed cells are labeled free, return endpoints occupied, and cells without measure-ment evidence unknown. Occupied labels take precedence when projected rays overlap. The window is centered at the UAV position, with its horizontal axes fixed to the world frame. The three classes encode both local geometry and scan visibility, including the free unknown boundaries used for exploration. Each input contains only the current scan; preceding observations are represented by the recurrent state. 
+
+b) Action space: An action denotes the realized pose increment between consecutive scans, rather than a low-level control command: 
+
+at =
+
+∆pt
+
+∆ψt
+
+
+
+, ∆pt = pt+1 − pt , (2) where ∆pt = [ ∆xwt , ∆ywt , ∆zwt ]⊤ is expressed in the world frame. The yaw increment is wrapped to [−π, π]:
+
+∆ψt = atan2 (sin (ψt+1 − ψt ), cos (ψt+1 − ψt )) . (3) Using realized increments pairs each observation transition with the motion that actually occurred, including partial progress toward a selected viewpoint. The same represen-tation is used for candidate motions at inference. 
+
+c) Recurrent world model: We adopt the recurrent state space model (RSSM) of DreamerV3 [6], with a deterministic recurrent state ht and a stochastic categorical state zt . The model comprises a spatial encoder, recurrent latent dynamics, and an occupancy decoder, jointly parameterized by θ .Reward and continuation prediction heads are omitted, as exploration decisions are made by the geometric planner. The encoder and decoder use convolutional neural networks (CNNs), while the prior and posterior use multilayer percep-trons (MLPs). The spatial encoder extracts spatial features from the current observation. Encoder: et = Eθ (Ot ), (4) where et provides the local geometric evidence used to infer the latent state. The recurrent transition propagates the preceding state under the executed action, and the prior and posterior infer the categorical state without and with the current observation, respectively: Sequence model: ht = fθ (ht−1, zt−1, at−1), (5) Prior: ˆzt ∼ pθ (zt | ht ), (6) Posterior: zt ∼ qθ (zt | ht , et ). (7) During training and online state estimation, the posterior incorporates newly observed geometry and supplies the state for the next transition. For a hypothetical motion, the prior supplies the predicted state before the corresponding scan is available. Both operations use the same recurrent dynamics. The decoder maps the joint state to a categorical distribu-tion over occupancy classes at each cell u:Decoder: Pt (u, c) = Dθ (ht , zt )u,c, c ∈ C. (8) It projects the concatenated latent features into a spatial feature map, followed by transposed convolutions and a softmax over classes. Decoding a posterior state reconstructs the acquired observation; decoding a motion conditioned prior state predicts a future observation. The decoded free and unknown probabilities expose the anticipated observation boundaries used to generate predictive frontiers. 
+
+d) Training objective: We train the model on complete observation and action trajectories. At each valid time step, the posterior reconstruction is supervised by a class weighted occupancy loss: 
+
+Locc = −Et
+
+"
+
+# ∑
+
+> u∈U
+
+# ∑
+
+> c∈C
+
+wc1[Ot (u) = c] log Pt (u, c)
+
+#
+
+, (9) where U is the set of grid cells and wc compensates for class imbalance. Following DreamerV3 [6], two gradient-separated KL terms align the prior and posterior: 
+
+Ldyn = Et
+
+ max  λ ,
+
+DKL [sg (qθ (zt | ht , et )) ∥pθ (zt | ht )]  , (10) 
+
+Lrep = Et
+
+ max  λ ,
+
+DKL [qθ (zt | ht , et )∥ sg (pθ (zt | ht ))]  . (11) The dynamics loss trains the prior to match the observation-conditioned posterior, while the representation loss regular-izes the posterior toward the predictive prior. Here, sg (·)
+
+denotes stop-gradient and λ = 1 is the free-nats threshold. The overall objective is 
+
+LWM = EB
+
+βocc Locc + βdyn Ldyn 
+
++ βrep Lrep 
+
+, (12) where the expectation averages over trajectory batches B and their valid time steps, with latent states sampled from the posterior during sequence unrolling. We use βocc = 1, βdyn =
+
+1, and βrep = 0.1. 
+
+C. Predictive Frontier Generation 
+
+We convert candidate conditioned predictions into addi-tional free unknown boundaries. The procedure comprises batched prediction, confidence gated fusion, and budgeted frontier extraction. Trajectory collection 
+
+Training environments 
+
+> …
+
+Transition at time  𝒕 
+
+Ot at Ot+1      
+
+> Local occupancy
+> observation
+> at= [ Δx ,Δy ,Δz ,Δψ ]
+> Action increment Next observation
+
+Exploration dataset 
+
+𝒟 
+
+…       
+
+> Trajectories from multiple environments
+> 𝒟 = {O 0, a 0, O 1, a 1, … , O T}
+
+World model training 
+
+Training trajectory at time  𝒕 
+
+Ot at    
+
+> Occupancy
+> observation Action
+> [Δx ,Δy ,Δz ,Δψ ]
+> Spatial
+> Encoder
+
+Recurrent World Model (RSSM) 
+
+ht−1 
+
+> Recurrent
+> state
+
+ht
+
+zt     
+
+> Latent state
+> p(z t|ht)
+> (prior)
+> q(z t|ht, O t)
+> (posterior)
+> Reconstruction
+> Ôt
+> World model training objective
+
+ℒWM = β occ 
+
+ℒocc + β dyn 
+
+ℒdyn + β rep 
+
+ℒrep 
+
+> Occupancy
+> Decoder
+
+Predictive frontier generation 
+
+Align and fuse predictions  
+
+> Predicted
+> windows Augmented map
+
+Predictive frontiers 
+
+> Measured frontiers
+> Predictive frontiers
+> Ftcur
+> Ftpred
+> Free
+> Occupied
+> Unknown
+
+Roll out candidate actions    
+
+> Current occupancy Ot
+> Current state ht, z t
+> a(1)
+> a(2)
+> a(N )
+> Predicted occupancy
+> for each candidate action
+> …
+
+Closed-loop exploration planning 
+
+Frontier set and planning    
+
+> Measured
+> frontiers
+> Ftcur
+> Predictive
+> frontiers
+> Ftpred
+> Joint frontiers
+> Ft= F tcur
+> ∪Ftpred
+> Viewpoint generation
+> Navigation graph + A* costs
+> ATSP / LKH ordering
+> Trajectory optimization
+> Ftcur Ftpred
+
+Execute, observe, and update  
+
+> Execute planned trajectory
+> Repeat for next exploration cycle
+> New LiDAR scan
+> Update map G ₜ
+> and model state
+> (h t, z t)
+
+Fig. 1. Overview of WOLF. From left to right, exploration trajectories collected across environments provide occupancy–action sequences for offline training of a recurrent world model. During exploration, the model combines observation history with candidate motions to predict future local occupancy observations. These predictions are spatially aligned and fused using confidence, branch agreement, and observation quality to extract predictive frontiers. Measured and predictive frontiers jointly guide viewpoint generation and trajectory planning, while the measured map supplies reachability and collision checks. Executed motion and new LiDAR scans update the map and model state for the next exploration cycle. 
+
+a) Candidate conditioned prediction: At each planning step, the latest scan updates the posterior state (ht , zt ). The planner constructs candidate sensing actions At = {ait }Ni=1
+
+from frontier viewpoints and directional samples. Before prediction, each candidate translation ∆pi is rescaled by 
+
+αi = min 
+
+
+
+1, dmax 
+
+max (∥∆pi∥, ε)
+
+
+
+, (13) and its yaw increment is clipped to [−π, π], where dmax = 3 m and ε = 10 −6 avoids division by zero. The rescaled transla-tion αi∆pi preserves the direction toward a distant viewpoint while bounding the motion by dmax . These bounds keep candidate motions at the short transition scale represented in the training trajectories. Below, ait denotes the bounded pose increment. All candidates branch from the same current state and undergo one prior transition, computed in a batch: ˆhit+1 = fθ (ht , zt , ait ),
+
+ˆzit+1 ∼ pθ (zt+1 | ˆhit+1),
+
+Pit+1(u, c) = Dθ (ˆhit+1, ˆzit+1)u,c.
+
+(14) Each predicted window is centered at its candidate endpoint. Because the raster axes are world aligned, the windows are translated onto a common local grid for fusion at correspond-ing physical locations. In the following, Pit+1 denotes the aligned prediction, and a branch contributes only within its valid window. 
+
+b) Confidence gated fusion: Fusion starts from a local measured raster Lt initialized from the current observation. Let Ht denote cells unknown in the accumulated observation history, and let Rt be a two cell neighborhood around surfaces marked as poorly observed by the geometric mapping mod-ule. These sets identify new regions and unresolved bound-aries, respectively. Predictions are added only to unknown cells in Lt ; its measured labels remain unchanged. At cell u, each valid branch proposes its most probable class, ci(u) = arg max c∈C Pit+1(u, c). For each known class c ∈{free , occ }, let Ic(u) contain the branches proposing c. Its confidence score and support count are 
+
+sc(u) = max 
+
+i∈Ic(u) Pit+1(u, c), nc(u) = |Ic(u)|. (15) Classes without supporting branches are excluded. Among the supported classes, we select c∗ = arg max c sc(u). If both classes receive support and |sfree (u) − socc (u)| ≤ δ , the cell remains unknown. Otherwise, the selected class is eligible for fusion when accept (u) = [ sc∗ (u) ≥ τc∗ ] ∨
+
+u ∈ Rt ∧ nc∗ (u) ≥ k
+
+∧ sc∗ (u) ≥ τpoor 
+
+c∗
+
+.
+
+(16) Thus, a strict confidence threshold admits a prediction di-rectly, while a relaxed threshold near poorly observed sur-faces additionally requires support from at least k candidate branches. We set (τfree , τocc ) = ( 0.75 , 0.97 ), (τpoor free , τpoor occ ) = (0.68 , 0.94 ), k = 2, and δ = 0.05. 
+
+c) Budgeted frontier extraction: Eligible cells are ranked first by observation priority and then by confidence, giving precedence to cells in Ht ∪ Rt . With Kt measured known cells in Lt , the number of added cells is limited to 
+
+Bt = max {0, min (HW , ⌊ρKt ⌋) − Kt }. (17) Here, 1 ≤ ρ ≤ 2. The selected cell set St , with |St | ≤ Bt ,forms a temporary augmented raster eLt . This budget bounds Algorithm 1 Predictive Frontier Generation 
+
+Require: Local measured raster Lt , measured frontiers Fcur  
+
+> t
+
+,aligned predictions {Pit+1}, history mask Ht , and poorly observed neighborhood Rt
+
+Ensure: Predictive frontiers Fpred  
+
+> t
+> 1:
+
+eLt ← Lt , Q ← /0 
+
+> 2:
+
+for each unknown cell u in Lt do  
+
+> 3:
+
+Compute supported scores and counts using (15)  
+
+> 4:
+
+if at least one known class is supported then  
+
+> 5:
+
+Select c∗ = arg max c sc(u) over supported classes  
+
+> 6:
+
+if no cross-class conflict and (16) holds then  
+
+> 7:
+
+Add (u, c∗, sc∗ (u), priority (u)) to Q 
+
+> 8:
+
+end if  
+
+> 9:
+
+end if  
+
+> 10:
+
+end for  
+
+> 11:
+
+Compute the spatial budget Bt using (17)  
+
+> 12:
+
+Sort Q by observation priority, then confidence  
+
+> 13:
+
+Write the first min (Bt , |Q|) entries to eLt ; record their cell set St 
+
+> 14:
+
+Extract connected components of (18)  
+
+> 15:
+
+Remove components duplicating Fcur  
+
+> t
+> 16:
+
+Attach contributing branches predicting free space to each retained component  
+
+> 17:
+
+return Fpred 
+
+> t
+
+the augmented known area relative to the current measured footprint. Predictive frontiers are extracted from added free cells that have observation priority and border unknown space: 
+
+Mt = {u ∈ St ∩ (Ht ∪ Rt ) :
+
+eLt (u) = free ,
+
+∃v ∈ N(u), eLt (v) = unk },
+
+(18) where N(u) denotes the neighboring cells of u. Connected components of Mt form the predictive frontier set Fpred  
+
+> t
+
+after components duplicating measured frontiers Fcur  
+
+> t
+
+are removed. Each region retains the candidate branches contributing its evidence of free space, preserving the associated sensing directions at the planning interface. Algorithm 1 summarizes the procedure. 
+
+D. Closed-Loop Exploration Planning 
+
+The planner operates on the joint frontier set Ft = Fcur  
+
+> t
+
+∪
+
+Fpred  
+
+> t
+
+. A predictive frontier specifies a region to observe; viewpoint generation selects a pose from which that region can be sensed. Both frontier types pass through the same geo-metric viewpoint generation pipeline. The temporary raster eLt
+
+supplies predictive frontier geometry, while the accumulated measured map Gt supplies visibility, obstacle clearance, reachability, and collision checks. Candidates overlapping existing viewpoints or recently visited targets are removed before joint planning. Following EPIC [5], retained viewpoints are connected to the navigation graph. A* search provides collision-free graph paths and travel costs between viewpoints. Together with connections from the current UAV pose, these costs form a directed cost matrix. We formulate joint viewpoint ordering as an asymmetric traveling salesman problem (ATSP) and use the Lin Kernighan Helsgaun (LKH) solver to obtain a low-cost visitation order. The corresponding graph paths define a global guidance route, which local optimization converts into an executable trajectory under geometric and dynamic constraints. After execution, the realized pose increment and next scan update the persistent posterior, while the scan also updates Gt . Temporary prediction branches are discarded, and candidate motions are regenerated from the updated state. The resulting loop uses predicted spatial continuations to propose additional views and newly measured geometry to revise subsequent decisions. When Fpred  
+
+> t
+
+is empty, planning proceeds with measured frontiers. IV. S IMULATIONS AND EXPERIMENTS 
+
+Our evaluation examines whether learned spatial foresight improves the outcome of an exploration mission. We com-pare the time required to achieve high coverage and the extent of exploration in an unseen environment, then examine spatial predictions and their use during physical flight. 
+
+A. Experimental Setup 
+
+We use MARSIM [26] as the simulation platform for collecting exploration experience. The resulting dataset com-prises 10K trajectories and 1M observation–action transitions collected across 33 environment maps. Our model is trained offline on complete trajectories for 200 epochs using two NVIDIA RTX 4090 GPUs for 60 hours. Each LiDAR observation is represented as a 96 × 96 occupancy grid covering a 50 m × 50 m local region. We evaluate exploration performance against FUEL [3], FALCON [4], and EPIC [5] in Garage, KTH, and Tunnel, with a common maximum velocity of 4 m /s. Coverage rate follows EPIC [5]. Each baseline runs 10 times per environment with a 2400 s time limit. Garage and KTH are represented in the training corpus, whereas Tunnel is held out from training to assess generalization to an unseen layout. 
+
+B. Exploration Efficiency and Completeness 
+
+Table I shows that WOLF combines high coverage with efficient exploration across the three environments. In Garage and KTH, it achieves the shortest mean terminal time and path length among methods with mean coverage above 95%. In the unseen Tunnel, it is the only evaluated method to exceed this coverage threshold on average, demonstrating a substantial improvement in exploration completeness. In Garage, WOLF reaches 98.22% mean coverage while reducing mean terminal time by 10.9% and path length by 10.8% relative to EPIC. Compared with FUEL, it completes exploration in 58.4% less time at slightly higher coverage. The shorter route and mission duration show that the effi-ciency gain accompanies broad observation of the environ-ment. The same benefit extends to KTH: WOLF maintains 98.31% mean coverage, close to EPIC’s 98.61%, while TABLE I RESULTS OF SIMULATIONS IN DIFFERENT ENVIRONMENTS .
+
+Scene Method Coverage (%) ↑ Terminal time (s) ↓ Path (m) ↓ Avg. Vel. (m/s) ↑
+
+Mean Std. Min. Max. Mean Std. Min. Max. Mean Std. Min. Max. Mean Std. Min. Max. Garage FUEL 97.11 0.12 97.02 97.28 2024.8 268.0 1656.2 2285.4 3017.4 353.6 2537.1 3378.0 1.49 0.03 1.47 1.53 FALCON ¶ 76.36 18.30 41.55 95.66 748.7 211.7 375.6 1022.5 1105.5 319.2 569.6 1560.1 1.48 0.07 1.34 1.53 EPIC 97.88 0.13 97.63 98.12 944.4 70.7 801.8 1044.7 2965.3 221.8 2646.6 3242.6 3.15 0.20 2.92 3.38 
+
+Ours 98.22 0.11 97.97 98.34 841.5 58.2 736.4 934.1 2644.5 153.3 2338.8 2943.7 3.15 0.16 2.82 3.37 KTH FUEL ¶ 94.30 5.28 83.74 97.04 2008.7 293.4 1633.0 2400.2 2681.6 347.8 2300.6 3169.6 1.34 0.05 1.25 1.41 FALCON ¶ 21.68 6.98 13.23 32.58 747.0 73.4 629.2 899.0 724.3 143.4 343.3 887.4 0.96 0.14 0.53 1.14 EPIC 98.61 0.28 98.02 98.93 726.3 41.1 618.9 793.6 1864.8 96.7 1664.4 1977.9 2.58 0.09 2.36 2.72 
+
+Ours 98.31 0.34 97.34 98.50 664.7 39.3 607.4 723.9 1759.0 86.2 1672.3 1927.9 2.64 0.06 2.56 2.77 Tunnel FUEL ¶ 59.71 16.09 37.93 76.31 2400.2 0.0 2400.1 2400.2 2748.1 937.3 1426.0 3491.6 1.14 0.39 0.59 1.45 FALCON ¶ 16.59 3.62 13.04 25.42 462.8 257.8 115.0 879.8 579.0 357.0 169.0 1174.4 1.54 0.57 0.91 2.56 EPIC ¶ 42.12 1.59 40.27 44.87 718.5 36.9 661.3 777.6 2328.9 111.6 2156.0 2495.9 3.24 0.05 3.17 3.32 
+
+Ours 98.35 1.16 96.94 99.77 1862.8 85.4 1680.2 1934.3 5778.9 293.1 5162.0 6080.5 3.10 0.06 2.99 3.16   
+
+> ¶Mean coverage is below 95%; the reported time and path length therefore do not represent completion statistics at 95% coverage. Bold values indicate the best mean performance among methods with mean coverage of at least 95%. (a) Garage (b) Tunnel (c) KTH
+> 0max
+> Exp. Time (s)
+
+Fig. 2. Representative WOLF trajectories in Garage, Tunnel, and KTH, colored by elapsed mission time. The trajectories illustrate the spatial extent of exploration across open areas, extended passages, and connected rooms. 0 500 1000 1500 2000 2500               
+
+> Time Duration (s)
+> 020 40 60 80 100
+> Coverage Rate (%)  817 906 2285 1022
+> Garage
+> 0500 1000 1500 2000 2500
+> Time Duration (s)
+> 674 764 1920 703
+> KTH
+> 0500 1000 1500 2000 2500
+> Time Duration (s)
+> 1689 778 2400 320
+> Tunnel
+> Ours EPIC FUEL FALCON
+
+Fig. 3. The variation of coverage rate with flight time during exploration in Garage, KTH, and Tunnel (left to right). 
+
+reducing mean terminal time by 8.5% and path length by 5.7%. Thus, the framework improves exploration efficiency in both open passages and connected rooms. The improvement is most pronounced in Tunnel, where WOLF reaches 98.35% mean coverage, exceeding FUEL, the strongest coverage baseline, by 38.6 percentage points and covering more than twice the surface reached by EPIC. Coverage remains above 96.9% in every reported WOLF run. The longer route and mission relative to EPIC accompany exploration of a much larger portion of the environment. These results demonstrate that predictive frontiers help sus-tain useful exploration directions in an unfamiliar layout, extending the mission toward nearly complete coverage. Fig. 2 illustrates the spatial scope of these missions: the routes traverse Garage’s open passages, Tunnel’s extended branches, and KTH’s connected rooms. Together with the coverage rate curves shown in Fig. 3, these trajectories con-nect the quantitative gains to the exploration across different spatial structures. The combined evidence supports predictive frontiers as a means of improving both the efficiency and coverage of exploration. The computational results in Table II complement these exploration gains. Although world model prediction is the most time-consuming component, its modest runtime allows TABLE II AVERAGE TIME CONSUMPTION OF EACH MODULE .            
+
+> Scene World model response (ms) Predictive viewpoints (ms) Path cost matrix (ms) TSP solving (ms) Garage 28.84 0.98 16.43 4.21 KTH 19.85 0.96 3.26 2.79 Tunnel 31.06 1.75 10.79 3.58
+
+spatial prediction to be integrated without compromising real-time exploration. 
+
+C. Spatial Prediction Analysis 
+
+Fig. 4 compares prior predictions, measured observations, and posterior reconstructions across the three scenes. The prior anticipates the dominant free space structure before the next scan arrives. In Garage, it preserves the extended passage and surrounding occupied boundaries; in KTH, it captures the arrangement of connected spaces around the central junction. These predictions provide spatially struc-tured candidates for further sensing, allowing the planner to consider where an observed passage or opening may continue. Observation          
+
+> Ot
+> Measured at time t
+> Prior prediction at t
+> Before Otarrives Garage Posterior reconstruction at t
+> After Otarrives KTH Tunnel
+> Unknown Free Occupied
+
+Fig. 4. Prior predictions, observations, and posterior reconstructions at time t (left to right). The prior predicts Ot before it arrives; the posterior reconstructs Ot after incorporating it. 
+
+The unseen Tunnel illustrates both transfer of this struc-tural prediction and refinement through observation. The prior retains the main passage, while the posterior recovers the oblique branch more clearly after incorporating the scan. Across the examples, posterior updates refine local boundaries and scene-specific details while preserving the dominant layout. This relationship is useful for exploration: the prior supplies an initial hypothesis of spatial continuation, (a) Physical flight (b) Map and flight trajectory (c) Prediction visualization   
+
+> Measured free Predicted free LiDAR points Flight path
+
+Fig. 5. Real-world exploration: (a) platform; (b) map and trajectory; (c) successive inference results. 
+
+and the posterior integrates the evidence revealed by the resulting motion. For frontier generation, the relevant information is the arrangement of predicted free space relative to unknown regions. A coherent continuation can expose an additional observation target near the boundary of the current view. The examples show how the learned representation provides this information across different layouts, complementing the mission-level improvements in efficiency and explored extent. Prediction thus contributes to exploration through the sensing opportunities it reveals and their subsequent refinement by measurements. 
+
+TABLE III PREDICTION OF THE NEXT OBSERVATION ON A FIXED TRAJECTORY IN THE KTH ENVIRONMENT .Method Action-conditioned mIoU (%) Improvement over MapEx (pp) MapEx No 51.36 –Ours w/o action No 46.36 −5.00 
+
+Ours (full) Yes 65.54 +14 .18 
+
+D. Ablation Study 
+
+We compare action-conditioned observation prediction with MapEx [20] at different steps of a fixed KTH trajec-tory. All methods receive the same observation history and are evaluated against the next measured local observation. MapEx’s completed global map is projected into the same local grid using the next pose and sensor model; our model predicts that observation directly from its RSSM state and the executed action. As shown in Table III, our full model achieves an absolute mIoU gain of 14.18% over MapEx. Without action input, mIoU drops to 46.36%. Together, these results demonstrate the advantage over global map completion for predicting the next observation and highlight the importance of modeling how robot motion changes the observed space. 
+
+E. Real-World Exploration 
+
+We deploy the framework on a quadrotor equipped with a 360 ◦ LiDAR and an NVIDIA Jetson Orin NX 16 GB onboard computer. Experiments are conducted in an underground parking garage, where rows of columns and walls divide open passages and create occluded regions. The recorded configuration bounds the exploration area to 80 m × 45 m and sets the maximum velocity limit to 1 .0 m /s. The real-world exploration finishes after 480 .2 s, while onboard global planning takes 260 .0 ms on average. Fig. 5 presents the phys-ical platform, an onboard prediction visualization, and the RViz map with the flight trajectory. These results demonstrate operation of the prediction-guided exploration framework on the onboard platform in a physically occluded environment. V. C ONCLUSION 
+
+We presented WOLF, a world-model-guided framework for LiDAR-based UAV exploration. The world model learns how spatial observations evolve with robot motion, using recurrent context to predict what candidate actions may reveal beyond the current view. Predictive frontiers trans-late these anticipated observations into spatial guidance for geometric planning, allowing future sensing opportunities to inform exploration decisions. New measurements update the model’s predictions as the mission progresses. Simulations and real-world experiments support improved exploration performance and the feasibility of onboard inference. This work establishes a way to integrate world model prediction into autonomous exploration through predictive frontiers. REFERENCES [1] T. Dang, M. Tranzatto, S. Khattak, F. Mascarich, K. Alexis, and M. Hutter, “Graph-based subterranean exploration path planning using aerial and legged robots,” Journal of Field Robotics , vol. 37, no. 8, pp. 1363–1388, 2020. [2] L. Schmid, M. Pantic, R. Khanna, L. Ott, R. Siegwart, and J. Nieto, “An efficient sampling-based method for online informative path planning in unknown environments,” IEEE Robotics and Automation Letters , vol. 5, no. 2, pp. 1500–1507, 2020. [3] B. Zhou, Y. Zhang, X. Chen, and S. Shen, “FUEL: Fast UAV explo-ration using incremental frontier structure and hierarchical planning,” 
+
+IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 779–786, 2021. [4] Y. Zhang, X. Chen, C. Feng, B. Zhou, and S. Shen, “FALCON: Fast autonomous aerial exploration using coverage path guidance,” IEEE Transactions on Robotics , vol. 41, pp. 1365–1385, 2025. [5] S. Geng, Z. Ning, F. Zhang, and B. Zhou, “EPIC: A lightweight LiDAR-based AAV exploration framework for large-scale scenarios,” 
+
+IEEE Robotics and Automation Letters , vol. 10, no. 5, pp. 5090–5097, 2025. [6] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse control tasks through world models,” Nature , vol. 640, no. 8059, pp. 647–653, 2025. [7] A. Romero, A. Shenai, I. Geles, E. Aljalbout, and D. Scaramuzza, “Dream to fly: Model-based reinforcement learning for vision-based drone flight,” in 2026 IEEE International Conference on Robotics and Automation (ICRA) , 2026, accepted for publication. [Online]. Available: https://arxiv.org/abs/2501.14377 [8] Z. Liu, A. Yang, C. Yang, R. An, C. Gao, and G. Zhou, “AirDreamer: Generalist drone navigation with world models,” 2026. [Online]. Available: https://arxiv.org/abs/2606.03252 [9] X. Zhang, R. Wang, Y. Ren, D. Yu, B. Zhou, J. Sun, F. Deng, J. Chen, and G. Wang, “MAD: Mapping-aware world models for agile quadrotor flight,” 2026. [Online]. Available: https://arxiv.org/abs/2606.04534 [10] A. Bircher, M. Kamel, K. Alexis, H. Oleynikova, and R. Siegwart, “Receding horizon “next-best-view” planner for 3D exploration,” in 
+
+2016 IEEE International Conference on Robotics and Automation (ICRA) , 2016, pp. 1462–1468. [11] T. Cieslewski, E. Kaufmann, and D. Scaramuzza, “Rapid exploration with multi-rotors: A frontier selection method for high speed flight,” in 2017 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2017, pp. 2135–2142. [12] C. Witting, M. Fehr, R. Bähnemann, H. Oleynikova, and R. Siegwart, “History-aware autonomous exploration in confined environments us-ing MAVs,” in 2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2018, pp. 1–9. [13] A. Dai, S. Papatheodorou, N. Funk, D. Tzoumanikas, and S. Leuteneg-ger, “Fast frontier-based information-driven autonomous exploration with an MAV,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) , 2020, pp. 9570–9576. [14] M. Selin, M. Tiger, D. Duberg, F. Heintz, and P. Jensfelt, “Efficient autonomous exploration planning of large-scale 3-D environments,” 
+
+IEEE Robotics and Automation Letters , vol. 4, no. 2, pp. 1699–1706, 2019. [15] B. Tang, Y. Ren, F. Zhu, R. He, S. Liang, F. Kong, and F. Zhang, “Bubble explorer: Fast UAV exploration in large-scale and cluttered 3D-environments using occlusion-free spheres,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,2023, pp. 1118–1125. [16] B. Lindqvist, A. Patel, K. Löfgren, and G. Nikolakopoulos, “A tree-based next-best-trajectory method for 3-D UAV exploration,” IEEE Transactions on Robotics , vol. 40, pp. 3496–3513, 2024. [17] R. Shrestha, F.-P. Tian, W. Feng, P. Tan, and R. Vaughan, “Learned map prediction for enhanced mobile robot exploration,” in 2019 International Conference on Robotics and Automation (ICRA) , 2019, pp. 1197–1204. [18] Y. Tao, Y. Wu, B. Li, F. Cladera, A. Zhou, D. Thakur, and V. Kumar, “SEER: Safe efficient exploration for aerial robots using learning to predict information gain,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 1235–1241. [19] C. Feng, H. Li, F. Gao, B. Zhou, and S. Shen, “PredRecon: A prediction-boosted planning framework for fast and high-quality au-tonomous aerial reconstruction,” in 2023 IEEE International Confer-ence on Robotics and Automation (ICRA) , 2023, pp. 1207–1213. [20] C. Ho, S. Kim, B. Moon, A. Parandekar, N. Harutyunyan, C. Wang, K. Sycara, G. Best, and S. Scherer, “MapEx: Indoor structure ex-ploration with probabilistic information gain from global map pre-dictions,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 13 074–13 080. [21] S. Baek, B. Moon, S. Kim, M. Cao, C. Ho, S. Scherer, and J. H. Jeon, “PIPE planner: Pathwise information gain with map predictions for indoor robot exploration,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 7684–7691. [Online]. Available: https://arxiv.org/abs/2503.07504 [22] N. O. Lambert, D. S. Drew, J. Yaconelli, S. Levine, R. Calandra, and K. S. J. Pister, “Low-level control of a quadrotor with deep model-based reinforcement learning,” IEEE Robotics and Automation Letters ,vol. 4, no. 4, pp. 4224–4230, 2019. [23] P. Becker-Ehmck, M. Karl, J. Peters, and P. van der Smagt, “Learning to fly via deep model-based reinforcement learning,” 2020. [Online]. Available: https://arxiv.org/abs/2003.08876 [24] A. Verraest, S. Bahnam, R. Ferede, G. de Croon, and C. De Wagter, “SkyDreamer: Interpretable end-to-end vision-based drone racing with model-based reinforcement learning,” 2025. [Online]. Available: https://arxiv.org/abs/2510.14783 [25] R. Wang, D. Yu, P. Min, X. Zhang, W. Xiao, Y. Hu, J. Chen, F. Zhang, and G. Wang, “FlowPilot: Real-time world-action modeling for agile UAV navigation,” 2026. [Online]. Available: https://arxiv.org/abs/2608.00635 [26] F. Kong, X. Liu, B. Tang, J. Lin, Y. Ren, Y. Cai, F. Zhu, N. Chen, and F. Zhang, “MARSIM: A light-weight point-realistic simulator for LiDAR-based UAVs,” IEEE Robotics and Automation Letters , vol. 8, no. 5, pp. 2954–2961, 2023.

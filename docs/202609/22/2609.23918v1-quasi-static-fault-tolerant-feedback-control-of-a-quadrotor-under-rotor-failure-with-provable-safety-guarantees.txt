@@ -1,0 +1,521 @@
+Title: Quasi-Static Fault-Tolerant Feedback Control of a Quadrotor under Rotor Failure with Provable Safety Guarantees
+
+URL Source: https://arxiv.org/pdf/2609.23918v1
+
+Published Time: Tue, 22 Sep 2026 01:54:50 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Quasi-Static Fault-Tolerant Feedback Control of a Quadrotor under Rotor Failure with Provable Safety Guarantees 
+
+Mohamed Al Lawati 1 and Adeel Akhtar 2
+
+Abstract — This paper presents a nonlinear control law for a quadrotor unmanned aerial vehicle (UAV) under single-rotor failure that guarantees set stabilization via quasi-static feedback (QSF). Given a geometric curve in three-dimensional space, we characterize and stabilize the zero-dynamics manifold, also known as the path-following manifold, which represents all feasible motions along the path. Stabilizing this manifold ensures path-invariance: a UAV with a failed rotor initialized on the path with an appropriate orientation remains on the path for all future time. Furthermore, local exponential convergence to the manifold is guaranteed under certain conditions, implying that, under the stated assumptions, rotor failure during flight does not cause transverse deviation from the path. The proposed controller thus provides theoretical safety guarantees, which are validated through numerical experiments in the Drake physics-based simulation engine. The Code is publicly available at 
+
+https://gradslab.github.io/quasistatic-ftc/ .
+
+I. I NTRODUCTION 
+
+Unmanned aerial vehicles (UAVs) are increasingly de-ployed in safety-critical missions such as inspection, surveil-lance, and environmental monitoring, where sustained oper-ation in cluttered environments is essential [1]. In these set-tings, the UAV is required to accurately follow a prescribed spatial path rather than merely stabilize to a point or track a time–parameterized trajectory, since the mission objectives are typically defined geometrically [2]–[4]. A fundamental challenge, however, is ensuring “safety” of UAVs in the case of actuator faults such as a complete failure of one of its rotors. In this work, we quantify safety in terms of path-invariance, which means, in simple terms, that once the UAV is on the path, it stays on the path for all future time despite the rotor failure. In mobile robotics, safety is typically enforced by con-straining motion within a tube around a desired path [5] using control barrier and Lyapunov functions. Path invariance is stricter, requiring the robot to remain exactly on the path, making control design more challenging—especially under rotor failure. This work designs a feedback controller guaranteeing that a UAV with one failed rotor converges to and remains on the desired path. Fault-tolerant flight control (FTFC) for UAVs has been widely studied, covering both partial actuator degradation and complete rotor failure [6]. Complete rotor loss is more challenging and practically relevant, as damaged rotors are typically disabled to avoid vibration. Early results estab-lished that rotor failure eliminates yaw controllability while   
+
+> 1Department of Mechanical and Industrial Engineering, Sultan Qaboos University, Muscat, Oman.
+
+mlawati@squ.edu.om   
+
+> 2Department of Mechanical and Industrial Engineering, New Jersey Institute of Technology, NJ, USA.
+
+adeel.akhtar@njit.edu 
+
+altitude and position remain controllable [7], [8]. Linear approaches [9] rely on linearization around a relaxed hov-ering equilibrium [9], [10]. Nonlinear methods that avoid linearization include robust feedback linearization [11], non-linear dynamic inversion (NDI) [12], backstepping [13], and incremental nonlinear dynamic inversion (INDI) [14]. Fault detection and isolation (FDI) remains an active research area [15]. However, the design of an FDI scheme is not addressed here; instead, we assume the availability of a reliable FDI module and an instantaneous transition of the system from the four-rotor configuration to the three-rotor mode upon fault occurrence. In this work, we propose a quasi-static transverse feed-back linearization (QSTFL) for a UAV with one failed rotor. In contrast to fault tolerant dynamic state-feedback linearization [7], quasi-static feedback (QSF) achieves ex-act input–output linearization without additional controller states [16]–[18], and requires inverting a 2 × 2 rather than a 
+
+3 × 3 decoupling matrix. To our knowledge, this is the first QSTFL-based UAV controller guaranteeing path invariance and local exponential convergence to all path motions under rotor failure. We make the following contributions: 1) A quasi-static controller with closed-form expressions rendering the path exponentially stable and forward invariant for a UAV with one failed rotor (Theorem 1). 2) A diffeomorphic transformation converting the system into a partially linear system, and a proof showing boundedness of internal states. 3) Validation in the Drake physics-based simulation en-gine, with code publicly available. The remainder of this paper presents the system model in Section II, formulates the problem in Section III, develops the controller in Section IV, establishes its stability in Sec-tion V, and reports simulation results in Section VI, followed by concluding remarks in Section VII. 
+
+Notation: The set of reals is R, and x ∈ Rn is written as col( x1, · · · , x n). The time derivatives are denoted ˙x, ¨x,and x(i) for i ≥ 3. For a matrix R, Ri denotes its ith column and Rij its (i, j )th entry. The transpose of x is x⊤, and x|S
+
+denotes the restriction of x to a set S with neighborhood NS .The Euclidean norm is ∥x∥, the inner product is ⟨x, y ⟩ =
+
+x⊤y, and the cross product is x × y. For f : Rn → R,the gradient is ∇f (x) = ∂f ∂x (x) ∈ Rn and the Jacobian is df . The unit sphere is Sn = {x ∈ Rn+1 : ∥x∥ = 1 },and the natural basis of R3 is {e1, e 2, e 3}. Trigonometric functions sin ξ, cos ξ, and tan ξ are abbreviated as sξ , cξ ,and tξ , respectively. arXiv:2609.23918v1 [eess.SY] 20 Sep 2026 II. M ODELING 
+
+A typical quadrotor [19], hereafter referred to interchange-ably as a UAV, moves in a navigational frame N =
+
+{n1, n 2, n 3} aligned with north, east, and down, with origin 
+
+ON . A body-fixed frame B = {b1, b 2, b 3} is attached to the UAV with origin OB at the center of mass (CoM), where b1 points toward the heading and b3 points down at hover. The CoM position and velocity relative to N are 
+
+p ∈ R3 and v = ˙p ∈ R3. The attitude of B relative to 
+
+N is represented by R ∈ SO(3) with columns b1, b 2, b 3,and the body-frame angular velocity is Ω ∈ R3. The UAV configuration evolves on a 6-dimensional manifold, while the full state used below is 12-dimensional. Moreover, it is actuated by thrust ut ∈ (0 , ∞) along −b3 and torque 
+
+τa ∈ R3, where the ith torque component τai acts about 
+
+bi, i = 1 , 2, 3. The system is thus underactuated with two degrees of underactuation. The UAV mass and moment of inertia are m and J.The equations of motion of a standard UAV [19], [20] are 
+
+˙p = v, ˙v = ge3 − 1
+
+m utRe 3, (1a) 
+
+˙R = RS (Ω) , ˙Ω = J−1(τa − Ω × JΩ) . (1b) The translational (1a) and rotational (1b) dynamics couple through Re 3 = b3. Among the twelve possible Euler param-eterizations [21], we choose the 2-1-3 configuration for its simple b3 expression (no yaw dependence) and singularity-free hover. The rotational dynamics unidirectionally influ-ence the translational dynamics, and as shown in Section IV, a damping term in τa is required for rotational stability. Thus, the applied torque, τa, takes the form 
+
+τa = τ − Jk ΩΩ, (2) where kΩ > 0 is a damping coefficient. Let θ, ϕ, and ψ be in R and represent respectively, pitch, roll, and yaw of the UAV. We define the UAV’s attitude by 
+
+η := col( θ, ϕ, ψ ). Thus, using the torque transformation (2), system (1) is parameterized as 
+
+˙p = v, ˙v = ge3 − 1
+
+m utR3,
+
+˙η = W Ω, ˙Ω = J−1(τ − Ω × JΩ) −kΩΩ,
+
+(3) where 
+
+R3 = b3 =
+
+
+
+sθ cϕ
+
+−sϕ
+
+cθ cϕ
+
+ , and W =
+
+
+
+sψ /cϕ cψ /cϕ 0cψ −sψ 0sψ tϕ cψ tϕ 1
+
+ .
+
+Next, we define the state and input vectors, respectively, as 
+
+x := col( p, v, η, Ω) ∈ R12 and U := col( ut, τ ) ∈ (0 , ∞) ×
+
+R3. Hence, (3) can be written in a control-affine form as 
+
+˙x = f (x) + G(x)U, (4) where the vector fields f : R12 → R12 and G : R12 →
+
+R12 × R4 are given by          
+
+> f(x) =
+> 
+> v
+> ge3
+> WΩ
+> −J−1(Ω ×JΩ) −kΩΩ
+> ,G(x) =
+> 
+> 03×4
+> −Re 3/m 03×3
+> 03×4
+> 03×1J−1
+> .
+
+The degree of underactuation of (4) is 2. Also, the model (4) is not well-defined at the singularity point ϕ = ±π/ 2.
+
+A. UAV Rotor Failure Model 
+
+Under single-rotor failure, it can be shown [20] that τ1 =
+
+c1ut − c2τ3, where c1 = ℓ/ 2, c2 = ℓ/ (2 cd), ℓ is the rotor-to-CoM distance, and cd is the propeller drag-to-thrust ratio. Since τ1 is no longer independent, the effective input reduces to u = col( ut, τ 2, τ 3), and system (4) becomes 
+
+˙x = f (x) + G(x)u, (5) where f is as in (4) and 
+
+G(x) = 
+
+
+
+03×3
+
+− 1 
+
+> m
+
+Re 3 03×2
+
+03×3
+
+J−1C
+
+, where C =
+
+c1 0 −c2
+
+0 1 00 0 1
+
+ .
+
+III. P ROBLEM FORMULATION 
+
+The objective is to drive the UAV CoM to a geometric path C ⊂ R3, where geometric means C is a curve in space not parameterized by time, while enforcing invariance of motions along C despite complete single-rotor failure. Invariance guarantees that a UAV on the path remains on it for all future time regardless of rotor failure. Such a property cannot be guaranteed by conventional trajectory-tracking controllers. A curve C ⊂ R3 is represented as the intersection of two independent surfaces: 
+
+C = {p ∈ R3 : h1(p) = h2(p) = 0 , ∇h1(p) × ∇ h2(p)̸ = 0 }.
+
+(6) As in [7], C is not required to be closed, thereby relaxing the closedness assumption in [22]. The three-dimensional input u
+
+provides sufficient control authority to enforce the constraints 
+
+h1(p) = h2(p) = 0 . We call them transverse constraints. The additional degree of actuation of u is used to define motion along C. Thus, we define a third output h3(p) to be a path-coordinate function, e.g., the arc length along C from a reference point. Unlike h1 and h2, the output h3 is not necessarily regulated to zero; instead, it is used to prescribe the desired motion along C. The output map is 
+
+h(p) = col  h1(p), h 2(p), h 3(p). (7) 
+
+Assumption 1. Given a UAV and a path C, there exists a neighborhood NC of C, such that the following conditions are satisfied on NC
+
+A1 ut̸ = 0 and 
+
+A2 ⟨R3, ∇h2⟩̸ = 0 .Assumption A1 requires nonzero thrust, as ut = 0 implies all motors off. For Assumption A2 , ⟨∇ h2, R 3⟩ = 0 on C
+
+would mean the thrust vector direction, −R3, lies in the tangent plane of the surface h2 = 0 , which is physically impossible for horizontal paths, and requires ut < 0 for non-horizontal ones. Hence, ⟨∇ h2, R 3⟩̸ = 0 on C is a mild and practically feasible assumption. Henceforth, we assume our states evolve on the regular domain X := x ∈ R12 :
+
+ut(x)̸ = 0 , ⟨∇ h2, R 3⟩̸ = 0 , ϕ ̸ = ±π/ 2 .Problem 1 (Fault-tolerant Path Following Problem (Ft-PFP)) . Given a UAV with a completely failed rotor (5) and a path (6) satisfying Assumption 1, design feedback controller κ : R12 → R3, x 7 → κ(x) = u, such that the closed-loop UAV system achieves the following goals: 
+
+G1 The UAV CoM approaches C exponentially. 
+
+G2 The UAV CoM’s motion along C is controlled-invariant, i.e., if the UAV CoM is initialized on C with its velocity vector pointing along the tangent vector to C, then κ(x)
+
+ensures the UAV CoM never leaves C.
+
+G3 The UAV CoM follows a prescribed tangential motion along C.
+
+G4 The UAV yaw motion remains bounded. 
+
+Remark 1. The authors in [7] and [20] solved a similar Ft-PFP using dynamic extension, introducing two additional controller states (typically thrust and its time-derivative) and a new input (typically thrust’s second time-derivative) to feedback-linearize the extended dynamics. Their approach has two limitations. First, recovering the thrust requires either solving a differential equation involving the thrust or double-integrating a new input defined in terms of the thrust and its first time derivative. Hence, sensor measurement is required for thrust and its time-derivative, posing practical challenges. Second, gain tuning involves two extra states. The proposed approach overcomes both limitations. IV. S OLUTION USING A QSF Our approach separates the output coordinates into trans-verse and tangential components. The transverse outputs h1
+
+and h2 define the desired path C and are used to enforce convergence to and invariance of the path. The third output 
+
+h3 = s(p) parameterizes motion along C and is not, in general, regulated to zero. Instead, it is used to assign the desired tangential motion along the path, such as point stabi-lization, velocity tracking, or acceleration tracking. Thus, the QSF design stabilizes the transverse dynamics while leaving the tangential dynamics assignable through a user-specified longitudinal command. Consider the system (5) and the output (7). We differenti-ate each output component until an input appears. This yields 
+
+col 
+
+
+
+h(r1)1 , h (r2)2 , h (r3)3
+
+
+
+= Au + col 
+
+
+
+Lr1 
+
+> f
+
+h1, L r2 
+
+> f
+
+h2, L r3 
+
+> f
+
+h3
+
+
+
+,where A ∈ R3×3 is the decoupling matrix whose (i, j )th 
+
+entry is Lgj Lri−1 
+
+> f
+
+hi, and ri is the lowest derivative order of output hi such that at least one input shows up [23]. Invertibility of the decoupling matrix A determines the feasibility of input-output linearization. For our system, we have r1 = r2 = r3 = 2 . Since the failed-rotor system has the input vector u = col( ut, τ 2, τ 3), the ith row of A is 
+
+− 1 
+
+> m
+
+[⟨R3, ∇hi⟩, 0, 0] , i = 1 , 2, 3. Notice that A is singular of constant rank 1 whenever at least one of the scalars 
+
+⟨R3, ∇hi⟩ is nonzero. On X , we have ⟨R3, ∇h2⟩̸ = 0 , so the row corresponding to h2 provides one independent input-output relation. This means that we have a single independent relation between the inputs and output derivatives. Hence, we assign the auxiliary input ν2 as 
+
+ν2 := ¨h2 = − 1
+
+m ⟨R3, ∇h2⟩ut + β2, (8) where β2 = v⊤H2v + ⟨∇ h2, ge3⟩, and H2 is the Hessian of h2 with respect to p. We need to design ν2 to send h2
+
+to zero. To do so, let Z2 : X → R2 be the map defined by 
+
+Z2(x) := col 
+
+
+
+h2(p), ˙h2(x)
+
+
+
+. Define the transformed state 
+
+z2 as z2 := Z2(x). Hence, using (8), the z2-dynamics is 
+
+˙z2 = Ac2z2 + Bc2ν2, (9) where (Ac2, Bc2) is a 2-by-2 Brunovsky pair [24]. We choose 
+
+ν2 = −K2z2, (10) where K2 ∈ R1×2 such that Ac2 − Bc2K2 is Hurwitz. This choice stabilizes the origin of the z2-dynamics. Solving (8) for ut, one obtains an algebraic expression for the thrust as 
+
+ut = m β2 − ν2
+
+⟨∇ h2, R 3⟩ , (11) where ν2 is given in (10), and must be designed such that 
+
+ν2̸ = β2.
+
+Remark 2. In this design, we compute the thrust alge-braically by performing elementary algebraic operations. This is unlike the dynamic controller of [7]. See Remark 1 for the benefits that a QSF offers. To acquire the required two equations for the remaining inputs τ2 and τ3, we take extra time derivatives of ¨h1 and 
+
+¨h3. It turns out that h(4) 1 and h(4) 3 provide two additional independent equations in terms of τ2 and τ3. In particular, we have "
+
+h(4) 1
+
+h(4) 3
+
+#
+
+= ˜A
+
+τ2
+
+τ3
+
+
+
++ ˜β(x), (12) where ˜βi = L4 
+
+> f
+
+hi(x) whose explicit expressions are omitted for brevity, and 
+
+˜A = ut
+
+m⟨∇ h2, R 3⟩
+
+(∇h1 × ∇ h2)⊤
+
+(∇h3 × ∇ h2)⊤
+
+ h R2
+
+> J2
+> −c2R1
+> J1
+
+i
+
+. (13) 
+
+Remark 3. This decoupling matrix ˜A is 2-by-2 as compared to the 3-by-3 decoupling matrix of [7]. This dimension simplification is a result of pre-computing the thrust in (11). We define the auxiliary inputs 
+
+ν1
+
+ν3
+
+
+
+:= 
+
+"
+
+h(4) 1
+
+h(4) 3
+
+#
+
+= ˜A
+
+τ2
+
+τ3
+
+
+
++ ˜β(x), (14) We need to design ν1 to send h1 to zero. The design of ν3
+
+should allow for a desired motion along the path. To do so, let 
+
+Z1 : X → R4 denote the transverse coordinate map defined as Z1(x) := col 
+
+
+
+h1(p), ˙h1(x), ¨h1(x), h (3) 1 (x)
+
+
+
+. Using the map Z1, we define transformed state z1 as z1 := Z1(x) = col 
+
+
+
+h1(x), ˙h1(x), ¨h1(x), h (3) 1 (x)
+
+
+
+. Then 
+
+˙z1 = Ac4z1 + Bc4ν1, (15) where (Ac4, B c4) is the 4-by-4 Brunovsky pair. The input 
+
+ν1 = −K1z1 (16) is chosen such that Ac4 − Bc4K1 is Hurwitz; hence it stabilizes the origin of the z1-dynamics. Together with z2
+
+in (9), define the transverse state z⊥ := col( z1, z 2) =col  Z1(x), Z 2(x) ∈ R6. Equations (9) and (15) define the transversal dynamics driven by the auxiliary inputs ν2 and 
+
+ν1, respectively. We underscore that, uppercase letters such as Zi denote coordinate maps on X , while lowercase letters denote their values along trajectories; that is, zi = Zi(x).For the tangential output h3 = s(p), define z∥ := z3 := col  h3(x), ˙h3(x), ¨h3(x), h (3) 3 (x) ∈ R4. The corresponding tangential dynamics are 
+
+˙z∥ = Ac4z∥ + Bc4ν3. (17) 
+
+Remark 4. Unlike z⊥, the state z∥ is not necessarily stabilized to the origin of the z∥-dynamics. Instead, ν3 is used to assign the desired behavior of z∥ along the path 
+
+C. For example, to track a desired path speed vd(t), define 
+
+ev := col   ˙h3 − vd, ¨h3 − ˙vd, h (3) 3 − ¨vd
+
+, and choose ν3 =
+
+v(3)  
+
+> d
+
+− K3ev with a stabilizing K3. Point stabilization or path-coordinate trajectory tracking are obtained similarly by defining the corresponding error in h3 and its derivatives. The torque inputs τ2, τ 3 can easily be computed using (14). Note that det( ˜A) = −c2 ⟨∇ h1×∇ h2,∇h3⟩u2 
+
+> t
+> m2J1J2⟨∇ h2,R 3⟩
+
+. On X , we have 
+
+ut̸ = 0 and ⟨∇ h2, R 3⟩̸ = 0 . Also, the surfaces h1 and h2 are independent by definition of C, implying ∇h1 × ∇ h2̸ = 0 in a neighborhood of C. Since h3 = s(p) is the path-coordinate function, its gradient has a nonzero projection along the tangent direction of C. Equivalently, ⟨∇ h1 × ∇ h2, ∇h3⟩̸ = 0 
+
+on X . Therefore, det( ˜A)̸ = 0 whenever the closed-loop trajectory remains in this regular domain. The parameters 
+
+m, J1, J2, and c2 are positive scalars. The torques τ2, τ3 are therefore given by 
+
+τ2
+
+τ3
+
+
+
+= ˜A−1
+
+ ν1
+
+ν3
+
+
+
+−
+
+ ˜β1(x)˜β3(x)
+
+ 
+
+, (18) where ν1 and ν2 are chosen by (16) and (10) while ν3 assigns the tangential motion as described in Remark 4. As a result, the complete QSF is given by (11) and (18). V. S TABILITY ANALYSIS 
+
+Recall the transverse coordinate maps Z1 : X → R4
+
+and Z2 : X → R2 defined in Section IV. Let Z⊥(x) := col  Z1(x), Z 2(x). The path-following manifold is 
+
+X ∗ := {x ∈ X : Z⊥(x) = 0 }. (19) Equivalently, X ∗ = {x ∈ X : z1 = 0 , z2 = 0 }. The set X ∗ represents motions for which the UAV CoM lies on C with the required transverse derivative conditions. The tangential state z∥ is not required to vanish on X ∗; instead, it determines the motion along C.On X , define a mapping σ : X → R12 , x 7 → (z⊥, z ∥, ξ ),where ξ ∈ S1 × R is chosen so that σ defines a local coordinate transformation. It suffices to choose ξ such that the Jacobian of σ, denoted by dσ, is nonsingular. We choose 
+
+ξ = col  ψ, J 1Ω1 + J3c2Ω3
+
+ ∈ S1 × R. (20) The determinant of the Jacobian of σ is 
+
+det(d σ) = −c2J3
+
+(β2 − ν2)4
+
+⟨R3, ∇h2⟩6 ⟨∇ h1 × ∇ h2, ∇h3⟩4 cos( ϕ).
+
+On X , det(d σ) is well defined implying the Jacobian dσ is nonsingular. Therefore, σ is a local diffeomorphism. In the transformed coordinates, the internal dynamics are given by 
+
+˙ξ =
+
+ e⊤ 
+
+> 3
+
+W (η)Ω 
+
+−[1 , 0, c 2](Ω × JΩ + kΩJΩ) + c1ut
+
+
+
+> x=σ−1(z⊥,z ∥,ξ )
+
+.
+
+(21) Note that although σ−1 might be difficult to compute, it is guaranteed to exist since σ is a diffeomorphism. The coordinate transformation σ maps x to (z⊥, z ∥, ξ ).The QSF controller (11), (18), together with the auxiliary in-puts ν1 = −K1z1 and ν2 = −K2z2, stabilizes the transverse state z⊥. The tangential state z∥ evolves according to the selected input ν3 and is used to prescribe the motion along the path. Therefore, the stability analysis below concerns the path-following manifold X ∗ = {x : Z⊥(x) = 0 } and the boundedness of the internal state ξ.The next lemma proves the boundedness of the angular velocity states. This fact will be used in our main stability result. 
+
+Lemma 1. Let 
+
+˙Ω = J−1(τ − Ω × JΩ) − kΩΩ, (22) 
+
+where Ω ∈ R3 is the state and τ ∈ R3 is the input. Then, the dynamics (22) is input-to-state stable. Proof. From [7, LemmaVI.1], the origin of the unforced case of (22), i.e. τ = 0 , is globally exponentially stable. From [25, Lemma 4.6], the dynamics (22) is input-to-state stable. Under the QSF law (11) and (18), the torque input τ
+
+in (22) is bounded since ν1, ν3, and z⊥ are bounded. Hence, by Lemma 1, Ω remains bounded. 
+
+Theorem 1 Consider the UAV model with a completely failed rotor in (5) where x ∈ X . Let the path C be described as in (6). Under the QSF law (11) and (18), with ν1 =
+
+−K1z1 and ν2 = −K2z2, the path-following manifold X ∗
+
+defined in (19) is locally exponentially stable and forward invariant. Moreover, if the tangential input ν3 is locally bounded, then the internal state ξ and its time derivative ˙ξ
+
+remain bounded. 
+
+Proof. Under the auxiliary inputs ν1 = −K1z1 and ν2 =
+
+−K2z2, the transverse dynamics are 
+
+˙z⊥ =
+
+Ac4 − Bc4K1 00 Ac2 − Bc2K2
+
+
+
+z⊥. (23) Since both diagonal blocks are Hurwitz, the origin z⊥ = 0 
+
+is exponentially stable. Hence, the path-following manifold (a) Stage 1: t = 0 s (b) Stage 1: t = 2 s (c) Stage 1: t = 4 s (d) Stage 1: t = 5 s                        
+
+> (e) Stage 2: t= 10 s (f) Stage 2: t= 11 s (g) Stage 2: t= 12 s (h) Stage 2: t= 13 s
+> (i) Stage 3: t= 20 s (j) Stage 3: t= 21 s (k) Stage 3: t= 22 s (l) Stage 3: t= 23 s
+> Fig. 1. Snapshots of the numerical simulation performed in Drake highlighting motion invariance despite sudden rotor failure.
+
+X ∗ = {x ∈ X : Z⊥(x) = 0 } is locally exponentially stable in the transformed coordinates. Moreover, if Z⊥(0) = 0 ,then z⊥(t) = 0 for all t ≥ 0, which establishes forward invariance of X ∗. Since σ is a local diffeomorphism on X ,local exponential stability of z⊥ = 0 in the transformed coordinates implies local exponential stability of X ∗ in the original coordinates x. It remains to show boundedness of 
+
+ξ and ˙ξ. Since the result is local on the regular domain X ,we restrict attention to the neighborhood of X ∗ on which the coordinate transformation σ is a diffeomorphism and the QSF law is well defined. In this neighborhood, the quantities appearing in the denominators of the controller and of dσ,namely ut, ⟨∇ h2, R 3⟩, cos ϕ, and ⟨∇ h1 × ∇ h2, ∇h3⟩, are bounded away from zero. Therefore, by continuity of the QSF law and local boundedness of ν3, the resulting inputs ut
+
+and τ are locally bounded along closed-loop trajectories. By Lemma 1, boundedness of τ implies that Ω remains bounded. The first component ξ1 = ψ belongs to S1 and is therefore bounded modulo 2π. Moreover, since cos ϕ remains nonzero in the regular neighborhood, possibly after shrinking this neighborhood there exists Mϕ > 0 such that | sec ϕ| ≤ Mϕ.Thus, | ˙ξ1| ≤ Mϕ
+
+ |Ω1| + |Ω2| + |Ω3| < ∞. For the second component, ξ2 = J1Ω1 + J3c2Ω3, and therefore 
+
+|ξ2| ≤ J1|Ω1| + J3c2|Ω3| < ∞. Furthermore, from (21), 
+
+˙ξ2 = −[1 , 0, c 2](Ω × JΩ + kΩJΩ) + c1ut. Since Ω and ut
+
+are bounded along the closed-loop trajectory, ˙ξ2 is bounded. Hence, both ξ and ˙ξ remain bounded. In summary, Theorem 1 guarantees local exponential con-vergence to the desired path ( G1 ) and forward invariance of the path-following manifold under rotor failure ( G2 ). The tangential input ν3 assigns the desired motion along the path, such as point stabilization or path-speed tracking ( G3 ), while boundedness of ξ and ˙ξ implies bounded yaw motion ( G4 ). Thus, Problem 1 is solved locally on the regular domain. VI. S IMULATION    
+
+> Fig. 2. Input time plots. Rotor failure occurs at t= 20 s .
+
+This section illustrates the performance of the proposed QSF (11),(18) using the Drake physics engine [26]. The UAV is modeled in Drake, where the actual applied torque is given by (2). As seen in Fig. 1, the UAV with four healthy rotors approaches a desired path, then experiences complete single-rotor failure mid-path. Upon failure, the fault-tolerant QSF takes over, and invariance of the path-following manifold ensures the UAV remains on the path. The UAV parameters are m = 3 kg , J = diag(0 .03 , 0.03 , 0.06) kg · m2, rotor-to-CoM distance ℓ = 0 .2 m , and drag-to-thrust ratio cd = 0 .01 .The desired path is a horizontal circle of radius d1 at Fig. 3. Output time-plots along with Ω3. Rotor failure occurs at t = 20 s .
+
+height d2, yielding output functions h1 = p21 + p22 − d21,
+
+h2 = p3 − d2, and h3 = d1 atan2( p2, p 1), where h3
+
+enforces constant arc-length velocity ˙s → vd (see Remark 4). The simulation parameters are d1 = 5 m , d2 = −3 m ,and vd = 1 .5 m /s. The control gains are chosen by plac-ing eigenvalues at {− 2.4, −2, −1.3, −1}, {− 1, −2}, and 
+
+{− 1, −2, −3} for the z1, z2, and z3 subsystems, yielding 
+
+K1 = [6 .24 16 .76 16 .22 6 .7] , K2 = [2 3] , and K3 = [6 11 6] ,respectively. For the z3-subsystem, ˙s is directly controlled. The initial conditions are p(0) = col( −0.7, 1.75 , 0) m ,
+
+v(0) = col( −1, 2, 0.5) m /s, η(0) = col( −0.1, 0.2, 1) rad ,and Ω(0) = col(0 .9, −0.1, 0.5) rad /s.The simulation is shown in Fig. 1. It unfolds in three stages 1: path convergence (Figs. 1a-1d), nominal path-following (Figs. 1e-1h), and path-following under rotor fail-ure at t = 20 s (Figs. 1i-1l). In Stage 3, the invariant path-following manifold keeps the UAV on its path despite the failure. The only motion lost is yaw, which remains bounded and tunable via the damping coefficient kΩ = 1 s −1. In the healthy four-rotor case, the controller of [27] is used. The input that results in this motion is shown in Fig. 2. When the failure occurs at t = 20 s , the thrust is unchanged. This is expected since the circle is horizontal and the UAV never leaves it. However, the rotor failure causes τ1 to be dependent on τ2, τ3, and the fault-tolerant QSF commands different signals for τ2, τ3. As for the output, h1, h2 are shown in Fig. 3. Since this example drives ˙h3 to a desired 
+
+vd, ˙h3 is shown in Fig. 3 instead of h3. In addition, the body rate Ω3 is also plotted illustrating boundedness of the rotational motion about the b3 axis even after rotor failure. VII. C ONCLUSIONS 
+
+This paper presented a fault-tolerant QSF for a quadrotor UAV achieving feedback linearization without a dynamic controller in a set stabilization framework. The QSF design resulted in a static control law that renders motions on the path controlled-invariant, guaranteeing the UAV remains on 
+
+> 1
+
+Code and animation at https://github.com/gradslab/quasistatic-ftc. 
+
+its path under sudden rotor failure. Also, avoiding dynamic feedback yields considerable practical advantages. The pro-posed QSF guarantees exponential convergence of the UAV CoM to the desired path with bounded rotational dynamics, validated via the Drake physics engine. REFERENCES [1] Z. Yu, M. Li, Y. Zhang, and B. Jiang, “A review on safety control of unmanned aerial vehicles with guaranteed performance requirements,” 
+
+Progress in Aerospace Sciences , vol. 158, p. 101144, 2025. [2] A. Akhtar, “Coordinated path following for a class of underactuated multi-agent system using nested set stabilization,” in Proceedings of the American Control Conference , 2022, pp. 1230–1235. [3] A. Akhtar, S. Saleem, and J. Shan, “Path invariant controllers for a quadrotor with a cable-suspended payload using a global parameteri-zation,” IEEE Transactions on Control Systems Technology , 2021. [4] A. Akhtar, S. Saleem, and S. L. Waslander, “Path following for a class of underactuated systems using global parameterization,” IEEE Access , vol. 8, pp. 34 737–34 749, 2020. [5] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2016. [6] F. Nan, S. Sun, P. Foehn, and D. Scaramuzza, “Nonlinear mpc for quadrotor fault-tolerant control,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 5047–5054, 2022. [7] A. Akhtar, S. L. Waslander, and C. Nielsen, “Fault tolerant path fol-lowing for a quadrotor,” in Proceedings of the 52nd IEEE Conference on Decision and Control , 2013, pp. 847–852. [8] A. Freddi, A. Lanzon, and S. Longhi, “A feedback linearization approach to fault tolerance in quadrotor vehicles,” IFAC Proceedings Volumes , vol. 44, no. 1, pp. 5413–5418, 2011. [9] V. Lippiello, F. Ruggiero, and D. Serra, “Emergency landing for a quadrotor in case of a propeller failure: A pid based approach,” in 
+
+2014 IEEE International Symposium on Safety, Security, and Rescue Robotics , 2014, pp. 1–7. [10] M. W. Mueller and R. D’Andrea, “Relaxed hover solutions for mul-ticopters: Application to algorithmic redundancy and novel vehicles,” 
+
+The International Journal of Robotics Research , vol. 35, no. 8, pp. 873–889, 2016. [11] A. Lanzon, A. Freddi, and S. Longhi, “Flight control of a quadrotor vehicle subsequent to a rotor failure,” Journal of Guidance, Control, and Dynamics , vol. 37, no. 2, pp. 580–591, 2014. [12] S. Sun, G. Cioffi, C. De Visser, and D. Scaramuzza, “Autonomous quadrotor flight despite rotor failure with onboard vision sensors: Frames vs. events,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 580–587, 2021. [13] V. Lippiello, F. Ruggiero, and D. Serra, “Emergency landing for a quadrotor in case of a propeller failure: A backstepping approach,” in 2014 IEEE/RSJ International Conference on Intelligent Robots and Systems , 2014, pp. 4782–4788. [14] S. Sun, X. Wang, Q. Chu, and C. de Visser, “Incremental nonlinear fault-tolerant control of a quadrotor with complete loss of two op-posing rotors,” IEEE Transactions on Robotics , vol. 37, no. 1, pp. 116–130, 2020. [15] L. Enciso-Salas, G. P´ erez-Zu˜ niga, and J. Sotomayor-Moriano, “Fault detection and isolation for uavs using neural ordinary differential equations,” IFAC-PapersOnLine , vol. 55, no. 6, pp. 643–648, 2022, 11th IFAC Symposium on Fault Detection, Supervision and Safety for Technical Processes. [16] M. Al Lawati and A. F. Lynch, “Path-following control for a unmanned aerial vehicle slung load system,” International Journal of Control ,vol. 97, no. 11, pp. 2467–2481, 2024. [17] J. Rudolph, Flatness-Based Control , ser. Berichte aus der Steuerungs-und Regelungstechnik. D¨ uren: Shaker Verlag, 2021. [18] C. Gst¨ ottner, B. Kolar, and M. Sch¨ oberl, “Tracking control for ( x,u)-flat systems by quasi-static feedback of classical states,” Symmetry, Integrability and Geometry: Methods and Applications , vol. 20, pp. 071, 27 pages, 2024. [19] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control of a quadrotor UAV on SE(3),” in Proceedings of the 49th IEEE Conference on Decision and Control , Atlanta, GA, 2010, pp. 5420– 5425. [20] H. Mahmood, U. Ali, and A. Akhtar, “Path invariance of a quadrotor system under cyber attacks with theoretical guarantees,” in 2025 American Control Conference , 2025, pp. 972–977. [21] H. Schaub and J. Junkins, Analytical mechanics of space systems .American Institute of Aeronautics and Astronautics, 2018. [22] A. Roza and M. Maggiore, “Path following controller for a quadrotor helicopter,” in 2012 American Control Conference , 2012, pp. 4655– 4660. [23] A. Isidori, Nonlinear Control Systems , 3rd ed. London, UK: Springer, 1995. [24] R. Marino and P. Tomei, Nonlinear control design: geometric, adaptive and robust . Prentice Hall International (UK) Ltd., 1996. [25] H. Khalil, Nonlinear systems , 3rd ed. Englewood Cliffs, NJ: Prentice-Hall, 2002. [26] R. Tedrake and the Drake Development Team, “Drake: Model-based design and verification for robotics,” 2019. [Online]. Available: https://drake.mit.edu [27] M. Al Lawati and A. Akhtar, “Path-following control of a quadrotor using quasi-static transverse feedback linearization,” in 2026 European Control Conference (ECC) , 2026, pp. 3454–3459.

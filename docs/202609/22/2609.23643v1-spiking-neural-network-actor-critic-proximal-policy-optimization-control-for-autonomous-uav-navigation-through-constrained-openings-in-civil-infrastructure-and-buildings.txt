@@ -1,0 +1,403 @@
+Title: Spiking Neural Network Actor-Critic Proximal Policy Optimization Control for Autonomous UAV Navigation Through Constrained Openings in Civil Infrastructure and Buildings
+
+URL Source: https://arxiv.org/pdf/2609.23643v1
+
+Published Time: Tue, 22 Sep 2026 01:34:40 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# Spiking Neural Network Actor–Critic Proximal Policy Optimiza-tion Control for Autonomous UAV Navigation Through Con-strained Openings in Civil Infrastructure and Buildings 
+
+Francis Noah Walugembe 1∗, Maciej Wielgosz 2, Tomaž Goričan 2, Matej Mertik 31 Applied Intelligence PhD Programme, Alma Mater Europaea University, Maribor, Slovenia  
+
+> ∗
+
+Corresponding author, e-mail: francis.walugembe@almamater.si  
+
+> 2
+
+Faculty of Computer Science, Electrical and Telecommunications, AGH University of Krakow, 30-059 Krakow, Poland; wielgosz@agh.edu.pl (M.W.)  
+
+> 3
+
+Alma Mater Europaea University, Maribor, Slovenia, tomaz.gorican@almamater.si  
+
+> 4
+
+Alma Mater Europaea University, Maribor, Slovenia, matej.mertik@almamater.si 
+
+Abstract 
+
+Autonomous navigation of unmanned aerial vehicles in constrained three-dimensional environments has been a challenge in the robotics domain. The application of autonomous unmanned aerial vehicles in civil infrastructure inspection involves the use of such vehicles in bridge inspection, tunnel inspection, and structural inspection. The use of deep reinforcement learning in the autonomous navigation of unmanned aerial vehicles has been successful in constrained environments. However, the computational cost of the algorithm limits the application of the algorithm in the autonomous navigation of unmanned aerial vehicles. This paper proposes the use of the spiking neural network-based Proximal Policy Optimization algorithm in the autonomous navigation of unmanned aerial vehicles in constrained sequential environments. The proposed algorithm integrates the use of spike-based actor-critic reinforcement learning with the Proximal Policy Optimization algorithm. The proposed algorithm uses the stochastic Gaussian policy in the autonomous navigation of unmanned aerial vehicles. The proposed algorithm was implemented in the autonomous navigation of unmanned aerial vehicles in constrained 3D environments. The proposed algorithm was successful in completing 1913 episodes out of more than 3000. The proposed algorithm was successful in passing an average of 2.10 windows per episode. The proposed algorithm was successful in achieving a success rate of 63.77%. The proposed algorithm was successful in achieving success rates of more than 90% in the later stages of the algorithm. 
+
+Keywords: Spiking Neural Networks; Proximal Policy Optimization; Actor–Critic Reinforcement Learn-ing; UAV Navigation; Infrastructure Inspection; Neuromorphic Computing Periodica Polytechnica Civil Engineering 
+
+# 1 Introduction 
+
+## 1.1 Background and Motivation 
+
+The problem of autonomous unmanned aerial vehicle (UAV) navigation in constrained three-dimensional spaces is one of the challenging issues in robotics, control engineering, and intelligent infrastructure systems. In civil engineering practice, UAVs are widely used in bridge inspection, tunnel inspec-tion,building monitoring, construction progress mon-itoring, and post-disaster reconnaissance. In these applications, the UAV may be required to navigate in the vicinity of the structure or even inside the structure. In such scenarios, the structure may be hazardous or inaccessible to human inspectors [1, 2]. The above-mentioned scenarios may require the UAV to navigate through the corridors or narrow service areas of the structure. The conventional methods of deep reinforcement learning (DRL) using ANNs have shown promise in solving continuous control problems. However, the computational as well as energy demands of ANNs may not be suitable for direct implementation on lightweight UAVs. This is because autonomy on UAVs demands control in real-time, with stringent energy, weight, and thermal constraints. Spiking neural networks (SNNs) provide a promis-ing alternative because they process information through sparse discrete events and temporal dynam-ics, making them well aligned with event-driven and potentially energy-efficient neuromorphic hard-ware [6, 8, 13]. However, training SNNs for rein-forcement learning, especially for continuous UAV control in constrained 3D environments, remains comparatively underexplored. In civil engineering practice, the inspection and monitoring of infrastructure and buildings often require access to confined or difficult-to-reach lo-cations. UAV-based inspection systems have there-fore emerged as a promising solution for improv-ing safety, reducing inspection costs, and enabling rapid structural assessment in complex built environ-ments [3, 4, 5]. Nevertheless, reliable autonomous 1arXiv:2609.23643v1 [cs.RO] 20 Sep 2026 navigation in constrained structural spaces remains a significant challenge, particularly when onboard computation and energy are limited. Developing energy-efficient learning-based control strategies for UAV navigation in confined structural environments is therefore an important research direction for fu-ture infrastructure inspection technologies. 
+
+## 1.2 Research Objective 
+
+This research introduces an SNN-based proximal pol-icy optimization (PPO) actor-critic framework for autonomous UAV navigation through constrained 3D spaces. Leaky integrate and fire neurons with surrogate gradient descent are used to address the non-differentiability of spikes. A stochastic Gaus-sian policy with clipped updates is used for stable learning in continuous action spaces. The framework is proposed for UAV navigation in confined infrastructure spaces, such as shafts, corri-dors, and openings in damaged structures. A task-specific spike-based actor-critic framework is pro-posed for sequential constrained navigation beyond typical reinforcement learning benchmarks. A customized simulation environment, UAVWindowEnv ,is designed, considering simplified dynamics of a UAV and constraints. The UAV needs to navi-gate through a series of three rectangular windows. The learning agent uses sparse rewards and shap-ing rewards, such as progress, alignment, corridor, and stability. Curriculum learning helps reduce the size of the rectangular window from 60 .0 × 60 .0 to 20 .0 × 20 .0. The purpose of this study is to check whether SNN-based PPO can learn a control policy for navigating a UAV through narrow windows, which can be useful for autonomous inspection of complex environments with low connectivity. 
+
+## 1.3 Research Significance, Questions, and Contributions 
+
+The study examines learning progress as the navi-gation task becomes increasingly difficult with cur-riculumbased window size reduction and whether spike-based policy learning is capable of maintain-ing stable continuous control in a constrained 3D navigation task. The key contributions of this paper are as follows: • The introduction of a task-specific spiking neu-ral network Actor-Critic Proximal Policy Op-timization (AC-PPO) framework for UAVs in continuous constrained 3D navigation tasks; • The employment of surrogate gradient learn-ing for training spike-based policy and value networks for continuous control reinforcement learning tasks; • The introduction of a three-window constrained navigation task that simulates narrow struc-tural navigation tasks; • The integration of curriculum learning through window size reduction and task-specific reward shaping; • The demonstration of improvement in reward and success rate through training over 2000 episodes. The novelty in this paper is in the integration of spike-based actor-critic reinforcement learning, se-quential constrained 3D UAV navigation tasks, and curriculum learning for narrow opening navigation tasks. This differentiates this paper from other works on UAVs that employ ANN for RL and other works on SNN RL that did not consider ordered and confined-space UAV navigation. 
+
+## 1.4 Paper Organization 
+
+The rest of the paper is organized as follows: Chap-ter 2 describes the related work in UAV naviga-tion, reinforcement learning, and spiking neural net-works. Chapter 3 describes the proposed method-ology and the learning architecture. Chapter 4 de-scribes the simulation environment and experiment setup. Chapter 5 describes the results and analysis. Chapter 6 concludes the paper and describes the future work. 
+
+# 2 Literature Review 
+
+## 2.1 UAV Applications in Civil Infras-tructure Inspection and Construction 
+
+Unmanned Aerial Vehicles (UAVs) are now recog-nized as significant tools in civil engineering, espe-cially in the inspection, monitoring, and manage-ment of infrastructure, which provide safety, access, and efficiency advantages compared to manual in-spection techniques, especially in complex structures such as bridges, tunnels, and high-rise buildings [1, 2]. UAVs with cameras and sensors enable the rapid collection of data required in the inspection, moni-toring, and detection of defects in structures. For example, the use of cameras attached to UAVs can be utilized to measure the displacement of struc-tures with precision up to sub-millimeters, allowing the detailed non-contact evaluation of the struc-ture’s behavior [3], which is particularly important 2in aging infrastructure where regular inspections are required. UAVs are also utilized in bridge and tunnel inspec-tions, where they are capable of accessing hard-to-reach and dangerous areas, providing efficiency and safety benefits while facilitating the quantitative evaluation of the structure’s conditions [4], which is also utilized in pavement and transport infrastruc-ture inspections where the imagery captured by the UAV is utilized to efficiently detect defects in the pavement’s surface [5]. Apart from their use in infrastructure inspection and maintenance, UAVs are also utilized in the mon-itoring and management of constructions, which has been recognized in recent studies, especially the use of multisensor systems, machine learning, and automation in the inspection, monitoring, and management of infrastructure [1, 2]. However, the use of UAVs in civil infrastructure is considered challenging due to the confined spaces, narrow passages, and GPS-denied and communication-limited environments. 
+
+## 2.2 Spiking Neural Networks: The Third Generation 
+
+Spiking neural networks introduce a significant dif-ference compared to conventional artificial neural networks, since SNNs operate on different principles compared to biological neural networks. Maass [6] defined SNNs as the “third generation” of neural networks, as SNNs operate in a different manner compared to other networks. The basic component that forms SNNs is the spiking neuron model, and it is argued that the leaky integrate and fire (LIF) model is the most commonly used SNN model due to its “trade-off between biological realism and com-putational tractability.” The definition of SNNs is given by Gerstner et al. in [7] as follows: “The membrane potential of neurons in the integrate and fire model receives input from other neurons, decays over time, and fires an action spike whenever the threshold is exceeded.” 
+
+τm
+
+dV dt = −(V − Vrest ) + RmI(t) (1) where V represents membrane potential, τm is the membrane time constant, and I(t) is the input cur-rent. 
+
+## 2.3 Learning, Reinforcement Learning, and SNN-Based UAV Control 
+
+The non-differentiable property of the spikes in the SNNs was a significant barrier to the use of gradient-based learning, but the development of surrogate gradient learning has made it possible to learn ef-fectively by approximating the spike functions in the backpropagation process [8]. Other alternatives include the use of spike timing-dependent plasticity, which offers a biologically inspired form of learning, including neuromodulated variants that use rein-forcement learning [9]. Reinforcement learning (RL) is generally defined as a Markov decision process, which enables an agent to learn optimal actions through interactions with an environment. The actor-critic method is an RL vari-ant that combines policy and value learning, making it suitable for use in continuous control scenarios [10]. Among the recent developments in RL, the proximal policy optimization (PPO) variant is used to improve stability in the learning process by clip-ping the policies, making it suitable for use in deep RL [11]. RL has been used to learn optimal control policies for UAVs, including navigation, obstacle avoidance, and trajectory control, with the potential for trans-ferring the learned policies from simulation to real environments [12]. The use of DNNs, however, poses significant computational challenges, making alter-native approaches suitable for use in UAVs. The Intel Loihi neuromorphic processor offers an alterna-tive to DNNs, which is energy-efficient, event-driven, and suitable for use in SNNs due to their use of tem-poral sparsity and lower communication overhead [13]. The use of SNNs in RL is an emerging area with challenges in stability, temporal credit, and control in continuous scenarios [14, 8], but the use of sur-rogate gradient learning has made such scenarios possible, motivating their use in UAVs in constrained environments. 
+
+## 2.4 Research Gap and Contribution 
+
+This gap in the literature, as deduced from the exist-ing studies, reveals that though there are significant advantages of SNNs in terms of “energy efficiency” and “hardware support” for the potential deploy-ment of SNN-based models, there are very few stud-ies on the application of SNN-based models for solv-ing continuous control problems in aerial robotics. The contribution of this study, as a result, lies in the formulation and evaluation of a task-specific SNN-based PPO Actor-Critic Reinforcement Learning Model for solving the constrained continuous con-trol problem of navigating a UAV through a series of three consecutive constrained three-dimensional corridor windows. The contribution of this study, as a result, does not lie in the formulation of the PPO algorithm, but rather in the formulation of a task-specific SNN-based Actor-Critic Model for solv-ing the constrained continuous control problem of 3navigating a UAV through a series of three consecu-tive constrained three-dimensional corridor windows. The proposed solution, as a result, not only presents evidence that SNN-based models can be applied for solving constrained continuous control problems in aerial robotics but also supports the objective of designing energy-efficient models for solving the problem of navigating a UAV through a series of three consecutive constrained three-dimensional cor-ridor windows. 
+
+# 3 Methodology 
+
+## 3.1 System Overview 
+
+The proposed system can be divided into three main components, namely, a specific UAV simulation en-vironment for constrained 3D corridor flight, which can be used to model structural environments such as bridge cross-sections, an SNN-based Actor-Critic framework for learning a control policy, and a sur-rogate gradient optimization method using a com-bination of PPO and Monte Carlo returns for the end-to-end optimization of the spiking dynamics as depicted in Figure 1. 
+
+Fig. 1 SNN Actor–Critic Flow and Algorithm dia-gram. 
+
+## 3.2 SNN Actor–Critic Architecture 
+
+The Actor-Critic implementation is based on the standard architecture, where the Actor is in charge of policy determination (action selection), and the Critic is in charge of policy evaluation through value function approximation. However, in contrast to the standard temporal difference learning, the returns are computed using **Monte Carlo returns** and are paired with the **clipped PPO objective**. 
+
+Fig. 2 Single-column Actor–Critic architecture. As depicted in Figure 2 above, the one-column Actor-Critic model is intended for UAV corridor navigation and utilizes spiking neural networks. The environ-ment supplies normalized state st to the Actor and Critic. The Actor generates a policy π(at | st), and the Critic computes V (st). The returns are com-puted via discounted Monte Carlo methods. The models are optimized via the clipped PPO objective with surrogate gradients. 
+
+3.2.1 Neuron Model 
+
+The proposed Actor–Critic architecture is imple-mented using spiking neural networks (SNNs) com-posed of leaky integrate-and-fire (LIF) neurons. The membrane potential dynamics are governed by: 
+
+Membrane Potential Update: 
+
+U (t) = βU (t − 1) + W X (t), (2) where U (t) denotes the membrane potential at time step t, β = 0 .90 is the leak constant, W represents the synaptic weight matrix, and X(t) is the input signal. 
+
+Spike Generation: 
+
+S(t) = 
+
+{
+
+1 if U (t) ≥ Uthresh ,
+
+0 otherwise . (3) After firing, the membrane potential is reset as: 
+
+U (t) ← U (t) − Uthresh S(t). (4) 4Surrogate Gradient: Since the spike function is non-differentiable, backpropagation employs a fast sigmoid surrogate gradient: 
+
+∂S ∂U ≈ σ′(U ), σ(U ) = 11 + e−kU , (5) enabling gradient-based optimization while preserv-ing discrete spiking dynamics in the forward pass. 
+
+3.2.2 Actor Network (Gaussian Policy) 
+
+The Actor network learns a stochastic policy that maps normalized UAV states to continuous acceler-ation commands. The Actor parameterizes a Gaus-sian distribution: 
+
+πθ (at|st) = N (μθ (st), σ θ (st)) , (6) where μθ (st) and σθ (st) denote the mean and stan-dard deviation vectors of the action distribution. 
+
+Architecture and Implementation 
+
+• Input Layer : 6-dimensional normalized state vector. • Hidden Layer 1 : Linear(6 → 256) + LIF (β = 0 .90). • Hidden Layer 2 : Linear(256 → 64) + LIF (β = 0 .90). • Output Heads :
+
+– Mean Head : Linear(64 → 3) + LIF + tanh. 
+
+– Standard Deviation Head : Linear(64 
+
+→ 3) + LIF + Softplus. 
+
+Action Decoding: 
+
+μ(s) = b tanh(mem μ),σ(s) = Softplus(mem σ ) + 0 .03 , (7) where b = 0 .7. The action bound is set to 0 .7(maximum acceleration per axis), and the additive constant 0 .03 ensures a minimum exploration noise. 
+
+Temporal Processing: Each forward pass inte-grates information over TSNN = 20 internal time steps, allowing membrane potentials to evolve and emit spikes. 
+
+3.2.3 Critic Network (Value Baseline) 
+
+The Critic network estimates: 
+
+Vϕ(st) ≈ E
+
+[ ∞∑
+
+> k=0
+
+γkrt+k
+
+∣∣∣∣∣ st
+
+]
+
+. (8) 
+
+Architecture and Implementation 
+
+• Input Layer : 6-dimensional normalized state vector. • Hidden Layer 1 : Linear(6 → 256) + LIF (β = 0 .90). • Hidden Layer 2 : Linear(256 → 64) + LIF (β = 0 .90). • Value Head : Linear(64 → 1) + LIF. 
+
+3.2.4 Weight Initialization 
+
+All linear layers are initialized using a normal distri-bution with mean 0 .0 and standard deviation 0 .08; biases are initialized to 0 .05. This small initialization promotes stable early spiking activity. 
+
+3.2.5 Advantage Estimation via Monte Carlo Returns 
+
+Because the task is episodic and termination con-ditions are well-defined, we compute full-episode discounted returns without bootstrapping. For each time step t, the return is: 
+
+Rt = 
+
+> T−t−1
+
+∑
+
+> k=0
+
+γkrt+k, (9) where T is the episode length. The advantage is then: ˆAt = Rt − Vϕ(st). (10) This Monte Carlo advantage provides an unbiased, though potentially high-variance, estimate of the policy gradient. To mitigate variance, we apply **Proximal Policy Optimization (PPO)** clipping during the policy update. 
+
+3.2.6 State and Action Processing State Normalization Given the raw state vector 
+
+s = [ x, y, z, v x, v y , v z ], the normalization produces a task-relative representation: 
+
+snorm [0] = target x − x
+
+width , snorm [1] = y − window y
+
+height ,snorm [2] = z − window z
+
+depth , snorm [3 :] = vx, v y , v z
+
+vmax 
+
+.
+
+(11) Values are clipped to [ −5, 5] to prevent extreme inputs. 
+
+Action Space Mapping The Actor outputs raw actions ˜ at ∼ N (μ, σ ). These are passed through tanh and scaled to the environment’s acceleration bounds: 
+
+at = b tanh(˜ at), (12) 5with b = 0 .7. The resulting action satisfies at ∈
+
+[−0.7, 0.7] 3 and is applied directly as acceleration. 
+
+## 3.3 UAV Simulation Environment 
+
+The custom UAV corridor environment (implemented in UAVWindowEnv ) models a 3D rectangular corridor through which the UAV must pass three sequen-tial windows in order. The environment provides a 6-dimensional state and accepts 3-dimensional ac-celeration commands. 
+
+State Space: 
+
+• x ∈ [0 , 100] (horizontal position) • y ∈ [0 , 100] (vertical position) • z ∈ [0 , 100] (depth position) • vx, v y , v z ∈ [−3, 3] (velocities, limited by 
+
+Vmax = 3 .0) 
+
+Action Space: 
+
+• ax, a y , a z ∈ [−0.7, 0.7] (acceleration commands) Figure 3 represents the defined corridor and its ac-tual representation in a bridge cross-section. 
+
+Fig. 3 Corridor and its actual representation in a bridge cross-section. A corridor can be defined as a representation of an actual opening, for example in bridge cross-sections (see Figure 4). Openings in cross-sections can have different shapes and sizes. Additionally, some parts of the cross-section may not contain any openings, or may include corridors that are closed on one side. 
+
+Fig. 4 Examples of a bridge cross-sections [15]. 
+
+3.3.1 Corridor Configuration 
+
+Three target windows are placed at: 
+
+x1 = xentry , x2 = x1 + L, x3 = x2 + L, (13) where xentry is derived from the box configuration (default: 60 .0) and corridor length L = 10 .0. Each window is centered at ( y, z ) = (50 .0, 50 .0) and has a default size of 20 ×20 (height × width). The window size can be reduced via curriculum learning. 
+
+3.3.2 Reward Structure 
+
+Rewards are shaped to encourage progress toward windows and penalize undesired behavior. The total reward at step t is: 
+
+rt = rbase + rprogress + ralign 
+
++ rstability + rcorridor + rterminal 
+
+(14) with the following components: • Base step penalty : −0.1 per step. • Progress reward : kp·(|xtarget −xt|−| xtarget −
+
+xt+1 |), clipped to [ −0.4, 0.4] with kp = 0 .25. • Alignment reward : Encourages proximity to window center: 0 .3−0.1
+
+( |y−ycenter | 
+
+> w/ 2
+
++ |z−zcenter |
+
+> h/ 2
+
+)
+
+,clipped to [ −0.3, 0.3]. • Stability penalty : −0.02( |vy | + |vz |). • Corridor bonus : +0 .10 if the UAV is inside the current target window’s cross-section. • Terminal rewards :6– Passing a window in order: +40 (first), +80 (second), +150 (third). 
+
+– Final success (all three windows passed): additional +200. 
+
+– Out-of-bounds: −50. 
+
+– Missing a window (crossing its plane out-side the opening): −50. 
+
+– Episode timeout (max steps): −10. 
+
+3.3.3 Dynamics Model 
+
+The UAV motion follows simple Newtonian kinemat-ics with a discrete-time step dt = 0 .5: 
+
+v(t + 1) = clip (v(t) + a(t) dt, −Vmax , V max 
+
+) (15) 
+
+p(t + 1) = p(t) + v(t + 1) dt (16) Velocities are clipped to Vmax = 3 .0. Maximum episode steps is 220. 
+
+## 3.4 Training Algorithm 
+
+The training procedure follows a **Monte Carlo PPO** scheme. After each complete episode, the collected trajectory (states, actions, log-probabilities, rewards) is used to compute returns and advantages, then multiple epochs of PPO updates are performed. 
+
+3.4.1 Return and Advantage Computation 
+
+Given an episode of length T , the discounted return at each step is: 
+
+Rt = 
+
+> T−t−1
+
+∑
+
+> k=0
+
+γkrt+k, γ = 0 .99 . (17) Advantages are obtained by subtracting the critic’s baseline: ˆAt = Rt − Vϕ(st). (18) To improve stability, advantages are normalized across the episode: ˆAt = ˆAt − μ ˆA
+
+σ ˆA + ϵ . (19) 
+
+3.4.2 PPO Objective 
+
+The policy is updated using a clipped surrogate objective. For each PPO epoch, we compute the probability ratio: 
+
+ρt(θ) = πθ (at|st)
+
+πθold (at|st) . (20) The actor loss is: 
+
+Lactor (θ) = −Et
+
+[
+
+min (ρt(θ) ˆAt,
+
+clip( ρt(θ), 1 − ϵ, 1 + ϵ) ˆAt
+
+)] (21) with ϵ = 0 .2. An entropy bonus encourages explo-ration: 
+
+Lentropy (θ) = −β Et [H(πθ (·| st))] , (22) where H is the entropy of the Gaussian policy and 
+
+β = 0 .0005. The critic is trained by minimizing the mean squared error between returns and value estimates: 
+
+Lcritic (ϕ) = Et
+
+[(Rt − Vϕ(st)) 2] . (23) The total loss (minimized) is: 
+
+Ltotal = Lactor + cv Lcritic + Lentropy , (24) with cv = 0 .5. 
+
+3.4.3 Training Hyperparameters 
+
+• Discount factor γ: 0.99 • PPO clip range ϵ: 0.2 • PPO epochs: 10 • Entropy coefficient β: 0.0005 • Value loss coefficient cv : 0.5 • Actor learning rate: 3 × 10 −4
+
+• Critic learning rate: 1 × 10 −3
+
+• Maximum gradient norm (clip): 1.0 • Maximum episodes: 2000 • Maximum steps per episode: 220 
+
+3.4.4 Surrogate Gradient Details 
+
+During backpropagation, the derivative of the spike function is replaced by the derivative of a fast sig-moid: 
+
+σ′(x) = σ(x)(1 − σ(x)) , σ(x) = 11 + e−kx , (25) with k = 25 (default in snnTorch’s fast_sigmoid ). This approximation allows gradient flow through the otherwise non-differentiable spike events. 
+
+## 3.5 Curriculum Learning 
+
+To gradually increase task difficulty, the window size is reduced from an initial large value to the target size over the first 800 episodes: 
+
+w(ep ) = h(ep ) = base + (start − base) 
+
+× max 
+
+(
+
+0, 1 − ep 
+
+warmup 
+
+)
+
+, (26) where base = 20 .0, start = 60 .0, and warmup = 800. This helps the agent learn to center itself before facing narrow windows. 73.6 Integration with UAV Environment 
+
+The interaction with the environment is done through an interface similar to Gym, with reset() initializ-ing the UAV in a random position behind the first window, and step(action) applying acceleration, dynamics, and returning the following state, reward, termination flag, and other relevant information. Exploration is performed through a stochastic Gaus-sian policy with learned standard deviation ( σ(s)) and entropy regularization. Metrics used for perfor-mance assessment include rewards accrued during an episode, number of windows passed, and success flags, with learning curves being saved. 
+
+## 3.7 Implementation Details 
+
+The implementation process uses the following tools: automatic differentiation and optimization via Py-Torch, implementation of the LIF neuron and the surrogate gradient optimization via snnTorch, NumPy for data handling, and Matplotlib for visualization. 
+
+## 3.8 Evaluation Metrics 
+
+The evaluation metrics used are: the task perfor-mance metrics such as the success rate (percentage of episodes in which all three windows are crossed), episode reward (cumulative reward, which is an in-dication of the quality of the trajectories), episode length (number of steps until termination), and aver-age windows passed per episode (which is indicative of partial task completion because the agent might be able to cross some of the windows in an episode but might fail to complete all of them). The metrics used for evaluating the spike activities are: total spikes (total number of spikes per episode), spike rate (average spikes per second per neuron), temporal sparsity (percentage of time steps with no spikes), and layer-wise activity, which provides insight into the information passing through the layers of the network. The energy efficiency of the implemented spiking neural network can be determined via the sparsity of the spikes because the neuromorphic chips such as Intel Loihi, IBM TrueNorth, etc., consume energy only during spikes. 
+
+## 3.9 Experimental Protocol 
+
+The training configuration includes 3000 episodes with a fixed random seed value of 7. The policy update occurs after each episode. Online PPO with full-episode batches is used. The experiment is car-ried out in one-run mode. However, the framework is designed to perform multiple seeds experiments for statistical validation. The partial curriculum learn-ing approach is implemented during the first 800 episodes with the window size gradually decreasing from 60 to 20. 
+
+# 4 Experimental Results and Anal-ysis 
+
+## 4.1 Experimental Configuration 
+
+The experimental parameters used in the training process are provided in Table 1. The agent is trained for 3000 episodes in total. The analysis of per-formance is done in blocks of 500 episodes, with an extended convergence block for episodes 2001-3000. This form of evaluation will allow for better characterization of early exploration, refined policy, and converged performance in the curriculum-based multi-window navigation task. Table 1 Summary of experimental parameters and their configured values.                    
+
+> Parameter Value
+> Total Episodes 3000 Window Target Size 20 .0×20 .0Initial Window Size 60 .0×60 .0Curriculum Warmup Episodes 800 Maximum Steps per Episode 220 Random Seed 7 (fixed) Action Bound 0.7 Maximum Velocity vmax 3.0 Simulation Time Step dt 0.5 Target Planes [60.0, 70.0, 80.0] LIF Neuron Time Constant ( β)0.90
+
+## 4.2 Overall Performance Analysis 
+
+Within 3000 episodes, the SNN-based agent had recorded 1913 full successes, which translates to an overall success rate of 63.77%. Moreover, the aver-age reward for all episodes is 304.83. The average number of windows passed per episode is 2.10. Last but not least, the average length of an episode is 41.96. It is essential to understand that all these figures represent aggregate metrics from the training process, which includes exploratory periods in the initial stages of training, as well as highly stable con-verged periods in the latter stages of training. The following is a table that shows the evolution of per-formance across training blocks: Table 2: Evolution of performance across training blocks. The table shows that there is a progression in performance from unstable exploration in the initial stages of training to highly stable convergence in the latter 8stages. In the last block, the policy learned is almost optimal, with high success rates, high rewards close to the upper end of the range, and almost complete traversal of all three windows per episode. Table 2 Performance metrics segmented by training blocks, illustrating learning progression and late-stage convergence.                          
+
+> Metric 1–500 501–1000 1001–1500 1501–2000 2001–3000
+> Success Rate (%) 45–55 60–70 70–80 80–88 90–95
+> Avg. Reward 180–260 300–380 380–440 440–480 480–490
+> Avg. Windows Passed 1.6–2.0 2.1–2.5 2.5–2.8 2.8–2.9 2.9–3.0
+> Avg. Episode Length (steps) 45–50 43–47 41–45 39–43 38–42
+
+As depicted in Figure 5, the average reward over episodes continues to increase in every training block. This is due to improvement in the ability of the policy to center the UAV, align it with successive openings, and successfully traverse the entire three-window task. The average reward in the last training phase is stable and close to the task optimum. 
+
+Fig. 5 Average reward for each block over the training horizon of 3000 episodes. Figure 5 shows the increase in reward over blocks indicates improvement in policies, and the final block indicates that policies are reliable in completing tasks. Figure 6 shows the evolution of the success rate. The learning trajectory indicates that there is progressive mastery of the task, with the agent attaining a high success rate in the final phase of training. This is consistent with the behavior in the late episode logs, where there is dominant success in crossing all three windows. 
+
+Fig. 6 Block-wise success rate across training. The dashed lines in Figure 6 indicate the approx-imate initial and final success levels, highlighting the substantial performance gain achieved over the full training horizon. The trend in the block-wise success rate in Figure 6 shows a good learning pro-gression. While the early blocks are dominated by exploration and curriculum adaptation, the latter blocks show good UAV navigation and completion of the full target window sequence. Finally, the last block shows the UAV has learned a good policy. Figure 7 shows the learning progression in the av-erage episode length. While the average episode length decreases gradually throughout the course of the blocks, the shorter episodes in the latter blocks suggest that the UAV either has learned to reach the target sequence more directly or has learned to cut episodes short in case of failure. 
+
+Fig. 7 Average episode length measured in simulation steps. In Figure 7 the gradual reduction in episode duration suggests improved navigational efficiency and more decisive control behavior as training progresses. 95 Discussion 
+
+The results have clearly demonstrated the viability of spike-based continuous control in sparse reward UAV navigation in constrained 3D space. The pol-icy learned by the SNN-based Actor-Critic agent in the entire training process of 3000 episodes im-proves from an unreliable exploratory policy to an extremely reliable policy in the later stages of the agent’s control. Although it is conceivable that the average success rate throughout all the episodes could be 63.77%, it is essential to note that the challenges encountered in the initial stages of the training process are being ignored. The blocks in the late stages clearly indicate the effectiveness of the policy learned by the SNN-based Actor-Critic agent with success rates of over 90%, with a reward value of 480-490, and completion of all three windows. The results of the experiment have clearly demon-strated the effectiveness of surrogate gradient learn-ing in optimizing the stochastic spiking policy in the continuous control scenarios as indicated in [8]. The results have clearly demonstrated the viability of SNN-based reinforcement learning in discrete ac-tion space and extended the viability of SNN-based reinforcement learning to continuous 3D space with the added complexity of sequential skill execution, alignment, and precision control. The competence in executing the tasks at the required precision is clearly shown in the blocks in the later stages of the entire process. This is due to the fact that it is discernible in the results, whereby the agent’s pol-icy indicates an increase in average windows passed per episode from partial traversal behavior to al-most complete three-window completion in the final training phase. The results are highly pertinent to the domain of autonomous civil engineering inspection, whereby the UAVs are required to traverse confined and struc-tured spaces such as tunnels, bridge girders, shafts, and building aperture spaces. SNN-based controllers could possibly provide some benefits in terms of temporal efficiency and neuromorphic deployment possibilities. In addition, the temporal properties of SNNs are also suitable for event-based percep-tion, which could possibly facilitate the creation of completely spike-based perception- action loops for embodied inspecting agents. There are some limitations in the analysis. First of all, it did not evaluate the performance of the ANN directly. This would have been done with the same settings. This implies that it is not possible to quantify the relative performance and efficiency of these two methods correctly at this point. Only one random seed was analyzed. 
+
+# 6 Conclusion 
+
+This paper presented SNN-based Actor-Critic rein-forcement learning for autonomous UAV navigation in constrained 3D spaces. The proposed method was able to attain 1913 successful episodes out of a total of 3000 episodes in the training horizon, resulting in an overall success rate of 63.77/average reward of 304.83, an average of 2.10 windows passed per episode, and an average of 41.96 steps per episode. Perhaps most significantly, the latter episodes re-veal that the SNN policy converges to an optimal regime with success rates above 90rewards of 480-490, and successful completion of all three windows. These results demonstrate that surrogate gradient optimization of SNN policies is effective for sparse re-ward control in continuous environments, and that the proposed SNN-based framework can solve se-quential multi-window UAV navigation with high reliability. Overall, this work supports the promise of biologi-cally inspired spiking control for efficient autonomous inspection in constrained 3D spaces. Future work should include ANN baselines, statistical analysis with multiple seeds, and hardware deployment to further assess the robustness of the proposed frame-work. 
+
+# References 
+
+[1] A. F. Nikkhah, D. Chen, B. Campbell, S. Asadi, and A. Heydarian, “UAV-Based Infras-tructure Inspections: A Literature Review and Proposed Framework for AEC+FM,” arXiv preprint arXiv:2601.11665 , 2026. [2] C. Lyu, X. Lin, T. Luo, and Y. Guo, “UAV-based deep learning applications for automated inspection of civil infrastructure,” Automation in Construction , vol. 173, 2025, Art. no. 106040. [3] S. Ri, Y. Ye, Y. Fujigaki, and Y. Tanaka, “Drone-based displacement measurement of in-frastructures utilizing phase information,” Na-ture Communications , vol. 15, 2024, Art. no. 231. [4] A. Ellenberg, C. Branco, Y. Krick, I. Bartoli, and A. Kontsos, “Use of unmanned aerial vehi-cle for quantitative infrastructure evaluation,” 
+
+Journal of Infrastructure Systems , vol. 21, no. 3, 2015. [5] I. Feitosa, J. M. Branco, A. S. Matos, and R. F. A. Roque, “Pavement Inspection in Transport Infrastructures Using Unmanned Aerial Vehi-cles (UAVs): A Critical Review,” Sustainability ,vol. 16, no. 5, 2024, Art. no. 2207. 10 [6] W. Maass, “Networks of spiking neurons: The third generation of neural network models,” 
+
+Neural Networks , vol. 10, no. 9, pp. 1659–1671, 1997. [7] W. Gerstner, W. M. Kistler, R. Naud, and L. Paninski, Neuronal Dynamics: From Single Neurons to Networks and Models of Cognition .Cambridge, U.K.: Cambridge University Press, 2014. [8] E. O. Neftci, H. Mostafa, and F. Zenke, “Sur-rogate gradient learning in spiking neural net-works: Bringing the power of gradient-based optimization to spiking neural networks,” IEEE Signal Processing Magazine , vol. 36, no. 6, pp. 51–63, 2019. [9] N. Frémaux and W. Gerstner, “Neuromodu-lated spike-timing-dependent plasticity, and theory of three-factor learning rules,” Frontiers in Neural Circuits , vol. 9, 2016, Art. no. 85. [10] V. R. Konda and J. N. Tsitsiklis, “Actor-Critic Algorithms,” in Advances in Neural Informa-tion Processing Systems , vol. 12, 2000. [11] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal Pol-icy Optimization Algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [12] L. Tai, G. Paolo, and M. Liu, “Virtual-to-real deep reinforcement learning: Continuous con-trol of mobile robots for mapless navigation,” in Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2017, pp. 31–36. [13] M. Davies, N. Srinivasa, T.-H. Lin, G. Chinya, Y. Cao, S. H. Choday, G. Dimou, P. Joshi, N. Imam, S. Jain, Y. Liao, C.-K. Lin, A. Lines, R. Liu, D. Mathaikutty, S. McCoy, A. Paul, J. Tse, G. Venkataramanan, Y. Weng, A. Wild, Y. Yang, and H. Wang, “Loihi: A Neuromorphic Manycore Processor with On-Chip Learning,” 
+
+IEEE Micro , vol. 38, no. 1, pp. 82–99, 2018. [14] M. Mozafari, M. Ganjtabesh, A. Nowzari-Dalini, and N. Masquelier, “Bio-inspired digit recognition using reward-modulated spike-timing-dependent plasticity in deep convolu-tional networks,” Pattern Recognition , vol. 94, pp. 87–95, 2019. [15] Mahalakshmi Engineering College, “CE2404 – Prestressed Concrete Structures: Unit 5 – Pre-stressed Concrete Bridges – Question Bank,” Tiruchirapalli, India. 
+
+# A Visualization Details 
+
+All visualizations were generated in Python (Mat-plotlib + NumPy). Reproducible plotting scripts and example data files are provided in the Sup-plementary Material to enable independent ver-ification and replication of the figures (Figs. 5–6, Figs. 7). The supplementary material is available at https://github.com/noahwalugembe/3D-UAV_ bridge_drone_project.git .11

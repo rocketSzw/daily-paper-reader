@@ -1,0 +1,328 @@
+Title: Verti-WM: A Physics-Aided Exteroceptive World Model for Off-Road Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2609.23118v1
+
+Published Time: Tue, 22 Sep 2026 00:59:38 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Verti-WM: A Physics-Aided Exteroceptive World Model for Off-Road Reinforcement Learning 
+
+Chenhui Pan ∗, Tong Xu ∗, and Xuesu Xiao 
+
+Abstract — Reinforcement learning for off-road navigation requires extensive vehicle-terrain interaction data, which are costly to collect in high-fidelity simulation. World models offer a promising alternative by replacing simulator roll-outs during policy optimization. However, an off-road world model must condition state transitions on exteroceptive terrain information, which proprioception alone does not provide. This challenge is further amplified by the need to model both rigid and deformable terrain, where data-driven and physics-based approaches offer complementary strengths. We propose Verti-WM , a physics-aided exteroceptive world model that recurrently fuses a frozen Transformer for rigid terrain and a neuro-symbolic terramechanics model for deformable terrain. Elevation and semantic observations queried from a supplied map at each predicted pose condition fusion, enabling six-degree-of-freedom rollouts for policy optimization without further simulator access. Verti-WM reduces prediction error by 34.6% and 21.7% over data-driven and physics-based baselines, respectively. Policies trained entirely within Verti-WM achieve comparable task success rates while reducing computation time by 23.6X relative to direct training in the high-fidelity simulator. We further validate Verti-WM using real-world data, enabling policy optimization within learned real-world kinodynamics and achieving a 80% success rate on the Verti-4-Wheeler platform, compared with 40% for direct sim-to-real transfer. 
+
+I. I NTRODUCTION 
+
+Off-road navigation requires vehicles to traverse terrain with varying geometry and physical properties, causing iden-tical control inputs to produce different slip, sinkage, and six Degree-of-Freedom (DoF) motion [1]–[3]. Reinforcement Learning (RL) provides a framework for learning policies under these coupled vehicle-terrain interactions, but requires extensive interaction data [4]. Collecting such data on phys-ical vehicles is time-consuming and difficult to scale, while high-fidelity simulation is computationally expensive be-cause vehicle-terrain interactions and contact dynamics must be repeatedly resolved [4], [5]. Direct policy optimization is therefore costly in both real-world and simulation settings. World models can reduce this cost by replacing simulator interactions during policy optimization with rollouts from learned kinodynamics [6]–[8]. Learned robotic simulators such as the Robotic World Model [9] and Neural Robot Dynamics [10] further show that policies can be optimized entirely within learned environments. However, these models primarily rely on robot-centric states, actions, or contact information and do not explicitly condition vehicle motion on the local terrain encountered during traversal. Proprio-ception alone cannot distinguish a slope, rigid obstacle, or  
+
+> All authors are with the Department of Computer Science, George Mason University
+
+{cpan7, txu25, xiao }@gmu.edu 
+
+> *Equally contributing authors
+
+Fig. 1: High-fidelity CPU-based simulation makes direct policy optimization computationally expensive. Verti-WM replaces it with a GPU-accelerated exteroceptive learned simulator trained from real off-road data, enabling faster policy optimization. deformable region before its effect appears in the vehicle state. A simulator learned for off-road kinodynamics must therefore incorporate exteroceptive terrain observations to anticipate terrain-dependent motion. An exteroceptive world model for off-road dynamics must also capture vehicle motion across both rigid and deformable terrain, where similar surface geometry can induce distinct vehicle-terrain kinodynamics. End-to-end learned kinody-namic models can effectively capture rigid-terrain behavior in a data-driven manner [3], while terramechanics provides physical structure for deformation-dependent effects such as sinkage and soil shear [1], [11]. However, purely data-driven models lack explicit structure for complex defor-mation effects, whereas physics-based models depend on terrain parameters that are difficult to obtain across diverse environments [1]. Neither approach alone is well suited to both regimes. A learned off-road simulator (Fig. 1) must therefore integrate their complementary strengths and handle transitions between them while mapping local elevation and semantic observations to consistent 6-DoF vehicle-motion rollouts. To address these challenges, we propose Verti-WM , a physics-aided exteroceptive world model for data-efficient off-road RL. Verti-WM combines two frozen kinodynamic specialists: a Transformer-based model for rigid terrain and a neuro-symbolic terramechanics model for deformable terrain. A recurrent gate conditioned on the vehicle state, action, arXiv:2609.23118v1 [cs.RO] 19 Sep 2026 elevation and semantic features, and both specialist predic-tions estimates separate fusion coefficients for the six body-frame pose increments. During rollout, Verti-WM queries local elevation and semantic patches from a supplied terrain map at each predicted pose rather than predicting future exteroceptive observations. Overlapping consecutive patches preserve terrain continuity and reduce error accumulation over long-horizon rollouts. This map-conditioned autoregres-sive formulation enables terrain-dependent 6-DoF rollouts across rigid terrain, deformable terrain, and their transitions without further access to high-fidelity simulators during policy optimization. To our knowledge, Verti-WM is the first physics-aided ex-teroceptive world model for policy optimization across both rigid and deformable terrain. Policies are optimized entirely within Verti-WM and evaluated in a high-fidelity simulator, Verti-Bench [4]. For physical validation, we construct a separate Verti-WM from real-world trajectories, optimize a policy within the learned kinodynamics, and compare its deployment performance against direct sim-to-real transfer without fine-tuning. The main contributions of this work are:  
+
+> •
+
+We develop a physics-aided exteroceptive world model that fuses frozen data-driven and physics-based kinody-namic specialists through recurrent gating with separate weights for body-frame pose increments, enabling map-conditioned 6-DoF rollouts across rigid and deformable terrain.  
+
+> •
+
+We show that Verti-WM reduces prediction error by 34.6% and 21.7% over data-driven and physics-based baselines, respectively, while policies optimized within Verti-WM achieve comparable success in Verti-Bench with 23.6X faster policy training than direct optimiza-tion in the high-fidelity simulator.  
+
+> •
+
+We validate Verti-WM using real-world data, where a policy optimized within the learned kinodynamics achieves an 80% success rate on the Verti-4-Wheeler robot [12], compared with 40% for direct sim-to-real transfer. II. R ELATED WORK 
+
+In this section, we review related work on terrain-conditioned off-road kinodynamics, world models for naviga-tion planning, and learned simulators for policy optimization. 
+
+A. Terrain-Conditioned Off-Road Kinodynamics 
+
+Classical terramechanics [1] provides interpretable pressure-sinkage and shear models for deformable terrain, but its accuracy depends on terrain parameters that are difficult to obtain across heterogeneous environments. Large-scale multimodal datasets, including TartanDrive and TartanDrive 2.0 [2], [13], have enabled data-driven modeling of off-road vehicle-terrain kinodynamics. Recent methods incorporate exteroceptive observations into kinodynamic prediction for model-based planning through terrain-aware latent representations [3], [14], [15], visual terrain features [16]–[18], and friction estimation [19], [20]. Physics-learning approaches introduce additional structure: PIAug [21] augments training data with vehicle dynamics, while NeSAM [11] combines differentiable terramechanics with learned residual kinodynamics for deformable terrain. VertiAdaptor [22] and VertiAKD [23] further enable online adaptation of terrain-conditioned kinodynamics. These methods improve terrain-aware prediction and model-based planning, but are not designed to serve as long-horizon learned environments for policy optimization. 
+
+B. World Models for Navigation Planning 
+
+World models can support navigation by predicting fu-ture observations or latent scene representations that guide planning and action selection. Navigation World Models (NWM) [24] predict action-conditioned visual futures to evaluate candidate trajectories proposed by an external pol-icy. MILE [25] jointly learns latent scene dynamics and an imitation policy from expert driving videos, using imagined latent trajectories to support action prediction. For off-road navigation, TerrainFormer [26] learns predic-tive bird’s-eye-view terrain representations with traversabil-ity, elevation, and semantic supervision, then uses the frozen world-model features to train a decision Transformer for action prediction. Although it incorporates exteroceptive terrain information, TerrainFormer models future terrain representations rather than the vehicle motion induced by control inputs. In contrast, Verti-WM predicts explicit action-conditioned 6-DoF vehicle-terrain transitions and recursively queries local elevation and semantic observations to generate closed-loop interaction rollouts for RL policy optimization. 
+
+C. World Models as Simulators for Policy Optimization 
+
+Recent work has also explored world models as learned simulators for direct policy optimization. Think2Drive [8] trains an autonomous-driving policy within a compact latent world model learned from CARLA, replacing simulator interactions with imagined rollouts. Learning to Drive from a World Model [27] similarly optimizes an on-policy driving agent in a learned visual simulator constructed from real driving data. These methods demonstrate policy optimiza-tion with perceptual world models, but focus on structured on-road environments rather than off-road vehicle-terrain interaction with terrain-dependent 6-DoF motion. Off-road RL methods instead typically rely on high-fidelity physics simulators, including learning on vertically challenging ter-rain [28] and TADPO [29]. NRD [30] is the closest learned-simulator baseline, training policies entirely within frozen reduced dynamics before evaluation in Chrono [5]. How-ever, NRD uses a binary indicator to distinguish rigid and deformable terrain types rather than local exteroceptive ob-servations, so its state transitions do not explicitly capture terrain geometry or semantics at each vehicle pose. Verti-WM integrates exteroceptive terrain observations into learned-simulator policy optimization. At each predicted pose, it queries local elevation and semantic information from a supplied terrain map to predict the next 6-DoF vehicle-motion transition. A recurrent gate fuses frozen data-driven and physics-aided kinodynamic specialists, enabling Fig. 2: Overview of Verti-WM: Elevation and semantic observations queried at the predicted vehicle pose condition two frozen kinodynamic specialists. A recurrent gate fuses their body-frame motion proposals, and the resulting state determines the next terrain query. The gate is trained using multi-step trajectory prediction errors. terrain-dependent rollouts across rigid terrain, deformable terrain, and their transitions. III. M ETHOD 
+
+As illustrated in Fig. 2, Verti-WM combines a Transformer specialist FT and a neuro-symbolic specialist FN through a recurrent gate Gθ with trainable parameters θ. We formulate the prediction problem in Sec. III-A, describe the specialists in Sec. III-B, and present fusion and gate training in Secs. III-C and III-D. 
+
+A. Problem Formulation 
+
+We consider a vehicle operating at sampling interval ∆t
+
+with state 
+
+xt = [ pt; ηt; vt; ωt] ∈ R12 ,
+
+where pt is world-frame position, ηt contains roll, pitch, and yaw, and vt, ωt are body-frame linear and angular velocities. Each component is three-dimensional, and [ ; ] 
+
+denotes concatenation. We denote the corresponding rigid pose by Tt ∈ SE(3) and collect velocities as νt = [ vt; ωt].The control ut ∈ R2 contains commanded speed and steering angle. Hats distinguish fused predictions ˆxt, ˆTt from reference states and poses. The Transformer history hTt retains preceding state, con-trol, and encoded terrain inputs; the neuro-symbolic history 
+
+hNt additionally contains internal terramechanics memory. Together with the gate hidden state hGt , they form ht =(hTt , hNt , hGt ), initialized as described in Sec. III-D. Given a terrain map M, the query operator Q ex-tracts vehicle-aligned elevation and semantic patches mt =(met , mst ). Verti-WM defines the transition 
+
+mt = Q(M; ˆTt),
+
+(ˆ xt+1 , ht+1 ) = FΘ(ˆ xt, ut, mt, ht),
+
+where Θ collects all model parameters. Repeated applica-tion generates trajectories without subsequent reference-state feedback, while terrain observations are queried rather than predicted. The crop extent and sampling interval must ensure 
+
+B( ˆTt+1 ) ⊆ Ω( mt),
+
+where B and Ω denote the vehicle support footprint and patch footprint in map coordinates. Thus, the current patch covers the terrain supporting the next predicted pose, over which consecutive patches overlap. 
+
+B. Terrain-Conditioned Kinodynamic Specialists 
+
+We train FT on rigid-terrain trajectories Dr and FN
+
+on deformable-terrain trajectories Dd. The Transformer pre-dicts motion directly from interaction histories. The neuro-symbolic model follows NeSAM [11], combining learned wheel-interaction variables and soil parameters with differ-entiable terramechanics [1], Newton–Euler dynamics, and learned state corrections. For specialist index j ∈ { N, T }, identifying the neuro-symbolic and Transformer models respectively, elevation and semantic encoders Eej , E sj produce spatial feature tensors 
+
+Zj,e t , Zj,s t :
+
+Zj,e t = Eej (met ),
+
+Zj,s t = Esj (mst ),
+
+zjt = [vec( Zj,e t ); vec( Zj,s t )] .
+
+(1) Here, vec flattens each tensor into the specialist’s terrain representation zjt . Both encoder pairs process the same patches but retain their respective pretrained weights. Each specialist then proposes 
+
+xjt+1 = Fj (ˆ xt, ut, zjt , hjt ), (2) where xjt+1 contains candidate pose Tjt+1 and velocities 
+
+νjt+1 . After independent training, both specialists, their en-coders, and the soil predictor remain frozen. Both specialists are evaluated at every step while the gate is trained on mixed-terrain trajectories Dm.C. Recurrent Kinodynamic Fusion 
+
+Specialist accuracy can vary across terrain conditions and motion components. To combine their predictions consis-tently, we express both candidate poses relative to the current body frame: 
+
+ξjt = Log 
+
+ ˆT−1 
+
+> t
+
+Tjt+1 
+
+∨
+
+∈ R6. (3) The operator Log( ·)∨ returns three translational tangent coordinates followed by a three-dimensional rotation vector. Their difference dt = ξNt − ξTt describes the available correction to the Transformer proposal. The gate reuses both specialists’ terrain features without introducing an additional encoder. Spatial averaging within each channel, denoted by Avg , produces a terrain vector ejt ∈
+
+R36 for each specialist; their concatenation forms et ∈ R72 .We define rt ∈ R18 to contain both motion proposals and their disagreement, and ct ∈ R104 as the complete gate input combining terrain, state, control, and proposal features: 
+
+ejt = [Avg( Zj,e t ); Avg( Zj,s t )] ,
+
+et = [ eNt ; eTt ],
+
+rt = sg([ ξNt ; ξTt ; dt]) ,
+
+ct = [ et; ˆ xt; ut; rt].
+
+(4) Here, sg preserves forward values while blocking gradients. These inputs condition fusion on the local terrain, operating condition, and candidate vehicle responses. A single fusion coefficient would impose the same com-bination on every motion component. Instead, we define 
+
+αt = [ αt, 1, α t, 2, α t, 3, α t, 4]⊤ for body-frame planar trans-lation, translation along the body z axis, rotation about the body x/y axes, and rotation about the body z axis, respectively. These groups distinguish planar, vertical, tilt-related, and heading-related motion. All coordinates are rela-tive body-frame increments; sharing a coefficient within each pair treats its proposal as a vector and reduces independent fusion decisions. The recurrent gate produces four unconstrained outputs 
+
+ot ∈ R4 and updates its hidden state: 
+
+(ot, hGt+1 ) = Gθ (ct, hGt ). (5) For ℓ = 1 , . . . , 4, the fusion coefficient is 
+
+αt,ℓ = 0 .5 + 1 .5 tanh( ot,ℓ ). (6) Since tanh ranges over (−1, 1) , this mapping restricts coeffi-cients to (−1, 2) , with zero gate output giving equal weight-ing. Values in [0 , 1] interpolate between proposals, while values outside this interval permit bounded extrapolation when interpolation cannot sufficiently correct their errors. The four coefficients are expanded to six coordinate-wise weights: 
+
+βt = [ αt, 1, α t, 1, α t, 2, α t, 3, α t, 3, α t, 4]⊤. (7) Repeated weights do not impose equal motion values: the 
+
+x and y coordinates share αt, 1 but combine their respective proposal components. The same applies to the two tilt-related coordinates. With velocity disagreement dνt = νNt+1 − νTt+1 , the fused transition is ξt = ξTt + βt ⊙ dt,
+
+ˆTt+1 = ˆTt Exp( ξ∧ 
+
+> t
+
+),
+
+ˆνt+1 = νTt+1 + βt ⊙ dνt .
+
+(8) Here, ⊙ denotes elementwise multiplication, and Exp( ·∧)
+
+converts the fused tangent increment into a relative pose. The same weights combine corresponding body-frame ve-locity components. All-zero coefficients recover the Trans-former proposal, while all-one coefficients recover the neuro-symbolic proposal. The resulting pose and velocities form 
+
+ˆxt+1 , which advances both specialist histories and deter-mines the next terrain query. 
+
+D. Autoregressive Gate Learning 
+
+Each training sequence τ ∈ D m provides a map, reference states x0: K , and controls u0: K−1 for horizon K ≥ 2. We initialize ˆx0 = x0 and reset all histories: attention histories start empty, the gate hidden vector starts at zero, and the neuro-symbolic model resets its physical memory. The first transition receives the recorded initial state, control, and terrain observations. Subsequent transitions use predicted states and recorded controls, with reference states used only for supervision. At prediction step k = 1 , . . . , K , define pose error δk and component-group error ek,ℓ as 
+
+δk =
+
+ ˆpk − pk
+
+wrap(ˆ ηk − ηk)
+
+
+
+,ek,ℓ = ∥Sℓδk∥2.
+
+The operator wrap maps angular differences to [−π, π ).Selection matrices S1, . . . , S4 extract coordinates {1, 2},
+
+{3}, {4, 5}, and {6}, corresponding to horizontal position, height, roll-pitch, and yaw errors. These errors supervise accumulated poses, whereas fusion operates on relative body-frame increments. The sequence objective combines trajectory error and temporal regularization: 
+
+Lτ = 1
+
+K
+
+> K
+
+X
+
+> k=1 4
+
+X
+
+> ℓ=1
+
+e2
+
+> k,ℓ
+
+sg( ek,ℓ ) + ϵ
+
++ λα
+
+K − 1
+
+> K−1
+
+X
+
+> t=1
+
+∥αt − αt−1∥22 .
+
+(9) Here, ϵ > 0 prevents division by zero, and the detached de-nominator reduces the dependence of direct residual-gradient magnitudes on error magnitude. Position and angular errors use meters and radians without additional group weights. The coefficient λα ≥ 0 controls the penalty on abrupt fusion changes. Only θ is optimized. We detach query poses through 
+
+Q(M; sg( ˆTt)) and proposal features entering the gate through Eq. (4). Specialist outputs used in fusion remain differentiable with respect to predicted-state inputs, allowing gradients through the fused trajectory and gate recurrence despite frozen specialist parameters. IV. I MPLEMENTATION 
+
+We describe the data collection and preprocessing, terrain representation and soil prediction, recurrent gate design and training, and RL policy optimization using Verti-WM. 
+
+A. Data Collection and Preprocessing 
+
+Simulation trajectories are collected in Verti-Bench [4], which uses Chrono [5] to simulate vehicle-terrain in-teractions. The simulation data comprise rigid-terrain, deformable-terrain, and mixed-terrain collections, denoted by 
+
+Dr , Dd, and Dm, respectively. Each collection contains 20 
+
+worlds with 25 trajectories per world, yielding 500 trajecto-ries per collection. Each trajectory lasts approximately 25 s. Together, the three collections contain 1,500 trajectories and approximately 10 .4 hours of interaction data. Randomized sinusoidal steering and speed commands gen-erate diverse vehicle motions. Steering and speed frequencies are sampled from [0 .1, 0.5] Hz and [0 .1, 2.5] Hz, respectively, while the lower and upper speed bounds are sampled from 
+
+[1 , 2] m/s and [3 , 4] m/s. Vehicle states, control inputs, and aligned elevation and semantic observations are recorded at 
+
+10 Hz, giving a transition interval of ∆t = 0 .1 s. This produces approximately 125 ,000 transitions per collection and 375 ,000 transitions overall. Physical trajectories are collected on the Verti-Arena [31] with the Verti-4-Wheeler [12], recording synchronized ve-hicle states, control inputs, and terrain observations. The physical dataset contains 120 trajectories, each lasting ap-proximately 35 s, yielding approximately 70 minutes of interaction data. These trajectories are used to train a separate Verti-WM from physical vehicle-terrain interactions. 
+
+B. Terrain Representation and Soil Prediction 
+
+At each predicted pose, the terrain map provides aligned 
+
+128 × 128 elevation and RGB semantic patches covering approximately 12 .8 × 12 .8 m. Both modalities use nearest-neighbor sampling. Elevation values are globally normalized to [−1, 1] , and RGB semantic values are normalized channel-wise to the same range. Identical preprocessing is applied during training and autoregressive rollout. Elevation and semantic observations are encoded by sepa-rate U-Net autoencoders with one-channel and three-channel inputs, respectively. Each encoder produces an 18 × 16 × 16 
+
+latent tensor. The autoencoders are pretrained independently using mean squared reconstruction error, after which the encoders are frozen. NeSAM and the Transformer retain architecturally identical encoder pairs pretrained on the de-formable and rigid collections, respectively. Each pair con-tains 21 ,514 encoder parameters. The corresponding com-plete autoencoder pair contains 54 ,646 parameters. Both encoder pairs process the same terrain patches while preserv-ing the pretrained feature representations expected by their corresponding specialists. A single soil predictor processes NeSAM’s semantic fea-tures through two convolutional layers with channel widths 
+
+18 → 32 → 64 and a multilayer perceptron with widths 
+
+64 → 64 → 6. Hidden layers use SiLU activations, and spatial aggregation yields one six-parameter soil estimate per crop, consumed only by NeSAM. The soil predictor contains 
+
+28 ,262 parameters, counted separately from the encoder pairs. These parameters are also remain frozen during gate training. 
+
+C. Recurrent Gate Architecture and Training 
+
+The gate input ct in Eq. (4) contains 68 dimensions: 
+
+36 terrain features, 12 vehicle-state components, 2 control inputs, two six-dimensional specialist motion proposals, and their six-dimensional difference. A linear layer projects this input to 64 dimensions, which are processed by a Gated Recurrent Unit (GRU) with a 64 -dimensional hidden state. The updated hidden state is concatenated with the original 
+
+68 -dimensional input. The resulting 132 -dimensional vector passes through a 132 → 32 → 4 multilayer perceptron with a SiLU hidden activation. Its four unconstrained outputs form 
+
+ot, which is mapped to fusion coefficients using Eq. (6). These coefficients control planar translation, vertical trans-lation, roll and pitch, and yaw, and are expanded to the six pose components using Eq. (7). The gate contains 33 ,764 
+
+trainable parameters. After independently training the two specialists, we freeze their parameters, terrain encoders, and soil predictor, and optimize only the gate on Dm. Training windows contain 
+
+K = 16 supervised transitions, with consecutive window starts separated by four transitions. Each minibatch contains 
+
+64 windows. Specialist histories are initialized from the preceding recorded context, and the gate hidden state is reset to zero at the beginning of each window. 
+
+D. Reinforcement Learning Policy Training 
+
+We use the frozen Verti-WM as the simulator for down-stream off-road navigation policy optimization. The RL environment runs 20 parallel imagined episodes. At each step, the policy observes the vehicle state together with local elevation and semantic terrain features queried at the predicted pose, and outputs a two-dimensional command consisting of speed and steering. The reward encourages goal-directed and stable traversal by rewarding progress toward the goal while penalizing excessive roll and pitch, vertical motion, and vehicle stalling. Episodes terminate upon goal completion, departure from the valid map region, prediction of a physically implausible vehicle state, or the maximum episode horizon. To evaluate whether Verti-WM supports different policy-learning paradigms, we train Proximal Policy Optimization (PPO), Soft Actor-Critic (SAC), and Twin Delayed Deep Deterministic Policy Gradient (TD3) within the same learned simulator. All three methods use identical observation and action spaces, reward and termination definitions, and 20 par-allel environments. PPO collects 300 steps per environment per update, yielding 6,000 imagined transitions per iteration, and all methods are trained for 2,000 iterations using their respective on-policy or off-policy update procedures. Verti-WM remains frozen throughout training, while its 18 ×
+
+16 × 16 terrain embeddings are further compressed to a 16 -dimensional representation by a trainable policy-side encoder optimized jointly with the policy. This common interface enables Verti-WM to support both on-policy and off-policy reinforcement learning methods. V. E XPERIMENTS 
+
+We first examine the effects of model family and training terrain to motivate the selection of kinodynamic specialists. We then compare Verti-WM against unified Transformer models trained on rigid, deformable, and mixed terrain with comparable dynamics parameter counts. Finally, we evaluate policy-training runtime and navigation performance, with all policies tested in high-fidelity Chrono environments. 
+
+A. Kinodynamic Specialist Ablation 
+
+We evaluate NeSAM [11] and Transformer models trained separately on Dr , Dd, and Dm. All prediction experiments use held-out trajectories from the mixed-terrain collection in Verti-Bench [4], partitioned into rigid-terrain, deformable-terrain, and transition windows. Each model performs a 16 -step autoregressive rollout from the same initial state and recorded control sequence, querying terrain observations at its own predicted poses. We report position prediction error at the final step in meters. TABLE I: Specialist comparison using 16 -step position pre-diction error in meters on the mixed-terrain test set. Rigid-trained and deformable-trained models are reported on their corresponding terrain subsets, while mixed-trained models are evaluated across all subsets.                                
+
+> Model Training data Rigid ↓Deformable ↓Transition ↓
+> NeSAM Dr0.6158 ––Transformer Dr0.4385 ––NeSAM Dd–0.8081 –Transformer Dd–0.9684 –NeSAM Dm0.5630 0.7751 0.7371
+> Transformer Dm0.5310 0.8890 0.8832
+
+Table I shows complementary strengths under terrain-specific training. When trained on Dr , the Transformer achieves a rigid-terrain error of 0.4385 m, compared with 
+
+0.6158 m for NeSAM. When trained on Dd, NeSAM achieves a deformable-terrain error of 0.8081 m, compared with 0.9684 m for the Transformer. These comparisons motivate using the rigid-trained Transformer and deformable-trained NeSAM as the two specialists in Verti-WM. The models trained directly on Dm exhibit a similar division of strengths: the Transformer provides lower rigid-terrain error, while NeSAM provides lower deformable-terrain and transition errors. Meanwhile, the rigid-trained Transformer incurs substantially higher error on deformable terrain, and the deformable-trained NeSAM remains less accurate on rigid terrain than the rigid-trained Transformer. These results motivate combining their predictions according to the evolving vehicle-terrain interaction. 
+
+B. Comparison with Full-Data World Models 
+
+We next evaluate whether recurrent fusion improves pre-diction relative to unified models with comparable dynamics capacity. Our primary baselines are two Transformer models trained on Dall = Dr ∪ D d ∪ D m. Both receive vehicle-state and control histories, while the exteroceptive variant additionally receives elevation and semantic terrain features. Their dynamics networks contain approximately 9.9 million parameters, closely matching the 9,972 ,634 parameters in Verti-WM’s two specialists and recurrent gate. Verti-WM uses the specialists selected in Sec. V-A, freezes their parameters, and trains only the 33 ,764 -parameter gate on Dm. Thus, all three components contribute to constructing Verti-WM, but only the gate is updated during mixed-terrain training. Both full-data Transformer baselines update their complete dynamics networks using all three collections. All models follow the same 16 -step prediction protocol. The Transformer baselines without and with terrain ob-servations contain 9,888 ,024 and 9,871 ,128 dynamics pa-rameters, respectively, compared with 9,972 ,634 for Verti-WM. These counts exclude terrain encoders and the separate soil predictor. Both baselines train their complete dynam-ics networks on Dall , whereas Verti-WM updates only its 
+
+33 ,764 gate parameters on Dm after freezing the specialists pretrained on Dr and Dd.TABLE II: Comparison with full-data Transformer world models using 16 -step position prediction error in meters. Ex-tero. indicates exteroceptive terrain conditioning. For Verti-WM, the training-data column refers to gate training after specialist pretraining on Dr and Dd.                    
+
+> Model Training data Rigid ↓Deformable ↓Transition ↓
+> Transformer w/o extero. Dall 0.4674 0.7905 0.7522 Transformer w/ extero. Dall 0.3413 0.6964 0.6518 Verti-WM Dm(gate) 0.3655 0.6409 0.5773
+
+Table II shows that incorporating terrain observations improves the full-data Transformer across all three evaluation subsets. Relative to the Transformer without terrain observa-tions, Verti-WM reduces prediction error by 21 .8% , 18 .9% ,and 23 .3% on rigid, deformable, and transition windows, respectively. Compared with the full-data exteroceptive Transformer, Verti-WM reduces error by 8.0% on deformable terrain and 11 .4% across terrain transitions. The exteroceptive Transformer achieves the lowest rigid-terrain error, with 
+
+0.3413 m compared with 0.3655 m for Verti-WM. The benefit of recurrent specialist fusion is therefore concentrated on deformation-dependent motion and transitions between terrain regimes. TABLE III: Policy-training runtime and navigation performance in Chrono. Training time records each run’s total duration, excluding dataset collection and world-model training. Traversal time, roll, and pitch are averaged over successful trials.                                                                                    
+
+> Metric Chrono PPO Transformer PPO NeSAM PPO Verti-WM PPO Verti-WM TD3 Verti-WM SAC Verti-WM PPO (CPU) Training time (h) 33.48 1.14 1.01 1.36 1.35 1.55 3.98 Success count ↑18/20 17/20 17/20 19/20 18/20 18/20 20/20
+> Traversal time (s) ↓27.5 ±4.2 28.1 ±3.9 29.7 ±7.0 27.5 ±3.0 32.2 ±5.1 31.3 ±7.5 34.0 ±11.6
+> |Roll |(◦)↓4.37 ±1.88 4.85 ±2.27 4.42 ±1.85 4.84 ±2.21 4.64 ±1.90 4.88 ±2.23 4.88 ±2.23
+> |Pitch |(◦)↓3.69 ±1.30 4.06 ±2.01 3.62 ±1.38 3.76 ±1.35 3.65 ±1.30 3.86 ±1.56 3.93 ±1.78
+
+Verti-WM also improves over both constituent specialists and both models trained directly on Dm in Table I across all three subsets. Together, these results show that recurrent fusion can improve mixed-terrain prediction while updating only 0.34% of the combined dynamics parameters during gate training. 
+
+C. Policy Training and Evaluation in Verti-Bench 
+
+We compare policy training in Chrono with training inside three frozen learned environments: the rigid-terrain Trans-former, the deformable-terrain NeSAM model, and Verti-WM. PPO provides the primary comparison across training environments. Additional runs use TD3 and SAC within Verti-WM. We also evaluate PPO training with Verti-WM’s dynamics executed on a CPU. All policies are subsequently evaluated in the same Chrono environments in Verti-Bench [4]. Evaluation covers 
+
+20 worlds, and success is reported as the number of com-pleted trials. Traversal time is averaged over successful trials only, whereas absolute roll and pitch are averaged over all recorded steps, including failed trials. Training time denotes the recorded duration of each policy-training run, excluding dataset collection and world-model training. Table III shows that the PPO policy trained within Verti-WM completes 19 of 20 trials in Chrono, compared with 
+
+18 for direct Chrono training and 17 for training within either individual specialist. Its mean traversal time is 27 .5 s, matching the direct-training baseline, with mean absolute roll and pitch of 5.02 ◦ and 3.94 ◦, respectively. These results demonstrate that policies optimized entirely within Verti-WM can support off-road navigation after transfer to high-fidelity dynamics. Direct Chrono training takes 33 .48 hours, whereas the recorded Verti-WM PPO run takes 1.36 hours. When Verti-WM’s dynamics are executed on the CPU, policy training takes 3.98 hours, corresponding to an 8.41 × ratio in recorded runtime and an 88 .1% reduction relative to direct Chrono training under the reported configurations. The CPU-trained policy completes all 20 trials, with mean absolute roll and pitch of 4.84 ◦ and 3.82 ◦. Its mean traversal time of 34 .0 scovers all 20 successful trials, while the direct-training baseline averages its 18 successful trials. Verti-WM also supports policy training with TD3 and SAC, whose policies each complete 18 of 20 trials in Chrono after recorded training runtimes of 1.35 and 1.55 hours, respectively. Their mean traversal times are 32 .2 and 31 .3 s, Start Start Goal 
+
+Verti-Bench Physical Testbed 
+
+Fig. 3: Evaluation environments in Verti-Bench (top) and physical testbed (bottom). The red arrow indicates the navi-gation route from start to goal. compared with 27 .5 s for PPO trained within Verti-WM. These results demonstrate that the learned environment sup-ports multiple RL algorithms while enabling policy deploy-ment under high-fidelity vehicle-terrain dynamics. 
+
+D. Physical-Vehicle Evaluation on Verti-Arena 
+
+We evaluate whether learning a world model from physical interactions improves policy deployment relative to direct sim-to-real transfer. We construct a separate Verti-WM from the physical trajectories described in Sec. IV-A and optimize a navigation policy within this model. The baseline policy is trained in the learned simulation from physical data and transferred directly to the Verti-4-Wheeler without fine-tuning. Each policy is evaluated in five physical trials in the Verti-Arena environment shown in Fig. 3, navigating between the marked start and goal. As shown in Table IV, the policy optimized within the real-data Verti-WM completes four of five physical trials, compared with two of five for direct sim-to-real transfer. Among successful trials, it achieves lower mean absolute roll and pitch, compared with direct transfer. Its mean traversal time is longer, at 39 .53 s versus 33 .44 s. The higher observed completion rate supports constructing a learned environ-ment from physical vehicle-terrain interactions for policy TABLE IV: Physical navigation performance on the Verti-4-Wheeler. All metrics except success are reported as mean ±
+
+standard deviation over successful trials. 
+
+Metric Direct sim2real Physical Verti-WM Success count ↑ 2/5 4/5 
+
+Traversal time (s) 33.44 ± 4.88 39 .53 ± 4.77 
+
+|Roll | (◦) 7.53 ± 1.42 6.16 ± 0.52 
+
+|Pitch | (◦) 11 .26 ± 1.16 9.37 ± 0.50 
+
+optimization, while the attitude improvements characterize successful traversals only. VI. C ONCLUSION 
+
+We presented Verti-WM , a physics-aided exteroceptive world model that recurrently fuses frozen kinodynamic specialists to generate map-conditioned 6-DoF rollouts for off-road RL. Experiments show improved prediction on deformable terrain and terrain transitions, together with comparable navigation success and shorter policy-training runtimes than direct high-fidelity simulator training. A policy optimized within a separate model learned from physical trajectories completes four of five trials, compared with two of five for direct sim-to-real transfer. The current formulation relies on a ground truth elevation and semantic map. Future work will investigate online map updates and uncertainty-aware rollouts to support policy learning under incomplete terrain observations. REFERENCES [1] J. Y. Wong, Terramechanics and Off-Road Vehicle Engineering: Ter-rain Behaviour, Off-Road Vehicle Performance and Design , 2nd ed. Oxford, UK: Butterworth-Heinemann, 2010. [2] S. Triest, M. Sivaprakasam, S. J. Wang, W. Wang, A. M. Johnson, and S. Scherer, “Tartandrive: A large-scale dataset for learning off-road dynamics models,” in 2022 International Conference on Robotics and Automation (ICRA) . IEEE, 2022, pp. 2546–2552. [3] H. Lee, T. Kim, J. Mun, and W. Lee, “Learning terrain-aware kin-odynamic model for autonomous off-road rally driving with model predictive path integral control,” IEEE Robotics and Automation Letters , vol. 8, no. 11, pp. 7663–7670, 2023. [4] T. Xu, C. Pan, M. B. Rao, A. Datar, A. Pokhrel, Y. Lu, and X. Xiao, “Verti-Bench: A general and scalable off-road mobility benchmark for vertically challenging terrain,” in Robotics: Science and Systems (RSS) ,2025. [5] A. Tasora, R. Serban, H. Mazhar, A. Pazouki, D. Melanz, J. Fleis-chmann, M. Taylor, H. Sugiyama, and D. Negrut, “Chrono: An open source multi-physics dynamics engine,” in High Performance Computing in Science and Engineering . Cham, Switzerland: Springer International Publishing, 2016, pp. 19–49. [6] D. Ha and J. Schmidhuber, “World models,” arXiv preprint arXiv:1803.10122 , 2018. [7] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse domains through world models,” arXiv preprint arXiv:2301.04104 ,2023. [8] Q. Li, X. Jia, S. Wang, and J. Yan, “Think2Drive: Efficient reinforce-ment learning by thinking with latent world model for autonomous driving (in CARLA-v2),” in Computer Vision–ECCV 2024 . Springer Nature Switzerland, 2024, pp. 142–158. [9] C. Li, A. Krause, and M. Hutter, “Robotic world model: A neural network simulator for robust policy optimization in robotics,” arXiv preprint arXiv:2501.10100 , 2025. [10] J. Xu, E. Heiden, I. Akinola, D. Fox, M. Macklin, and Y. Narang, “Neural robot dynamics,” in Proceedings of the 9th Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 305. PMLR, 2025, pp. 3915–3935. [11] C. Pan, T. Xu, F. Cancelliere, and X. Xiao, “NeSAM: Neuro-symbolic kinodynamics with soil adaptation for off-road mobility,” 
+
+arXiv preprint arXiv:2608.21330 , 2026. [12] A. Datar, C. Pan, M. Nazeri, and X. Xiao, “Toward wheeled mobility on vertically challenging terrain: Platforms, datasets, and algorithms,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 16 322–16 329. [13] M. Sivaprakasam, P. Maheshwari, M. G. Castro, S. Triest, M. Nye, S. Willits, A. Saba, W. Wang, and S. Scherer, “TartanDrive 2.0: More modalities and better infrastructure to further self-supervised learning research in off-road driving tasks,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024. [14] A. Datar, C. Pan, M. Nazeri, A. Pokhrel, and X. Xiao, “Terrain-attentive learning for efficient 6-dof kinodynamic modeling on verti-cally challenging terrain,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024. [15] X. Xiao, J. Biswas, and P. Stone, “Learning inverse kinodynamics for accurate high-speed off-road navigation on unstructured terrain,” IEEE Robotics and Automation Letters , vol. 6, no. 3, pp. 6054–6060, 2021. [16] J. Gibson, A. Alavilli, E. Tevere, E. A. Theodorou, and P. Spieler, “Dynamics modeling using visual terrain features for high-speed autonomous off-road driving,” arXiv preprint arXiv:2412.00581 , 2024. [17] A. Pokhrel, A. Datar, M. Nazeri, and X. Xiao, “CAHSOR: Competence-aware high-speed off-road ground navigation in SE (3),” 
+
+IEEE Robotics and Automation Letters , 2024. [18] H. Karnan, K. S. Sikand, P. Atreya, S. Rabiee, X. Xiao, G. Warnell, P. Stone, and J. Biswas, “Vi-ikd: High-speed accurate off-road nav-igation using learned visual-inertial inverse kinodynamics,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2022, pp. 3294–3301. [19] T. Fu, Z. Zhan, Z. Zhao, Y. Du, S. Su, X. Lin, E. T. Esfahani, K. Dantu, S. Chowdhury, and C. Wang, “AnyNav: Visual neuro-symbolic friction learning for off-road navigation,” arXiv preprint arXiv:2501.12654 ,2025. [20] S. Rabiee and J. Biswas, “A friction-based kinematic model for skid-steer wheeled mobile robots,” in 2019 International Conference on Robotics and Automation (ICRA) . IEEE, 2019, pp. 8563–8569. [21] P. Maheshwari, W. Wang, S. Triest, M. Sivaprakasam, S. Aich, J. G. Rogers III, J. M. Gregory, and S. Scherer, “Piaug–physics informed augmentation for learning vehicle dynamics for off-road navigation,” 
+
+arXiv preprint arXiv:2311.00815 , 2023. [22] T. Xu, C. Pan, A. Datar, and X. Xiao, “VertiAdaptor: Online kin-odynamics adaptation for vertically challenging terrain,” in 2026 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2026, arXiv:2603.06887. [23] T. Xu, C. Pan, F. Cancelliere, and X. Xiao, “VertiAKD: Adaptive off-road kinodynamics on vertically challenging terrain,” arXiv preprint arXiv:2608.00945 , 2026. [24] A. Bar, G. Zhou, D. Tran, T. Darrell, and Y. LeCun, “Navigation world models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2025, pp. 15 791–15 801. [25] A. Hu, G. Corrado, N. Griffiths, Z. Murez, C. Gurau, H. Yeo, A. Kendall, R. Cipolla, and J. Shotton, “Model-based imitation learn-ing for urban driving,” in Advances in Neural Information Processing Systems (NeurIPS) , 2022. [26] Y. Yang and K. Ricks, “TerrainFormer: World model-guided decision transformer for autonomous off-road navigation,” Sensors , vol. 26, no. 12, p. 3795, 2026. [27] M. Goff, G. Hogan, G. Hotz, A. du Parc Locmaria, K. Raczy, H. Sch¨ afer, A. Shihadeh, W.-X. Zhang, and Y. Yousfi, “Learning to drive from a world model,” 2025 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW) , pp. 1955–1964, 2025. [Online]. Available: https://api.semanticscholar.org/CorpusID: 278165202 [28] T. Xu, C. Pan, and X. Xiao, “Reinforcement learning for wheeled mobility on vertically challenging terrain,” in 2024 IEEE International Symposium on Safety Security Rescue Robotics (SSRR) . IEEE, 2024, pp. 125–130. [29] Z. Wu, R. Song, V. Mundheda, L. E. Navarro-Serment, C. Schoenborn, and J. Schneider, “TADPO: Reinforcement learning goes off-road,” 
+
+arXiv preprint arXiv:2603.05995 , 2026. [30] H. Zhang and D. Negrut, “Learning the right abstraction: Neu-ral reduced dynamics for complex robot control,” arXiv preprint arXiv:2608.19375 , 2026. [31] H. Chen, A. Datar, T. Xu, F. Cancelliere, H. Rangwala, M. B. Rao, D. Song, D. Eichinger, and X. Xiao, “Verti-Arena: A controllable and standardized indoor testbed for multi-terrain off-road autonomy,” in 
+
+2025 IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR) . IEEE, 2025, pp. 133–138.
