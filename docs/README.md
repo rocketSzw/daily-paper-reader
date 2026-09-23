@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-22</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 10 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 9 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-22 22:05:04 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-23 22:26:41 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读4篇、速读6篇，重点覆盖世界模型驱动的LiDAR探索与无人机自主导航。最值得看的是满分论文WOLF，用预测前沿引导LiDAR探索，另有9分工作将脉冲神经网络Actor-Critic用于受限空间UAV导航。普通读者可优先了解世界模型如何提升机器人在未知环境中的探索效率。</p>
+<p>2026-09-23 日报精选 9 篇，精读 1 篇、速读 8 篇。最值得看的是满分 10.0 的《Skytopia：单目无人机导航与动作条件潜世界模型》，速读中 GEM-MPC 探索利用平衡、深度感知视觉语言机器人控制和自适应控制稀疏性也值得留意。建议普通读者优先读 Skytopia 精读，再按兴趣扫速读摘要即可。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">4 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WOLF: World Model Guided LiDAR Exploration with Predictive Frontiers">WOLF: World Model Guided LiDAR Exploration with Predictive Frontiers</span></li><li><span class="dpr-home-dashboard-paper-title" title="Spiking Neural Network Actor-Critic Proximal Policy Optimization Control for Autonomous UAV Navigation Through Constrained Openings in Civil Infrastructure and Buildings">Spiking Neural Network Actor-Critic Proximal Policy Optimization Control for Autonomous UAV Navigation Through Constrained Openings in Civil Infrastructure and Buildings</span></li><li><span class="dpr-home-dashboard-paper-title" title="Quasi-Static Fault-Tolerant Feedback Control of a Quadrotor under Rotor Failure with Provable Safety Guarantees">Quasi-Static Fault-Tolerant Feedback Control of a Quadrotor under Rotor Failure with Provable Safety Guarantees</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Skytopia: Monocular Drone Navigation with Action-Conditioned Latent World Models">Skytopia: Monocular Drone Navigation with Action-Conditioned Latent World Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Prioritized Rollouts for Efficient World Model-based Vision-Language-Action Policy Optimization">Prioritized Rollouts for Efficient World Model-based Vision-Language-Action Policy Optimization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Verti-WM: A Physics-Aided Exteroceptive World Model for Off-Road Reinforcement Learning">Verti-WM: A Physics-Aided Exteroceptive World Model for Off-Road Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Switched Adaptive Control Framework for Aerial Manipulators Under Dynamic Transitions">A Switched Adaptive Control Framework for Aerial Manipulators Under Dynamic Transitions</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GEM-MPC: Balancing Exploration and Exploitation through Expert-Guided Planning">GEM-MPC: Balancing Exploration and Exploitation through Expert-Guided Planning</span></li><li><span class="dpr-home-dashboard-paper-title" title="&quot;Dear LLaVA, Please Drive&quot;: A Depth-Aware Vision-Language Agent for Closed-Loop Robotic Control">&quot;Dear LLaVA, Please Drive&quot;: A Depth-Aware Vision-Language Agent for Closed-Loop Robotic Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="On sparsity and directional forgetting in adaptive control">On sparsity and directional forgetting in adaptive control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>6</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 

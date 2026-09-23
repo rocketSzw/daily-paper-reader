@@ -1,0 +1,1037 @@
+Title: Orientation-Aware Control and Trajectory Design for Aerial RIS-Assisted Wireless Communications
+
+URL Source: https://arxiv.org/pdf/2609.23157v1
+
+Published Time: Tue, 22 Sep 2026 01:21:42 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 1
+
+# Orientation-Aware Control and Trajectory Design for Aerial RIS-Assisted Wireless Communications 
+
+Abdoul Karim A. H. Saliah 1, Hajar El Hammouti 1, Daniel Bonilla Licea 1, and Giuseppe Silano 2
+
+Abstract —Aerial Reconfigurable Intelligent Surfaces (ARISs) can enhance wireless connectivity in obstructed environments by combining reconfigurable metasurfaces with aerial mobility. However, in practical deployments, the Reconfigurable Intelligent Surface (RIS) is rigidly mounted on a multi-rotor Unmanned Aerial Vehicle (UAV), which creates coupled position–orientation dynamics that directly affect communication quality. Since RIS performance is highly sensitive to orientation, point-mass or orientation-invariant models may lead to optimistic performance estimates. This paper proposes an orientation-aware ARIS frame-work that explicitly accounts for UAV dynamics, actuation limits, and orientation-dependent channels. The proposed approach combines a communications-guided reference trajectory planner with a Nonlinear Model Predictive Control for dynamically feasible trajectory tracking and favorable RIS orientation, while employing lightweight beamforming and RIS phase-shift up-dates. Simulations show that accounting for orientation im-proves user throughput by 13 .77% , while the proposed joint communication updates improve network throughput by 28% 
+
+over phase-shift-only optimization and by at least a factor of 
+
+2.5 over beamforming-only optimization. These results high-light the importance of orientation-aware modeling and joint communication-control design in ARIS-assisted wireless systems. 
+
+Index Terms —Aerial Reconfigurable Intelligent Surface, Beamforming, Communications-aware robotics, Nonlinear Model Predictive Control, Unmanned Aerial Vehicles, 6G. 
+
+I. I NTRODUCTION 
+
+# UNMANNED Aerial Vehicles (UAVs) are widely recog-nized as a key enabling technology for future 6G inte-grated terrestrial and non-terrestrial networks, owing to their high mobility, flexible deployment, and ability to establish 
+
+Copyright (c) 20XX IEEE. Personal use of this material is permitted. However, permission to use this material for any other purposes must be obtained from the IEEE by sending a request to pubs-permissions@ieee.org. 
+
+> 1
+
+Abdoul Karim A. H. Saliah, Hajar El Hammouti, and Daniel Bonilla Licea are with the College of Computing, Mohammed VI Polytech-nic University, Ben Guerir, Morocco (e-mails: {abdoul.saliah, hajar.elhammouti, daniel.bonilla}@um6p.ma ). 
+
+> 2
+
+Giuseppe Silano is with the Department of Power Generation Technologies and Materials, Ricerca sul Sistema Energetico (RSE) S.p.A., Milan, Italy, and also with the Department of Cybernetics, Czech Technical University in Prague, Prague, Czech Republic (email: 
+
+giuseppe.silano@fel.cvut.cz ). This work was partially funded by the European Union grant no. DCI-PANAF/2020/420-028, through the African Research Initiative for Scientific Excellence (ARISE), pilot programme, by the research fund for the Italian Electrical System (Ricerca di Sistema) through the decree n. 388 of Novem-ber 6th, 2024, by the GA ˇ CR project no. 26-22606S, and the CTU grant no. SGS26/077/OHK3/1T/13. ARISE is implemented by the African Academy of Sciences with support from the European Commission and the African Union Commission. The contents of this document are the sole responsibility of the author(s) and can under no circumstances be regarded as reflecting the position of the European Union, the African Academy of Sciences, and the African Union Commission. 
+
+dominant line-of-sight (LoS) communication links [1], [2]. These characteristics make UAVs particularly attractive for on-demand coverage extension, capacity enhancement, and mission-critical services in scenarios such as disaster response, dense urban environments, and network offloading [3], [4]. As a result, UAVs have been extensively studied as aerial base stations, relays, and mobile edge computing platforms [5]. Despite these advantages, UAV-assisted communications face significant challenges in obstructed and dense environ-ments, where severe path loss and multipath fading can degrade link quality [6], [7]. Addressing these issues has recently motivated strong interest in Reconfigurable Intelli-gent Surfaces (RIS), a promising technology for shaping and controlling wireless propagation environments [8], [9]. A RIS consists of a planar array of programmable meta-elements whose electromagnetic response can be dynamically adjusted, typically by controlling phase shifts, to manipulate incident waves through reflection, transmission, or refraction. A promi-nent subclass is the Intelligent Reflecting Surface (IRS), which specializes in passive beamforming [10]. By appropriately configuring these elements, RISs can enhance signal coverage and reliability, especially in non-LoS conditions [11], [12]. For the sake of simplicity, we use the broader term RIS throughout the paper to refer specifically to passive IRS designs. An Aerial RIS (ARIS) is a RIS mounted on a UAV that combines intelligent signal manipulation with aerial mobility. This integration enables the RIS to be repositioned in three-dimensional space, providing additional degrees of freedom for improving communication performance. Several recent studies have explored ARIS-enabled networks for applica-tions such as age-of-information minimization in IoT systems, energy-efficient mobile edge computing, and physical-layer security enhancement [13], [14]. These works typically focus on jointly optimizing the UAV trajectory, RIS phase shifts, and, in some cases, transmitter beamforming or resource allocation. However, a significant realism gap remains in much of the existing ARIS literature. Most contributions model the UAV as a freely moving point mass, implicitly assuming that position and orientation can be controlled independently. In this work, we focus on ARIS implementations based on multi-rotor UAVs, which are the most commonly adopted platforms in practice due to their hovering capability and precise maneuverability [15]. For such vehicles, translation and orientation are inherently coupled [16]: horizontal motion necessarily requires vehicle tilting, which directly alters the orientation of a rigidly mounted RIS. Since RIS performance is highly sensitive to its pose [17], neglecting this coupling can lead to inaccurate performance predictions and overly arXiv:2609.23157v1 [cs.NI] 19 Sep 2026 IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 2
+
+optimistic conclusions. Moreover, many studies further sim-plify the problem by assuming isotropic RIS behavior [17], an assumption that does not reflect the directional nature of practical RIS implementations. Motivated by these observations, this work addresses the problem of designing ARIS trajectories and communication parameters while explicitly accounting for UAV dynamics, actuation limits, and the orientation-dependent behavior of RIS-assisted channels. To this end, we consider an ARIS-assisted terrestrial net-work in which a multi-rotor UAV–mounted RIS evolves from a specified initial state to a target final state while supporting ground users. The objective is to maximize network through-put subject to communication Quality-of-Service (QoS) re-quirements, UAV dynamic constraints, and actuation limits. The resulting problem tightly couples mobility, control, and communication variables, leading to a challenging nonconvex optimization problem. To manage this complexity, we adopt a structured solution approach that separates long-horizon trajectory generation from constraint-aware tracking, allow-ing communication performance and vehicle feasibility to be jointly addressed within a unified framework. 
+
+A. Related work 
+
+Research on ARIS has grown rapidly in recent years, with most studies focusing on communication-centric optimiza-tion problems involving UAV trajectory design, transmitter beamforming, and RIS phase-shift configuration [18], [19]. These works consistently demonstrate that aerial mobility can significantly enhance coverage, adaptability, and spectral efficiency compared to static RIS deployments [20]. However, many existing approaches rely on simplifying assumptions that limit their applicability to realistic ARIS platforms. The main limitations of the current literature can be broadly grouped into three areas: (i) simplified modeling of UAV motion and actuation, (ii) incomplete characterization of orientation-dependent RIS–channel interactions, and (iii) solu-tion strategies that rely on strong approximations or learning-based heuristics with limited interpretability and deployment guarantees. 
+
+Simplified UAV motion modeling: A large portion of the ARIS literature models the UAV as a freely positionable point mass with either fixed or implicitly controllable orien-tation [21], [22]. This abstraction neglects the fact that, for UAV platforms commonly considered in ARIS applications, translational motion is coupled with attitude dynamics. In practice, horizontal motion requires vehicle tilting, implying that changes in position are generally accompanied by changes in orientation, particularly during accelerations or trajectory maneuvers. Ignoring this coupling can lead to trajectories and orientation profiles that are difficult or impossible to realize on a physical platform, potentially degrading the communication performance when implemented on real systems. While such simplified models are useful for high-level communication analysis, they do not fully capture the constraints imposed by UAV dynamics and actuation limits. For instance, in [21], an ARIS is used as an edge computing server with energy minimization via joint trajectory, task offloading, and cache optimization, while [22] jointly optimizes trajectory and phase shifts to minimize energy consumption and maximize data rate. Both works model the UAV as a freely positionable point mass, ignoring dynamic constraints. 
+
+Incomplete channel and RIS modeling: Most ARIS studies adopt channel models that depend only on the posi-tions of the transmitter, receiver, and RIS, while assuming a fixed or orientation-independent surface response [23]. This assumption is consistent with static RIS deployments but becomes questionable when the RIS is mounted on a moving aerial platform. Even when attitude variations are moderate, changes in orientation can significantly affect the effective reflection pattern and link quality. Additionally, many works assume an isotropic RIS response [17], [24], implicitly treating the surface as reflecting energy uniformly in all directions. Practical RIS implementations, however, exhibit directional and anisotropic radiation characteristics that depend on both position and orientation. More recent models that explicitly account for this anisotropy [25] provide a more accurate rep-resentation of ARIS-assisted communication and motivate the need for orientation-aware formulations. For example, in [23], an ARIS forwards devices’ data to a backhaul UAV with the objective of maximizing energy efficiency, but assumes fixed UAV orientation and isotropic RIS elements. In [25], the RIS is modeled as anisotropic; however, the ARIS is restricted to hovering, which limits its potential. 
+
+Solution strategies and computational considerations: 
+
+The joint optimization of UAV trajectory, RIS phase shifts, and beamforming is typically addressed using either convex-approximation techniques or learning-based methods. Ap-proaches based on Successive Convex Approximation [26] reduce computational complexity by linearizing nonconvex terms and decoupling variables, but they generally provide locally optimal solutions whose quality depends on initial-ization and modeling assumptions [27]. More recently, Deep Reinforcement Learning (DRL) has been applied to ARIS op-timization problems to handle high-dimensional and nonlinear dynamics [28], [29]. While DRL offers flexibility in exploring complex solution spaces, its deployment is often hindered by substantial offline training requirements and limited inter-pretability. Moreover, stability and constraint satisfaction are typically not guaranteed by design, which is a critical aspect for aerial platforms operating under actuation limits [30], [31]. Among the works most closely related to this paper are those by Eskandari et al. [32] and Li et al. [33], which attempt to incorporate more realistic vehicle behavior. Eskandari et al. employ a non-holonomic kinematic model combined with MPC-based planning; however, the model is tailored to fixed-wing platforms [34] and does not capture the coupled transla-tional–rotational dynamics relevant to multi-rotor ARIS con-figurations or their impact on the communication channel. Li et al. include rotational motion and orientation-aware radiation patterns within a DRL framework, representing an important step toward realism. Nevertheless, their formulation does not explicitly model actuator constraints or second-order rotational dynamics, and the learning-based approach inherits the typical challenges associated with DRL-based solutions. In summary, existing ARIS studies often rely on simplified IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 3
+
+UAV motion models, neglect orientation-dependent RIS be-havior, or adopt solution methods that are difficult to deploy within a constraint-aware control architecture. These limita-tions motivate the need for an approach that jointly considers realistic UAV dynamics, orientation-aware channel modeling, and optimization methods that can be naturally embedded within a control framework for reliable ARIS operation. 
+
+B. Contributions 
+
+Motivated by the limitations identified in existing ARIS literature, this paper proposes a communications-aware control framework for UAV-mounted ARIS platforms operating in obstructed environments. The framework explicitly couples vehicle motion, orientation evolution, and wireless commu-nication performance, enabling the joint design of mobility and communication strategies beyond simplified point-mass or orientation-invariant models. In particular, we consider an ARIS acting as an aerial relay and address the joint optimization of UAV trajectory, beamforming, and RIS phase shifts under realistic dynamic and communication constraints. The main contributions of this work are summarized as follows: 1) We develop an integrated model that combines full UAV translational and rotational dynamics, actuation limits, and an orientation-dependent, non-isotropic ARIS chan-nel characterization based on angle-dependent aperture gain. This model captures physical effects neglected in most existing ARIS formulations. 2) The coupled optimization of trajectory, beamforming, and RIS phase shifts is decomposed into tractable subproblems, enabling closed-form solutions for beam-forming and phase-shift updates while preserving their coupling with UAV motion. This structure significantly reduces computational complexity compared to mono-lithic or learning-based formulations. 3) We introduce a two-stage framework consisting of a communications-aware trajectory planner and a NMPC tracker that enforces UAV dynamics, actuation limits, and data rate QoS constraints during execution. The planner addresses the global communication-geometry problem, while the NMPC ensures dynamically feasible motion, favorable ARIS orientation, and reliable link quality. 4) Extensive simulations demonstrate that explicitly ac-counting for UAV orientation and dynamics improves user throughput by 13 .77% , while the proposed joint optimization increases network throughput by 28% over phase-shift-only optimization and by a factor of at least 2.5 over beamforming-only optimization, all while ensuring accurate trajectory tracking under realistic ac-tuation constraints. Compared to existing ARIS approaches, the proposed framework advances the state-of-the-art in three key aspects: (i) it moves beyond point-mass and kinematic UAV models by explicitly accounting for coupled translational–rotational dynamics; (ii) it incorporates orientation-dependent, non-isotropic ARIS channel effects that are typically ignored; and (iii) it provides a computationally efficient and control-oriented      
+
+> Fig. 1. ARIS-assisted communication system architecture: a RIS rigidly mounted on a multi-rotor UAV relays signals between the base station and ground users. The UAV trajectory is expressed in the world (inertial) reference frame FW, and a RIS orientation in the UAV body-fixed frame FB.
+
+solution that can be embedded within a feedback architec-ture, avoiding the training overhead and deployment concerns associated with learning-based methods. To the best of the authors’ knowledge, few ARIS studies combine orientation-aware channel modeling, multi-rotor UAV dynamics, explicit actuation limits, and NMPC-based tracking within a single deployable framework. 
+
+Notation: Scalars are denoted by italic lowercase letters (e.g., y), vectors by bold lowercase letters (e.g., y), and matrices by bold uppercase letters (e.g., Y). The transpose and Hermitian transpose of a matrix Y are denoted by Y⊤ and Y†,respectively. The modulus of a complex number is denoted by 
+
+| · | , and ‖ · ‖ 2 denotes the Euclidean ( ℓ2) norm. The imaginary unit is denoted by j. The operator [·]3 denotes the third component of a three-dimensional vector. The unit quaternion 
+
+q belongs to the 3-sphere S3 = {q ∈ R4 : ‖q‖2 = 1 },which represents the set of unit-norm quaternions used to parametrize three-dimensional rotations [35]. The correspond-ing rotation matrix R(q) belongs to the Special Orthogonal Group SO(3) = {R ∈ R3×3 : R⊤R = I, det( R) = 1 },which denotes the set of all proper rotation matrices in three-dimensional space. The symbols ×, ∠(·), ⌊·⌋ , and ◦ denote the vector cross product, the phase of a complex number, the floor of a real number, and the quaternion product, respectively. II. S YSTEM AND COMMUNICATION MODELS 
+
+This section presents the system modeling adopted in the paper. We first describe the ARIS-assisted communication scenario, including the network architecture and coordinate frames (Section II-A). We then introduce an orientation-aware propagation geometry of the ARIS-assisted terrestrial communications (Section II-B), followed by the channel model (Section II-C). Finally, we present the UAV dynamic model used for trajectory design and control (Section II-D). IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 4                                                
+
+> TABLE I NOTATION LIST
+> Notation Description Communication
+> I,N,MUser, BS-antenna, and RIS-element index sets
+> I, N, M Number of users, BS antennas, and RIS elements
+> H,gi,ΘBS-RIS and RIS-user ichannels, and phase-shift
+> pBS ,pi,pvPosition of BS, of user i, and of a virtual user located at the barycenter of the users’ positions
+> f, G ap
+> iBS beamforming vector and RIS aperture gain of iηi, R i, R min SNR and data rate of i, and minimum QoS data rate
+> P0, B 0, σ 2BS transmit power, bandwidth, and noise power
+> UAV Dynamic Model
+> p,q,v,ωPosition, orientation, linear and angular velocity
+> m, g, JUAV mass, gravitational constant, and inertia matrix
+> uT,τ,ΩTotal thrust, control torque, and rotor speeds
+> Ω,¯Ω,¯vRotor speed limits and maximum UAV velocity
+> x,u,h(·)UAV state, control input, and dynamics
+> NMPC
+> Ts, N pSampling time and prediction horizon
+> xℓ,uℓ,xd,ℓ , s i,ℓ State, control, reference state, and QoS slack at ℓdq(·),AGeodesic distance and flight region
+
+A. System and coordinate frames 
+
+We consider a downlink wireless communication system in which a terrestrial BS serves multiple Ground Users (GUs) located in an obstructed environment. Since the direct BS–GU links are blocked, a UAV-mounted RIS is deployed as an aerial relay to reflect the incident signals toward the users. The RIS is rigidly attached to the UAV such that its geometric center coincides with the vehicle’s Center of Mass (CoM). The UAV is required to move from an initial state to a target final state while maintaining reliable communication with the users over the mission duration T . An overview of the system architecture is shown in Fig. 1, and a notation table is given in Table I. The BS is equipped with a Uniform Linear Array (ULA) consisting of N antenna elements, indexed by the set N =
+
+{1, . . . , N }, and serves I ground users indexed by I =
+
+{1, . . . , I }. The UAV carries a RIS Uniform Planar Array (UPA) composed of M = MH MV reflecting elements, in-dexed by the set M = {1, . . . , M }.Two coordinate frames are defined (see Fig. 2): a world (inertial) frame FW and a body-fixed frame FB . The origin of FW is located at the BS reference point, while the origin of FB coincides with the UAV CoM. The positions of the BS, the UAV (ARIS), and user i expressed in FW are denoted by pBS = [0 , 0, 0] ⊤, p = [px, p y, p z ]⊤, pi =[px,i , p y,i , −hBS ]⊤, respectively, where hBS denotes the BS height. Since the origin of FW is placed at the BS reference point, ground-level users lie at z = −hBS in this coordinate system. The UAV orientation is represented by a unit quaternion q ∈
+
+S3, which provides a singularity-free representation of three-dimensional attitude and is well suited for modeling rotational dynamics [35]. The corresponding rotation matrix R(q) ∈
+
+SO(3) maps vectors from the body frame FB to the world frame FW and will be used in the subsequent channel and dynamics modeling. To serve multiple users, we adopt a Time Division Multiple Access (TDMA) protocol, where each user is allocated a time slot with the same duration. We assume that the coherence time of the channel is larger than the period of the TDMA frame. During the transmission slot, the scheduled user occupies the entire bandwidth B0, a single beamforming vector is employed, and inter-user interference is absent [36], [37]. 
+
+B. Orientation-aware ARIS propagation geometry 
+
+The position pBS  
+
+> n
+
+of an individual antenna element n in the world frame FW , and the position pR 
+
+> m
+
+of the m-th ARIS element in the UPA in the body frame FB , are defined as in [38]. An important component in RIS channel modeling is the wave vector s(ϑ, ϕ ), which defines the direction of propa-gation and phase progression of a plane wave in the world frame [39]. For a generic communication link W → Z, the wave vector is expressed as 
+
+s(ϑW −Z , ϕ W −Z ) = 
+
+cos ϑW −Z cos ϕW −Z
+
+cos ϑW −Z sin ϕW −Z
+
+sin ϑW −Z
+
+ , (1) where ϑW −Z and ϕW −Z are the elevation and azimuth angles characterizing the Angle of Departure (AoD) or Angle of Arrival (AoA) between nodes W and Z, respectively. In our system, we model the links between the RIS and BS and between the RIS and user using the following notation: 
+
+B for the BS, R for the ARIS, and i for a ground user. This gives rise to two main links: B → R and R → i.The path difference 1 is obtained by projecting the global position of the m-th element onto the corresponding wave vector. For the BS-to-ARIS link, this additional path length is expressed as 
+
+∆ℓm
+
+(ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+, q) = s(ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+) · (R(q)pR
+
+> m
+
+) , (2) where R(q)pRm is the position of the m-th RIS element rotated into the world frame FW , and (ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+) are the elevation and the azimuth AoAs of the link B − R.Similarly, for the ARIS-to-user i link, the path difference from the m-th element to the user is 
+
+∆ℓm,i 
+
+(ϑAoD 
+
+> R−i
+
+, ϕ AoD 
+
+> R−i
+
+, q) = s(ϑAoD 
+
+> R−i
+
+, ϕ AoD 
+
+> R−i
+
+) · (R(q)pR
+
+> m
+
+) , (3) where (ϑAoD 
+
+> R−i
+
+, ϕ AoD 
+
+> R−i
+
+) are the elevation and azimuth AoDs of the link R − i.
+
+C. Channel model 
+
+The channels and the model geometry of the ARIS are illustrated in Fig. 2. The channel between the BS and the ARIS depends on both the 3-D position of the UAV and the orientation of the ARIS. It is expressed as 
+
+H = α(p) arx ,R 
+
+(ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+, q) a†
+
+> tx ,B
+
+(ϑAoD 
+
+> B−R
+
+, ϕ AoD 
+
+> B−R
+
+) , (4) where (ϑAoD 
+
+> B−R
+
+, ϕ AoD 
+
+> B−R
+
+) are the elevation and azimuth AoDs from the BS, and atx ,B and arx ,R are the transmit array response at the BS and the receive array response at the ARIS, respectively. The latter are defined as 
+
+atx ,B (ϑAoD 
+
+> B−R
+
+, ϕ AoD 
+
+> B−R
+
+) = 
+
+[
+
+ej 2πλ s(ϑAoD  
+
+> B−R,ϕ AoD
+> B−R)·pBS
+> n
+
+]Nn=1 
+
+, (5)    
+
+> 1The path difference is the propagation distance offset between the path involving the m-th RIS element and the reference path through the RIS geometric center. For the incident wave, between the BS–element and the BS–center paths; for the reflected wave, between the element–receiver path and the center–receiver paths. It accounts for the relative phase shift introduced by each element’s spatial displacement from the RIS center. IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 5
+> Fig. 2. Geometric model of the ARIS-assisted communication system with orientation-aware coordinate frames and signal directions.
+
+arx ,R (ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+, q) = 
+
+[
+
+ej 2πλ ∆ℓm(ϑAoA   
+
+> B−R,ϕ AoA
+> B−R,q)
+
+]Mm=1 . (6) Similarly, the channel between the UAV and user i, denoted by gi ∈ C1×M , is given by 
+
+gi = βi(p) a†
+
+> tx ,R
+
+(ϑAoD 
+
+> R−i
+
+, ϕ AoD 
+
+> R−i
+
+, q) , (7) where atx ,R is the RIS transmit array response, expressed as 
+
+atx ,R (ϑAoD  
+
+> R−i
+
+, ϕ AoD  
+
+> R−i
+
+, q) = 
+
+[
+
+ej 2πλ ∆ℓm,i (ϑAoD  
+
+> R−i,ϕ AoD
+> R−i,q)
+
+]Mm=1 . (8) The complex LoS channel coefficients for the BS-to-ARIS link, α(p), and the ARIS-to-user link, βi(p), are given by 
+
+α(p) = 
+
+√l0
+
+‖p − pBS ‖2
+
+e−j 2π‖p−pBS ‖2 
+
+> λ
+
+, (9) 
+
+βi(p) = 
+
+√l0
+
+‖p − pi‖2
+
+e−j 2π‖p−pi‖2 
+
+> λ
+
+, (10) where l0 is the reference path loss at a distance of 1 meter and λ is the carrier wavelength. The RIS’s ability to reflect incoming signals toward a desired direction is strongly influenced by its orientation. As shown above, the orientation influences the channel of communication through its impact on RIS array responses, but it also affects the strength of RIS reflection in a given direction. In particular, the effective reflection strength is direction-dependent and can be quantified by the aperture gain function. The unit vectors from the ARIS to the BS and from the ARIS to a user i, expressed in the ARIS local frame, are given by 
+
+ulocal  
+
+> B−R
+
+= R(q)⊤ pBS − p
+
+‖pBS − p‖2
+
+, (11) 
+
+ulocal  
+
+> R−i
+
+= R(q)⊤ pi − p
+
+‖pi − p‖2
+
+. (12) Then, the incident and reflection elevation angles of the dual link B → R → i are defined according to [25] as 
+
+cos( ϕ0) = −[ulocal 
+
+> B−R
+
+]3, cos( ϕi) = −[ulocal 
+
+> R−i
+
+]3, (13) where ϕ0 and ϕi represent the angles between the RIS normal (which coincides with the negative body-fixed ZB axis) and the directions of arrival and departure, respectively. The 
+
+aperture gain of a user i is then given by 
+
+Gap  
+
+> i
+
+=
+
+{
+
+cos( ϕ0) cos( ϕi), cos( ϕ0) > 0, cos( ϕi) > 0,
+
+0, otherwise . (14) This gain factor is in practice always smaller than 1 and modulates the overall SNR, highlighting the importance of orientation-aware design in ARIS-assisted communication sys-tems. The SNR of user i depends on both the orientation and position of the ARIS, q and p, the BS transmit power P0,and the RIS phase shift matrix Θ = diag (ejϑ m
+
+)Mm=1 with 
+
+ϑm the phase shift of the m-th RIS element. Therefore, under the adopted TDMA protocol, the instantaneous SNR of a scheduled user i is given by 
+
+ηi = P0GAGap i |giΘHf |2
+
+σ2 , (15) where f is the beamforming vector selected at the BS and GA
+
+is the antenna gain of the BS. Here H ∈ CM×N , gi ∈ C1×M ,
+
+Θ ∈ CM×M , and f ∈ CN ×1, so that giΘHf is a scalar. During the scheduled TDMA transmission slot, the instan-taneous transmission rate from the BS to user i is given by 
+
+Ri = B0
+
+I log 2 (1 + ηi) , (16) where B0 is the transmission bandwidth. 
+
+D. UAV dynamics model 
+
+The ARIS platform is modeled as a rigid body comprising a multi-rotor UAV and a rigidly mounted RIS panel of negligible mass. Let p ∈ R3, v ∈ R3, and ω ∈ R3 denote the UAV position, linear velocity, and angular velocity, and q ∈ S3 be the unit quaternion representing its orientation. The UAV dynamics, adopted from [16], are given by 
+
+
+
+˙p = v,
+
+˙q = 12 q ◦
+
+[ 0
+
+ω
+
+]
+
+,m ˙v = −mg ez + uT R(q)ez ,
+
+J ˙ω = −ω × (Jω) + τ ,
+
+(17a) (17b) (17c) (17d) where m and J = diag( Jx, J y, J z ) are the UAV mass and inertia matrix, ez = [0 , 0, 1] ⊤, uT is the total thrust, τ =[τx, τ y , τ z ]⊤ is the control torque, and R(q) ∈ SO(3) is the rotation matrix associated with q. Equations (17a) and (17c) describe the translational dynamics, and (17b) and (17d) the rotational motion. The thrust uT and torques τ are generated by the four rotor speeds Ω1, . . . , Ω4, mapped as 
+
+
+
+uT
+
+τx
+
+τy
+
+τz
+
+ =
+
+
+
+bf bf bf bf
+
+− bf d 
+
+> √2
+
+− bf d  
+
+> √2
+> bfd
+> √2
+> bfd
+> √2
+
+− bf d   
+
+> √2
+> bfd
+> √2
+> bfd
+> √2
+
+− bf d
+
+> √2
+
+−bm bm −bm bm
+
+
+
+Ω21
+
+Ω22
+
+Ω23
+
+Ω24
+
+ , (18) where bf , bm, and d are the rotor thrust coefficient, drag coefficient, and arm length. The overall system is compactly written as ˙x = h(x, u),with state x = [ p⊤, q⊤, v⊤, ω⊤]⊤ ∈ R3 ×S3 ×R6, and control input u = [Ω 1, Ω2, Ω3, Ω4]⊤ ∈ R4.IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 6
+
+III. P ROBLEM STATEMENT 
+
+Our objective is to maximize the network throughput over a finite mission duration by jointly optimizing the UAV motion and the communication variables of the ARIS-assisted system. In particular, we consider the joint design of the BS beam-forming vector f , the RIS phase-shift configuration Θ, and the UAV control inputs, while explicitly accounting for UAV dynamics, actuation limits, and communication requirements. The UAV-mounted RIS is required to evolve from a given initial state xI to a predefined final state xF within a mission time horizon T , while ensuring reliable communication with all ground users throughout the flight. The resulting opti-mization problem tightly couples mobility and communication variables through both the UAV dynamics and the orientation-dependent channel model introduced in Section II. Formally, the joint optimization problem is formulated as                                                        
+
+> max
+> u,f,Θ
+> ∫T
+> 0
+> ∑
+> i∈I
+> Ri(t)dt (19a)
+> s.t.˙x(t) = h(x(t),u(t)) ,(19b)
+> x(0) = xI,x(T) = xF,(19c)
+> p(t)∈ A ,∀t∈[0 , T ],(19d)
+> Ri(t)≥Rmin ,∀i∈ I ,(19e)
+> ϑm(t)∈[0 ,2π],∀m∈ M ,(19f)
+> ‖v(t)‖2≤¯v, ∀t∈[0 , T ],(19g)
+> Ωs(t)∈[Ω ,¯Ω] ,∀s∈ { 1, . . . , 4},(19h)
+> ‖f(t)‖2= 1 ,∀t∈[0 , T ].(19i)
+
+In (19a), Ri(t) denotes the achievable data rate of user 
+
+i at time t, defined in (16). Constraint (19b) enforces the UAV dynamics described in Section II-D, ensuring that the motion is physically consistent with the vehicle’s dynamics. Constraint (19c) specifies the initial and final UAV states, reflecting mission requirements. Constraint (19d) restricts the UAV position to the admissible flight region A, accounting for operational and safety limitations. The QoS requirement (19e) ensures that each user achieves a minimum instantaneous data rate Rmin , thereby guaranteeing a baseline level of commu-nication performance. Constraint (19f) defines the feasible range of RIS phase shifts, reflecting the hardware limita-tions of practical RIS elements. Constraints (19g) and (19h) enforce the physical limits of the UAV platform, including bounded translational velocity and actuator saturation through rotor speed constraints, ensuring dynamically feasible motion. Finally, constraint (19i) imposes a unit-norm constraint on the BS beamforming vector, which corresponds to a transmit power normalization at the base station. Problem (19) is highly nonconvex due to the nonlinear UAV dynamics, the orientation-dependent channel model, and the multiplicative coupling among mobility, beamforming, and RIS phase-shift variables. Rather than solving (19) globally, in the next section, we develop a decomposition-based approxi-mation that separates communication updates from trajectory generation and tracking, while preserving the dominant cou-pling between UAV motion and communication performance.  
+
+> Fig. 3. Block diagram of the proposed sub-optimal control strategy.
+
+IV. P ROPOSED SOLUTION 
+
+Solving Problem (19) to global optimality is extremely challenging due to the tight coupling between the commu-nication variables (the BS beamforming vector f and the RIS phase-shift matrix Θ), the UAV dynamics, and the nonlinear rate expressions. Therefore, rather than seeking the globally optimal solution, we develop a tractable solution by adopting a decomposition strategy that separates communication design from trajectory generation and tracking. This approach is motivated by two main considerations. First, the communication variables evolve on a much faster time scale than the UAV dynamics, allowing beamforming and RIS phase-shift updates to be performed quasi-instantaneously with respect to the NMPC sampling time. Second, when the UAV state is fixed, the structure of the rate expression (16) admits near-optimal closed-form solutions for both the beam-former and the RIS phase shifts under fixed-state assumptions. As a result, the proposed framework yields a modular architecture, see Fig. 3, in which communication parame-ters are updated based on the current UAV state, while the UAV trajectory is designed and tracked under the resulting communications-aware constraints. The overall solution con-sists of four components. First, the BS beamforming vector is computed through the Beamforming optimization block (Section IV-A). Second, the RIS phase shifts are updated via the Phase shift optimization block (Section IV-B). Third, a reference trajectory is generated offline using the Reference Trajectory Design at t = 0 block (Section IV-C). Finally, this reference trajectory is tracked online using the NMPC controller, which incorporates the UAV Dynamic Model and physical limits (Section IV-D). The resulting framework should be interpreted as a low-complexity approximation of the original joint optimization problem. Rather than solving Problem (19) globally, it pre-serves the dominant interaction between the communication and control variables by updating the communication param-eters as explicit functions of the UAV state. Consequently, although the variables are optimized sequentially rather than jointly, the simplified framework retains the essential structure of the original problem, thereby providing a meaningful low-complexity approximation. Within the proposed decomposi-tion, a fixed horizontal orientation reference is adopted as a stabilization strategy rather than as the communication-optimal attitude. Obtaining the communication-optimal orien-tation would require jointly optimizing the UAV trajectory and attitude while accounting for their coupled dynamics, resulting in a significantly more complex optimization problem. IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 7
+
+A. Beamforming optimization 
+
+We optimize the beamforming vector f to maximize the total instantaneous throughput at time t, while fixing the UAV state 
+
+x and the RIS phase-shift matrix Θ. The resulting optimization problem is formulated as (20).    
+
+> max
+> f
+> ∑
+> i∈I
+> Ri(t)(20a)
+> s.t.(19i) .(20b)
+
+At this stage, we adopt the Maximum Ratio Transmission (MRT) toward the BS-to-RIS channel as a low-complexity surrogate while the constraint (19e) is deferred to the NMPC tracking phase (Section IV-D). For the fixed-state setting considered here, this choice maximizes the power transferred from the BS array toward the RIS and provides a practical beamforming update that is consistent with the subsequent RIS reflection optimization. To achieve this, at each time t,the BS uses the following beamforming vector 
+
+f = atx ,B 
+
+(ϑAoD 
+
+> B−R
+
+, ϕ AoD 
+
+> B−R
+
+)∥∥atx ,B 
+
+(ϑAoD 
+
+> B−R
+
+, ϕ AoD 
+
+> B−R
+
+)∥ ∥2
+
+. (21) This strategy is optimal for maximizing SNR at the RIS [40]. 
+
+B. Phase shift optimization 
+
+We optimize the RIS phase-shift matrix Θ at time t to maximize the instantaneous throughput, while fixing the UAV state x and the beamforming vector f . The optimization problem is formulated as follows    
+
+> max
+> Θ
+> ∑
+> i∈I
+> Ri(t)(22a)
+> s.t.(19f) .(22b)
+
+The QoS constraint is disregarded in this step. The single-user equivalent formulation enables a closed-form phase-shift expression that can be evaluated efficiently and reused to predict future channel states. In contrast, performing multi-user phase-shift optimization with fixed beamforming offers no closed-form solution and would require designing an iterative method with non-negligible computational complexity. To reduce complexity, we define a virtual user located at the barycenter of the users’ positions, denoted by pv, and apply the single-user solution to this representative node. This approximation is appropriate for clustered users, as considered in this work, although it may become inefficient if the users are widely dispersed. The simulation results confirm the effec-tiveness of this strategy under the considered setup. According to the single-user analysis in [25], the optimal phase shifts are derived as 
+
+ϑm = ∠ (( atx ,R 
+
+(ϑAoD  
+
+> R−v
+
+, ϕ AoD  
+
+> R−v
+
+, q)) 
+
+> m
+
+)
+
+− ∠ (( arx ,R 
+
+(ϑAoA 
+
+> B−R
+
+, ϕ AoA 
+
+> B−R
+
+, q)) 
+
+> m
+
+) , ∀m ∈ M , (23) where (ϑAoD  
+
+> R−v
+
+, ϕ AoD 
+
+> R−v
+
+) are the angles from the RIS to the virtual user. This phase-shift update is optimal for the adopted single-user surrogate centered at the user barycenter. Therefore, within the overall framework, RIS phase design should be interpreted as a low-complexity approximation of the original multi-user phase-shift optimization problem. 
+
+Algorithm 1 Reference Trajectory Design 
+
+Input: A, pz = hR, initial position of the UAV pinit , final position of the UAV pfin , neighborhood size E ≥ 2, total number of vertices L, flight duration T , and sampling time 
+
+Ts.
+
+Output: Communication-guided reference trajectory P. 
+
+> 1:
+
+Randomly generate L candidate nodes V = {(plx, p ly )}Ll=1 
+
+within the rectangular area in A at altitude pz , by ensuring that pinit and pfin are included in V. 
+
+> 2:
+
+Compute the cost of each node as Cl for all l ∈ { 1, . . . , L }
+
+from (24) .  
+
+> 3:
+
+Construct a graph G over the set of vertices V, where each vertex is connected to its E nearest neighbors based on Euclidean distance, forming a weighted graph with edge weights {wi0 →j0 }. 
+
+> 4:
+
+for all i0 ∈ { 1, . . . , L } do  
+
+> 5:
+
+for all j0 in the E nearest neighbors of i0 do  
+
+> 6:
+
+wi0 →j0 ← Cj0 
+
+> 7:
+
+end for  
+
+> 8:
+
+end for  
+
+> 9:
+
+Run Dijkstra’s algorithm on the weighted graph (V, w )
+
+from node pinit to node pfin to compute the shortest path 
+
+P. 
+
+> 10:
+
+Let NT = ⌊T /T s⌋+1 be the number of reference samples. Interpolate the waypoints along the path P to generate a sequence of NT equally spaced reference positions. The resulting sequence constitutes the reference trajectory. 
+
+C. Offline trajectory generation 
+
+In this subsection, we compute a communication-guided spatial reference path between the initial and final positions. In the offline graph-based planner, the UAV altitude is kept constant and only the horizontal motion is optimized. In the world frame FW , the fixed planning altitude is set to pz =
+
+hR. The graph-search planner does not directly optimize the full orientation-aware sum-rate; instead, it uses a lightweight distance-based surrogate to identify communication-favorable regions at low computational cost. Orientation-dependent ef-fects are then handled online by the NMPC and the state-dependent communication updates. To generate the reference 2D trajectory, we first sample candidate waypoints in the spatial deployment area with re-spect to the x− and y− coordinates while keeping the altitude fixed. We then construct a weighted graph over the resulting candidate positions and search for a path from the initial to the final location that minimizes a communications-aware cost. In principle, the edge weight between two nodes (the cost) should be defined as the negative network sum-rate evaluated at the arrival position. However, this requires computing the full communication model for every edge in the graph, leading to a complexity of O(LIN M ), where L is the number of vertices, I is the total number of users, N is the number of antenna elements, and M is the total number of RIS elements. To reduce this computational burden, we introduce a simplified cost function that approximates the communication quality of each vertex without explicitly evaluating the full data rate IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 8                                                                          
+
+> TABLE II UAV D YNAMIC MODEL PARAMETERS AND NMPC W EIGHTS
+> Parameter Value Unit UAV Dynamic Model
+> Mass m= 1 .042 kg Gravity g= 9 .81 m/s 2
+> Arm length d= 0 .23 mInertia matrix J= diag(0 .015 ,0.015 ,0.070) kg ·m2
+> Thrust coefficient bf= 5 .95 ×10 −4N/Hz 2
+> Moment coefficient bm= 1 ×10 −5N·m/Hz 2
+> Rotor speed limits Ω = 16 ,¯Ω = 100 Hz Maximum velocity ¯v= 17 m/s
+> NMPC
+> Sampling time Ts= 80 ms Prediction horizon Np= 15 steps Position weight Qp=Qp,Np = diag(10 ,10 ,12) –Velocity weight Qv=Qv,Np = 1 .1 diag(1 ,1,1) –Angular velocity weight Qω=Qω,Np = 30 diag(1 ,1,1) –Quaternion weight Qq=Qq,Np = 10 –Slack variable weight Qsv = 2 ×10 −12 diag(1 , . . . , 1) –
+
+expression. The cost at a node l is defined as follows 
+
+Cl = ( ‖pl − pv‖2 · ‖ pl − pBS ‖2)γ , (24) where pl = [ plx, p ly , h R]⊤ denotes the 3D position of the vertex 
+
+l in the graph G and γ ∈ R+ denotes a factor to enforce the importance of communication in the design of the reference trajectory. This cost corresponds to the product of the distances from the vertex to pv, the virtual user position, and from the vertex to the BS position pBS . This is motivated by the spatial clustering of the users. In the general case, the cost at node l
+
+is Cl = ( ‖pl − pBS ‖2 × ∏Ii=1 ‖pl − pi‖2)γ . A low cost value indicates that the UAV is close to both the BS and the users when positioned at pl. This is consistent with the structure of the path loss functions α(p) and βi(p), respectively, in (9) and (10), where shorter distances reduce path loss. Moreover, these distances determine both the amplitude attenuation through the inverse-distance path-loss terms and the propagation phase through the exponential terms of the channel coefficients. Con-sequently, minimizing the proposed cost favors locations that simultaneously reduce path-loss attenuation. The complexity of the cost computation is reduced to O(L).The 2D reference trajectory is generated using Algorithm 1. First, the spatial domain is sampled to construct a set of candidate nodes that includes both the initial and terminal positions. A weighted graph is then built by connecting each node to its E nearest neighbors based on Euclidean distance. The edge weights are defined from the cost associated with the destination node, and Dijkstra’s algorithm is applied to compute the minimum-cost path on the resulting graph. The discrete path is subsequently densified to match the NMPC prediction grid, yielding the reference trajectory used for tracking. Alternative graph-search methods such as A ⋆ could also be used. However, for the moderate graph sizes considered here, its computational advantage over Dijkstra’s algorithm is limited. Sampling-based planners such as RRT ⋆ are less suitable in this setting, since the problem is formulated on a finite graph rather than as a continuous high-dimensional motion-planning problem. Under this formulation, Dijkstra’s algorithm provides a deterministic and graph-optimal solution on the constructed roadmap. 
+
+D. NMPC-based trajectory tracking 
+
+Given the reference trajectory generated in Section IV-C and the communication parameters computed at the current sampling instant, the NMPC solves a finite-horizon OCP to determine feasible control inputs that track the reference while satisfying the UAV dynamics and physical constraints. The beamforming vector and RIS phase-shift matrix are computed from the current UAV state before the NMPC problem is solved, and are held constant over the prediction horizon. They are recomputed at the next sampling instant using the newly measured UAV state. 
+
+1) Discrete-time formulation: The system evolves over a finite prediction horizon of Np steps with sampling period 
+
+Ts > 0, and corresponding real time tk = kT s, where the subscript k is an integer number. For time-indexed sequences, the subscript ℓ ∈ {0, . . . , N p} denotes the value of the sequence at step ℓ (e.g., xℓ, pℓ, vℓ). This discretization embeds the continuous-time dynamics of Section II-D into the NMPC framework. The communication layer operates at a faster time scale than the NMPC. Accordingly, each sampling interval Ts
+
+is uniformly divided into I-TDMA transmission slots, where 
+
+I is the number of users (for a sampling time of Ts = 0 .08 s, corresponding to an NMPC update rate of 12 .5 Hz, and a total of I = 5 users, the corresponding TDMA update rate is 
+
+62 .5 Hz). During each sub-slot, only one user is served using the full system bandwidth B0.
+
+2) Objective function: The tracking objective is to drive the UAV state toward a prescribed reference trajectory. The NMPC state is defined as x = [p⊤, q⊤, v⊤, ω⊤]⊤. At prediction step ℓ, the corresponding desired state is xd,ℓ =[p⊤
+
+> d,ℓ
+
+, q⊤
+
+> d,ℓ
+
+, v⊤
+
+> d,ℓ
+
+, ω⊤
+
+> d,ℓ
+
+]⊤, where pd,ℓ is provided by the refer-ence trajectory generated in Section IV-C. Position, velocity, and angular-velocity tracking errors are penalized through quadratic terms weighted by positive-definite diagonal matrices. Since quaternion discrepancies cannot be meaningfully measured using a Euclidean norm, the attitude tracking error is instead quantified through the geodesic quaternion distance dq (qℓ, qd,ℓ ), following the defi-nition in [41]. The instantaneous rate constraint Ri(xℓ) ≥ Rmin in (19e) may become temporarily infeasible in the presence of dis-turbances or model mismatch. To preserve feasibility of the NMPC problem, nonnegative slack variables si,ℓ ≥ 0 are introduced for each user and prediction step. These slack vari-ables are penalized in the cost function through the quadratic term ‖sℓ‖2 
+
+> Qsv
+
+, where sℓ = [s1,ℓ , . . . , s I,ℓ ]⊤ and Qsv is a diagonal matrix with positive weights. This formulation en-courages satisfaction of the QoS constraints whenever feasible, while allowing limited constraint relaxation when necessary to maintain robustness and recursive feasibility. The stage cost at step ℓ is defined as follows 
+
+eℓ = ‖pd,ℓ − pℓ‖2 
+
+> Qp
+
++ Qqdq (qℓ, qd,ℓ )2
+
++ ‖vd,ℓ − vℓ‖2 
+
+> Qv
+
++ ‖ωd,ℓ − ωℓ‖2 
+
+> Qω
+
++ ‖sℓ‖2 
+
+> Qsv
+
+, (25) where Qp is a positive-definite diagonal tracking weight, Qq
+
+is a positive scalar tracking weight, while Qv, Qω and Qsv 
+
+are positive semi-definite diagonal regularization weights. To enhance convergence to the terminal equilibrium and IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 9
+
+support closed-loop stability, a quadratic terminal cost is incorporated as follows 
+
+eNp = ‖pd,N p − pNp ‖2 
+
+> Qp,Np
+
++ Qq,N p dq (qNp , qd,N p )2
+
++ ‖vd,N p − vNp ‖2 
+
+> Qv,Np
+
++ ‖ωd,N p − ωNp ‖2 
+
+> Qω,Np
+
+, (26) where Qp,N p , Qv,N p and Qω,N p are positive semi-definite diagonal terminal weight matrices, and Qq,N p is a positive scalar terminal weight. 
+
+3) Optimal Control Problem: At time tk, the NMPC solves the following finite-horizon optimal control problem over a prediction horizon of Np steps: 
+
+min 
+
+u, s 
+
+> Np−1
+
+∑
+
+> ℓ=0
+
+eℓ + eNp (27a) 
+
+s.t. x0 = x(tk ), (27b) 
+
+xℓ+1 = hd(xℓ, uℓ), ℓ ∈ { 0, . . . , N p − 1}, (27c) 
+
+pℓ ∈ A , ℓ ∈ { 0, . . . , N p}, (27d) 
+
+‖vℓ‖2 ≤ ¯v, ℓ ∈ { 0, . . . , N p}, (27e) 
+
+Ωs,ℓ ∈ [Ω , ¯Ω] , ∀s ∈ { 1, 2, 3, 4}, ℓ ∈ { 0, . . . , N p}, (27f) 
+
+Ri(xℓ) + si,ℓ ≥ Rmin , i ∈ I , ℓ ∈ { 0, . . . , N p}, (27g) 
+
+si,ℓ ≥ 0, i ∈ I , ℓ ∈ { 0, . . . , N p}. (27h) 
+
+In (27a), the objective sums the stage-wise tracking costs over the prediction horizon and a terminal tracking cost. Con-straint (27b) sets the measured state at the current sampling instant tk as the initial condition of the prediction model. Constraint (27c) enforces the discrete-time system dynamics 
+
+xℓ+1 = hd(xℓ, uℓ) at each prediction step. Constraints (27d) and (27e) keep the predicted trajectory within the admissi-ble deployment region A and within the maximum-velocity bound, respectively. Constraint (27f) enforces actuator limits by restricting each rotor speed to [Ω , ¯Ω] . Constraint (27g) is a softened version of the instantaneous rate requirement in (19e). As a hard constraint, (19e) can become infeasible under model mismatch or disturbances; the slack variables relax it so that the OCP itself always admits a solution, while their quadratic penalization keeps QoS violations as small as possible. 
+
+4) NMPC online complexity analysis: In the proposed framework, at each sampling time, the NMPC formulation takes the form of a nonlinear optimization problem, which is linearized and transformed into a sequence of quadratic programs [42]. Solving a nonlinear program requires cubic computational effort, expressed as O(I0(nz + na)3), where 
+
+nz is the total number of decision variables, na the total number of active constraints, and I0 the number of solver iterations [43]. The computational complexity discussed above characterizes the optimization problem itself. The actual ex-ecution time depends on the target onboard hardware, the numerical solver, and implementation-specific details. To com-plement the theoretical complexity analysis with a practical assessment, the execution time of the proposed framework is reported and discussed in Section V-E. V. S IMULATION RESULTS 
+
+This section evaluates the effectiveness of the proposed approach through numerical analysis. We first detail the simu-lation setup (Section V-A), followed by an analysis of trajecto-ries (Section V-B), communication performance (Section V-C),         
+
+> -200 -100 0100 200
+> x (m)
+> -200 -150 -100 -50 050 100 150 200
+> y (m)
+> Rate samples BS Users Reference path
+> 0.5 11.5 2Sum-rate (bit/s) 10 7
+> Fig. 4. Reference trajectory over the communication-aware cost map, showing the selected path toward favorable regions.
+> -50 100 0100
+> z (m)
+> 50 50
+> y (m) x (m)
+> 100 00-50 -100 -100 NoT Trajectory HoT Trajectory Reference Trajectory Start Finish Users BS position
+> Fig. 5. 3D UAV trajectory tracking, where curves represent reference, HoT, and NoT paths, illustrating overall tracking behavior.
+
+scalability (Section V-D), and UAV flight dynamics (Section V-E). The simulations were performed in MATLAB R2024b using the MATMPC toolbox 2 [42], which employs a fixed-step fourth-order Runge–Kutta integrator and qpOASES 3 to solve the quadratic programming subproblems arising from the NMPC formulation. All simulations were executed on a desktop computer running Linux Mint 22 .3 (Kernel 6.8.0), equipped with an Intel ® Core™ i 7-10700 CPU ( 8 cores, 16 
+
+threads, up to 4.8 GHz) and 16 GB of RAM. 
+
+A. Simulation setup and benchmarks 
+
+We conducted simulations to assess the performance of our proposed approach by considering an area A = [ −200; 200] 2×
+
+[90; 110] . We consider a group of I = 5 users deployed with a uniform random distribution for their x− and y−coordinates in a square area (px,i , p y,i ) ∈ [100; 150] × [−30; 30] . The BS antenna is positioned at the center of the world frame OW                         
+
+> 2https://github.com/chenyutao36/MATMPC
+> 3https://github.com/coin-or/qpOASES IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 10
+> 010 20 30 40 50 60 70 80 -100 -50 0p x (m) HoT: p x
+> NoT: p x
+> 010 20 30 40 50 60 70 80 -100 0100 p y (m) HoT: p y
+> NoT: p y
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 100 101 102
+> p z (m)  HoT: p z
+> NoT: p z
+
+Fig. 6. UAV position components over time for HoT and NoT, showing tracking performance and altitude variations.         
+
+> -200 -150 -100 -50 050 100 150 200
+> x (m)
+> -200 -150 -100 -50 050 100 150 200
+> y (m)
+> 0.5 11.5 2Sum-rate (bit/s) 10 7
+> Rate samples BS Users User barycenter PURG PSCA-RG
+
+Fig. 7. Comparison of the proposed PURG trajectory with the PSCA-RG benchmark in the 2D spatial plane. 
+
+at an altitude hBS = 68 m and is equipped with N = 3 
+
+antenna elements with dimensions dH0 = dV0 = λ/ 2, where 
+
+λ is the wavelength of the signal emitted by the BS. The BS, whose antenna gain is GA = 8 dB, transmits a signal of wavelength λ = 0 .15 m with a transmission power P0 = 23 
+
+dBm and a bandwidth B0 = 5 MHz. We considered an RIS with (MH , M V ) = (4 , 4) elements, and the horizontal and vertical separation distances of the RIS elements are 
+
+dHR = λ/ 2 and dVR = λ/ 2, respectively. We assumed a reference gain at 1 m, l0 = −30 dB, and a noise power of σ0 = −100 dBm. The minimum data rate required to satisfy the users’ QoS is Rmin = 1 .25 Mbit/s. The UAV initial position is pinit = [ −100; −100; hR] and its final destination is 
+
+pfin = [ −100; 100; hR] with a desired z-coordinate hR = 100 
+
+m. The hyperparameters for the reference trajectory generation were considered as L = 30000 , E = 8 , and γ = 8 .The UAV dynamic model parameters and the weights for the NMPC are given in Table II. The desired orientation,         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 00.2 0.4 0.6 0.8 1
+> Normalized cumulative sum-rate
+> PURG PSCA-RG
+
+Fig. 8. Normalized cumulative sum-rate achieved by the reference trajectories generated by PURG and PSCA-RG over the mission duration. The curves are normalized by the maximum value attained by the PURG scheme.         
+
+> -200 -150 -100 -50 050 100 150 200
+> x (m)
+> -200 -150 -100 -50 050 100 150 200
+> y (m)
+> Rate samples BS Users User barycenter RRG PURG ( =2) PURG ( =5) PURG ( =8)
+> 0.5 11.5 2Sum-rate (bit/s) 10 7
+
+Fig. 9. Sensitivity analysis of the PURG trajectory for different values of the proxy utility exponent γ compared to the RRG trajectory. 
+
+velocity, and angular velocity are qd,ℓ = [1 , 0, 0, 0] ⊤, vd,ℓ =
+
+0, and ωd,ℓ = 0, respectively, for all time steps ℓ. The initial and final states are xI = [ pinit , qinit , vinit , ωinit ]⊤ and 
+
+xF = [pfin , qfin , vfin , ωfin ]⊤, where qinit = qfin = qd,ℓ ,
+
+vinit = vfin = 0, and ωinit = ωfin = 0. The total flight duration is T = 80 s. We evaluate both the dynamic modeling and communication aspects of our different schemes. For the dynamic modeling part, we considered: i) the Horizontal orientation Tracking (HoT) scheme, which corresponds to the proposed tracking scheme in Section IV-D, for which the tracking parameters are as indicated in Table II; ii) the No orientation Tracking (NoT) scheme, which corresponds to an ARIS with no orientation and angular velocity tracking in the NMPC, meaning that for this scheme Qq = Qq,N p = Qω = Qω,N p = 0 (25), and the other tracking parameters are as indicated in Table II; iii) the Straight Line (SL) scheme, in which the ARIS follows a straight-line trajectory from its initial position pinit to its final position pfin .The corresponding tracking weights are those reported in Ta-ble II. Regarding the communication aspect, three approaches IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 11         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 00.2 0.4 0.6 0.8 1
+> Normalized cumulative sum-rate
+> RRG PURG ( =2) PURG ( =5) PURG ( =8)
+
+Fig. 10. Normalized cumulative sum-rate for different γ values, showing the convergence of PURG toward the RRG as γ increases. All curves are normalized by the maximum cumulative sum-rate attained over all methods.         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 0.5 11.5 22.5 33.5 44.5 5
+> Average user rate (bit/s)
+> 10 6
+> HoT (Average) NoT (Average) SL (Average) Rmin
+
+Fig. 11. Average user data rate versus time, comparing HoT, NoT, and SL schemes, highlighting improved stability and QoS compliance. 
+
+were considered: i) the proposed BP scheme in Sections IV-A and IV-B, corresponding to an ARIS where joint beamforming and phase-shift optimization were conducted during the whole mission duration; ii) the P scheme, where only the phase-shift optimization is conducted during the ARIS mission while considering a fixed beamforming vector corresponding to the optimal beamforming at the initial position; iii) the B scheme, with only the beamforming being performed during the flight and a constant phase shift corresponding to the optimal phase shift at the initial position. The SL scheme is considered in conjunction with the BP joint optimization. For the sake of brevity, the resulting SL-BP scheme will hereafter be referred to simply as the SL scheme throughout the remainder of the paper. Regarding the reference trajectory generation, we consider the Proxy Utility Reference Generator (PURG), corresponding to Algorithm 1 with the cost defined in (24), and the Rate Reference Generator (RRG), which corresponds to Algorithm 1 using the following cost function:         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 00.5 11.5 22.5
+> Sum-rate (bit/s)
+> 10 7
+> HoT-BP NoT-BP HoT-P NoT-P SL HoT-B NoT-B
+
+Fig. 12. Sum-rate over time for different schemes, showing the benefit of joint optimization and orientation tracking.             
+
+> 010 20 30 40 50 60 70 80 Time (s) 0.0 0.5 1.0 1.5 2.0 2.5 3.0 Cumulative average throughput of users (bit) 10 8
+> HoT NoT SL HoT 1 std NoT 1 std SL 1 std Rmin Tf
+
+Fig. 13. Average cumulative throughput per user over time, illustrating the benefits of orientation tracking and communication-aware trajectory design. 
+
+Cl = Rmax − ∑ 
+
+> i∈I
+
+Ri(pl), where Rmax is the maximum sum-rate among the sampled vertices. The beamforming vector and RIS phase shifts are computed using the closed-form expressions derived in Sections IV-A and IV-B, respectively. Additionally, we consider a Parallel Successive Convex Ap-proximation Reference Generator (PSCA-RG), which employs the PSCA algorithm [44] to solve a sequence of convex Taylor approximations of the rate function, jointly optimizing the ref-erence trajectory, beamforming vectors, and RIS phase shifts over 40 discrete trajectory points. The resulting trajectory is then densified to match the time discretization adopted by PURG. 
+
+B. Trajectory and positional analysis 
+
+In Fig. 4, the reference trajectory generated by Algorithm 1 is shown. During the first phase of the mission, the UAV moves towards regions offering a higher data rate, particularly IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 12         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 0246810 12 14
+> Cumulative throughput of the network (bit)
+> 10 8
+> HoT-BP NoT-BP HoT-P NoT-P SL-BP HoT-B NoT-B
+
+Fig. 14. Cumulative throughput, showing improved throughput for orientation-aware and joint optimization strategies.         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 00.5 11.5 2
+> Average Slack Variable
+> 10 5
+> HoT (Average Slack)
+
+Fig. 15. Evolution of the average QoS slack variable over time for the HoT scheme. The QoS slack is averaged over all users. 
+
+the area close to the users and the BS. In the second phase, the trajectory transitions towards the final destination while still favoring positions with a strong data rate level. Consequently, both objectives of reaching the final position and maintaining high communication quality are achieved, demonstrating the effectiveness of Algorithm 1. Fig. 5 presents the reference trajectory together with the HoT and NoT trajectories in three-dimensional space. While the global motion patterns appear similar, the 3D visualiza-tion alone does not clearly quantify the tracking accuracy with respect to the reference. A more precise comparison is provided in Fig. 6, which depicts the time evolution of each position component. From the position-versus-time plots, it can be observed that both schemes start at pinit and reach 
+
+pfin , confirming successful mission completion. The x- and y-coordinates exhibit similar behavior in both cases. However, the z-coordinate differs more noticeably: the HoT altitude varies between 99 .5 m and 101 .7 m, while the NoT altitude varies between 99 .9 m and 100 .1 m. The more pronounced         
+
+> 46810 12 14 16 18 20
+> Number of RIS elements (M)
+> 0510 15
+> Network throughput (bit)
+> 10 8
+> HoT-BP NoT-BP HoT-P NoT-P SL-BP HoT-B NoT-B
+
+Fig. 16. Network throughput versus number of RIS elements, demonstrating scalability and performance improvement trends.         
+
+> 2345678910
+> Number of Users (I)
+> 246810 12 14
+> Network throughput (bit)
+> 10 8
+> HoT-BP NoT-BP HoT-P NoT-P SL-BP HoT-B NoT-B
+
+Fig. 17. Network throughput versus number of users, highlighting efficiency of the proposed approach. 
+
+variations in the z-coordinate observed in HoT, compared to the NoT scheme, are attributed to the orientation and angular velocity tracking imposed on HoT, which is absent in NoT. Fig. 7 compares the reference trajectories generated by the proposed PURG and the PSCA-RG. Both planners initially steer the UAV toward the communication-favorable region located near the BS and the user cluster before directing it toward the final destination. The PURG trajectory closely follows the overall behavior of the optimization-based PSCA-RG solution despite relying only on the low-complexity proxy cost. Fig. 8 presents the normalized cumulative sum-rate achieved along the trajectories of Fig. 7. All curves are normalized by the maximum value attained by the PURG scheme. Both meth-ods exhibit similar growth throughout the mission, confirming that the proxy utility accurately captures the communication objective. Interestingly, PURG achieves a higher cumulative sum-rate than PSCA-RG in this scenario, while requiring only a low-complexity graph-search procedure instead of repeatedly IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 13                                 
+
+> 010 20 30 40 50 60 70 80 0510 HoT NoT 010 20 30 40 50 60 70 80 05010 20 30 40 50 60 70 80 0510 010 20 30 40 50 60 70 80
+> Time (s)
+> 05
+
+Fig. 18. Tracking errors over time, comparing HoT and NoT, and illustrating trade-offs between position and orientation tracking.         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> 0246810 12 14 16 18 20
+> Velocity (m/s)
+
+Fig. 19. UAV velocity profile over time, showing smooth evolution within imposed limits. 
+
+solving convex optimization problems at higher complexity. Fig. 9 illustrates the influence of the proxy utility exponent γ
+
+on the generated trajectory. For small values of γ (e.g., γ = 2 ), PURG favors shorter trajectories and therefore remains closer to the straight path between the initial and final positions. As 
+
+γ increases, the communication cost becomes more dominant, causing the planned trajectory to move progressively closer to the RRG solution. For γ = 8 , the resulting path almost over-laps with the RRG trajectory, indicating that the proxy utility successfully reproduces the behavior of the communication-driven planner. Fig. 10 quantifies the impact of γ on the normalized cumu-lative sum-rate. All curves are normalized using the largest value among the plotted curves. Increasing γ consistently improves the cumulative achieved sum-rate because the UAV spends more time in communication-favorable regions. The performance obtained with γ = 8 closely approaches that of the RRG benchmark, while γ = 2 yields the lowest cumulative sum-rate due to its stronger preference for minimizing travel distance. These results demonstrate that γ provides an effective         
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> -30 -20 -10 010 20 30
+> Euler angles (deg)
+> Roll (HoT) Pitch (HoT) Yaw (HoT)
+
+Fig. 20. Euler angles over time in the HoT scheme, demonstrating smooth attitude behavior.            
+
+> 010 20 30 40 50 60 70 80
+> Time (s)
+> -1 -0.8 -0.6 -0.4 -0.2 00.2 0.4 0.6 0.8 1
+> Angular velocity (rad/s)
+> x(HoT)
+> y(HoT)
+> z(HoT)
+
+Fig. 21. Angular velocities over time, showing bounded behavior. 
+
+mechanism for balancing communication performance and trajectory efficiency. 
+
+C. Communication performance comparison 
+
+Fig. 11 shows the average users’ data rate over time. In the HoT scenario, the average rate evolves smoothly: it increases as the UAV moves toward regions offering stronger channel conditions, reaches a peak around 40 s, and then gradually decreases as the UAV departs from the high-rate area. The HoT scenario experiences occasional violations of the QoS constraint only at the beginning and the end of the mission, whereas the NoT scenario exhibits frequent QoS violations throughout the mission. The NoT scheme exhibits pronounced fluctuations, reflecting instability induced by uncontrolled ori-entation changes. The overall parabolic trend is explained by the UAV trajectory: it first approaches a communication-favorable region and later moves away from it during the final phase of the mission. The occasional violation of the minimum rate constraint in the HoT scenario is due to the softened QoS constraint in (27g), which allows temporary relaxation to maintain feasibility and ensure mission continuity. The IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 14                                          
+
+> 010 20 30 40 50 60 70 80 20 40 60 80 100
+> 1HoT (Hz) 010 20 30 40 50 60 70 80 20 40 60 80 100
+> 2HoT (Hz) 010 20 30 40 50 60 70 80 20 40 60 80 100
+> 3HoT (Hz) 010 20 30 40 50 60 70 80
+> Time (s)
+> 20 40 60 80 100
+> 4HoT (Hz)
+> Fig. 22. Rotor speeds over time, illustrating smooth actuation within physical limits.
+> 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0510 15 20 25
+> Fig. 23. Distribution of the NMPC optimization solve time over all control iterations. The vertical red line denotes the sampling period Ts.
+
+SL benchmark exhibits a smoother but consistently lower average user rate, remaining close to the minimum QoS threshold because the straight-line trajectory does not exploit communication-favorable regions. Fig. 12 shows the sum-rate over time. We observe that all NoT-based schemes exhibit fluctuations, while the HoT-based ones demonstrate stability. The SL scheme exhibits a smooth but consistently lower sum-rate than the HoT-BP and NoT-BP schemes, as it spends less time in communication-favorable regions during the mission. From a communication perspective, we note that the BP-based approaches achieve the highest sum rates, followed by the P-based approaches, while the B-based approaches achieve the lowest sum rates. This demonstrates the necessity of joint beamforming and phase-shift optimization over beamforming-only and phase-shift-only optimization. These results also indicate the importance of phase-shift optimization over beamforming optimization, as it plays a key role in signal reflection. Fig. 13 illustrates the average cumulative throughput per user over time. The HoT scenario achieves a 13 .77% improve-ment over the NoT scenario, demonstrating the significant impact of orientation tracking on network performance. The shaded regions represent one standard deviation around the average, showing that the users experience similar cumulative throughput due to their clustered spatial distribution. The SL benchmark consistently achieves less throughput than both HoT and NoT, highlighting the performance loss resulting from a communication-unaware straight-line trajectory. Fig. 14 shows the cumulative throughput over time. We notice that the HoT schemes, HoT-BP, HoT-P, and HoT-B, outperform their NoT counterparts, namely NoT-BP, NoT-P, and NoT-B, mainly due to the orientation instability in the NoT schemes, which adversely affects both the ARIS motion and the communication channels. The SL, being a BP scheme, consistently achieves lower cumulative throughput than the HoT-BP and NoT-BP schemes, illustrating the performance degradation caused by a communication-unaware straight-line trajectory. Additionally, from a communication perspective, we observe the same trend as in Fig. 12. The proposed HoT-BP outperforms the HoT-B and HoT-P schemes by at least a factor of 2.5 and 28% , respectively. Fig. 15 illustrates the evolution of the average slack variable 
+
+sℓ throughout the mission. The average is computed over the QoS slack variables of all users at each sampling instant. At the beginning, the slack rapidly increases to compensate for temporary QoS violations caused by the large tilt angles required for the UAV’s initial acceleration, which degrade the orientation-dependent RIS channel. During the main flight phase ( t = 5 –75 s ), the slack is gradually decreased, demon-strating that the penalty term ‖sℓ‖2 
+
+> Qsv
+
+effectively enforces the communication constraints whenever the UAV geometry permits. As the UAV approaches the target, the slack in-creases again to accommodate the communication degradation associated with the final braking and stabilization maneu-vers, thereby preserving optimization feasibility. This behav-ior highlights the NMPC’s ability to balance communication performance and control objectives while maintaining robust operation under challenging flight conditions. 
+
+D. Scalability analysis 
+
+In Fig. 16, the throughput of the network is shown as a function of the number of RIS elements by averaging over 
+
+5 network configurations. A minimum rate requirement of 
+
+Rmin = 10 Kbit/s is used to ensure feasibility, even when the number of RIS elements is small. As can be seen, the HoT-BP scheme outperforms all other schemes for all numbers of RIS elements, demonstrating the effectiveness of the pro-posed approach. The SL scheme consistently achieves lower throughput than the HoT-BP and NoT-BP schemes across all RIS sizes, while still benefiting from the increased number of RIS elements. Despite employing joint beamforming and phase-shift optimization, the SL scheme consistently under-performs HoT-P. It performs similarly to NoT-P, demonstrating that communication-aware trajectory design is essential for achieving high network throughput. For the maximum number of RIS elements, the performance ranking is HoT-BP, NoT-BP, HoT-P, SL, NoT-P, HoT-B, and NoT-B. Overall, the network IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 15 
+
+throughput increases with the number of RIS elements for all schemes. In Fig. 17, the network throughput is shown as a function of the number of users, for all the benchmark schemes, averaged over five network configurations. A minimum user rate of 
+
+Rmin = 1 Mbit/s is maintained throughout the simulations. Regardless of the number of users, HoT-BP consistently achieves the highest network throughput, followed by NoT-BP, HoT-P, NoT-P, SL-BP, and HoT-B, while HoT-B consistently outperforms NoT-B. The network throughput exhibits only minor variations, as even when the user density increases, the total transmission duration of the TDMA remains un-changed. These results further confirm the importance of jointly optimizing beamforming and RIS phase shifts, as well as explicitly accounting for UAV orientation, to maximize network throughput. 
+
+E. Dynamic tracking and actuation performance 
+
+Fig. 18 shows the tracking errors of the position, velocity, angular velocity, and the geodesic distance between the UAV orientation and the horizontal orientation over time. While the NoT scheme achieves better position tracking due to fewer constraints, the HoT scheme significantly improves angular velocity and orientation tracking. This behavior is expected, as HoT explicitly enforces attitude regulation, introducing ad-ditional coupling in the dynamics that slightly degrades trans-lational accuracy. This trade-off highlights a key limitation of fully coupled control: improving communication-relevant orientation comes at the cost of stricter motion constraints. Fig. 19 shows the UAV’s velocity profile over time. The velocity evolves smoothly within the imposed bounds, with a gradual deceleration toward zero at the end of the mission. This behavior is consistent with the NMPC design, which an-ticipates the terminal condition and avoids aggressive braking, indicating good predictive control performance. In Fig. 20, the Euler angles in the HoT scenario remain bounded within a small range and evolve smoothly throughout the flight. This indicates that the controller avoids abrupt attitude changes, which is desirable for both flight stability and communication performance, as large oscillations could degrade the channel. Fig. 21 shows the angular velocity evolution. The angular velocities remain tightly bounded within [−1, 1] rad/s, indicat-ing that the controller successfully regulates rotational motion without inducing oscillations or instability. In Fig. 22, the rotor speeds remain within actuation limits and vary smoothly over time. The absence of saturation or high-frequency oscillations suggests that the NMPC generates feasible and well-conditioned control inputs, avoiding aggres-sive commands that could stress the actuators or compromise real-world implementation. Fig. 23 shows the histogram of the NMPC computation time over all control iterations. Most optimization problems are solved in less than 20 ms , and all solve times remain well below the sampling period Ts (red line). This demonstrates that the proposed NMPC framework satisfies real-time execution requirements while exhibiting stable and consistent computa-tional performance. A video of the 3D trajectory of the three schemes can be found in https://youtu.be/TvkwDwx0meg, and the comprehensive code for this simulation can be found in https://github.com/Akhas2000/ARIS-MATMPC. VI. C ONCLUSION 
+
+In this paper, we studied ARIS deployment for connec-tivity support in obstructed environments, with a focus on the coupling between UAV motion, RIS orientation, and communication performance. The proposed framework com-bines orientation-aware channel modeling, multi-rotor UAV dynamics with actuation constraints, closed-form communi-cation updates for beamforming and RIS phase shifts under simplified subproblems, and NMPC-based trajectory tracking. Rather than solving the original joint problem monolithically, the framework addresses it through a decomposition-based strategy that remains computationally tractable and dynami-cally feasible. Simulation results show that explicit orientation tracking improves throughput and stabilizes the communica-tion performance relative to a free-orientation baseline, while joint beamforming and RIS phase-shift updates outperform partial communication updates. The results also highlight the importance of explicitly controlling the RIS orientation: enforcing orientation tracking leads to a 13 .77% improvement in user throughput compared with a free-orientation scenario. Moreover, the joint optimization of beamforming and RIS phase shifts significantly improves network performance, out-performing phase-shift-only and beamforming-only strategies by 28% and up to a factor of 2.5, respectively. This work demonstrates the strong impact of UAV orientation on ARIS-assisted communications under realistic dynamic constraints. Future work will exploit orientation as an additional degree of freedom for joint communication and trajectory optimization, and will extend the framework to moving users, a more general multi-user phase-shift design, and energy-aware or security-aware ARIS operation. REFERENCES [1] H. Wang et al. , “UAV Anti-Jamming Commun. With Power and Mobility Control,” IEEE Trans. Wireless Commun. , vol. 22, no. 7, pp. 4729–4744, 2023. [2] P. P. Ray, “A review on 6G for space-air-ground integrated network: Key enablers, open challenges, and future direction,” J. King Saud Univ. -Comp. and Inform. Scien. , vol. 34, no. 9, pp. 6949–6976, 2022. [3] M. Dai et al. , “Unmanned-Aerial-Vehicle-Assisted Wireless Networks: Advancements, Challenges, and Solutions,” IEEE Internet of Things J. ,vol. 10, no. 5, pp. 4117–4147, 2023. [4] D. Bonilla Licea et al. , “When Robotics Meets Wireless Commun.: An Introductory Tutorial,” Proc. IEEE , vol. 112, no. 2, pp. 140–177, 2024. [5] M. Vaezi et al. , “Cellular, Wide-Area, and Non-Terrestrial IoT: A Survey on 5G Advances and the Road Toward 6G,” IEEE Commun. Surveys and Tutorials , vol. 24, no. 2, pp. 1117–1174, 2022. [6] M. Eskandari et al. , “Trajectory Planning for UAVs Equipped With RISs to Provide Aerial LoS Service for Mobile Nodes in 5G/Optical Wireless Commun. Networks,” IEEE Trans. Veh. Technol. , vol. 72, no. 6, pp. 8216–8221, 2023. [7] A. V. Savkin et al. , “Joint Multi-UAV Path Planning and LoS Commun. for Mobile-Edge Computing in IoT Networks With RISs,” IEEE Internet Things J. , vol. 10, no. 3, pp. 2720–2727, 2023. [8] Y. Liu et al. , “Reconfigurable Intelligent Surfaces: Principles and Op-portunities,” IEEE Commun. Surveys and Tutorials , vol. 23, no. 3, pp. 1546–1577, 2021. [9] H. Yang et al. , “Beyond Limitations of 5G with RIS: Field Trial in a Commercial Network, Recent Advances, and Future Directions,” IEEE Commun. Mag. , vol. 62, no. 10, pp. 132–138, 2024. IEEE TRANSACTIONS ON VEHICULAR TECHNOLOGY. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 16 
+
+[10] Q. Wu et al. , “Intelligent Surfaces Empowered Wireless Network: Recent Advances and the Road to 6G,” Proc. IEEE , vol. 112, no. 7, pp. 724–763, 2024. [11] X. Cao et al. , “Reconfigurable Intelligent Surface-Assisted Aerial-Terrestrial Commun. via Multi-Task Learning,” IEEE J. Selected Areas in Commun. , vol. 39, no. 10, pp. 3035–3050, 2021. [12] Z. Peng et al. , “Beamforming Optimization for Active RIS-Aided Multiuser Commun. With Hardware Impairments,” IEEE Trans. Wireless Commun. , vol. 23, no. 8, pp. 9884–9898, 2024. [13] M. Sherman et al. , “Optimizing AoI in UAV-RIS-Assisted IoT Networks: Off Policy Versus On Policy,” IEEE Internet of Things J. , vol. 10, no. 14, pp. 12 401–12 415, 2023. [14] S. Arzykulov et al. , “Aerial RIS-Aided Physical Layer Security: Optimal Deployment and Partitioning,” IEEE Trans. Cognitive Commun. and Networking , vol. 10, no. 5, pp. 1867–1882, 2024. [15] P. Ribeiro et al. , “On the Energy Consumption of Rotary-Wing and Fixed-Wing UAVs in Flying Networks,” 20th Wireless On-Demand Network Systems and Services Conference , pp. 1–4, 2025. [16] S. Leutenegger et al. , “Flying Robots,” in Springer Handbook of Robotics . Springer, 2016, pp. 623–670. [17] H. Lu et al. , “Aerial Intelligent Reflecting Surface: Joint Placement and Passive Beamforming Design With 3D Beam Flattening,” IEEE Trans. Wireless Commun. , vol. 20, no. 7, pp. 4128–4143, 2021. [18] L. Wang et al. , “Joint Trajectory and Passive Beamforming Design for Intelligent Reflecting Surface-Aided UAV Communications: A Deep Reinforcement Learning Approach,” IEEE Trans. Mobile Computing ,vol. 22, no. 11, pp. 6543–6553, 2023. [19] Q. Wu et al. , “Towards Smart and Reconfigurable Environment: Intelli-gent Reflecting Surface Aided Wireless Network,” IEEE Commun. Mag. ,vol. 58, no. 1, pp. 106–112, 2020. [20] M. Alsenwi et al. , “RIS-UAV Integration for Enhanced Coverage and Energy-Efficient 6G Wireless Networks,” IEEE Trans. Green Commun. and Networking , pp. 1–1, 2025. [21] H. Mei et al. , “Joint Trajectory-Task-Cache Optimization With Phase-Shift Design of RIS-Assisted UAV for MEC,” IEEE Wireless Commun. Lett. , vol. 10, no. 7, pp. 1586–1590, 2021. [22] ——, “3D-Trajectory and Phase-Shift Design for RIS-Assisted UAV Systems Using Deep Reinforcement Learning,” IEEE Trans. Veh. Tech-nol. , vol. 71, no. 3, pp. 3020–3029, 2022. [23] B. Duo et al. , “Joint Dual-UAV Trajectory and RIS Design for ARIS-Assisted Aerial Computing in IoT,” IEEE Internet of Things J. , vol. 10, no. 22, pp. 19 584–19 594, 2023. [24] S. Li et al. , “Joint UAV Trajectory and Beamforming Designs for RIS-Assisted MIMO System,” IEEE Trans. Veh. Technol. , vol. 73, no. 4, pp. 5378–5392, 2024. [25] C. Liu et al. , “Joint 3D Orientation and Location Optimization for UAV-Mounted Intelligent Reflecting Surface,” in IEEE Global Commun. Conference , 2024, pp. 2725–2730. [26] A. B. M. Adam et al. , “Secure Communication in UAV–RIS-Empowered Multiuser Networks: Joint Beamforming, Phase Shift, and UAV Trajec-tory Optimization,” IEEE Syst. J. , vol. 18, no. 2, pp. 1009–1019, 2024. [27] Q. Wu et al. , “Intelligent Reflecting Surface Enhanced Wireless Network via Joint Active and Passive Beamforming,” IEEE Trans. Wireless Commun. , vol. 18, no. 11, pp. 5394–5409, 2019. [28] K. Guo et al. , “Deep Reinforcement Learning and NOMA-Based Multi-Objective RIS-Assisted IS-UAV-TNs: Trajectory Optimization and Beamforming Design,” IEEE Trans. Intelligent Transportation Systems ,vol. 24, no. 9, pp. 10 197–10 210, 2023. [29] X. Tang et al. , “Secure Communication With UAV-Enabled Aerial RIS: Learning Trajectory With Reflection Optimization,” IEEE Trans. Intelligent Vehicles , pp. 1–10, 2023. [30] L. Brunke et al. , “Safe Learning in Robotics: From Learning-Based Control to Safe Reinforcement Learning,” Annu. Rev. Control, Robotics, and Autonomous Systems , vol. 5, pp. 411–444, 2022. [31] R. Cheng et al. , “End-to-End Safe Reinforcement Learning through Barrier Functions for Safety-Critical Continuous Control Tasks,” in AAAI Conf. on Art. Intel. , vol. 33, no. 1, 2019, pp. 3387–3395. [32] M. Eskandari et al. , “Model Predictive Control-Based 3D Navigation of a RIS-Equipped UAV for LoS Wireless Communication With a Ground Intelligent Vehicle,” IEEE Trans. Intel. Veh. , vol. 8, no. 3, pp. 2371– 2384, 2023. [33] B. Li et al. , “Aerial RIS-Enhanced Communications: Joint UAV Trajec-tory, Altitude Control, and Phase Shift Design,” IEEE Trans. Wireless Commun. , pp. 1–1, 2025, in Press. [34] M. Lee et al. , “A Distributed Two-Layer Framework for Teleoperated Platooning of Fixed-Wing UAVs via Decomposition and Backstepping,” 
+
+IEEE Robotics and Automation Lett. , vol. 6, no. 2, pp. 3655–3662, 2021. [35] E. Bayro-Corrochano, “A Survey on Quaternion Algebra and Geo-metric Algebra Applications in Engineering and Computer Science 1995–2020,” IEEE Access , vol. 9, pp. 104 326–104 355, 2021. [36] O. A. Ghasemi, M. C. Amirani, and M. Azghani, “Resource and Power Allocation for Sum-Throughput Maximization in RIS-Assisted TDMA Wireless Sensor Networks,” IEEE IoT J. , vol. 11, no. 13, pp. 24 123– 24 133, 2024. [37] O. A. Ghasemi and M. C. Amirani, “Resource Allocation in a RIS-Assisted TDMA Wireless Powered Sensor Network Using UAV,” IEEE Commun. Lett. , vol. 29, no. 6, pp. 1375–1379, 2025. [38] A. K. A. H. Saliah et al. , “Harnessing the Potential of Omnidirectional UAVs in RIS-Enabled Wireless Networks,” in IEEE International Con-ference on Acoustics, Speech and Signal Processing , 2025, pp. 1–5. [39] E. Bjornson et al. , in Massive MIMO Networks: Spectral, Energy, and Hardware Efficiency , 2017. [40] H. B. Jeon et al. , “An energy-efficient aerial backhaul system with reconfigurable intelligent surface,” IEEE Trans. Wireless Commun. ,vol. 21, pp. 6478–6494, 8 2022. [41] A. Dmytruk et al. , “A Perception-Aware NMPC for Vision-Based Target Tracking and Collision Avoidance with a Multi-Rotor UAV,” in Intern. Conf. on Unm. Air. Sys. , 2022, pp. 1668–1673. [42] Y. Chen et al. , “MATMPC - A MATLAB Based Toolbox for Real-time Nonlinear Model Predictive Control,” in European Control Conference ,2019, pp. 3365–3370. [43] H. J. Ferreau et al. , “qpOASES: A Parametric Active-Set Algorithm for Quadratic Programming,” Mathematical Programming Computation ,vol. 6, no. 4, pp. 327–363, 2014. [44] G. Scutari et al. , “Decomposition by Partial Linearization: Parallel Optimization of Multi-Agent Systems,” IEEE Trans. Signal Processing ,vol. 62, no. 3, pp. 641–656, 2014.
