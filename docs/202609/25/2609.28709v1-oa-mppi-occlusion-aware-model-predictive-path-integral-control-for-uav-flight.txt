@@ -1,0 +1,455 @@
+Title: OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight
+
+URL Source: https://arxiv.org/pdf/2609.28709v1
+
+Published Time: Fri, 25 Sep 2026 00:11:42 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight 
+
+Vittorio Palladino, Teaya Yang, Ruiqi Zhang, Mark W. Mueller 
+
+Abstract —Autonomous UAV flight through cluttered and par-tially unknown environments requires reasoning not only about observed obstacles but also about occluded regions that the sensor cannot observe. We present OA-MPPI, an obstacle- and occlusion-aware extension of Model Predictive Path Integral (MPPI) control for quadrotor flight that accounts for potential moving agents emerging from these regions into the vehicle’s path. At every planning step, we extract a 3D occlusion boundary from the online occupancy map and use it to model the regions that hidden agents could reach over the prediction horizon. We penalize trajectories that enter these expanding regions within MPPI rollouts generated using nonlinear quadrotor dynamics and accounting for individual rotor thrust limits. We validate the proposed approach in simulation and hardware flight exper-iments, with the complete pipeline running onboard the vehicle in real time. Results show increased clearance from occlusion boundaries compared to baseline MPPI in both settings, as well as avoidance of an agent emerging from occlusion in simulation. 
+
+Supplementary Video: https://youtu.be/oSeQau1mG1g 
+
+Index Terms —model predictive path integral, sampling-based control, obstacle avoidance, uncrewed aerial vehicles 
+
+I. I NTRODUCTION 
+
+Control of Uncrewed Aerial Vehicles (UAVs) in cluttered and unknown environments is a challenging problem, and one that is becoming increasingly critical as UAVs are deployed for search-and-rescue missions [1], infrastructure inspection [2], and aerial coverage in disaster response [3]. These applications impose three coupled challenges: (1) the controller must efficiently account for nonlinear vehicle dynamics and actuator limits; (2) it must detect and avoid obstacles using onboard sensing in real time; (3) it must anticipate potential collisions with moving obstacles emerging from unobserved regions. The first two challenges are traditionally addressed with Nonlinear Model Predictive Control (NMPC), which in-corporates vehicle dynamics, actuator limits, and collision-avoidance constraints within a unified optimization framework. However, the resulting nonconvex optimization problems can be computationally demanding to solve in real time, particu-larly in cluttered environments. Model Predictive Path Integral (MPPI) control [4], [5] offers a sampling-based alternative that evaluates candidate trajectories through simulated rollouts without requiring derivatives of the dynamics or cost function. 
+
+The authors are with the High Performance Robotics Laboratory, De-partment of Mechanical Engineering, University of California, Berke-ley, CA 94720, United States. Email: {vpall, teaya.yang, richzhang, mwm }@berkeley.edu 
+
+Fig. 1. Example of OA-MPPI in operation. Top: experimental setup. Bottom: occupancy map and sampled rollouts. Red voxels denote occupied space, and orange voxels mark the extracted occlusion boundary. Green lines indicate collision-free rollouts, yellow lines indicate rollouts entering an expanding keep-out region, and red lines indicate rollouts colliding with mapped obsta-cles. The green sphere marks the goal. Ground voxels are omitted in the plot for clarity. 
+
+This enables the direct evaluation of complex, nonconvex colli-sion costs and provides a flexible foundation for incorporating the risks posed by unobserved regions. The third challenge has received comparatively less atten-tion in aerial robotics and has instead been studied mainly in the context of autonomous ground vehicles, where oc-clusions from parked cars or buildings can hide pedestrians or oncoming traffic at intersections. There, occlusion-aware planners typically detect the occluded region directly from the range sensor and reason about phantom agents that could be hiding within it [6], [7], bounding the risk they pose through a forward-reachability or risk-assessment formulation before arXiv:2609.28709v1 [cs.RO] 23 Sep 2026 the vehicle commits to a trajectory. In this paper, we tackle all three challenges jointly by build-ing a unified MPPI-based control framework for UAV flight. The framework identifies the 3D boundaries of regions oc-cluded by observed obstacles and expands a potential collision region around these boundaries over the prediction horizon to account for agents that may emerge from occluded regions. The resulting occlusion-aware cost is evaluated alongside an observed-obstacle avoidance cost within the MPPI rollouts. We evaluate the approach in simulation and real-time hardware experiments, using a LiDAR sensor for both state estimation and obstacle detection. Our results demonstrate that accounting for occluded regions produces safer trajectories near occlusion boundaries than a controller without the occlusion-aware cost. II. R ELATED WORK 
+
+Occlusion-aware planning: Reasoning about occluded dy-namic agents has mostly been studied for ground vehicles. Early work accounts for occlusion by restricting planning to the visible region [8] or avoiding states from which the vehicle cannot stop before a collision [9]. Other approaches explicitly model phantom agents in occluded regions and account for their possible motion during planning. These methods differ in how they identify occluded regions, predict hidden-agent motion, and incorporate the resulting risk. Firoozi et al. [6] detect occlusion boundaries from LiDAR range discontinuities and constrain an NMPC planner using expanding reachable sets. Park et al. [7] quantify hidden-agent reachability using simplified state distributions and impose risk-dependent speed limits. Koschi and Althoff [10] use known road geometry and traffic rules to conservatively predict the occupancy of hidden traffic participants. M¨ oller et al. [11] track occluded regions over time and evaluate candidate trajectories using agent-specific motion predictions and collision risk. We extend OA-MPC’s worst-case hidden-agent approach [6] to 3D flight by incorporating a collision-risk cost into an MPPI controller that accounts for nonlinear quadrotor dynamics. Our occlusion detection uses occupancy maps, removing OA-MPC’s depen-dence on repeated LiDAR scan patterns and supporting any sensor capable of generating the required occupancy map. 
+
+MPPI for aerial robots: Unlike gradient-based trajectory optimization methods, which require a smooth cost function with well-defined gradients everywhere, MPPI [4] only evalu-ates costs forward along sampled rollouts, without ever differ-entiating them. This allows MPPI to directly consume costs derived from raw occupancy grids or distance fields, including the discontinuities and gradient singularities that arise near non-convex obstacle boundaries, without requiring a smoothed or convex approximation. This flexibility makes MPPI well suited to jointly evaluating obstacle and occlusion costs within rollouts of nonlinear quadrotor dynamics. Minarik et al. [5] demonstrate onboard MPPI control for quadrotors, tracking references at speeds up to 44 km h −1. Their controller evalu-ates rollouts in parallel on a GPU and incorporates obstacle avoidance through a binary collision cost. PA-MPPI [12] adds a perception term that rewards trajectories observing unknown regions when the goal is occluded. However, neither method explicitly models agents emerging from occluded regions. Our cost accounts for the collision risk posed by these agents even when the planned trajectory remains entirely within known free space. 
+
+Planning in unknown environments: Several existing aerial planning methods explicitly distinguish known free space from unexplored regions. FASTER [2] plans through both while maintaining a safe backup trajectory within known free space. SUPER [13] similarly combines exploratory planning with a backup trajectory. HDSM [14] accounts for unexplored space in decentralized swarm planning while avoiding obstacles and other agents. RAPTOR [15] refines the flight trajectory and plans yaw to observe potentially hazardous unknown obstacles early enough for avoidance. These methods address navigation through partially mapped environments under limited sensing. Our approach additionally predicts how agents hidden in unknown space could occupy currently known free space over the planning horizon and penalizes trajectories that intersect their potential future occupancy. III. P RELIMINARIES 
+
+A. Model Predictive Path Integral Control 
+
+MPPI draws a large number of candidate action sequences via Monte Carlo sampling and combines them into an im-proved sequence based on their cost. For a single rollout k,the cost takes the general receding-horizon form 
+
+Sk = V (xH ) + 
+
+> H−1
+
+X
+
+> j=0
+
+ℓ(xj , uj ), x0 = ˆ x, xj+1 = f (xj , uj ),
+
+(1) where V (xH ) is the terminal cost, ℓ(xj , uj ) the stage cost applied at every step of the horizon H, and xj the state of rollout k at stage j. Each of the K rollouts is generated by perturbing the nominal action sequence from the previous iteration with Gaussian noise δukj ∼ N (0 , Σ) , all initialized at xk 
+
+> 0
+
+= ˆ x and propagated with f , the quadrotor dynamics of subsection IV-A. Each rollout is evaluated with a task-specific, possibly non-convex and non-differentiable, cost function, and the resulting costs (S1, . . . , SK ) are converted into normalized importance weights through a softmax transform, 
+
+ωk = 1
+
+η exp 
+
+
+
+− 1
+
+λ (Sk − ρ)
+
+
+
+,η =
+
+> K
+
+X
+
+> k=1
+
+exp 
+
+
+
+− 1
+
+λ (Sk − ρ)
+
+
+
+,ρ = min {S 1, . . . , SK },
+
+(2) where the minimum cost ρ is subtracted for numerical stability and λ > 0 is a temperature parameter trading off averaging all disturbances ( λ → ∞ ) against greedily selecting the best rollout ( λ → 0). The nominal sequence is then updated using a softmax function of the sampled disturbances at every stage 
+
+j, and only the first action unom  
+
+> 0
+
+of the updated sequence is applied to the system; the remaining actions become the Fig. 2. Overview of the OA-MPPI framework. “Ref.” denotes the reference trajectory sent to the controller. 
+
+nominal sequence for the next planning cycle, and the horizon shifts forward by one step.  
+
+> TABLE I MPPI HORIZON /SAMPLING PARAMETERS AND COST WEIGHTS USED .
+
+MPPI param. Cost definition constants 
+
+H 30 wgoal 0.1
+
+K 500 wterm goal 5.0
+
+λ 0.1 wcol 50 .0∆t 0.1 s wvel 15 .0Σ diag (0 .60 , 0.15 , 0.15 , 0.05) 
+
+R diag (0 .01 , 0.05 , 0.05 , 0.10) 
+
+R∆ diag (0 .05 , 0.10 , 0.10 , 0.30) 
+
+IV. M ETHODOLOGY 
+
+A. Quadrotor Dynamics 
+
+We adopt the frame convention of [16]: B is the body-fixed frame, with uB 
+
+> 3
+
+perpendicular to the propeller plane, and E
+
+the earth-fixed inertial frame, with uE 
+
+> 3
+
+opposite to gravity. The state is p := sBT ∈ R3 (position relative to a fixed earth point 
+
+T ), q := qBE ∈ SO (3) (attitude), v := vBE ∈ R3 (velocity), and ω := ωBE ∈ R3 (body rate), so x = [ p, q, v, ω]. As in Euler’s law JBB ˙ωBE + ωBE × JBB ωBE = nB , the MPPI controller commands a collective thrust c and desired body rate ωd, u = [ c, ωd].Since u cannot be realized instantaneously, we map every sampled input through a feasibility projection following [5]: the desired rate is saturated to ωxy, max , ω z, max , the corre-sponding torque nd = JBB ˙ωd + ω × JBB ω is computed with 
+
+˙ωd = (ωd − ω)/∆t, and the single-rotor thrusts cP,d =
+
+M −1[c, nd]⊤ are recovered from the mixer matrix M relating total thrust and torque to the four propeller thrusts (arm length larm , torque constant κ). Clipping each rotor thrust to [cP, min , c P, max ] and mapping back through M gives the feasible cclip , nclip , from which 
+
+ωclip = ω + ∆ t · (JBB )−1  nclip − ω × JBB ω . (3) We denote this projection uclip = Π( x, u) = [ cclip , ωclip ]; every sampled input is passed through Π before propagation. The state is then propagated with a semi-implicit Euler discretization of Newton’s and Euler’s laws, 
+
+qk+1 = qk ⊙ Exp (ωclip ∆t) ,
+
+ak = R(qk+1 )
+
+
+
+00
+
+cclip /m B
+
+ + gE ,
+
+vk+1 = sat vmax (vk + ak ∆t) ,
+
+pk+1 = pk + vk+1 ∆t, 
+
+(4) where Exp (·) integrates the attitude kinematics ˙q = 12 q ⊙
+
+[0 , ω]⊤ exactly over ∆t, mB is the vehicle mass, gE ≈
+
+(0 , 0, −9.81) m s −2, and sat vmax (·) clips speed to vmax .
+
+B. Safety handling 
+
+By construction, MPPI enforces no hard safety constraint on its own. In fact, if two individually collision-free rollouts pass an obstacle on opposite sides, their weighted average can point straight through it, so the resulting nominal trajectory is not guaranteed to inherit the safety of the rollouts it is built from. To address this, we validate the trajectory at every planning cycle in two stages before it is applied. First, we forward-simulate the newly averaged nominal action sequence through the dynamics to obtain the corresponding state sequence, and check every predicted state for collision against the map, as described in subsection IV-D. Second, and independently, each individual rollout k is checked over its full horizon: rollout k
+
+is marked infeasible if any of its predicted states pkj , j =0, . . . , H −1, is found in collision. If the averaged trajectory fails the first check, or if every rollout is marked infeasible by the second, the controller discards the newly computed plan and instead commands the drone to hover at the last predicted state that was previously verified safe. At the next planning cycle, if the freshly computed MPPI plan passes both checks, tracking resumes from it; otherwise the vehicle continues to hover at that same last verified-safe state. Beyond collision avoidance, we additionally require the committed trajectory to terminate at zero velocity. Because nothing in the sampling and averaging procedure by itself guarantees this, costs are traded off against one another in the exponential weighting, and a highly weighted rollout can still end with nonzero residual velocity. We therefore enforce zero terminal velocity through a dedicated braking-tail construction. We split every rollout into two segments: a free segment, of length Hf = H − hbrake , over which the control is sampled and optimized, and a braking tail of length hbrake ∈ N, over which the input is replaced by a deterministic braking policy. Every rollout is thus generated as 
+
+ukj =
+
+(unom  
+
+> j
+
++ δukj , 0 ≤ j < H f ,πbrake (xkj ), Hf ≤ j < H, (5) where the braking policy πbrake commands a collective thrust and attitude that decelerate the vehicle along its current velocity direction and level it against gravity, 
+
+πbrake (x) = Π 
+
+
+
+x,
+
+ m∥ag ∥
+
+ωlevel (q, ˆag )
+
+ 
+
+, ag = g − abrake 
+
+v
+
+∥v∥ ,
+
+(6) with abrake ≤ min( amax 
+
+> brake
+
+, ∥v∥/∆t) the commanded braking deceleration and ωlevel a proportional attitude-leveling rate that steers the body z-axis toward ˆag . Choosing the tail length long enough, 
+
+hbrake ≥
+
+ vmax 
+
+amax  
+
+> brake
+
+∆t
+
+
+
++
+
+ 2 arctan( amax 
+
+> brake
+
+/∥g∥)
+
+ωmax  
+
+> xy
+
+∆t
+
+
+
+, (7) is sufficient for the braking policy to cancel translational velocity and level the attitude against gravity: the first term bounds the time needed to cancel velocity at the maximum braking deceleration, and the second the time needed to level the attitude at the maximum body rate, so that a rollout generated under (5) can end at rest. This, however, is only a sufficient condition on the nominal, unperturbed policy: because MPPI is not an optimization problem but a sampling scheme, the perturbations δukj applied within the free segment, together with disturbances and model mismatch along the rollout, mean that (7) does not by itself guarantee that any particular sampled rollout ends at zero velocity, so in case the averaged trajectory does not terminate at zero velocity we command the hover as backup, as previously explained. 
+
+C. Perception of Obstacles and Occlusion 
+
+At every sensor frame, the registered point cloud Pt ⊂ R3
+
+produced by the state estimator FAST-LIO [17] is integrated into a probabilistic occupancy grid M maintained by ROG-Map [18]. Each measurement updates the log-odds of the cell it terminates in, while the cells traversed by the corresponding ray are updated as free, so that every cell of M carries one of three labels: occupied, known-free, or unknown, the last denoting a cell no ray has yet resolved. The grid slides with the vehicle, which bounds memory and query time independently of the extent of the environment, and is closed from below and above by a virtual ground and ceiling that delimit the admissible workspace. Because the vehicle is not a point, collision checking is performed on a second layer Minf in which every occupied cell is dilated by ninf = ⌈rveh /r inf ⌉ cells, with rinf the resolution of             
+
+> Fig. 3. Occlusion boundary extraction for three obstacles surrounding the drone. Top: top-down view; blue line point to the nearest occlusion voxel (red), with sphere color indicating the keep-out radius at increasing horizon times, from t= 0 s (blue) to t= 3 s (full horizon H, red). Bottom: 3D view; yellow lines mark the occlusion lines of sight, with the expanding keep-out region (green concentric spheres) around the closest boundary point.
+
+the inflated layer and rveh the radius of the sphere enclosing the airframe. A predicted state can then be tested as a point against 
+
+Minf rather than as a volume against M. Since consecutive predicted positions may be several cells apart at the speeds we consider, the test is applied to the segment joining them: the segment [pkj−1, pkj ] is traversed at the resolution of the inflated layer, and the rollout is declared in collision as soon as one traversed cell is occupied or falls outside the local map. This yields the first safety term of the cost. We extract, at every planning cycle, an occlusion boundary 
+
+B = {b1, . . . , bM } ⊂ R3: a set of points sampled along the silhouette edges of the locally observed occupancy map, i.e., the frontier between known-free and unknown space that is shadow-cast by an occupied region. Physically, B marks the closest locations from which a hidden agent could emerge from occlusion. Algorithm 1 summarizes the extraction. The occupied cells of the local map are first splatted into angular bins around the vehicle: each cell is assigned to every bin whose angular extent it covers, as seen from the current position, and each bin Algorithm 1 3D occlusion boundary extraction 
+
+Require: map M, position p, range Rsense , resolutions 
+
+∆θ, ∆ϕ, elevation limits [ϕmin , ϕ max ], jump threshold τ ,gate length L, map resolution rm
+
+Ensure: occlusion boundary B 
+
+> 1:
+
+O ← { o : ∥o − p∥2 ≤ Rsense , M(o) = occupied } 
+
+> 2:
+
+da,e ← ∞ for all azimuth/elevation bins (a, e ) 
+
+> 3:
+
+for all o ∈ O do  
+
+> 4:
+
+r ← ∥ o − p∥2; (θ, ϕ ) ← direction of o − p 
+
+> 5:
+
+α ← arctan( rvox /r ) {angular extent of the cell } 
+
+> 6:
+
+for all bins (a, e ) covered by [θ ± α/ cos ϕ] × [ϕ ± α]
+
+within [ϕmin , ϕ max ] do  
+
+> 7:
+
+da,e ← min( da,e , r ) 
+
+> 8:
+
+end for  
+
+> 9:
+
+end for  
+
+> 10:
+
+B ← ∅  
+
+> 11:
+
+for all neighbouring bins i, j in azimuth or elevation do  
+
+> 12:
+
+if di = dj = ∞ or |di − dj | < τ then  
+
+> 13:
+
+continue {no surface, or continuous surface } 
+
+> 14:
+
+end if  
+
+> 15:
+
+rnear ← min( di, d j ); u ← unit direction of the boundary between i and j 
+
+> 16:
+
+e ← p + rnear u {silhouette edge } 
+
+> 17:
+
+for s = 0 to L step rm do  
+
+> 18:
+
+B ← B ∪ { e + s u} 
+
+> 19:
+
+end for  
+
+> 20:
+
+end for  
+
+> 21:
+
+return B
+
+retains the smallest range among the cells falling into it. The result is an ordered range profile of the observed surfaces, which is the quantity a silhouette is defined on and which the raw measurements do not provide in general. A pair of adjacent bins whose ranges differ by more than a threshold 
+
+τ then identifies a silhouette edge: the nearer of the two bins corresponds to a surface the vehicle is looking past, and the farther one to the shadow it casts. Two cases are distinguished: a jump between two observed surfaces, and a surface adjacent to a bin containing nothing at all, the last one corresponding to the end of a structure against open space. The edge point is placed at the range of the nearer bin, on the boundary between the two bins rather than at either bin center, which removes a systematic half-bin bias. The gate is then emitted by sampling, at map resolution, the segment of length L that leaves the edge radially outward, away from the vehicle. That segment is the surface a hidden agent must cross to become visible, and the union of these segments over all edges is B.An advantage of operating on M rather than on the raw measurements is that the method is sensor-agnostic. The splatting step of Algorithm 1 reconstructs the ordered range profile from the map, so the same procedure applies across different sensing modalities and scanning patterns, including conventional spinning LiDARs (e.g., Velodyne VLP-32), non-repetitive scanning LiDARs such as the Livox MID-360S used in our setup, and depth cameras (e.g., Intel RealSense). The only requirement is that the sensor delivers a point cloud that can be integrated into M. A second benefit follows from the same choice: because the map accumulates measurements over time, the extracted boundary is not restricted to the instantaneous field of view, and structures that have since left the field of view continue to shadow the regions they occlude. Given the online map, we obtain a distance field to the occlusion boundary, as shown in Figure 3, through a nearest-neighbor query, 
+
+dB(p) = min  
+
+> b∈B
+
+∥p − b∥2 , (8) evaluated efficiently with a k-d tree built over B and rebuilt as the boundary is re-extracted. When B = ∅, i.e., no occluding structure is currently observed, we set dB ≡ ∞ .
+
+D. Definition of the Cost 
+
+ℓgoal = wgoal ∥pkj − pgoal ∥2 (9) 
+
+ℓgoal, H-1 = wterm goal ∥pkH−1 − pgoal ∥2 (10) 
+
+ℓvelocity (pkj , vkj ) = exp  −wvelocity ∥pkj − pgoal ∥22
+
+ · ∥ vkj ∥22,
+
+(11) 
+
+ℓcol = wcol · 1 [pkj−1, pkj ] ∩ M inf ̸ = ∅  , (12) 
+
+ℓocc = wcol · 1 dB(pkj ) < r keep (tj )  , (13) 
+
+ℓcontrol = ∥ukj ∥2 
+
+> R
+
++ ∥∆ukj ∥2 
+
+> R∆
+
+(14) 
+
+rkeep (t) = dsafe + vtarget t, (15) 
+
+Sk =
+
+> H−1
+
+X
+
+> j=1
+
+h
+
+ℓgoal (pkj ) + ℓvelocity (pkj , vkj )+ℓcol (pkj−1, pkj ) + ℓocc (pkj ) + ℓcontrol (ukj , ∆ukj )
+
+i
+
++ℓgoal, H-1 (pkH−1)
+
+(16) Equations (9)–(10) drive the rollout toward the goal, with the terminal term (10) more heavily weighted so that reaching the goal at the end of the horizon is favored over merely approaching it along the way. Equation (11) complements this with a softer, continuous shaping term: following the perception-aware weighting of [12], residual velocity is pe-nalized in proportion to a Gaussian falloff in the squared distance to the goal, so the vehicle flies freely far from the goal but is increasingly discouraged from arriving at speed as it gets close. Equations (12) and (13) share the same hard-constraint weight wcol , since both encode conditions the plan should never realize rather than costs to be traded off continuously; (12) rejects any rollout whose segment intersects a mapped obstacle, while (13) rejects any rollout that enters the time-growing keep-out radius rkeep (tj ) around the occlusion boundary defined in (15), bounding exposure to a hidden agent that could have moved into the vehicle’s path since the boundary was last observed. A rollout that ever triggers (13) is thus treated as infeasible in the same sense as (12). Finally, Equation (14) regularizes control effort and its rate of change, Fig. 4. Simulation of an agent emerging from occlusion. The drone collides with the agent under baseline MPPI (gray), while OA-MPPI (blue) avoids the collision. The agent is shown as a purple sphere and speed 0.4 m/s. Top:      
+
+> t= 2 .8s; bottom: t= 3 .9s.
+
+following the input and input-rate penalization used for agile MPPI flight in [5] with R = diag (rF , r ω,xy , r ω,xy , r ω,z ) and 
+
+R∆ = diag (r∆ 
+
+> F
+
+, r ∆ 
+
+> ω,xy
+
+, r ∆ 
+
+> ω,xy
+
+, r ∆ 
+
+> ω,z
+
+) the input and input-rate weighting matrices. V. R ESULTS 
+
+A. Experimental Setup 
+
+To validate the effectiveness of our approach, we evaluate it both in simulation and on real hardware. In simulation, a ray-casting sensor model [19] attached to the vehicle body samples the scene, and the resulting scan is consumed directly by ROG-Map [18]. In flight experiments, everything runs onboard a Jetson Orin Nano with 8 GB of RAM. In both cases, rollouts are evaluated in parallel via OpenMP across the available threads. Both the simulation tests and the real flight experiments use the same MPPI parameters, listed in Table I. The ROG-Map occupancy grid covers 20 × 20 × 6 m at a resolution of rm = 0.1 m. The inputs of Algorithm 1 are a query range of Rsense = 4 m, an elevation window of 
+
+[ϕmin , ϕ max ] = [0 ◦, 40 ◦], a jump threshold of τ = 2 m, and a gate length of L = 3 m, chosen to exceed the distance a person at brisk walking speed could cross within one replanning      
+
+> Fig. 5. Top: simulation setup for flight over an occluding box. Bottom: side view in the xz -plane at t= 2 .1s. OA-MPPI (blue) takes a higher path over the box than baseline MPPI (gray), increasing clearance from the occlusion boundary.
+
+cycle. MPPI samples 500 rollouts over a horizon of 30 steps (∆t = 0 .1 s ). The MID-360 has a native vertical field of view spanning 
+
+−7◦ to 52 ◦ and is mounted with a 20 ◦ forward tilt. The sensor provides point clouds at approximately 10 Hz . The range-jump threshold τ suppresses small range variations, including sensor noise, when identifying silhouette edges. The angular resolution ∆θ is selected based on the point density at 
+
+Rsense = 4 m, balancing spurious gaps from overly fine binning against merged boundaries from overly coarse binning. 
+
+B. Simulation Tests 
+
+In the first simulation test shown in Fig. 4, a moving agent emerges from occlusion and crosses the vehicle’s path. This scenario is evaluated in simulation to avoid the risk of a physical collision. Baseline MPPI follows the subgoal selected along the A* path (light blue squared lines) and avoids the static obstacle, but passes too close to the occlusion boundary and collides with the agent (purple sphere). OA-MPPI steers around the expanding keep-out region, maintaining sufficient clearance to avoid the agent. In the second test, shown in Fig. 5, we evaluate avoidance near a predominantly horizontal occlusion boundary, where a hidden agent could emerge vertically. The top image illustrates the scene in Unreal Engine, and the bottom plot shows the trajectories projected onto the xz -plane. With the occlusion cost defined in subsection IV-D, OA-MPPI takes a higher path Fig. 6. Experiments across the three test scenarios: single wall (left), pillar (middle), and two-wall corridor (right). Top: physical setup, with the drone flying from its start position toward the goal near or behind the occluding structure(s). Bottom: top-down occupancy map for the same run, showing the occlusion-agnostic (gray) and occlusion-aware (blue) trajectories from start (green dot) to goal (yellow star), with concentric contours marking the time-growing keep-out radius rkeep (t) around the occlusion boundary and dashed orange lines indicating the occlusion lines of sight. The drone shape is only indicated on the occlusion-agnostic line for clarity. The goal is reached if within 0.5 m from it. 
+
+over the obstacle than baseline MPPI, increasing clearance from the occlusion boundary. In both simulation tests, the keep-out region expands at 0.4 m/s. 
+
+C. Flight Experiments 
+
+We conducted hardware flight experiments in the three scenarios shown in Figure 6: a single wall with the goal positioned 3 m beyond it, a central pillar that the vehicle must navigate around, and a two-wall corridor presenting two sources of occlusion, last two with goal 3.5 m beyond. In each scenario, we compared baseline MPPI and OA-MPPI using the same start and goal positions. The keep-out expansion speed vtarget was set to 0.4 m/s for the single-wall and two-wall scenarios and 0.3 m/s for the pillar scenario. Figure 6 shows, for each scenario, the physical setup along-side the corresponding top-down trajectory over the occupancy map. The occlusion-aware trajectory (blue) consistently arcs further away from the occlusion boundary than the baseline (gray), respecting the keep-out constraint even in cases where the baseline trajectory cuts much closer to it. Table II reports the corresponding time to goal, distance traveled and mean velocity for all three scenarios: the occlusion-aware controller reaches the goal more slowly and along a longer path in every case, reflecting the added detour needed to stay clear of the expanding keep-out region rather than a failure to converge. Following the configurations described in V-A, and with rates measured from takeoff in the experiments, the silhouette extractor keeps up with the 10 Hz registered point cloud, averaging 9.50 Hz in the occlusion-aware runs ( 9.57 Hz single wall, 9.61 Hz pillar and 9.33 Hz two walls). The occlusion-agnostic planner averages 9.59 Hz (10 .04 Hz single wall, 
+
+9.67 Hz pillar and 9.07 Hz two walls). With the occlusion cost enabled, the planner averages 8.47 Hz ( 8.25 Hz single wall, 
+
+9.01 Hz pillar and 8.16 Hz two walls), about 12% slower due to the overhead of the boundary extractor and kd-tree queries against the nearest boundary voxel at each rollout timestep. Despite this overhead, OA-MPPI remains fast enough for onboard replanning in the tested flight scenarios, with only a modest reduction in update rate relative to baseline MPPI.                              
+
+> TABLE II COMPARISON OF BASELINE MPPI AND OA-MPPI ACROSS THREE FLIGHT SCENARIOS .Scenario Method Time [ s]Dist. [ m]Vel. [ m s −1]Single wall MPPI 2.49 2.93 1.18
+> OA-MPPI 4.19 3.76 0.91
+> Pillar MPPI 3.58 3.77 1.11
+> OA-MPPI 3.74 4.21 1.14
+> Two walls MPPI 3.06 3.52 1.15
+> OA-MPPI 3.75 3.85 1.03
+
+VI. C ONCLUSION AND FUTURE WORK 
+
+We presented OA-MPPI, a framework for UAV flight that extends MPPI control with the ability to reason about oc-cluded regions generated by obstacles in the environment. The framework extracts occlusion boundaries directly from the ego vehicle’s local occupancy map, making the occlusion-detection step agnostic to the specific onboard sensor. We penalize trajectories that enter an expanding keep-out region around the occlusion boundary within MPPI rollouts generated using nonlinear quadrotor dynamics. The region expands according to the assumed hidden-agent speed bound vtarget , accounting for potential agent motion without assuming a specific trajec-tory. Simulation tests demonstrated increased clearance from occlusion boundaries and avoidance of an emerging agent that caused a collision under baseline MPPI. The clearance improvement over the baseline was also observed across three hardware flight scenarios, with the full perception and control pipeline running onboard the vehicle. Three limitations motivate future work. First, the current method models hidden-agent motion using a fixed speed bound 
+
+vtarget . Future work could adapt this bound online based on context or replace the isotropic expansion with reachable sets tailored to the motion constraints of the expected agent type. Second, our presented hardware flight experiments did not include dynamic obstacles. Future work could incorporate dynamic obstacle detection and extend flight experiments to include both visible moving agents and agents emerging from occlusion. Third, expanding keep-out regions may restrict the available paths in narrow or heavily occluded environments, making the planner overly conservative. Future work could incorporate active perception to select viewpoints that reveal occluded space and reduce uncertainty about potential hidden agents. ACKNOWLEDGMENT 
+
+This work was supported by the Boeing Company. REFERENCES [1] M. Lyu, Y. Zhao, C. Huang, and H. Huang, “Unmanned aerial vehicles for search and rescue: A survey,” Remote Sensing , vol. 15, no. 13, p. 3266, 2023. [2] J. Tordesillas, B. T. Lopez, M. Everett, and J. P. How, “FASTER: Fast and safe trajectory planner for navigation in unknown environments,” 
+
+IEEE Transactions on Robotics , vol. 38, no. 2, pp. 922–938, 2022. [3] C. T. Recchiuto and A. Sgorbissa, “Post-disaster assessment with unmanned aerial vehicles: A survey on practical implementations and research approaches,” Journal of Field Robotics , vol. 35, no. 4, pp. 459– 490, 2018. [4] G. Williams, A. Aldrich, and E. A. Theodorou, “Model predictive path integral control: From theory to parallel computation,” Journal of Guidance, Control, and Dynamics , vol. 40, no. 2, pp. 344–357, 2017. [5] M. Minar´ ık, R. Pˇ eniˇ cka, V. Von´ asek, and M. Saska, “Model predictive path integral control for agile unmanned aerial vehicles,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2024, pp. 13 144–13 151. [Online]. Available: https://api.semanticscholar.org/CorpusID:271213276 [6] R. Firoozi, A. Mir, G. S. Camps, and M. Schwager, “Oa-mpc: Occlusion-aware mpc for guaranteed safe robot navigation with unseen dynamic obstacles,” IEEE Transactions on Control Systems Technology , vol. 33, pp. 940–951, 2022. [Online]. Available: https://api.semanticscholar.org/CorpusID:253581500 [7] H. Park, J. H. Choi, H. Chin, S.-H. Lee, and D. Baek, “Occlusion-aware risk assessment and driving strategy for autonomous vehicles using simplified reachability quantification,” IEEE Robotics and Automation Letters , vol. 8, pp. 8486–8493, 2023. [Online]. Available: https://api.semanticscholar.org/CorpusID:259137460 [8] W. Chung, S. Kim, M. Choi, J. Choi, H. Kim, C.-b. Moon, and J.-B. Song, “Safe navigation of a mobile robot considering visibility of environment,” IEEE Transactions on Industrial Electronics , vol. 56, no. 10, pp. 3941–3950, 2009. [9] S. Bouraine, T. Fraichard, O. Azouaoui, and H. Salhi, “Passively safe partial motion planning for mobile robots with limited field-of-views in unknown dynamic environments,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) , 2014, pp. 3576–3582. [10] M. Koschi and M. Althoff, “Set-based prediction of traffic participants considering occlusions and traffic rules,” IEEE Transactions on Intelli-gent Vehicles , vol. 6, no. 2, pp. 249–265, 2021. [11] K. Moller, L. Schwarzmeier, and J. Betz, “From shadows to safety: Occlusion tracking and risk mitigation for urban autonomous driving,” 
+
+2025 IEEE Intelligent Vehicles Symposium (IV) , pp. 1883–1890, 2025. [Online]. Available: https://api.semanticscholar.org/CorpusID: 277502468 [12] Y. Zhai, R. Reiter, and D. Scaramuzza, “Pa-mppi: Perception-aware model predictive path integral control for quadrotor navigation in unknown environments,” IEEE Robotics and Automation Letters ,vol. 11, no. 3, p. 3804–3811, Mar. 2026. [Online]. Available: http://dx.doi.org/10.1109/LRA.2026.3662653 [13] Y. Ren, F. Zhu, G. Lu, Y. Cai, L. Yin, F. Kong, J. Lin, N. Chen, and F. Zhang, “Safety-assured high-speed navigation for mavs,” Science Robotics , vol. 10, no. 98, p. eado6187, 2025. [14] C. Toumieh and D. Floreano, “High-speed motion planning for aerial swarms in unknown and cluttered environments,” arXiv preprint arXiv:2402.19033 , 2024. [15] B. Zhou, J. Pan, F. Gao, and S. Shen, “Raptor: Robust and perception-aware trajectory replanning for quadrotor fast flight,” IEEE Transactions on Robotics , vol. 37, no. 6, pp. 1992–2009, 2021. [16] M. W. Mueller, Dynamics and control of autonomous flight . Springer, 2025. [17] W. Xu and F. Zhang, “Fast-lio: A fast, robust lidar-inertial odometry package by tightly-coupled iterated kalman filter,” IEEE Robotics and Automation Letters , vol. 6, pp. 3317–3324, 2020. [Online]. Available: https://api.semanticscholar.org/CorpusID:223953478 [18] Y. Ren, Y. Cai, F. Zhu, S. Liang, and F. Zhang, “Rog-map: An efficient robocentric occupancy grid map for large-scene and high-resolution lidar-based motion planning,” 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 8119–8125, 2023. [Online]. Available: https://api.semanticscholar.org/CorpusID: 257232827 [19] F. Kong, X. Liu, B. Tang, J. Lin, Y. Ren, Y. Cai, F. Zhu, N. Chen, and F. Zhang, “Marsim: A light-weight point-realistic simulator for lidar-based uavs,” IEEE Robotics and Automation Letters , vol. 8, pp. 2954–2961, 2022. [Online]. Available: https: //api.semanticscholar.org/CorpusID:253735183

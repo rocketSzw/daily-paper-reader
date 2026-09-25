@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-24</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-25</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 5 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-24 22:29:16 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-25 21:55:58 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读5篇、精读挂零，重点集中在储能控制与自主无人机两大方向。最值得看的是地下抽水蓄能的混合整数非线性预测控制（6.0）以及PX4固件支撑的空海混合自主任务（6.0）。普通读者可先挑这两篇了解控制与平台思路，明天再回头补精读。</p>
+<p>2026-09-25 日报：共筛出 5 篇无人机与机器人导航论文，精读 2 篇、速读 3 篇，主题集中在遮挡感知控制与不确定性下的安全飞行。</p>
+<p>最值得看的是两篇 8.0 分精读：OA-MPPI 用遮挡感知的模型预测路径积分控制提升无人机飞行安全性，另一篇则研究不确定性下固定翼无人机的安全学习自适应增稳控制，两篇都直指&quot;复杂环境下如何飞得稳&quot;。</p>
+<p>普通读者建议先读这两篇精读的摘要与实验部分，速读中的火星视觉可通行性估计、空地协同主动感知和远程相机视觉导航可作扩展了解。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +73,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight">OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty">Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Mixed-Integer Nonlinear Differentiable Predictive Control for Underground Pumped Hydro Energy Storage Systems">Mixed-Integer Nonlinear Differentiable Predictive Control for Underground Pumped Hydro Energy Storage Systems</span></li><li><span class="dpr-home-dashboard-paper-title" title="Custom PX4 firmware for autonomous hybrid aerial-marine missions">Custom PX4 firmware for autonomous hybrid aerial-marine missions</span></li><li><span class="dpr-home-dashboard-paper-title" title="Project SCOUT: Interceptor Drone for Perimeter Defense">Project SCOUT: Interceptor Drone for Perimeter Defense</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning to Drive on Mars: Visual Multimodal Traversability Estimation for Off-World Navigation">Learning to Drive on Mars: Visual Multimodal Traversability Estimation for Off-World Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Robust Active-Perception Control for Global-State-Free Aerial-Ground Cooperation">Robust Active-Perception Control for Global-State-Free Aerial-Ground Cooperation</span></li><li><span class="dpr-home-dashboard-paper-title" title="ReVNM: Learning-Based Visual Navigation from a Remote Camera">ReVNM: Learning-Based Visual Navigation from a Remote Camera</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 

@@ -1,0 +1,650 @@
+Title: Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty
+
+URL Source: https://arxiv.org/pdf/2609.29319v1
+
+Published Time: Fri, 25 Sep 2026 01:07:34 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty 
+
+Leon Raguse 1, Lennart Kracke 1, Mayank Shekhar Jha 2, Johannes Autenrieb 1, and Mark Spiller 1
+
+Abstract — This paper presents a learning-based adaptive augmentation control concept inspired by the adaptation mech-anisms of conventional adaptive control, while not being re-stricted to their specific parametric adaptation structures. In contrast to augmenting a reinforcement learning (RL) baseline controller with classical adaptive control to account for the simulation-to-reality gap, the proposed approach uses RL-based adaptive augmentation to address the limitations of con-ventional adaptive control. Domain randomization combined with observation stacking is employed to train the RL-based augmentation to compensate for matched uncertainties in a fixed-wing aircraft system. To ensure constraint satisfaction during operation, a safety filter is incorporated into the control architecture. Based on the concept of pseudo control hedging (PCH), we propose a modified reference model that avoids undesirable interactions between the RL-based augmentation and the safety filter. To reduce the conservatism of the safety filter, we additionally incorporate a disturbance observer. The proposed approach is evaluated on a fixed-wing aircraft model subject to uncertainties. 
+
+I. I NTRODUCTION 
+
+Driven by advances in deep learning and computational capabilities, reinforcement learning (RL) can be applied to increasingly complex control problems. Through interaction with the environment, RL methods can address nonlinear aircraft dynamics and offer the potential to improve control performance and robustness under model uncertainties and varying operating conditions. This potential has motivated increasing research interest in RL-based control of fixed-wing aircraft [1], [2]. Since aircraft control inputs are continuous, RL-based flight control studies predominantly employ algorithms de-signed for continuous action spaces. The use of deep neural networks further enables these methods to represent complex nonlinear control policies and value functions. Accordingly, deep actor–critic methods such as DDPG [3], [4], PPO [2], [5]–[7], and SAC [8], [9] are particularly prevalent. A different class of approaches employs approximate dy-namic programming (ADP) for online adaptive flight control. These methods use Bellman-based optimization to update a control policy from an online identified local model, often with a prescribed quadratic value function structure. This                      
+
+> 1Leon Raguse, Lennart Kracke, Johannes Autenrieb, and Mark Spiller are with the German Aerospace Center (DLR), Institute of Flight Systems, 38108 Braunschweig, Germany. email:
+
+{leon.raguse, lennart.kracke, johannes.autenrieb, mark.spiller }@dlr.de  
+
+> 2Mayank Shekhar Jha is with CRAN, CNRS, Universite de Lorraine, France. email:
+
+mayank-shekhar.jha@univ-lorraine.fr 
+
+> This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible.
+
+enables online adaptation with relatively low computational and data requirements. However, the prescribed value func-tion structure limits the policy representation, while the adaptation depends on the quality of the online system identification [10]–[12]. Domain randomization is widely used to expose policies to variations in system and environmental parameters, thereby promoting robustness to model uncertainty and facilitating transfer from simulation to the real system [13]. However, a memoryless domain-randomized policy can potentially be-come conservative because it must perform across the entire randomized domain, whereas a history-based policy can infer the current domain from recent observations and adapt its behavior accordingly [14], [15]. Such temporal information can be provided through observation stacking or recurrent architectures such as long short-term memories (LSTMs), both of which have been applied to RL-based fixed-wing flight control [5], [7], [9]. Accommodating a broad range of dynamic conditions, however, increases the exploration and training burden, as the policy must learn effective behavior across substantially different system dynamics. An alternative to domain randomization is to combine RL with conventional adaptive control. The RL policy defines a nominal closed-loop reference model, while the adaptive controller compensates for discrepancies between the nomi-nal and actual dynamics online [16]–[20]. However, when a nominal model is available, using RL to learn the nominal control policy adds an unnecessary learning problem, since a stabilizing model-based controller can be designed directly. Moreover, the achievable compensation is constrained by the assumptions underlying conventional adaptive control laws such as model reference adaptive control (MRAC) and 
+
+L1 adaptive control, for which guarantees typically rely on constant or slowly varying uncertainty parameters, limiting their applicability to strongly time-varying aircraft dynamics [21]. Control barrier function (CBF)-based safety filters allow to enforce safety during RL exploration by modifying po-tentially unsafe inputs [22]. However, safety-filtered inputs introduce an interaction with RL, which must account for the discrepancy between the proposed and applied inputs during learning [22], [23]. Moreover, projection-based fil-ters can map different policy inputs to the same safety-filtered input, reducing distinguishability during learning and potentially degrading policy optimization [24]. Approaches have been proposed to mitigate this interaction by learning previous filter corrections [22] or differentiating through the safety layer [23]. However, projection-based filters can still arXiv:2609.29319v1 [eess.SY] 24 Sep 2026 introduce information loss and affect policy learning [24]. Alternatively, safety constraints can be incorporated directly into the RL objective through barrier or constraint penalties [25], [26], avoiding modification of the applied input but coupling learning to the imposed constraints. In this work, we propose an approach that retains the model-based controller as the nominal stabilization law and uses RL exclusively for adaptive augmentation. This avoids RL exploration for baseline controller synthesis while al-lowing the learned augmentation to capture more complex and strongly time-varying uncertainties without imposing a predefined parametric adaptation structure. Domain random-ization is used during training to expose the augmentation policy to the expected range of uncertainties, while obser-vation stacking provides temporal information to distinguish their evolving effects. Furthermore, we propose a fundamentally new solution to the interaction problem between RL and the safety filter. We make use of the pseudo control hedging (PCH) concept [27], originally designed to account for actuator saturation effects. Instead, we apply PCH to ensure that the RL-based adaptive augmentation does not compensate for interventions introduced by the safety filter. Specifically, this is achieved by modifying the reference model such that the resulting model-matching error dynamics are invariant to the input discrepancy introduced by the safety filter. Consequently, the RL-based augmentation is decoupled from the safety filter when minimizing the model matching error. II. B ACKGROUND AND PROBLEM FORMULATION 
+
+Consider the nonlinear control-affine system 
+
+˙x = f (x) + g(x)u (1) with state x ∈ X ⊂ Rn, control input u ∈ U ⊂ Rm and locally Lipschitz continuous functions f : X → Rn and 
+
+g : X → Rn×m.Assume a 0-super-level set C = {x ∈ X : h(x) ≥ 0} ⊂ X 
+
+defined by a r-th order continuously differentiable function 
+
+h : X → R. Consider 
+
+ψ0(x) = h(x),ψi(x) = ˙ψi−1(x) + αi(ψi−1(x)) , i = 1 , . . . , r − 1,ψr (x, u ) = ˙ψr−1(x, u ) + αr (ψr−1(x)) ,
+
+where αi are differential class K functions. Further, assume the associated sets Ci = {x ∈ X : ψi−1(x) ≥ 0}, CH =Tri=1 Ci. The function h is a higher order control barrier function (HOCBF), if 
+
+sup 
+
+> u∈U
+
+ψr (x, u ) ≥ 0 (2) for all x ∈ C H , rendering the set CH forward invariant [28]. Let ψj,r j (x, u ) ≥ 0 denote the condition (2) for a HOCBF 
+
+hj with relative degree rj . For a possibly unsafe nominal controller unom the following quadratic program (QP) 
+
+u(x) = arg min 
+
+> u∈U
+
+12 ∥u − unom (x)∥2 (3) subject to ψj,r j (x, u ) ≥ 0, j = 1 , . . . , N CBF ,
+
+can be considered to find a minimum invasive control input u
+
+satisfying the condition (2) for j = 1 , . . . , N CBF HOCBFs. In practical applications, the nominal system (1) rarely captures the true dynamics. Instead, model uncertainties are present, such that the true dynamics are given by 
+
+˙x = f (x) + ∆ f (x) + ( g(x) + ∆ g(x)) u, (4) where ∆f (x) and ∆g(x) are additive and multiplicative uncertainties, respectively. The uncertainties are assumed to be matched, i.e., their effect lies within the range space of the input matrix g(x). We formulate the lumped uncertainty 
+
+∆( x, u ) = ∆ f (x) + ∆ g(x)u and assume the finite bounds 
+
+∥∆( x, u )∥ ≤ ∆max ∥ ˙∆( x, u )∥ ≤ ˙∆max . (5) For system (4) with lumped uncertainty ∆( x, u ), we propose the safe RL-based adaptive augmentation control scheme, as illustrated in Fig. 1. Based on the nominal system (1), we apply nonlinear dynamic inversion (NDI) and define as pseudo control input ν = νbs + νad , where νbs = ˙ xr − Kbs e
+
+is the baseline controller with feedback matrix Kbs , tracking error e = x−xr and reference state xr and νad is a RL-based adaptive augmentation. It follows from Fig. (1) that the closed-loop error dynamics are ˙e = −Kbs e + νad + ∆ − vh, which are disturbed by the safety filter, i.e., the hedging signal vh = g(x)( unom −
+
+u), that overwrites the nominal inputs unom when safety constraints are required to be enforced and by the lumped uncertainty ∆( x, u ). We use the RL-based augmentation to compensate for the uncertainties ∆( x, u ) in the error dynamics. Therefore, we define the reference model based on the desired tracking error dynamics ˙xm = −Kbs xm −vh and based on that the model matching error em = xm −(x−xr ).Following the design idea of MRAC, we apply the RL-based adaptive augmentation to primarily drive em to zero to achieve the reference dynamics. By feeding back the hedging signal vh into the reference model, the model matching error dynamics ˙em = −Kbs em − νad − ∆ become invariant from the safety filter action. Therefore, the proposed learning-based control scheme provides two main benefits:  
+
+> •
+
+Instead of learning the true dynamics, we formulate a RL-based augmentation that aims for learning an adap-tion law to compensate matched uncertainties similar to MRAC.  
+
+> •
+
+We formulate PCH for safety filters. We hide the safety filter action from the model matching error dynamics which allows to train the learning-based control scheme independently of the safety filter. For the safety filter, we additionally employ a disturbance observer to reduce conservatism with respect to system uncertainties, following the concept of [29]. Based on as-sumption (5), finite bounds for the disturbance estimation error ˜∆( x, u ) = ∆( x, u ) − ˆ∆( x, u ) can be stated. Baseline Controller RL-based Adaptive Augmentation 
+
++ Nonlinear Dynamic Inversion Safety Filter Plant Dynamics Disturbance Observer Model Matching Error Reference Model 
+
+> Learning-Based Adaptive Augmentation Control
+> Pseudo Control Hedging
+> Safety Filter
+
+Fig. 1: Proposed RL-Based Adaptive Augmentation Control Scheme with Safety Filter III. A IRCRAFT DYNAMICS 
+
+The rotational dynamics of the fixed-wing UAV are 
+
+˙Θ = Ψ ω, (6a) 
+
+˙ω = −J−1(ω × Jω ) + J−1M, (6b) with the states being: the rates around the axis of the body-fixed frame ω = p q r⊤ ∈ R3 and the Euler angles Θ = 
+
+ϕ θ ψ⊤ ∈ R3. The inertia tensor is given by J ∈ R3×3
+
+and the Euler angle rate transformation matrix is denoted by 
+
+Ψ ≜ Ψ( ϕ, θ ) ∈ R3×3.The dynamic pressure is calculated as Q =0.5ρair (halt )v2TAS , where ρair (halt ) ∈ R>0 is the air density depending on the alitude halt ∈ R>0 and vTAS ∈ R>0
+
+is the true airspeed. The matrix Tf a ≜ Tf a (α, β ) is the rotational matrix from the aerodynamic to the body-fixed frame, where α ∈ R is the angle of attack and β ∈ R is the sideslip angle. We denote Sref , C ref , B ref ∈ R>0 as the reference wing area, the reference chord length and the reference span, respectively, and we define normalized rates as ¯p = Bref  
+
+> 2vTAS
+
+p, ¯q = Cref  
+
+> 2vTAS
+
+q, ¯r = Bref  
+
+> 2vTAS
+
+r. Additionally, we define ξ, η, ζ ∈ R as the aileron, elevator, and rudder deflections, respectively, and δ = ξ η ζ⊤ as the vector of control surface deflections. For the moments, we assume the propulsive force to be aligned with the aircraft’s centerline. Based on nominal system knowledge, we calculate the nominal moments as 
+
+M0 = Ξ( χ, ω ) + Π( χ, ω )δ (7) with 
+
+Ξ( χ, ω ) = QS ref Tf a 
+
+
+
+Bref ¯Cl
+
+Cref ¯Cm
+
+Bref ¯Cn
+
+ ,
+
+Π( χ, ω ) = QS ref Tf a 
+
+ Bref Cl,ξ Bref Cl,η Bref Cl,ζ 
+
+Cref Cm,ξ Cref Cm,η Cref Cm,ζ 
+
+Bref Cn,ξ Bref Cn,η Bref Cn,ζ 
+
+ ,
+
+where χ denotes the dependency on the states χ =α β vTAS halt 
+
+⊤. The aerodynamic moment coef-ficients of roll, pitch and yaw are defined by func-tions ¯Cl = fl(α, β, ¯p, ¯q, ¯r), ¯Cm = fm(α, β, ¯p, ¯q, ¯r),
+
+¯Cn = fn(α, β, ¯p, ¯q, ¯r) respectively, the effects of the con-trol inputs are described by the linear control derivatives 
+
+Cl,ξ , C l,η , C l,ζ , C m,ξ , C m,η , C m,ζ , C n,ξ , C n,η , C n,ζ ∈ R.As the nominal aerodynamic model typically con-tains significant uncertainty, we define the following un-certainties ∆Ξ ≜ ∆Ξ(∆ ¯C⋆) ∈ R3 and ∆Π ≜
+
+∆Π(∆ ¯C⋆,ξ , ∆ ¯C⋆,η , ∆ ¯C⋆,ζ ) ∈ R3×3 induced by the aerody-namics parametric perturbations ∆ ¯C⋆, ∆ ¯C⋆,ξ , ∆ ¯C⋆,η , ∆ ¯C⋆,ζ 
+
+with ⋆ ∈ { l, m, n }. Consequently, the description of the true moments becomes 
+
+M = Ξ( χ, ω ) + Π( χ, ω )δ + ∆Ξ( χ, ω ) + ∆Π( χ, ω )δ. (8) Let x = Θ ω χ⊤ ∈ X ⊆ R10 and δ ∈ U ⊆ R3, then substituting (8) in (6) yields the rotational dynamics 
+
+˙Θ = Ψ ω, (9a) 
+
+˙ω = fω (x) + ∆ fω (x) + ( gω (x) + ∆ gω (x)) δ (9b) with nominal models fω (x) = −J−1(ω×Jω )+ J−1Ξ( χ, ω ),
+
+gω (x) = J−1Π( χ, ω ), additive uncertainty ∆fω (x) =
+
+J−1∆Ξ( χ, ω ) and multiplicative uncertainty ∆gω (x) =
+
+J−1∆Π( χ, ω ).We assume the nominal control-effectiveness matrix gω (x)
+
+to be nonsingular in the considered flight envelope X ,implying matched uncertainties. For the lumped uncertainty 
+
+∆( x, δ ) = ∆ fω (x) + ∆ gω (x)δ we assume 
+
+∥∆( x, δ )∥ ≤ ∆max ∥ ˙∆( x, δ )∥ ≤ ˙∆max . (10) As we consider attitude control based on the rotation dynam-ics (9) only, we also assume that there exists an outer-loop controller that keeps the remaining states in x stable. IV. B ASELINE CONTROLLER AND REFERENCE MODEL 
+
+Consider the nominal control law 
+
+δnom = gω (x)−1(ν − fω (x)) , (11) formulated based on the NDI transformation, where ν ∈ R3
+
+denotes the pseudo control input. As we apply the safety filtered input δ = δnom − δh with δh = δnom − δ to the system (9b) this yields the closed-loop dynamics 
+
+˙ω = ν − gω (x)δh + ∆ fω (x) + ∆ gω (x)δ. (12) Define 
+
+gω (x) ≜ gϕ gθ gr
+
+⊤ , (13) 
+
+∆fω (x) ≜ ∆fϕ ∆fθ ∆fr
+
+⊤ , (14) 
+
+∆gω (x) ≜ ∆gϕ ∆gθ ∆gr
+
+⊤ (15) with ∆fϕ, ∆fθ , ∆fr ∈ R and gϕ, g θ , g r , ∆gϕ, ∆gθ , ∆gr ∈
+
+R1×3, and consider ν = νϕ νθ νr
+
+⊤, then (12) can be expressed element-wise as 
+
+ ˙p
+
+˙q
+
+˙r
+
+ =
+
+νϕ
+
+νθ
+
+νr
+
+ −
+
+
+
+gϕδh
+
+gθ δh
+
+gr δh
+
+ +
+
+
+
+∆fϕ
+
+∆fθ
+
+∆fr
+
+ +
+
+
+
+∆gϕδ
+
+∆gθ δ
+
+∆gr δ
+
+ . (16) From (6a), the kinematics 
+
+¨ϕ = ˙ p + ˙ q sin( ϕ) tan( θ) + ˙ r cos( ϕ) tan( θ)+ q ˙ϕ cos( ϕ) tan( θ) + q ˙θ sin( ϕ) sec 2(θ)
+
+− r ˙ϕ sin( ϕ) tan( θ) + r ˙θ cos( ϕ) sec 2(θ), (17a) 
+
+¨θ = ˙ q cos( ϕ) − q ˙ϕ sin( ϕ) − ˙r sin( ϕ) − r ˙ϕ cos( ϕ) (17b) are derived. Let the pseudo control inputs be 
+
+νϕ = − ˙q sin( ϕ) tan( θ) − ˙r cos( ϕ) tan( θ)
+
+− q ˙ϕ cos( ϕ) tan( θ) − q ˙θ sin( ϕ) sec 2(θ)+ r ˙ϕ sin( ϕ) tan( θ) − r ˙θ cos( ϕ) sec 2(θ)+ ¨ϕr + μϕ, (18a) 
+
+νθ = q ˙ϕ sin( ϕ) + ˙ r sin( ϕ) + r ˙ϕ cos( ϕ) + ¨θr + μθ
+
+cos( ϕ) , (18b) 
+
+νr = ˙ rr + μr , (18c) where μϕ, μ θ , μ r ∈ R are yet undefined auxiliary control inputs and ϕr , θr , rr are reference signals of the control variables ϕ, θ, r. Substituting the pseudo control inputs (18) into (16) and then substituting ˙p and ˙r of (16) into (17) yields 
+
+
+
+¨ϕ
+
+¨θ
+
+˙r
+
+ =
+
+
+
+¨ϕr + μϕ + ∆ fϕ + ∆ gϕδ − gϕδh
+
+¨θr + μθ + cos( ϕ)(∆ fθ + ∆ gθ δ − gθ δh)˙rr + μr + ∆ fr + ∆ gr δ − gr δh
+
+ . (19) By defining the tracking errors eϕ = ϕ − ϕr , eθ = θ − θr ,
+
+er = r − rr and rearranging (19) accordingly, we obtain the error dynamics 
+
+˙xϕ = Aϕxϕ + Bϕ(μϕ + ∆ fϕ + ∆ gϕδ − gϕδh), (20a) 
+
+˙xθ = Aθ xθ + Bθ (μθ
+
++ cos( ϕ)(∆ fθ + ∆ gθ δ − gθ δh)) , (20b) 
+
+˙xr = Ar xr + Br (μr + ∆ fr + ∆ gr δ − gr δh) (20c) with 
+
+Ai =
+
+0 10 0
+
+
+
+, Bi =
+
+01
+
+
+
+, xi =
+
+ei
+
+˙ei
+
+
+
+for i ∈ { ϕ, θ } and Ar = 0 , Br = 1 , xr = er . We decompose the auxiliary control inputs as μ = μbs + μad , where 
+
+μbs = μϕ, bs μθ, bs μr, bs 
+
+⊤ denotes the baseline error controller and μad = μϕ, ad μθ, ad μr, ad 
+
+⊤ the adaptive augmentation. Consider i ∈ {ϕ, θ, r }, we chose linear baseline controllers μi, bs = Kixi, and for the dynamics 
+
+˙xi,m = Ai,m xi,m − Bivi,h , (21) with hedging signals vϕ,h = gϕδh, vθ,h = gθ cos( ϕ)δh,
+
+vr,h = gr δh, we assume Ki to be chosen so that Ai,m =
+
+Ai+BiKi is Hurwitz. We refer to (21) as the reference model describing the desired tracking error dynamics. However, by substituting the considered baseline controllers into (20), the true error dynamics are 
+
+˙xϕ = Aϕ,m xϕ + Bϕ(μϕ, ad + ∆ fϕ + ∆ gϕδ − gϕδh), (22a) 
+
+˙xθ = Aθ,m xθ + Bθ (μθ, ad 
+
++ cos( ϕ)(∆ fθ + ∆ gθ δ − gθ δh)) , (22b) 
+
+˙xr = Ar,m xr + Br (μr, ad + ∆ fr + ∆ gr δ − gr δh). (22c) Based on the the reference model (21) and the true error dynamics (22), we define the model matching errors ei,m =
+
+xi − xi,m for i ∈ { ϕ, θ, r } with dynamics 
+
+˙eϕ,m = Aϕ,m eϕ,m + Bϕ(μϕ, ad + ∆ fϕ + ∆ gϕδ), (23a) 
+
+˙eθ,m = Aθ,m eθ,m + Bθ (μθ, ad 
+
++ cos( ϕ)(∆ fθ + ∆ gθ δ)) , (23b) 
+
+˙er,m = Ar,m er,m + Br (μr, ad + ∆ fr + ∆ gr δ). (23c) The main goal of the adaptive augmentation is to drive 
+
+ei,m as close as possible to zero by suitable choice of the remaining inputs μi, ad with i ∈ {ϕ, θ, r }. Note, by applying PCH in the reference model (21), the matching error dynamics (23) become invariant of the safety filter action δh.Therefore, by driving ei,m to zero the RL-agent will aim to compensate for the matched uncertainties ∆fi and ∆gi but not for the safety filter action. To augment the baseline controller in a manner analogous to MRAC, we feedback the Lyapunov-weighted error si =
+
+e⊤
+
+> i,m
+
+PiBi to the RL-agent with i ∈ { ϕ, θ, r }, where Pi is obtained from the Lyapunov equation A⊤
+
+> i,m
+
+Pi + PiAi,m =
+
+−Q with Q ≻ 0.V. RL-B ASED ADAPTIVE AUGMENTATION 
+
+In this section, we develop a novel RL-based adaptive augmentation that is inspired by the uncertainty compen-sating structure of MRAC. The objective is to enable the augmentation to learn to compensate for matched uncertain-ties in the matching error dynamics (23). Specifically, the RL policy learns an adaptation rule for updating the estimates of the uncertainty parameters rather than directly commanding control surface deflections. For the uncertainty terms defined in (14) and (15), consider the corresponding estimates ∆ ˆfω ∈ R3, ∆ˆ gω ∈ R3×3 and 
+
+∆ ˆfi ∈ R, ∆ˆ gi ∈ R1×3 for i ∈ { ϕ, θ, r }.The policy is evaluated at tk = kT s, k ∈ N0, with sampling period Ts > 0. For continuous-time signals, the subscript k denotes evaluation at tk. Control-dependent ob-servations refer to the values available at the time of the policy call, before the new action is issued. The aircraft, baseline controller and reference model dynamics remain continuous-time. The matched uncertainties are not directly measured, so the sampled learning problem is treated as a partially ob-servable Markov decision process (POMDP) [30]. To supply temporal information without explicitly estimating a belief state, the policy uses the current observation and three pre-ceding observations. Defining the instantaneous observation, without its history, as 
+
+ok = col  oϕ,k , o θ,k , o r,k , δ k,
+
+∥∆ ˆfω,k ∥2, ∥∆ˆ gω,k ∥F , o x,k 
+
+, (24) where 
+
+oi,k = col  ei,m,k , s i,k , μ i,k , μ i, ad ,k ,
+
+∆ ˆfi,k , ∆ˆ g⊤
+
+> i,k
+
+,ox,k = col  ϕk, θ k, p k, q k, r k, α k, β k, γ k, v TAS ,k 
+
+
+
+with i ∈ { ϕ, θ, r }. Here si,k = e⊤
+
+> i,m,k
+
+PiBi is the sampled Lyapunov-weighted error already defined in Section IV. Both the sampled matching error ei,m,k as well as si,k quantify the deviation from the reference model. The sampled con-trol inputs δk, μi,k , μi, ad ,k and the estimated uncertainty parameters ∥∆ ˆfω,k ∥2, ∥∆ˆ gω,k ∥F , ∆ ˆfi,k , ∆ˆ g⊤ 
+
+> i,k
+
+describe the current compensation, while ox,k supplies flight-condition information. With an initialized history buffer, the input to the policy and the resulting action are given by 
+
+¯ok = col( ok, o k−1, o k−2, o k−3),ak ∼ π(· | ¯ok). (25) The actions ak are structured as 
+
+ak = col  aϕ,f,k , a ⊤
+
+> ϕ,g,k
+
+, a θ,f,k ,a⊤
+
+> θ,g,k
+
+, a r,f,k , a ⊤
+
+> r,g,k
+
+ ∈ A ⊂ R12 , (26) where ai,f,k ∈ R and ai,g,k ∈ R1×3 are later applied as adap-tation rates for the uncertainty estimates. The network inputs and outputs are normalized using fixed scaling factors, with the same scaling applied during training and deployment. We model the actions with a zero-order hold, 
+
+a(t) = ak, t ∈ [tk, t k+1 ), (27) and for i ∈ { ϕ, θ, r } we retain the continuous-time adapta-tion 
+
+∆ ˙ˆfi(t) = Proj  ∆ ˆfi(t), a i,f (t), (28a) 
+
+∆ ˙ˆgi(t) = Proj  ∆ˆ gi(t), a i,g (t) (28b) of the estimated parameters. The projection operator 
+
+Proj( ·, ·) is defined as in standard MRAC [31, Ch. 11] and restricts the parameters to a prescribed bounded convex set, avoiding parameter drift. The adaptive augmentation is formulated to compensate for the uncertainties in (23) as 
+
+μi, ad (t) = − ∆ ˆfi(t) ∆ˆ gi(t) Φi(t), i ∈ { ϕ, θ, r } (29) with regressors 
+
+Φϕ(t) = Φ r (t) = col(1 , δ (t)) ,
+
+Φθ (t) = cos ϕ(t) col(1 , δ (t)) .
+
+It is noted that here δ is the applied, safety-filtered input, as discussed in Section IV, and not the pre-filter command 
+
+δnom .The complete sampled matching error vector is 
+
+em,k = col( eϕ,m,k , e θ,m,k , e r,m,k ) ∈ R5, (30) where eϕ,m,k , e θ,m,k ∈ R2 and er,m,k ∈ R. Thus 
+
+∥em,k ∥22 = ∥eϕ,m,k ∥22 + ∥eθ,m,k ∥22 + |er,m,k |2.
+
+Using the sampled signals and an initialized previous action, the stage reward is 
+
+rk = − rm, 1
+
+ 1 − e−rm, 2∥em,k ∥22
+
+ − rm, 3∥em,k ∥2
+
+− rf ∥∆ ˆfω,k ∥22 − rg ∥∆ˆ gω,k ∥2
+
+> F
+
+− rad ∥μad ,k ∥22 − ra∥ak − ak−1∥22, (31) with weights rm, 1, r m, 2, r m, 3, r f , r g , r ad , r a ∈ R≥0. The bounded exponential and linear-norm terms penalize the matching error. The remaining terms penalize parameter magnitude, augmentation magnitude, and changes in the adaptation rates. The objective of the RL-based adaptive aug-mentation is to learn the policy that maximizes the expected cumulative discounted reward, leading to the convergence of 
+
+ei,m . It is noted that the stacked observations introduced in (25) should help the agent to understand the temporal dynam-ics of the environment introduced by different perturbations, that are not directly observable. As such, the training aims to maximize the expected discounted return 
+
+J(π) = Eπ
+
+" ∞X
+
+> k=0
+
+γ k
+
+> RL
+
+rk
+
+#
+
+, 0 ≤ γRL < 1. (32) Training details and numerical weight values are detailed in Section VII. VI. S AFETY FILTER DESIGN 
+
+The control design considered so far does not explicitly account for operational flight-envelope constraints and may therefore generate control inputs that drive the UAV toward unsafe regions of the state space. To address this issue, a safety filter of the form (3) is introduced to modify the nominal control input when necessary to satisfy the considered constraints. To reduce the conservatism induced by system uncertain-ties, we employ the disturbance observer (DOB) originally proposed by [32] and recently applied in the context of CBFs, e.g., by [29]. For the system (9b) with lumped uncertainty 
+
+∆( x, δ ) = ∆fω (x) + ∆ gω (x)δ this yields the observer dynamics 
+
+˙z = −Λ( z + Λ ω + fω (ω) + gω δ), (33a) 
+
+ˆ∆ = z + Λ ω (33b) where Λ ≻ 0 is a design matrix and ˆ∆ is an estimation of 
+
+∆( x, δ ). Considering ∆( x, δ ) = ˆ∆+ ˜∆( x, δ ) with ˜∆( x, δ ) = ∆( x, δ ) − ˆ∆, we can write the system dynamics as 
+
+˙ω = fω (x) + gω (x)δ + ˆ∆ + ˜∆( x, δ ), (34) where the only uncertainty is ˜∆( x, δ ) that can be bounded based on Proposition 1. In the following we drop the depen-dency of ∆( x, δ ) on x and δ for notational convenience. 
+
+Proposition 1: The disturbance estimation error ˜∆ =∆ − ˆ∆ decays exponentially towards the ultimate bound 
+
+B = { ˜∆ : ∥ ˜∆∥ ≤ ˙∆max  
+
+> λmin (Λ)
+
+} with ˙∆max from (10) and an exponential decay rate of λmin (Λ) .
+
+Proof: With ˜∆ = ∆ − ˆ∆ and (33) it follows ˙˜∆ = ˙∆ − Λ ˜∆. Considering the Lyapunov function candidate V = 
+
+> 12
+
+˜∆⊤ ˜∆ and substituting ˙˜∆ = ˙∆ − Λ ˜∆ into ˙V = ˜∆⊤ ˙˜∆ after some algebra yields 
+
+˙V ≤ − 2λmin (Λ) V + √2 ˙∆max 
+
+√V . (35) Applying the substitution √V = Vs with ˙V = 2 ˙VsVs leads to ˙Vs ≤ − λmin (Λ) Vs + √2 ˙∆max  
+
+> 2
+
+with the solution 
+
+Vs(t) ≤ e−λmin (Λ) tVs(0) + ˙∆max 
+
+√2λmin (Λ) (1 − e−λmin (Λ) t).
+
+Then with Vs(t) = 1√2 ∥ ˜∆( t)∥ it follows the claim. For the angular rates, we consider the following constraint functions 
+
+hi(x) = i2max − (Ciω)2 ≥ 0, i ∈ p, q, r, (36) with rate limits pmax , q max , r max ∈ R>0 and Cp =1 0 0, Cq = 0 1 0, Cr = 0 0 1. Then (36) defines the safe set Cω = {x ∈ X : hp(x) ≥ 0 ∧ hq (x) ≥
+
+0 ∧ hr (x) ≥ 0}. Consequently, hi(x) with i ∈ p, q, r is a CBF if 
+
+sup 
+
+> δ∈U
+
+[ ˙hi(x, δ )] ≥ − γihi(x) (37) for all x ∈ X , where ˙hi(x, δ ) = −2( Ciω)Ci(fω (x) + 
+
+gω (x)δ + ˆ∆ + ˜∆) and γi ∈ R>0 is a tuning parameter [33]. Using the bound 2|Ciω|( ˙∆max  
+
+> λmin (Λ)
+
++ ϵDOB ) ≥ ∥ 2( Ciω)Ci ˜∆∥
+
+from Proposition 1, a sufficient condition for (37) to hold is 
+
+sup 
+
+> δ∈U
+
+[−2( Ciω)Ci(fω (x) + gω (x)δ + ˆ∆)] ≥− γihi(x) + 2 |Ciω|( ˙∆max 
+
+λmin (Λ) + ϵDOB ), (38) where ϵDOB ∈ R≥0 is a tuning parameter to account for the initial transients of the DOB. For the Euler angles ϕ and θ, we consider the following constraint functions 
+
+hi(x) = i2max − (CiΘ) 2 ≥ 0, i ∈ ϕ, θ, (39) with limits ϕmax , θ max ∈ R>0 and Cϕ = 1 0 0, Cθ =0 1 0. Then (39) defines the safe set CΘ = {x ∈ X :
+
+hϕ(x) ≥ 0 ∧ hθ (x) ≥ 0}. It follows that hi(x) with i ∈ ϕ, θ 
+
+is a HOCBF if 
+
+sup 
+
+> δ∈U
+
+[ ˙ψ1(x, δ )] ≥ − γi, 2ψ1(x) (40) for all x ∈ X with ψ1(x) = ˙hi(x) + γi, 1hi(x)
+
+and ˙ψ1(x, δ ) = ¨hi(x, δ ) + γi, 1 ˙hi(x), where ˙hi(x) =
+
+−2( CiΘ) Ci ˙Θ, ¨hi(x, δ ) = −2( CiΘ) CiΨ( fω (x) + gω (x)δ +ˆ∆+ ˜∆)+ ci(x), ci(x) = −2( Ci ˙Θ) 2 −2( CiΘ) Ci ˙Ψω and with tuning parameters γi, 1, γ i, 2 ∈ R>0 [28]. Using the bound 
+
+2|CiΘ|∥ CiΨ∥( ˙∆max  
+
+> λmin (Λ)
+
++ ϵDOB ) ≥ ∥2( CiΘ) CiΨ ˜∆∥ from Proposition 1, a sufficient condition for (40) to be satisfied is 
+
+sup 
+
+> δ∈U
+
+[−2( CiΘ) CiΨ( fω (x) + gω (x)δ + ˆ∆)] ≥ − γi, 2ψ1(x)
+
+− γi, 1 ˙hi(x) − ci(x) + 2 |CiΘ|∥ CiΨ∥( ˙∆max 
+
+λmin (Λ) + ϵDOB ),
+
+(41) where ϵDOB ∈ R≥0 again accounts for the initial DOB transients. To satisfy the rate and angle constraints with minimum invasive control action we formulate the QP 
+
+δ(x) = arg min 
+
+> δ∈U
+
+12 ∥δ − δnom (x)∥ (42) s.t. ACBF (x)δ ≤ bCBF (x),
+
+where ACBF (x) ∈ R5×3 and bCBF (x) ∈ R5 are obtained by rearranging (38) and (41) accordingly. VII. N UMERICAL EXAMPLE 
+
+The RL-based adaptive augmentation combined with the safety filter is evaluated for a representative track-ing scenario, which was obtained after training PPO from Stable Baselines 3 for 130 M steps using stan-dard hyper-parameters. The outer-loop guidance law generates the reference commands for χc, hc, and 
+
+vTAS ,c, with command changes applied at prescribed switching times. The reference commands are given by χc ∈ {(0 .0 s , 0.0◦), (30 .0 s , 100 .0◦), (60 .0 s , 0.0◦)},
+
+hc ∈ {(0 .0 s , 500 .0 m) , (35 .0 s , 750 .0 m) }, and vTAS ,c ∈{(0 .0 s , 30 .0 m s −1), (50 .0 s , 40 .0 m s −1)}. The simulation parameters are listed in Table I. The comparison of resulting closed-loop responses are shown in Fig. 2. Fig. 2a shows the closed-loop response of the baseline NDI controller without the safety filter. The controller does provide satisfactory tracking performance for ϕ and r, however, does not provide accurate tracking of the generated θr reference, and drives ϕ
+
+beyond its prescribed attitude constraint, illustrating the need for an adaptive augmentation to compensate the matched un-certainties in the closed-loop error dynamics to achieve accu-rate reference tracking, and a safety filter for flight envelope constraint satisfaction. The RL-based adaptive augmentation with safety filter and PCH is shown in Fig. 2b, illustrating accurate tracking of ϕr , θr , and rr when flight envelope constraints are not violated. At approximately t = 35 s and 
+
+t = 65 s , the outer-loop reference commands are not safe, i.e. would drive the aircraft beyond its prescribed attitude constraints for ϕ and θ, and the safety filter intervenes, prioritizing flight envelope protection over accurate reference tracking. In these intervals, where the reference commands or the RL-based adaptive augmentation would lead to flight envelope constraint violations, the safety filter modifies the nominal control input δnom by the safe input δ to satisfy flight envelope constraints. This is shown in Fig. 2d, which shows the nominal control input δnom , the safe control input 
+
+δ, the deviation between nominal control input and safe control input δnom −δ, the model-matching error norm ∥em∥,and the adaptive parameters from the RL-based adaptive augmentation. Note that δ = δnom if no flight envelope constraints are violated. This illustrates that the safety filter only intervenes when flight envelope constraints are violated, thereby modifying the RL-based adaptive augmentation in an minimal invasive way, while PCH ensures that the RL-based adaptive augmentation does not compensate for interventions introduced by the safety filter, making the model-matching error dynamics invariant of the input discrepancy introduced by the safety filter. Fig. 2c illustrates the effects of omitting PCH. Since the safety filter induced control modifications are not reflected in the reference model, the model-matching error dynamics are no longer invariant from safety filter input discrepancy, resulting in an increased RL-based adaptive augmentation, causing the adaptive parameters to increase until they reach the projection boundary, potentially leading to degraded closed-loop stability. TABLE I: Simulation parameters 
+
+Parameter Value Parameter Value 
+
+Simulation parameters 
+
+pmax 100 .0 ◦ s−1 qmax 60 .0 ◦ s−1
+
+rmax 50 .0 ◦ s−1 ϕmax 30 .0◦
+
+θmax 30 .0◦ γp,q,r 5.0 
+
+γϕ,θ, 1 3.0 γϕ,θ, 2 5.0 
+
+δmax [25 .0◦, 30 .0◦, 90 .0◦] ∆t 0.02 s 
+
+Nsteps 7500 
+
+Reward function parameters 
+
+rm, 1 10.0 rm, 2 0.5 
+
+rm, 3 10.0 rd 0.15 
+
+rC 0.15 rad 0.05 
+
+rc 0.001 
+
+VIII. C ONCLUSIONS 
+
+This paper presents a safe RL-based adaptive augmen-tation control scheme, in which RL is used to learn an adaptation law for compensating the effects of matched uncertainties. A safety filter is employed to keep the states within a predefined safe set, while pseudo control hedging is formulated to avoid interactions between the RL aug-mentation and the safety filter. The proposed concept is applied to fixed-wing UAV attitude control under uncertainty. The results demonstrate effective uncertainty compensation and successful avoidance of adverse interactions with the safety filter while maintaining the prescribed flight-envelope constraints. REFERENCES [1] D. J. Richter, R. A. Calix, and K. Kim, “A review of reinforcement learning for fixed-wing aircraft control tasks,” IEEE Access , vol. 12, pp. 103 026–103 048, 2024. [2] D. J. Marquis, B. Wilhelm, D. Muniraj, and M. Farhood, “Adversarial reinforcement learning for robust control of fixed-wing aircraft under model uncertainty,” in 2026 American Control Conference (ACC) .IEEE, 2026, pp. 1158–1164. [3] A. De Marco, P. M. D’Onza, and S. Manfredi, “A deep reinforcement learning control approach for high-performance aircraft,” Nonlinear Dynamics , vol. 111, no. 18, pp. 17 037–17 077, 2023. [4] D. Shukla, H. Benyamen, S. Keshmiri, and N. M. Beckage, “Re-inforcement learning-based evolving flight controller for fixed-wing uncrewed aircraft,” IEEE Transactions on Control Systems Technology ,vol. 33, no. 3, pp. 872–886, 2024. [5] M. Chowdhury and S. Keshmiri, “Interchangeable reinforcement-learning flight controller for fixed-wing UASs,” IEEE Transactions on Aerospace and Electronic Systems , vol. 60, no. 2, pp. 2305–2318, 2024. [6] E. Bøhn, E. M. Coates, S. Moe, and T. A. Johansen, “Deep rein-forcement learning attitude control of fixed-wing UAVs using proximal policy optimization,” in 2019 international conference on unmanned aircraft systems (ICUAS) . IEEE, 2019, pp. 523–533. [7] M. Chowdhury and S. Keshmiri, “A unified inner-outer loop rein-forcement learning flight controller for fixed-wing aircraft,” in 2024 International Conference on Unmanned Aircraft Systems (ICUAS) .IEEE, 2024, pp. 556–563. [8] K. Dally and E.-J. Van Kampen, “Soft actor-critic deep reinforcement learning for fault tolerant flight control,” in AIAA SciTech 2022 Forum ,2022, p. 2078. [9] E. Bøhn, E. M. Coates, D. Reinhardt, and T. A. Johansen, “Data-efficient deep reinforcement learning for attitude control of fixed-wing UAVs: Field experiments,” IEEE Transactions on Neural Networks and Learning Systems , vol. 35, no. 3, pp. 3168–3180, 2023. [10] P. M. Dias, Y. Zhou, and E.-J. Van Kampen, “Intelligent nonlinear adaptive flight control using incremental approximate dynamic pro-gramming,” in AIAA Scitech 2019 Forum , 2019, p. 2339. [11] R. Konatala, D. Milz, C. Weiser, G. Looye, and E. van Kampen, “Flight testing reinforcement-learning-based online adaptive flight control laws on CS-25-Class aircraft,” Journal of Guidance, Control, and Dynamics , vol. 47, no. 11, pp. 2460–2467, 2024. [12] R. Konatala, E.-J. Van Kampen, and G. Looye, “Reinforcement learning based online adaptive flight control for the Cessna Citation II (PH-LAB) aircraft,” in AIAA Scitech 2021 Forum , 2021, p. 0883. [13] D. Wada, S. Araujo-Estrada, and S. Windsor, “Sim-to-real transfer for fixed-wing uncrewed aerial vehicle: pitch control by high-fidelity modelling and domain randomization,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 11 735–11 742, 2022. [14] X. Chen, J. Hu, C. Jin, L. Li, and L. Wang, “Understanding domain randomization for sim-to-real transfer,” in International Conference on Learning Representations (ICLR) , 2022. [15] G. B. Margolis, G. Yang, K. Paigwar, T. Chen, and P. Agrawal, “Rapid locomotion via reinforcement learning,” The International Journal of Robotics Research , vol. 43, no. 4, pp. 572–587, 2024. [16] A. M. Annaswamy, A. Guha, Y. Cui, S. Tang, P. A. Fisher, and J. E. Gaudio, “Integration of adaptive control and reinforcement learning for real-time control and learning,” IEEE Transactions on Automatic Control , vol. 68, no. 12, pp. 7740–7755, 2023. [17] M. Borghesi, A. Bosso, and G. Notarstefano, “MR-ARL: Model reference adaptive reinforcement learning for robustly stable on-policy data-driven LQR,” IEEE Transactions on Automatic Control , vol. 71, no. 2, pp. 1129–1144, 2026. [18] A. Guha and A. M. Annaswamy, “Online policies for real-time control using mrac-rl,” in 2021 60th IEEE Conference on Decision and Control (CDC) , 2021, pp. 1808–1813. [19] H. Kannan, K. Patnaik, and W. Zhang, “Reinforcement learning-based hover control of a quadrotor with model reference adaptation,” in 2025 American Control Conference (ACC) , 2025, pp. 438–443. [20] Y. Cheng, P. Zhao, F. Wang, D. J. Block, and N. Hovakimyan, “Improving the robustness of reinforcement learning policies with ↕1
+
+adaptive control,” IEEE Robotics and Automation Letters , vol. 7, no. 3, pp. 6574–6581, 2022. [21] R. Goel and S. B. Roy, “Composite adaptive control for time-varying systems with dual adaptation,” IEEE Transactions on Automatic Con-trol , vol. 70, no. 1, pp. 487–494, 2024. (a) Outer-loop reference commands and resulting closed-loop response from baseline NDI controller 
+
+(b) Outer-loop reference commands and resulting closed-loop response from RL-based adaptive augmentation with safety filter and PCH −10 010                       
+
+> δnom  (deg)
+> δnom ,aileron
+> δnom ,elevator
+> δnom ,rudder
+> −10 010
+> δ (deg)
+> δaileron
+> δelevator
+> δrudder
+> −2.5 0.0 2.5
+> δnom  − δ (deg)
+> δnom ,aileron −δaileron
+> δnom ,elevator −δelevator
+> δnom ,rudder −δrudder
+> 0.0 0.1 0.2 ‖em‖ ‖em,ϕ‖‖em,θ‖‖em,r‖
+> 020 40 60 80 100 120 140 Time (s) 05
+> ‖Δ̂ g‖, ‖Δ̂ f‖ ‖Δ̂ gϕ‖‖Δ̂ fϕ‖‖Δ̂ gθ‖‖Δ̂ fθ‖‖Δ̂ gr‖‖Δ̂ fr‖
+
+(c) Nominal and safety-filtered control inputs, matching error norm and adaptive parameters from RL-based adaptive augmentation without PCH 020                       
+
+> δnom  (deg)
+> δnom ,aileron
+> δnom ,elevator
+> δnom ,rudder
+> 020
+> δ (deg)
+> δaileron
+> δelevator
+> δrudder
+> −2 0
+> δnom  − δ (deg)
+> δnom ,aileron −δaileron
+> δnom ,elevator −δelevator
+> δnom ,rudder −δrudder
+> 0.0 0.1 0.2 ‖em‖ ‖em,ϕ‖‖em,θ‖‖em,r‖
+> 020 40 60 80 100 120 140 Time (s) 05
+> ‖Δ̂ g‖, ‖Δ̂ f‖ ‖Δ̂ gϕ‖‖Δ̂ fϕ‖‖Δ̂ gθ‖‖Δ̂ fθ‖‖Δ̂ gr‖‖Δ̂ fr‖
+
+(d) Nominal and safety-filtered control inputs, matching error norm and adaptive parameters from RL-based adaptive augmentation with PCH 
+
+Fig. 2: Closed-loop comparison of NDI and safety-filtered RL-based adaptive control with and without PCH 
+
+[22] R. Cheng, G. Orosz, R. M. Murray, and J. W. Burdick, “End-to-end safe reinforcement learning through barrier functions for safety-critical continuous control tasks,” in Proceedings of the AAAI conference on artificial intelligence , vol. 33, no. 01, 2019, pp. 3387–3395. [23] Y. Emam, G. Notomista, P. Glotfelter, Z. Kira, and M. Egerstedt, “Safe reinforcement learning using robust control barrier functions,” IEEE Robotics and Automation Letters , vol. 10, no. 3, pp. 2886–2893, 2022. [24] H. Markgraf, S. Sawant, H. Krasowski, L. Sch¨ afer, S. Gros, and M. Althoff, “Safe reinforcement learning using action projection: Safeguard the policy or the environment?” Transactions on Machine Learning Research , 2026. [25] Z. Marvi and B. Kiumarsi, “Safe reinforcement learning: A control barrier function optimization approach,” International Journal of Ro-bust and Nonlinear Control , vol. 31, no. 6, pp. 1923–1940, 2021. [26] L. Zhao, K. Gatsis, and A. Papachristodoulou, “Stable and safe reinforcement learning via a barrier-lyapunov actor-critic approach,” in 
+
+2023 62nd IEEE Conference on Decision and Control (CDC) . IEEE, 2023, pp. 1320–1325. [27] E. N. Johnson and A. J. Calise, “Pseudo-control hedging: A new method for adaptive control,” in Advances in navigation guidance and control technology workshop . Alabama, USA Alabama, USA, 2000, pp. 1–2. [28] W. Xiao and C. Belta, “Control Barrier Functions for Systems with High Relative Degree,” in 2019 IEEE 58th Conference on Decision and Control (CDC) . Nice, France: IEEE, Dec. 2019, pp. 474–479. [29] E. Das ¸ and R. M. Murray, “Robust safe control synthesis with disturbance observer-based control barrier functions,” in 2022 IEEE 61st conference on decision and control (CDC) . IEEE, 2022, pp. 5566–5573. [30] L. P. Kaelbling, M. L. Littman, and A. R. Cassandra, “Planning and acting in partially observable stochastic domains,” Artificial Intelli-gence , vol. 101, no. 1, pp. 99–134, 1998. [31] L. Eugene, W. Kevin, and D. Howe, “Robust and adaptive control with aerospace applications,” England: Springer-Verlag London , 2013. [32] W.-H. Chen, D. J. Ballance, P. J. Gawthrop, and J. O’Reilly, “A nonlin-ear disturbance observer for robotic manipulators,” IEEE Transactions on industrial Electronics , vol. 47, no. 4, pp. 932–938, 2000. [33] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control Barrier Functions: Theory and Applications,” in 2019 18th European Control Conference (ECC) . IEEE, pp. 3420–3431. [Online]. Available: https://ieeexplore.ieee.org/document/8796030/

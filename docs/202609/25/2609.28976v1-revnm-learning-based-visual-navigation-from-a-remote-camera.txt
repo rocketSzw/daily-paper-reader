@@ -1,0 +1,278 @@
+Title: ReVNM: Learning-Based Visual Navigation from a Remote Camera
+
+URL Source: https://arxiv.org/pdf/2609.28976v1
+
+Published Time: Fri, 25 Sep 2026 00:31:12 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# ReVNM: Learning-Based Visual Navigation from a Remote Camera 
+
+Michikuni Eguchi 1,†, Kohei Honda 2,3,†, Masafumi Endo 2, Yasuhiro Yoshimura 2, Ryo Yonetani 2 
+
+> Fig. 1. ReVNM enables robot navigation with a single uncalibrated exocentric camera and requires no onboard vision processing or a pre-built map. The core of ReVNM, an exocentric-to-egocentric (exo2ego) module, synthesizes egocentric depth from the remote image. The synthesized depth fills in the robot’s surroundings that the remote camera alone cannot capture and helps the navigation policy predict waypoints.
+
+Abstract — Visual Navigation Models (VNMs) enable robots to navigate from egocentric visual observations without ge-ometric localization and planning, but long-range navigation still requires pre-built maps. This paper presents the Remote Visual Navigation Model (ReVNM), which uses a single remote surveillance camera to serve as both an observation source and an implicit environmental map for visual navigation. While the use of remote cameras could eliminate the need for pre-built maps as well as onboard vision processing, their limited field of view instead of egocentric observations makes it hard to achieve collision-free navigation. The lack of existing data with diverse remote viewpoints, which are crucial for training robust VNMs, further complicates the challenge. In this work, we propose a learning-by-synthesis approach to address this two-fold challenge. Our ReVNM extends a state-of-the-art VNM architecture with an exocentric-to-egocentric (exo2ego) module that predicts an egocentric depth observation from remote-camera observations. This helps the VNM to plan a path while considering obstacles in front of the robot. Trained only on randomly generated worlds with diverse obstacle layouts and camera viewpoints, ReVNM can generalize well to real robot navigation without additional fine-tuning. Experiments in both simulation and real-world environments confirmed the effectiveness of the proposed approach. 
+
+I. INTRODUCTION Visual navigation models (VNMs) are imitation-learned policies that guide a robot to a goal from egocentric visual observations alone, without explicit geometric localization or path planning. Existing models such as GNM [1], ViNT [2],  
+
+> †Equal contribution.
+> 1The Graduate School of Comprehensive Human Sciences, University of Tsukuba, Ibaraki, Japan. Work done during an internship at CyberAgent AI Lab.
+
+egrt117@gmail.com      
+
+> 2CyberAgent AI Lab, Tokyo, Japan,
+
+{honda kohei, endo masafumi, yoshimura yasuhiro, yonetani ryo }@cyberagent.co.jp 
+
+> 3The Department of Mechanical Systems Engineering, Nagoya Univer-sity, Aichi, Japan *This work was partially supported by Tokai Pathways to Global Ex-cellence, part of MEXT Strategic Professional Development Program for Young Researchers.
+
+and NoMaD [3] have demonstrated strong generalization across environments and robot platforms. However, deploying a VNM entails two practical require-ments. First, navigation using VNMs, especially when the goal is outside the initial view of the robot, typically relies on a pre-built map that must be updated as the environment changes. Second, running the model in real time requires onboard cameras and sufficient GPU resources, which limits its applicability to low-cost robots. These requirements moti-vate our central question: can we use VNMs without pre-built mapping and compute-intensive onboard visual processing? 
+
+In this work, we propose the Remote Visual Navigation Model (ReVNM) . Our key idea is to use a fixed remote surveillance camera as a persistent, map-like observation source. Compared to mobile robots, surveillance cameras have already been deployed widely in real-world environ-ments. Their continuous recording is a natural map of the environment that is always up to date. These cameras are often connected to network compute resources, to which robots can delegate intensive visual processing by VNMs. While intuitive, the use of remote camera vision for VNMs comes with unique challenges. Although an exocen-tric viewpoint provides a broader view of the environment, obstacles can occlude the robot’s immediate surroundings, particularly under oblique camera viewpoints. As a result, the remote observation alone may not contain sufficient local geometric information for collision-aware waypoint prediction. Another challenge is the lack of existing data compared to the conventional egocentric-camera setup ( e.g. ,[1]). Although surveillance cameras are ubiquitous, most of them are proprietary, and collecting diverse data for training robust models is impractical. The proposed ReVNM employs a learning-by-synthesis approach to address these challenges (Fig. 1). Specifically, we construct a large-scale synthetic dataset comprising ex-pert demonstrations of mobile robot navigation in randomly 
+
+> This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. arXiv:2609.28976v1 [cs.RO] 24 Sep 2026
+
+generated worlds, recorded as exocentric videos from diverse viewpoints along with their egocentric counterparts. Rather than relying solely on exocentric video feeds, ReVNM learns an exocentric-to-egocentric (exo2ego) diffusion module that predicts egocentric depth observations from the exocentric inputs. This enables the robot to detour around predicted obstacles ahead and to identify narrow gaps for effective shortcuts. Moreover, we introduce a data augmentation strat-egy inspired by DAgger [4], which incorporates recov-ery demonstrations collected when the robot reaches near-collision states that the expert trajectories rarely visit. By integrating these techniques, we show that ReVNM can effectively generalize to unseen environments, including real-world cluttered offices. In summary, our contributions are as follows:  
+
+> •
+
+We formulate a remote-camera visual navigation setting in which a robot navigates to an image-specified goal using a single uncalibrated exocentric camera, without requiring a pre-built global map or onboard vision processing.  
+
+> •
+
+We propose ReVNM, which combines remote depth observations with an exo2ego diffusion module that pre-dicts complementary egocentric depth for robot-centric waypoint prediction. The model is trained entirely from synthetic expert demonstrations together with DAgger-inspired recovery data.  
+
+> •
+
+We evaluate ReVNM in diverse simulated environments and on a different real robot, demonstrating improved navigation performance over the image-space remote-navigation [5] and egocentric-VNM [3] baselines. II. RELATED WORK 
+
+A. Visual Navigation Models 
+
+VNMs are goal-conditioned policies that predict short-horizon waypoints from visual observations, typically cap-tured by onboard cameras. When trained on large-scale egocentric video datasets, VNMs have demonstrated strong generalization across environments and robot platforms [1]– [3]. For long-range navigation beyond a single egocentric view, they are typically combined with topological maps [6], whose nodes store egocentric observations and pre-computed traversability between nodes. Recent work has explored richer environment represen-tations beyond topological maps. For example, 3D scene graphs [7], Gaussian splatting [8], and video-generative world model [9] are used as environmental maps for VNMs. In this work, we seek another direction, i.e. , using remote camera observations as input to VNMs. This not only mit-igates the problem of the limited egocentric field of view for long-range navigation, but is also advantageous for low-cost robot applications where onboard vision and compute infrastructure is not always affordable. 
+
+B. Model-Based Remote Visual Navigation 
+
+Navigation from a fixed remote camera, while it is new in the context of VNMs, has traditionally been studied through model-based visual servoing [10]. Position-based visual servoing (PBVS) reconstructs the robot, goal, and obstacles in a physical coordinate frame, where conven-tional localization [11]–[13] and control [14] methods can be applied. Its performance, however, depends on reliable geometric reconstruction, which is difficult with unknown camera parameters or partial occlusion [15]. Image-based visual servoing (IBVS) instead operates directly in image space, typically using a model that relates control inputs to image-space motion. Starting from [16], existing works have studied adaptive control [17], uncalibrated cameras [18], [19], or robot pose estimation [5]. A fundamental difficulty in model-based IBVS is that the relationship between image displacement and physical robot motion strongly depends on the camera viewpoint and image location, particularly for oblique cameras. Rather than explicitly deriving this mapping, ReVNM learns it from demonstrations by directly predicting robot-centric waypoints from exocentric visual observations. III. R EVNM: R EMOTE VISUAL NAVIGATION MODEL 
+
+A. Problem Formulation 
+
+We consider a scenario with a fixed remote camera in-stalled in the environment to monitor the entire space in which a robot navigates. Although the traversable space can be partly occluded by obstacles, we still assume that the initial position of the robot and its navigation goal are clearly visible from the camera. Formally, let ot be the observation at time t and pgoal be the goal. The task of visual navigation is to learn a navigation policy that predicts the conditional probability of the sequence of H future waypoints from t +1, 
+
+wt+1: t+H , as follows: 
+
+π(wt+1: t+H | ot , pgoal ). (1) We assume that this policy can be executed on the compute infrastructure attached to the remote camera. The robot is equipped with the minimum set of sensors ( e.g. , 2D LiDAR) and computers required for local motion planning to follow the planned path wt+1: t+H . Each waypoint is represented in a robot-centric 2D coordinate frame in metric units. With this setup, the policy infers these waypoints using information available from the remote camera, without relying on a pre-built map or onboard visual observations. Note that this setting shares a structural analogy with ex-ocentric visuomotor manipulation, where an external camera observes both the end-effector and its target. In such set-tings, exocentric and egocentric views provide complemen-tary global and local visual information [20]. Nevertheless, our problem assumes no onboard cameras available on the robot, motivating our solution to synthesize the egocentric observation from available information instead. 
+
+B. Observation Model 
+
+We design the policy observation ot to provide the geomet-ric information required for waypoint prediction while min-imizing appearance-dependent cues that may hinder policy transfer across environments. Specifically, the observation at Fig. 2. Model architecture of ReVNM. (a) The navigation policy is an ACT-style CVAE. It encodes the ego and exo depth with ResNet-34 and predicts a chunk of waypoints from these, the robot pixel, orientation, and goal. (b) exo2ego is a Diffusion Transformer that synthesizes the ego depth from the cropped exo depth, conditioned on the robot pixel and orientation. 
+
+time t is ot =
+
+
+
+dexo  
+
+> t−N+1: t
+
+, dexo2ego  
+
+> t−N+1: t
+
+, prob , qrel 
+
+
+
+, where dexo 
+
+> t−N+1: t
+
+denotes normalized exocentric depth images over the most recent N time steps, obtained from the remote-camera RGB images using monocular depth estimation [21]. prob and qrel 
+
+denote the robot’s normalized pixel location and relative ori-entation with respect to the remote-camera image coordinate frame, respectively. One of our technical contributions is dexo2ego , an ego-centric depth observation generated from dexo  
+
+> t−N+1: t
+
+. This additional input is expected to better capture obstacles that may be occluded from the camera’s exocentric viewpoint, as will be detailed in Sec. III-D. 
+
+C. Policy Network Architecture 
+
+As shown in Fig. 2(a), we design the policy as aconditional variational autoencoder (CVAE) [22] following ACT [23], treating a sequence of H future waypoints as an action chunk. During training, a transformer-based encoder infers a latent variable z from the robot location prob and the target waypoints. At test time, z is fixed to the prior mean. The policy decoder consists of a transformer [24] encoder-decoder conditioned on z, the observation ot , and the goal pgoal . The transformer encoder fuses these inputs into a sequence of tokens: each depth image is encoded using a ResNet [25] backbone with positional encodings, while 
+
+prob , qrel , pgoal , and z are individually projected by linear layers. The transformer decoder takes H learned queries and attends to the encoded tokens to predict the future waypoints 
+
+wt+1: t+H as an action chunk. 
+
+D. Exocentric-to-Egocentric (exo2ego) Module 
+
+The exo2ego module synthesizes the egocentric depth observation dexo2ego  
+
+> t
+
+from the exocentric observation. We adopt a diffusion-based method that generates egocentric images for manipulation [26] to our remote visual navigation setting. Unlike manipulation where the viewpoint is fixed, navigation involves an egocentric viewpoint that changes substantially as the robot moves. We therefore condition the exo2ego module not only on the exocentric depth but also on the robot pixel prob and orientation qrel . Formally, the exo2ego module gψ generates the ego depth as 
+
+dexo2ego  
+
+> t
+
+= gψ ( ˜dexo  
+
+> t−N+1: t
+
+, prob , qrel ), (2) where ˜ dexo denotes the exocentric depth cropped around prob 
+
+to emphasize the robot’s local surroundings, as shown in Fig. 2(b). We model gψ as a conditional denoising diffusion proba-bilistic model (DDPM) [27], whose denoiser is a Diffusion Transformer (DiT) [28]. The denoiser predicts the clean ego-depth image from a noisy ego-depth sample, conditioned on the cropped exocentric-depth history and the robot pose, following the x0-prediction formulation [29]. The noisy ego-depth sample and the cropped exocentric-depth history are concatenated channel-wise, while the diffusion step and robot pose are used as conditioning inputs to the DiT. 
+
+E. Training 
+
+The navigation policy and the exo2ego module are trained separately using the same simulation dataset described in Sec. IV, with no gradient propagation between them. 
+
+a) Navigation Policy: We train the ReVNM navigation policy, as described in Sec. III-C, with an L1 reconstruction loss and a KL regularization term, as in [23], 
+
+L = w∗ 
+
+> t+1: t+H
+
+− wt+1: t+H 1 + β DKL 
+
+ qφ N(0, I) , (3) where w∗ 
+
+> t+1: t+H
+
+are the expert waypoints of Sec. IV, qφ =
+
+qφ (z | prob , w∗ 
+
+> t+1: t+H
+
+) is the CVAE encoder, and β weights the regularization. 
+
+b) exo2ego Module: We pretrain the exo2ego module using a pixel-wise mean-squared error between the predicted depth and the ground-truth ego depth dego  
+
+> t
+
+, obtained from the robot-mounted camera in simulation. IV. T RAINING DATASET FOR REVNM 
+
+A. Data Synthesis 
+
+To address the lack of diverse exocentric visual naviga-tion data, we adopt a learning-by-synthesis approach and construct a large-scale synthetic dataset of expert navigation demonstrations. We automatically collect expert robot trajec-tories using a classical navigation planner and record syn-chronized exocentric and egocentric image sequences along each trajectory. The trajectories provide expert waypoints w∗
+
+for the navigation policy, while the paired exocentric and egocentric observations are used to train the policy and the exo2ego module. To promote generalization to unseen environments, we generate a wide variety of navigation scenes by randomizing the geometric properties of obstacles rather than relying on a fixed set of hand-designed environments. Specifically, we procedurally construct environments from simple geometric primitives with randomized sizes, shapes, densities, and lay-outs, including both pillar- and wall-like obstacles, as shown in Fig. 1. We additionally randomize the exocentric camera configuration across demonstrations, exposing the model to diverse viewing positions and angles. Together, these variations provide broad coverage of the scene geometry and camera configurations encountered in exocentric navigation. 
+
+B. Data Augmentation 
+
+Although classical navigation planners allow us to auto-matically collect many expert demonstrations, the resulting trajectories tend to be overly well behaved. The expert typi-cally follows near-optimal paths while maintaining clearance from obstacles, and therefore rarely visits states in which the robot is close to collision or must recover from navigation errors. As we show in Sec. V-B.2.b, training only on such demonstrations substantially reduces navigation robustness. To complement these demonstrations, we augment the dataset using a DAgger-inspired [4] iterative recovery data collection procedure. We roll out the current navigation policy and collect additional expert recovery trajectories from near-failure states encountered during navigation, such as when the robot approaches an obstacle or becomes stuck. These recovery demonstrations are added to the training set, and the policy is retrained on the augmented dataset. V. EXPERIMENTS We evaluate the navigation performance of ReVNM in both simulation and the real world. We compare ReVNM with an existing egocentric VNM and a model-based remote navigation method, analyze the contribution of the proposed components through ablation studies, and evaluate whether the simulation-trained model generalizes to a real robot without further training. 
+
+A. Experimental Setup 1) Simulation Setup: Simulation experiments are con-ducted in Gazebo [30] using a differential-drive robot, Megarover (Vstone Co., Ltd.). The robot is equipped with a 2D LiDAR and an RGB camera (640 × 480, 120 ◦ FOV), and its maximum linear and angular velocities are 0 .5 m/s and 0.7 rad/s, respectively. The same robot platform is used to generate the training data. The onboard RGB camera is used for training-data generation and simulation-only baselines, but is not used by ReVNM at inference. We evaluate in the three environments shown in Fig. 3. 
+
+Random Pillar is generated using the same procedural environment generator as the training environments, while the evaluation uses held-out obstacle layouts that are not in-cluded in the training data. Book Store and Warehouse 
+
+are realistic environments used only for evaluation. The former represents a retail store cluttered with tall shelves, while the latter is a large warehouse containing narrow passages and multiple dead ends. 1 The remote camera has a resolution of 640 × 480 and a 120 ◦ FOV, and its pose is varied across evaluation trials. 
+
+2) Real-World Setup: For the real-world experiments, we use a Kachaka (Preferred Robotics, Inc.), a differential-drive robot different from the platform used for training-data generation. The robot is equipped with a 2D LiDAR, with maximum linear and angular velocities of 0 .5 m/s and 1.9 rad/s, respectively. No onboard RGB camera is used. A RealSense D435 (Intel Corp.) is installed as the remote camera in an office environment. We evaluate two obstacle configurations (Fig. 6) designed to require different naviga-tion behaviors. In Forest , five small obstacles are scattered across the workspace, requiring the robot to traverse narrow gaps between them. In Wall , a wall-like obstacle separates the start and goal and contains a narrow slit through which the robot can pass. 
+
+3) Evaluation Protocol and Metrics: The robot performs the remote visual navigation task defined in Sec. III-A, where the goal is specified as a pixel coordinate in the remote-camera image. The robot’s image-space position and orientation are available to the remote navigation system. In simulation, they are obtained from the simulator ground truth; when the robot is occluded, the last observed pose is retained. In the real world, they are obtained by detecting an AprilTag [31] mounted on the robot. All methods share the same LiDAR-based MPPI con-troller [32], which tracks the generated waypoints while performing reactive local obstacle avoidance. The controller does not perform global planning, i.e. , the overall direction toward the goal and global obstacle detours are determined by the waypoints generated by each navigation method. A trial is considered successful if the robot reaches the goal within 60 s without collision. A collision or failure to reach the goal within the time limit is counted as a failure. In the real-world experiments, leaving the remote camera’s field of view without recovery is also counted as a failure. In simulation, goal arrival is determined by the metric distance to the goal. The threshold is 0 .5 m for Random Pillar and Book Store , and 1.0 m for the larger 
+
+Warehouse . In the real world, goal arrival is determined by the image-space distance between the robot and the goal, with a threshold of 20 pixels. For each simulated environment, we evaluate 10 start–goal pairs under five remote-camera poses and repeat each condi-tion five times, resulting in 250 trials per environment. The camera poses are sampled using the ray-casting procedure to ensure sufficient visibility of the workspace. The start and goal positions are randomly sampled from free space with a separation of 5–10 m. 
+
+> 1https://github.com/aws-robotics
+
+For the real-world experiments, the remote camera is fixed. We conduct 25 trials in Forest (five start–goal pairs, five runs each) and five trials in Wall (one pair, five runs). We report success rate (SR) in both simulation and the real world, and Success weighted by Path Length (SPL) [33] in simulation to evaluate path efficiency. SR is the fraction of successful trials. For SPL, we use the path planned by ROS Navigation 2 (Nav2) [34] as the reference path instead of the geodesic shortest path, since the Nav2 path represents a feasible trajectory that the robot can actually follow. 
+
+4) Baseline Methods: We compare ReVNM with two complementary baselines representing the two major alter-natives to our approach: an egocentric VNM and a model-based image-space remote-navigation method. We addition-ally evaluate two ReVNM variants to isolate the contribution of the synthesized egocentric observation.  
+
+> •
+
+IBVS : We construct an obstacle-aware image-space navigation baseline inspired by [5]. SAM3 [35] seg-ments traversable regions in the remote image, and A* replans an image-space path every 1 s. Pure pursuit converts the planned image-space path into waypoints, which are tracked by the same LiDAR-based MPPI controller used by ReVNM. If no feasible A* path is found, the robot directly pursues the goal. Like ReVNM, this baseline requires neither an onboard RGB camera nor a pre-built map 2. 
+
+> •
+
+NoMaD [3]: NoMaD is a representative egocentric, map-based VNM baseline. Following its standard long-range navigation setting, we first drive the robot along the Nav2 reference route and record an egocentric image sequence, which is provided as the topological map. We evaluate both the original pretrained model ( w/o FT ) and a model fine-tuned on our synthetic training data ( w/ FT ). Because NoMaD requires onboard RGB observations, it is evaluated only in simulation.  
+
+> •
+
+Ours w/o exo2ego : An ablation of ReVNM that re-moves the synthesized egocentric depth and predicts waypoints using only the exocentric observation.  
+
+> •
+
+Ours w/ oracle-ego : A reference variant that replaces the synthesized egocentric depth with the ground-truth egocentric depth obtained from the onboard camera. This variant provides an upper-bound reference for the benefit of egocentric observations and is evaluated only in simulation. Accordingly, the real-world experiments compare IBVS ,
+
+Ours w/o exo2ego , and Ours .
+
+5) Implementation Details: a) Model Configuration: The navigation policy takes 224 × 224 egocentric and exocentric depth images from the most recent N = 5 time steps and predicts a chunk of H =
+
+5 waypoints in approximately 0 .1 s. Each depth image is encoded by a ResNet-34 [25] pretrained on ImageNet-1k and                              
+
+> 2We do not construct a PBVS baseline that unprojects the monocular depth into a ground-plane map. Recovering metric scale and a ground plane from a single uncalibrated oblique view is unreliable in cluttered scenes [15], and such a map would leave camera-occluded regions unobserved. TABLE I NAVIGATION PERFORMANCE IN SIMULATION .Method Random Pillar Book Store Warehouse
+> SR ↑SPL ↑SR ↑SPL ↑SR ↑SPL ↑
+> NoMaD w/o FT 5±3% 0.02 ±0.01 18 ±5% 0.08 ±0.02 20 ±5% 0.08 ±0.02 NoMaD w/ FT 40 ±3% 0.33 ±0.03 22 ±3% 0.09 ±0.02 22 ±4% 0.09 ±0.02 IBVS 78 ±2% 0.61 ±0.05 75 ±5% 0.53 ±0.04 52 ±7% 0.36 ±0.06 Ours 88 ±±±3% 0.78 ±±±0.03 88 ±±±5% 0.65 ±±±0.05 70 ±±±6% 0.46 ±±±0.05
+
+fine-tuned during training. The navigation policy has 63.6M parameters. The exo2ego module generates a 32 × 32 egocentric depth image, which is resized to 224 × 224 before being passed to the navigation policy. Its denoiser is a DiT-S/2 [28] with 32.8M parameters. At inference time, the module starts from Gaussian noise and generates one depth image in approximately 30 ms with eight sampling steps of Denoising Diffusion Implicit Models (DDIM) [36]. 
+
+b) Training: The navigation policy is trained for 20 epochs using AdamW with a learning rate of 2 × 10 −4 and a weight decay of 10 −4. We use the L1 waypoint loss and a KL regularization term with β = 1.0. The exo2ego module is trained for 30 epochs using Adam with a learning rate of 1 × 10 −4. Both models use a cosine learning-rate schedule and a batch size of 512. Following the data-generation procedure in Sec. IV, we collect approximately 50k episodes with Nav2 as the expert, which are divided into five-step segments to obtain approxi-mately 1M training samples. Among them, approximately 5k episodes are recovery trajectories collected over two DAgger iterations. 
+
+B. Experimental Results 1) Comparison with Baseline Methods in Simulation: 
+
+Table I reports SR and SPL in simulation, together with their 95% confidence intervals. ReVNM achieved the highest performance in all three environments, obtaining an SR / SPL of 88% / 0.78 in Random Pillar , 88% / 0.65 in Book Store , and 70% / 0.46 in Warehouse . Compared with the IBVS baseline, ReVNM improved success rate by 10, 13, and 18 percentage points, respectively. NoMaD performed substantially worse under this task setting, with success rates below 40% even after fine-tuning. Figure 3 illustrates a typical failure mode: after the robot deviates from its pre-recorded reference trajectory, its current observation no longer matches the images stored in the topological map, making recovery difficult. The IBVS baseline performed considerably better than NoMaD but degraded as the scene geometry became more challenging. Its success rate decreased from 78% in Random Pillar to 75% in Book Store and 52% in Warehouse ,while SPL decreased from 0.61 to 0.53 and 0.36. Because IBVS performs global planning directly in image space, its obstacle-clearance margin is represented in pixels. Under an oblique camera, however, the physical distance correspond-ing to a fixed image-space margin varies across the image because of perspective projection. As a result, the planner Fig. 3. Results in the simulation experiments. Each column is one environment, with the remote camera view on top and a top view of the same trials below. S and G mark the start and the goal, and a cross marks where a run failed.      
+
+> Fig. 4. Egocentric depth synthesized by the exo2ego module in Book Store (top) and Warehouse (bottom).
+
+may either generate paths with insufficient physical clearance or reject physically traversable gaps. Addressing this issue would require an explicit image-to-ground metric mapping, such as camera or ground-plane calibration, which is outside the calibration-free setting considered here. 
+
+2) Ablation Study: We ablate two components of ReVNM in Table II: the synthesized egocentric observation and the DAgger-inspired recovery data. 
+
+a) Effect of Egocentric View: We first analyze the contribution of the synthesized egocentric observation. In 
+
+Random Pillar , ReVNM was comparable to the variant without exo2ego and slightly lower in SR (88% vs. 91%) and SPL (0.78 vs. 0.79). In the more cluttered Book Store and 
+
+Warehouse environments, however, the benefit of exo2ego became substantial. In Warehouse , removing exo2ego re-duced SR from 70% to 26% and SPL from 0.46 to 0.17. These results suggest that exo2ego is particularly useful when the remote view does not sufficiently resolve the robot’s local free space. In Random Pillar , obstacles are relatively small and isolated, so the exocentric observation often already provides sufficient local geometric information. In this case, the synthesized observation contributes little and may occasionally introduce prediction noise. In contrast, large shelves and walls in Book Store and Warehouse 
+
+frequently occlude the space immediately ahead of the robot. The synthesized egocentric depth provides the policy with an estimate of this locally occluded geometry, allowing it to select more appropriate detours. Figure 3 shows the corresponding trajectories, and Fig. 4 shows examples of the synthesized egocentric depth. In 
+
+Book Store , exo2ego predicts the shelf immediately in front of the robot, enabling ReVNM to follow a route close to the Nav2 reference. In Warehouse , where dead ends can place the robot behind large obstacles, exo2ego predicts occupied space ahead and encourages the robot to detour rather than continue forward and stall. ReVNM also approached the performance of the oracle-ego variant, indicating that exo2ego recovers a substantial fraction of the navigation benefit provided by a true onboard egocentric depth observation, although a noticeable gap remains in the most challenging environments. 
+
+b) Effect of the Recovery Data: We next evaluate the effect of the DAgger-inspired recovery data. As listed in Table II, adding recovery trajectories improved both SR and SPL across all evaluated variants and environments, with the largest gains in cluttered scenes. For example, the success rate of ReVNM in Warehouse increased from 43% to 70%, while that of ReVNM without exo2ego in Book Store 
+
+increased from 44% to 84%. The same trend is reflected in the quality of the synthe-sized egocentric depth (Table III). Recovery-data training Fig. 5. Synthesized ego depth with and without the DAgger-based recovery data. Only w/ DAgger reproduces the obstacle in front of the robot (top), while in open space the two are comparable (bottom). TABLE II ABLATION STUDY .Method DAgger Random Pillar Book Store Warehouse                           
+
+> SR ↑SPL ↑SR ↑SPL ↑SR ↑SPL ↑
+> Ours ✓88 ±±±3% 0.78 ±±±0.03 88 ±±±5% 0.65 ±±±0.05 70 ±±±6% 0.46 ±±±0.05
+> 87 ±4% 0.69 ±0.04 74 ±6% 0.59 ±0.06 43 ±6% 0.29 ±0.05 Ours w/o exo2ego ✓91 ±±±3% 0.79 ±±±0.03 84 ±±±5% 0.61 ±±±0.05 26 ±±±8% 0.17 ±±±0.06
+> 78 ±6% 0.64 ±0.06 44 ±7% 0.33 ±0.05 12 ±4% 0.07 ±0.03 Ours w/ oracle-ego ✓99 ±±±1% 0.89 ±±±0.01 90 ±±±4% 0.78 ±±±0.04 83 ±±±5% 0.58 ±±±0.05
+> 74 ±6% 0.54 ±0.05 84 ±4% 0.64 ±0.04 71 ±6% 0.52 ±0.06
+
+improved PSNR and FID in all three environments. SSIM improved slightly in Random Pillar but decreased in 
+
+Book Store and Warehouse . Qualitatively, Fig. 5 shows that recovery data are particularly important when the robot is close to an obstacle: without them, exo2ego rarely sees such states during training and may fail to represent the obstacle immediately ahead. This behavior arises because nominal Nav2 demonstra-tions maintain relatively large obstacle clearance. Conse-quently, training only on expert trajectories creates a distribu-tion shift once the learned policy enters near-obstacle states during closed-loop execution. The recovery-data aggregation procedure explicitly adds such policy-induced states to the training distribution, improving both waypoint prediction and exo2ego prediction in these challenging configurations. 
+
+C. Navigation Performance in the Real World 
+
+Table IV summarizes the real-world navigation results. ReVNM transferred from simulation to a different robot and unseen office configurations without fine-tuning, achieving a 76% success rate in Forest and succeeding in all five 
+
+Wall trials. The corresponding success rates of the IBVS baseline were 12% and 0%, respectively. Consistent with the simulation results, the contribution of exo2ego depended on the degree of local occlusion. In 
+
+Forest , where the small obstacles were generally visi-ble from the remote camera, the variant without exo2ego achieved a higher success rate than ReVNM (92% vs. 76%). In Wall , however, removing exo2ego reduced the success rate from 100% to 40%. Figure 6 shows that the exocentric-only policy frequently failed to account for the wall directly ahead of the robot, whereas ReVNM used the synthesized                                           
+
+> TABLE III QUALITY OF THE SYNTHESIZED EGO DEPTH .exo2ego Random Pillar Book Store Warehouse
+> PSNR ↑SSIM ↑FID ↓PSNR ↑SSIM ↑FID ↓PSNR ↑SSIM ↑FID ↓
+> w/ DAgger 15.2 0.611 14.5 13.1 0.454 24.6 13.8 0.480 23.7
+> w/o DAgger 14.4 0.601 17.3 12.7 0.494 25.9 12.5 0.488 26.0 TABLE IV NAVIGATION PERFORMANCE IN THE REAL -WORLD .Method Forest Wall
+> SR ↑SR ↑
+> IBVS 12% (3/25) 0% (0/5) Ours w/o exo2ego 92% (23/25) 40% (2/5) Ours 76% (19/25) 100% (5/5)
+
+egocentric observation to detour and identify the opening. The IBVS degraded more severely in the real environ-ment. Its image-space obstacle margins provided insufficient clearance for the robot footprint, while increasing the margin caused narrow traversable gaps to disappear. In addition, SAM3 occasionally segmented fine floor texture as obstacle boundaries, fragmenting the estimated traversable region. These experiments are intended as a demonstration of sim-to-real transfer rather than a comprehensive evaluation across real-world environments. Nevertheless, they exhibit the same qualitative trend observed in simulation: synthe-sized egocentric information is most useful when the remote observation alone does not sufficiently resolve the local obstacle geometry. VI. CONCLUSION We presented ReVNM, a learning-based visual navigation approach that enables a mobile robot to navigate using observations from a fixed remote camera. ReVNM predicts robot-centric waypoints from the remote depth image, the robot’s image-space pose, and an egocentric depth observa-tion predicted by an exo2ego diffusion module. The system is trained entirely in simulation using procedurally random-ized obstacle layouts and camera viewpoints together with DAgger-inspired recovery-data aggregation. Across three simulated environments, ReVNM outper-formed the evaluated image-space remote-navigation and egocentric-VNM baselines in both navigation success and path efficiency. The model also transferred without fine-tuning to a different real robot in two office navigation scenarios. Our ablations show that the synthesized egocentric observation is particularly beneficial when obstacles occlude the robot’s local surroundings from the remote camera, whereas it provides less benefit when the exocentric view already resolves the nearby free space. Recovery-data aggre-gation further improves robustness by exposing the model to near-failure states that are rarely encountered in nominal expert demonstrations. 
+
+Limitations and Future Work. ReVNM currently as-sumes that the robot can be localized in the remote-camera SGSG
+
+GSGSOurs (w/o exo2ego) Ours (w/ exo2ego) IBVS Scenario: Forest-A Scenario: Forest-B Scenario: Forest-C Scenario: Wall Fig. 6. Results in the real-world experiments, overlaid on the remote camera view. 
+
+image and that sufficient visual coverage of the workspace is maintained. In our real-world experiments, the robot pose is obtained using an AprilTag; practical deployment will require robust marker-free pose estimation. A multi-camera extension with camera handover could address limited field-of-view coverage. In addition, the synthesized egocentric depth can be inaccurate or overly conservative. Future work could fuse the exocentric and synthesized observations in an uncertainty-aware manner. REFERENCES [1] D. Shah, A. Sridhar, A. Bhorkar, et al. , “GNM: A general navigation model to drive any robot,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2023, pp. 7226–7233. [2] D. Shah, A. Sridhar, N. Dashora, et al. , “ViNT: A foundation model for visual navigation,” in Proc. Conf. Robot Learn. (CoRL) , 2023. [3] A. Sridhar, D. Shah, C. Glossop, et al. , “NoMaD: Goal masked diffusion policies for navigation and exploration,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2024, pp. 63–70. [4] S. Ross, G. Gordon, and D. Bagnell, “A reduction of imitation learning and structured prediction to no-regret online learning,” in Proc. Int. Conf. Artif. Intell. Statist. (AISTATS) , 2011, pp. 627–635. [5] L. Robinson, D. De Martini, M. Gadd, et al. , “Visual servoing on wheels: Robust robot orientation estimation in remote viewpoint control,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) ,2023, pp. 6364–6370. [6] N. Savinov, A. Dosovitskiy, and V. Koltun, “Semi-parametric topo-logical memory for navigation,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2018. [7] S. Garg, D. Craggs, V. Bhat, et al. , “ObjectReact: Learning object-relative control for visual navigation,” in Proc. Conf. Robot Learn. (CoRL) , 2025. [8] K. Honda, T. Ishita, Y. Yoshimura, et al. , “Gsplatvnm: Point-of-view synthesis for visual navigation models using gaussian splatting,” in 
+
+Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) . IEEE, 2025, pp. 20 869–20 876. [9] A. Bar, G. Zhou, D. Tran, et al. , “Navigation world models,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) . IEEE, 2025, pp. 15 791–15 801. [10] J. Wu, Z. Jin, A. Liu, et al. , “A survey of learning-based control of robotic visual servoing systems,” J. Franklin Inst. , vol. 359, no. 1, pp. 556–577, 2022. [11] F. Janabi-Sharifi and M. Marey, “A kalman-filter-based method for pose estimation in visual servoing,” IEEE Trans. Robot. , vol. 26, no. 5, pp. 939–947, 2010. [12] V. Lippiello, B. Siciliano, and L. Villani, “Visual motion estimation of 3d objects: an adaptive extended kalman filter approach,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2004, pp. 957–962. [13] S. Bultmann, R. Memmesheimer, and S. Behnke, “External camera-based mobile robot pose estimation for collaborative perception with smart edge sensors,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) ,2023, pp. 8194–8200. [14] W. E. Dixon, D. M. Dawson, E. Zergeroglu, et al. , “Adaptive tracking control of a wheeled mobile robot via an uncalibrated camera system,” 
+
+IEEE Trans. Syst., Man, Cybern. B , vol. 31, no. 3, pp. 341–352, 2001. [15] L. Yang, K. Yu, T. Tang, et al. , “BEVHeight: A robust framework for vision-based roadside 3d object detection,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2023, pp. 21 611–21 620. [16] R. S. Rao, V. Kumar, and C. J. Taylor, “Planning and control of mobile robots in image space from overhead cameras,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2005, pp. 2185–2190. [17] X. Liang, H. Wang, W. Chen, et al. , “Adaptive image-based trajectory tracking control of wheeled mobile robots with an uncalibrated fixed camera,” IEEE Trans. Control Syst. Technol. , vol. 23, no. 6, pp. 2266– 2282, 2015. [18] X. Liang, H. Wang, Y.-H. Liu, et al. , “Purely image-based pose stabilization of nonholonomic mobile robots with a truly uncalibrated overhead camera,” IEEE Trans. Robot. , vol. 36, no. 3, pp. 724–742, 2020. [19] L. Robinson, M. Gadd, P. Newman, et al. , “Robot-Relay: Building-wide, calibration-less visual servoing with learned sensor handover networks,” Auton. Robots , vol. 50, no. 1, p. 3, 2026. [20] K. Hsu, M. J. Kim, R. Rafailov, et al. , “Vision-based manipulators need to also see from their hands,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2022. [21] H. Lin, S. Chen, J. H. Liew, et al. , “Depth Anything 3: Recovering the visual space from any views,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2026. [22] K. Sohn, H. Lee, and X. Yan, “Learning structured output represen-tation using deep conditional generative models,” Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 28, 2015. [23] T. Z. Zhao, V. Kumar, S. Levine, et al. , “Learning fine-grained biman-ual manipulation with low-cost hardware,” in Proc. ICML Workshop New Frontiers Learn., Control, Dyn. Syst. , 2023. [24] A. Vaswani, N. Shazeer, N. Parmar, et al. , “Attention is all you need,” 
+
+Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 30, 2017. [25] K. He, X. Zhang, S. Ren, et al. , “Deep residual learning for image recognition,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2016, pp. 770–778. [26] J. Spisak, M. Kerzel, and S. Wermter, “Diffusing in someone else’s shoes: Robotic perspective taking with diffusion,” 2024. [Online]. Available: https://arxiv.org/abs/2404.07735 [27] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 33, 2020, pp. 6840–6851. [28] W. Peebles and S. Xie, “Scalable diffusion models with transformers,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV) , 2023. [29] J. He, H. Li, W. Yin, et al. , “Lotus: Diffusion-based visual foundation model for high-quality dense prediction,” 2025. [30] N. Koenig and A. Howard, “Design and use paradigms for gazebo, an open-source multi-robot simulator,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , vol. 3, 2004, pp. 2149–2154. [31] E. Olson, “AprilTag: A robust and flexible visual fiducial system,” in 
+
+Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2011, pp. 3400–3407. [32] G. Williams, A. Aldrich, and E. A. Theodorou, “Model predictive path integral control: From theory to parallel computation,” J. Guid. Control Dyn. , vol. 40, no. 2, pp. 344–357, 2017. [33] P. Anderson, A. Chang, D. S. Chaplot, et al. , “On evaluation of embodied navigation agents,” arXiv preprint arXiv:1807.06757 , 2018. [34] S. Macenski, F. Mart´ ın, R. White, et al. , “The marathon 2: Anavigation system,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2020, pp. 2718–2725. [35] N. Carion, L. Gustafson, Y.-T. Hu, et al. , “Sam 3: Segment anything with concepts,” 2026. [36] J. Song, C. Meng, and S. Ermon, “Denoising diffusion implicit models,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2021.
