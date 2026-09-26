@@ -1,6 +1,9 @@
 * <a class="dpr-sidebar-root-link" href="#/">首页</a>
 * <a class="dpr-sidebar-root-link dpr-sidebar-noactive-link" href="javascript:void(0)" data-dpr-hash="#/tutorial/README">使用教程</a>
 * Daily Papers
+  * 2026-09-26 <!--dpr-date:20260926-->
+    * 速读区
+      * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/26/2609.26564v1-learning-air-ground-motion-control-with-temporal-mode-switching-and-cross-terrain-tracking" data-sidebar-item="{&quot;title&quot;: &quot;Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.26564v1-learning-air-ground-motion-control-with-temporal-mode-switching-and-cross-terrain-tracking&quot;, &quot;score&quot;: &quot;6.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;uav-control&quot;}], &quot;evidence&quot;: &quot;基于强化学习的空地运动控制与轨迹跟踪策略&quot;}">Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking</a>
   * 2026-09-25 <!--dpr-date:20260925-->
     * 精读区
       * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/25/2609.28709v1-oa-mppi-occlusion-aware-model-predictive-path-integral-control-for-uav-flight" data-sidebar-item="{&quot;title&quot;: &quot;OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.28709v1-oa-mppi-occlusion-aware-model-predictive-path-integral-control-for-uav-flight&quot;, &quot;score&quot;: &quot;8.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;uav-control&quot;}], &quot;evidence&quot;: &quot;面向四旋翼无人机飞行的遮挡感知MPPI控制&quot;}">OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight</a>

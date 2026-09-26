@@ -1,0 +1,415 @@
+Title: Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking
+
+URL Source: https://arxiv.org/pdf/2609.26564v1
+
+Published Time: Wed, 23 Sep 2026 01:47:52 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking 
+
+Ruitian Pang 1, †, Mingrui Li 2, †, Xuanting Liu 1, Tiancheng Lai 1, Juncheng Chen 1, Xiangyu Li 1, Ruibin Zhang 1,Qishao Wang 2, Jin Yu 4, Haiyin Piao 3, Fei Gao 1, Chao Xu 1, Yanjun Cao 1, ∗
+
+Abstract — Passive-wheeled terrestrial-aerial bimodal vehicles (TABVs) combine aerial mobility with energy-efficient ground locomotion. However, reliable air-ground mode switching un-der limited onboard perception and robust ground trajec-tory tracking across diverse terrains remain challenging when targeting real-world applications. In this work, we propose a learning-based air-ground motion control framework for passive-wheeled TABVs: 1) a learned mode selector for au-tonomous air-ground motion mode switching. The selector uses historical single-point time-of-flight (ToF) measurements and robot states together with future reference information to de-termine the active locomotion mode. 2) a reinforcement learning control policy for trajectory tracking. The policy combines proprioceptive observations with future reference information to anticipate trajectory changes. For ground locomotion, multi-terrain training and dynamics randomization enable robust tracking across different terrains. Simulation and real-world experiments demonstrate reliable air-ground switching under limited perception and accurate ground tracking across diverse terrain conditions. The learned selector outperforms a rule-based mode selector in challenging transitions, while the ground controller achieves lower position RMSE than PID across all tested conditions and maintains decent tracking where NMPC fails. With these capabilities integrated, the system tracks a 101 m air-ground trajectory through multiple autonomous mode transitions with a position RMSE of 0.08 m .
+
+I. I NTRODUCTION 
+
+Terrestrial-aerial bimodal vehicles (TABVs) combine aerial mobility with the energy efficiency of ground loco-motion [1]–[4]. Passive-wheeled designs use rotor thrust for ground motion without dedicated wheel-driving mechanisms, reducing mechanical complexity [5], [6]. Compared with aerial locomotion, ground locomotion generally requires less energy and produces less acoustic noise, making it suitable for long-duration operation. However, reliable air-ground mode switching remains difficult with limited onboard terrain perception [3], [7]–[9]. Variations in wheel-ground inter-action across terrains also make it difficult to maintain consistent ground trajectory-tracking performance [10], [11]. Therefore, a reliable air-ground control framework is needed      
+
+> This work was supported by National Natural Science Foundation of China under Grant 62103368.
+> 1The State Key Laboratory of Industrial Control Technology, College of Control Science and Engineering, Zhejiang University, Hangzhou 310027, China.
+> 2Department of Dynamics and Control, Beihang University, Beijing 100191, China.
+> 3Jilin University, Changchun, Jilin 130000, China.
+> 4Harbin Institute of Technology, Harbin 150001, China.
+> †Ruitian Pang and Mingrui Li contributed equally to this work. Emails: rt pang@zju.edu.cn, atticlmr@gmail.com.
+> ∗Corresponding author: Yanjun Cao ( yanjunhi@zju.edu.cn).
+> Fig. 1. Real-world long-trajectory tracking with autonomous air-ground mode switching. Green and yellow indicate ground locomotion, while blue indicates aerial locomotion. The total trajectory length is 101 m , with a position RMSE of 0.08 m .
+
+for autonomous mode switching and robust ground tracking across diverse terrains. Existing mode-switching methods can be divided into rule-based and planning-based approaches. Rule-based methods trigger mode transitions using predefined switching condi-tions [12], [13], but depend on manually specified criteria. Planning-based methods determine locomotion modes using environmental perception, mapping, or motion planning [3], [7]–[9]. These methods exploit environmental information but require additional perception and planning computation. Ground trajectory tracking for passive-wheeled TABVs mainly relies on cascaded, nonlinear, and model-based con-trollers. Cascaded controllers use cascaded feedback loops for ground trajectory tracking, but rely on simplified ground dynamics and terrain-specific parameter tuning [6], [8], [14]. Nonlinear and model-based controllers exploit sys-tem dynamics to improve tracking performance [11], [14]– [17]. However, their performance can degrade under model mismatch caused by variations in wheel-ground interaction across different terrains [10]. In practice, these methods often require terrain-specific modeling or parameter tuning, which limits their adaptability across different terrain conditions. To address these challenges, we propose an integrated air-ground control framework for passive-wheeled TABVs. The framework integrates autonomous mode switching with aerial and ground trajectory tracking. For mode selection, arXiv:2609.26564v1 [cs.RO] 22 Sep 2026 Fig. 2. Overview of the proposed framework. The left part shows the real-world deployment pipeline, the middle part illustrates the training environments, and the right part presents the detailed architecture of the mode selector. 
+
+we design a dual-branch network. The network selects the locomotion mode using historical single-point time-of-flight (ToF) measurements, robot states, and future reference information. It enables online air-ground switching with-out handcrafted terrain-dependent switching rules or dense terrain representations. For ground locomotion, we train a trajectory-tracking policy using reinforcement learning (RL). The policy leverages robot-state observations and a local reference preview for trajectory tracking. It is trained across diverse terrains with dynamics randomization to improve cross-terrain robustness. The same policy operates without terrain identification or retuning and transfers zero-shot to unseen real-world terrains. The complete system is further validated in a 101 m real-world air-ground trajectory with autonomous mode switching, as shown in Fig. 1. The main contributions are summarized as follows: 1) We develop an air-ground control framework for passive-wheeled TABVs. It enables autonomous switching between independently trained aerial and ground policies through a shared control interface. 2) We propose a dual-branch mode selector that uses single-point ToF measurements, robot-state his-tory, and future reference information for online air-ground switching without handcrafted terrain-dependent switching rules or dense terrain represen-tations. 3) We develop a reinforcement learning policy for cross-terrain trajectory tracking using robot-state observa-tions, local reference preview, multi-terrain training, and dynamics randomization, with zero-shot sim-to-real transfer. II. R ELATED WORK 
+
+A. Mode Switching in Bimodal Robots 
+
+Existing mode-switching methods can be divided into rule-based and planning-based approaches. Rule-based methods trigger locomotion transitions using predefined conditions. Qin et al. [12] use transition commands and height thresholds for mode switching. Zhang et al. [13] employ threshold-based switching rules using forward range measurements. These methods are simple to implement, but fixed switching criteria can be sensitive to sensing uncertainty and may require scenario-specific tuning when terrain-induced cues are weak or ambiguous. Planning-based methods integrate locomotion modes into navigation or trajectory planning frameworks [3], [7]–[9]. Fan et al. [8] and Zhang et al. [3] integrate terrestrial-aerial modes into unified planning frameworks for hybrid mobility. Wu et al. [9] jointly optimize trajectories and locomotion modes using NMPC, and Gao et al. [7] incorporate terrain perception into bimodal exploration planning. These methods exploit environmental information but require additional per-ception and planning computation. In contrast, our method determines the active locomotion mode from onboard ob-servations and future reference information without dense terrain representations. 
+
+B. Ground Control of Passive-Wheeled TABVs 
+
+Ground locomotion of passive-wheeled TABVs is affected by wheel-ground interaction and nonholonomic constraints [10], [16]. Early works commonly adopt cascaded control structures for ground trajectory tracking. Takahashi et al. [6], Fan et al. [8], and Colmenares-V´ azquez et al. [14] develop feedback controllers for ground locomotion of aerial-ground robots. Atay et al. [15] develop a nonlinear controller with sliding-mode control and control allocation. Zhang et al. [16] establish a unified nonlinear model for aerial and ground locomotion and employ NMPC for bimodal trajectory tracking. Lin et al. [11] also adopt NMPC and validate trajectory tracking on rough and low-friction surfaces. These controllers improve tracking performance through model-based control using simplified representations of wheel-ground contact. However, such simplifications can lead to model mismatch across different terrains and degrade track-ing performance. C. Learning-Based Locomotion Control for Air-Ground Robots 
+
+Learning-based methods have also been applied to multi-modal locomotion control. L’Erario et al. [18] learn walking and flying behaviors for an aerial humanoid robot and achieve terrain-aware mode switching in simulation. Man-dralis et al. [19] compare reinforcement learning and model-based control for morpho-transition, showing the advantages of learning-based control in agile landing and disturbance recovery. Yin and Pei [20] use deep reinforcement learning for air-ground trajectory tracking with a unified policy for flight, ground locomotion, takeoff, and landing. Li et al. [21] use reinforcement learning to coordinate propellers, active wheels, and tilt actuators over discontinuous terrain. These studies show the potential of learning-based control for multimodal locomotion. However, cross-terrain ground tracking for passive-wheeled TABVs remains less explored, especially without terrain identification or retuning. III. M ETHODOLOGY 
+
+The proposed TABV control framework is shown in Fig. 2. We formulate the overall task as reference-trajectory track-ing with online locomotion-mode selection and construct task-specific reference representations (Sec. III-A). Separate ground and aerial RL policies map robot states and tracking previews to collective thrust and body-rate (CTBR) com-mands (Sec. III-B). A dual-branch temporal selector selects the active policy using recent ToF and robot-state histories together with the current reference intent (Sec. III-C). 
+
+A. Problem Formulation and Reference Trajectory 
+
+We formulate the robot control problem as tracking a time-parameterized reference trajectory with online locomotion-mode selection. The reference trajectory is represented as an M -piece polynomial trajectory, where the i-th piece is given by 
+
+pref i (t) = C⊤ 
+
+> i
+
+β(t), t ∈ [0 , T i], (1) where β(t) = [1 , t, . . . , t K ]⊤ is the polynomial basis, Ci ∈
+
+R(K+1) ×3 is the coefficient matrix, K is the polynomial degree, and Ti is the duration of the i-th trajectory seg-ment, with the corresponding reference velocity given by 
+
+vref i (t) = ˙pref i (t). The reference trajectory specifies the desired robot motion and does not explicitly encode the Ground/Air locomotion mode. At each control step t, two task-specific representations are constructed from the reference trajectory: the ground and aerial control policies use a tracking preview , which contains future position and velocity information for trajectory track-ing, while the mode selector uses a reference intent , which captures the vertical evolution of the reference trajectory for locomotion-mode selection. During offline data collection and annotation for mode-selector training, each rollout sample is assigned a mode label y∗ 
+
+> t
+
+∈ { G, A} using privileged simulation information and offline labeling rules. These labels are used during offline data collection and supervised training, but are neither generated nor used during deployment. 
+
+B. Reinforcement Learning Control Policies 
+
+We model ground ( m = G ) and aerial ( m = A ) control as separate MDPs, Mm = ( Sm, Am, Pm, Rm, γ ), where 
+
+Sm, Am, Pm, and Rm denote the state space, action space, transition dynamics, and reward function, respectively, and 
+
+γ ∈ [0 , 1] is the discount factor. Each policy πθm maps observations omt to actions amt and is optimized to maximize the expected discounted return: 
+
+θ∗ 
+
+> m
+
+= arg max 
+
+> θm
+
+Eπθm 
+
+" TX
+
+> t=0
+
+γtrmt
+
+#
+
+. (2) 
+
+1) Observation Space: Let W and B denote the world and body frames, respectively. All position and linear velocity quantities in this subsection are expressed in the world frame 
+
+W. Both ground and aerial policies use the observation 
+
+omt = ωbt , vwt , vec( Rt), ∆Pwt , ewv,t , ∆Vwt , at−1, ht
+
+, (3) where ωbt is the body-frame angular velocity, vwt is the linear velocity, and Rt ∈ SO (3) denotes the rotation from 
+
+B to W. The previous normalized policy action is at−1, and 
+
+ht contains the angular velocity, linear velocity, and action history over the previous Nh steps. The terms ∆Pwt , ewv,t , and ∆Vwt constitute the tracking preview introduced in Sec. III-A. At each control step t,the tracking preview is constructed from Nr future samples of the reference trajectory at t + τi, i = 0 , . . . , N r − 1,where Nr denotes the number of preview samples and τi
+
+denotes the temporal offset of the i-th sample from the current time. The relative reference position is defined as 
+
+∆pwt,i = pref (t + τi) − pwt , where pwt denotes the current robot position in the world frame, and the sampled relative positions are stacked as ∆Pwt = [∆ pwt, 0, . . . , ∆pwt,N r −1]. The velocity information consists of the current velocity-tracking error ewv,t = vref (t) − vwt and the future reference-velocity changes ∆vwt,i = vref (t + τi) − vref (t), which are stacked as ∆Vwt = [∆ vwt, 1, . . . , ∆vwt,N r −1]. These quantities provide the policy with both the current tracking deviation and the future motion trend of the reference trajectory. 
+
+2) Action Space: The raw policy output is squashed using 
+
+tanh to obtain a normalized action amt ∈ [−1, 1] 4. The action is converted into CTBR commands by linearly mapping the thrust component to [Tmin , T max ] and scaling the angular velocity components by a fixed factor ωmax . Both policies share this CTBR interface for mode switching. 
+
+3) Reward Function: The ground reward is defined as 
+
+rGt = α1rG 
+
+> track
+
++ α2rG 
+
+> speed
+
++ α3rG
+
+> heading
+
++ α4rG 
+
+> pitch
+
++ α5rG 
+
+> roll
+
++ α6rG
+
+> smooth
+
+. (4) The tracking terms rG 
+
+> track
+
+= exp( −∥ exy ∥2/0.5) and rG 
+
+> speed
+
+=exp( −(v∥ −vref  
+
+> ∥
+
+)2/0.22) reward horizontal position tracking and speed tracking along the motion direction, respectively, where v∥ and vref  
+
+> ∥
+
+denote the actual and reference speed components along the motion direction. The heading penalty is rG 
+
+> heading
+
+= |∆ψ|/π . The attitude penalties rG 
+
+> pitch
+
+=min(max( | ˙θ| − 0.25 , 0) 2/22, 1) and rG 
+
+> roll
+
+= min(max( |ϕ| − 
+
+5◦, 0) 2/(30 ◦)2, 1) penalize excessive pitch rates and large roll angles, respectively. The action-smoothness penalty is 
+
+rG 
+
+> smooth
+
+= min( ∥at − at−1∥22/0.2, 1) , where ∆ψ denotes the heading error, ˙θ the pitch rate, ϕ the roll angle, and at the normalized policy action. The aerial reward is defined as 
+
+rAt = β1rA 
+
+> track
+
++ β2rA 
+
+> heading
+
++ β3rA 
+
+> velocity
+
++ β4rA
+
+> smooth
+
+. (5) The terms rA 
+
+> track
+
+= exp( −∥ e∥2/0.5) , rA 
+
+> heading
+
+=exp( −4|∆ψ|), and rA 
+
+> velocity
+
+= exp( −5|∆ψv |) reward three-dimensional position tracking, heading alignment, and velocity-direction alignment, respectively. Here, e denotes the three-dimensional position tracking error, ∆ψ the head-ing error, and ∆ψv the angular difference between the actual and reference velocity directions. The corresponding action-smoothness penalty is rA 
+
+> smooth
+
+= min( ∥at −at−1∥22/0.05 , 3) .The coefficients αi and βi are positive for reward terms and negative for penalty terms. 
+
+4) Network Architecture: The aerial and ground policies use the same asymmetric actor-critic architecture. Both the actor and critic are implemented as three-layer MLPs with hidden dimensions of [512 , 256 , 128] and ELU activations. During training, the actor receives noisy observations to improve robustness to sensing uncertainty, while the critic receives privileged noise-free state information for value estimation. 
+
+C. Mode Switching via a Dual-Branch Temporal Network 
+
+We formulate air-ground mode selection as a binary classi-fication problem using a state-history branch and a reference-intent branch. The state input at time t is defined as 
+
+st = dt, δ t, vt, ωbt , gbt
+
+ , (6) where dt is the normalized single-point ToF measurement. Valid ToF measurements within 0.03 –20 m are linearly mapped to [0 , 1] , while invalid measurements are set to zero. The flag δt ∈ { 0, 1} indicates validity, with 1 for valid returns and 0 otherwise. vt is the robot linear velocity expressed in the world frame, ωbt is the body-frame angular velocity, and 
+
+gbt is the projected gravity direction. The state-history branch receives the sequence {st−k}Ns−1 
+
+> k=0
+
+, where Ns denotes the length of the state-history window. The reference intent introduced in Sec. III-A is defined as 
+
+it =
+
+h
+
+∆Ht, Vref z,t 
+
+i
+
+, (7) where ∆Ht = [∆ zt, 0, . . . , ∆zt, 9] contains ten relative reference-height changes, with ∆zt,k = zref (t + τk) −
+
+zref (t), k = 0 , . . . , 9, where τk denotes the temporal offset of the k-th reference sample from the current time t, and 
+
+zref (t) denotes the vertical component of pref (t) in the world frame. The corresponding reference vertical velocities are stacked as Vref z,t = [vref z (t + τ0), . . . , v ref z (t + τ9)] ,where vref z (t) denotes the vertical component of vref (t). 
+
+> Fig. 3. Simulation scenarios for evaluating terrain-induced mode switching: (a) Ground Support Loss and (b) Ground Recovery. The red line denotes the ongoing reference trajectory with blue dots as waypoints.
+
+Together, ∆Ht and Vref z,t constitute the reference intent and characterize the future vertical evolution of the reference trajectory for locomotion-mode selection. The state branch uses a two-layer GRU to process histori-cal ToF measurements and robot states, while the reference-intent branch uses a two-layer MLP to encode the current reference preview. The resulting features are concatenated and passed to a classification head to produce the Ground and Air logits lt = [ lG, l A]. A softmax operation converts the logits into mode probabilities. Only the state branch uses temporal history, while the reference-intent branch uses the current trajectory preview. This prevents outdated reference intent from affecting the current mode decision and keeps the selector responsive to the latest motion command. The selector applies asymmetric thresholds with consecutive-frame confirmation to the Air-mode probability 
+
+Pair , obtained from the output logits via softmax. Ground-to-Air switching requires Pair ≥ 0.50 for two consecutive frames, whereas Air-to-Ground switching requires Pair ≤ 0.20 for eight consecutive frames. These settings are used in all simulation and real-world experiments to suppress mode chattering while favoring rapid Ground-to-Air transitions and conservative returns to Ground. The mode selector is trained offline by supervised learning using rollout data collected in Isaac Lab [22]. During rollout collection, the target locomotion mode y∗ 
+
+> t
+
+∈ {G, A} is determined at each step according to predefined scenario-specific labeling rules. For Takeoff, the target mode switches to Air when the reference trajectory is ascending and its height exceeds the local ground level by 0.02 m . For Ground Support Loss, the target mode switches to Air when the horizontal position of the ToF sensor first reaches the terrain edge. For Landing, the target mode switches to Ground when the reference trajectory is descending, its height above the local ground is below 0.02 m , and the magnitude of the robot’s vertical velocity is below 0.10 m /s. For Ground Recovery, the target mode switches to Ground when the horizontal position of the robot’s body-frame origin first enters the region with restored ground support, without requiring a descending reference trajectory. Representative Ground Support Loss and Ground Recovery scenarios are illustrated in Fig. 3. At each rollout step, the frozen ground or aerial expert Fig. 4. Overview of the customized TABV platform and its onboard sensing and computing modules. 
+
+policy corresponding to the current target mode is executed to track the reference trajectory, and the observations and target mode are recorded. The resulting supervised dataset is represented as 
+
+D = {(St, it, y ∗ 
+
+> t
+
+)}ND 
+
+> t=1
+
+, St = {st−k}Ns−1 
+
+> k=0
+
+, (8) where St is the state-history sequence defined above, it is the reference intent, y∗ 
+
+> t
+
+is the target locomotion-mode label, and ND denotes the number of supervised samples. The ToF measurements in St are perturbed during data collection to improve robustness to sensing uncertainty. The target labels 
+
+y∗ 
+
+> t
+
+are generated using the reference trajectory, privileged robot states, and terrain geometry according to the scenario-specific rules above. The selector is trained using a cross-entropy loss to predict the target Ground/Air mode from St
+
+and it.IV. E XPERIMENTS 
+
+A. Experimental Setup 
+
+Experiments are conducted in simulation and on the cus-tomized physical TABV platform shown in Fig. 4. The aerial and ground control policies are trained in NVIDIA Isaac Lab. The mode selector is trained using expert trajectories collected in Isaac Lab and is evaluated in MuJoCo [23] and real-world experiments. The reference trajectories used in the real-world experiments are generated using GCOPTER [24]. Simulation experiments are conducted on a workstation equipped with an NVIDIA GeForce RTX 5080 GPU. On the physical platform, localization is provided by FAST-LIO2 [25]. The mode selector uses single-point ToF measurements together with onboard state estimates from odometry and IMU. Online inference and control run on an NVIDIA Jetson NX. The ground and aerial control policies are executed at 200 Hz , while the mode selector runs at 50 Hz . At each control step, the control policy uses a reference trajectory preview with 10 samples. The mode selector uses a 20 -frame history window. 
+
+B. Evaluation of Learned Locomotion Policies 1) Training Configuration: The ground and aerial policies are trained using PPO with 4096 parallel environments for 
+
+1.5 × 10 5 and 2 × 10 5 policy steps, respectively. Each policy requires approximately 40 min of training.                 
+
+> Fig. 5. Real-world comparison of ground trajectory tracking on four terrains: (a) flat rigid terrain, ∆h≈0; (b) deformable soft terrain, with a maximum vertical deformation of δh = 1 cm under the robot weight; (c) rough block terrain, with gap width ℓ= 3 cm and peak-to-valley height difference ∆h= 4 cm ; (d) uneven grass terrain, with a maximum ground-elevation difference of 35 cm across the test area and a grass height of
+> hg≈10 cm .
+
+For ground control policy training, procedurally generated terrains include flat, continuous rough, discrete rough, and terrain-transition regions, with proportions of 50% , 25% ,
+
+20% , and 5% , respectively. Continuous rough terrains are generated as random height fields with spatial scales ℓ ∈{0.1, 0.2, 0.4, 0.8} m and peak-to-valley height variations of 0.5–3 cm . Discrete rough terrains use quantized height variations up to 6 cm , while terrain-transition regions connect flat and rough surfaces. Reference trajectories are randomly generated during training. Ground trajectories have maximum reference speeds of 1.9 m /s and 1.0 m /s on flat and rough terrains, respec-tively, with corresponding maximum curvatures of 0.75 m −1
+
+and 0.60 m −1. Aerial trajectories are three-dimensional, with reference speeds of 0.8–2.0 m /s, flight heights of 1.0–3.0 m ,and a maximum curvature of 0.75 m −1.To improve sim-to-real transfer, domain randomization is applied during training. The randomized parameters include robot mass, wheel-ground friction coefficients, actuation delays, motor response dynamics, observation noise, and external disturbances. 
+
+2) Real-World Locomotion Evaluation: We evaluate the proposed locomotion policies in two real-world experiments: multi-terrain ground trajectory tracking and air-ground hy-brid trajectory tracking. We compare the proposed method with cascaded PID [3] and NMPC [16] on flat rigid, deformable soft, uneven grass, and rough block terrains using the same figure-eight reference trajectory. Each controller uses fixed parameters Fig. 6. Real-world air-ground hybrid trajectory tracking. The position and velocity RMSEs are Ep = 0 .097 m and Ev = 0 .252 m /s, respectively. 
+
+across terrains. The proposed method operates without ex-plicit terrain identification. For quantitative evaluation, we use the position and velocity-vector RMSEs, denoted by Ep and Ev , respectively: 
+
+Ep =
+
+vuut 1
+
+N
+
+> N
+
+X
+
+> k=1
+
+∥pk − prk ∥22, (9) 
+
+Ev =
+
+vuut 1
+
+N
+
+> N
+
+X
+
+> k=1
+
+∥vk − vrk ∥22, (10) 
+
+where N is the number of evaluated samples, and prk and 
+
+vrk denote the reference position and velocity at time step k,respectively. As shown in Fig. 5, the proposed method tracks the reference at 1.8 m /s on flat rigid terrain, 1.5 m /s on de-formable soft and uneven grass terrains, and 1.2 m /s on rough block terrain. Notably, the deformable soft and uneven grass terrains are unseen during training, while the rough block terrain also differs from the procedurally generated training terrains. Moreover, the reference speeds on all three non-flat terrains exceed the maximum 1.0 m /s used for rough-terrain training. At these reference speeds, the proposed method reduces Ep relative to PID by 92 .2% ,
+
+77 .9% , and 75 .8% on deformable soft, uneven grass, and rough block terrains, respectively. Compared with NMPC, it reduces Ep by 33 .9% and 17 .1% on flat rigid and deformable soft terrains, respectively, while NMPC fails to complete the trajectory on uneven grass and rough block terrains. Table I summarizes the four conditions shown in Fig. 5 and four additional conditions at lower reference speeds. The proposed method achieves lower Ep than PID in all eight conditions, with a larger advantage at the higher speed on each terrain. On rough block terrain, for example, increasing the reference speed from 0.8 to 1.2 m /s raises its Ep from 
+
+0.131 to 0.148 m , compared with 0.149 to 0.612 m for PID, indicating lower sensitivity to this speed increase. NMPC fails to complete the trajectory on uneven grass and rough block terrains at both tested speeds. We further evaluate the independently trained ground and aerial policies on a hybrid trajectory comprising ground loco-motion, takeoff, aerial flight, and landing. As shown in Fig. 6, the policies achieve Ep = 0 .097 m and Ev = 0 .252 m /s over the complete trajectory. These results demonstrate that the                                     
+
+> TABLE I REAL -WORLD GROUND TRACKING :Ep[M] / Ev[M/S].
+> Terrain Max. Ref. Speed [m/s] Ours PID NMPC
+> Flat Rigid Terrain 1.5 0.074 / 0.102 0.107 / 0.132 0.117 / 0.112 1.8 0.082 / 0.141 0.158 / 0.160 0.124 / 0.151 Deformable Soft Terrain 1.2 0.096 / 0.102 0.807 / 0.587 0.131 / 0.142 1.5 0.121 / 0.149 1.558 / 0.914 0.146 / 0.250 Rough Block Terrain 0.8 0.131 / 0.228 0.149 / 0.185 Failed / Failed 1.2 0.148 / 0.265 0.612 / 0.515 Failed / Failed Uneven Grass Terrain 1.2 0.132 / 0.180 0.508 / 0.230 Failed / Failed 1.5 0.178 / 0.149 0.807 / 0.914 Failed / Failed
+
+policies can be directly combined through the shared CTBR interface without additional transition-specific control design. 
+
+C. Temporal Air-Ground Mode Selector Evaluation 1) Training Configuration: The selector training data are collected in Isaac Lab using 4096 parallel environments, with 
+
+3000 frames per environment. The network is trained using AdamW for 30 epochs with a batch size of 512 . The initial learning rate and weight decay are set to 3 × 10 −4 and 
+
+1 × 10 −4, respectively, with cosine learning-rate decay. The dataset is split into training, validation, and test sets with an 8 : 1 : 1 ratio at the environment level. To improve robustness to sensing uncertainty, the ToF measurements are augmented with random dropout, Gaussian noise with a standard deviation of 0.005 m , a sequence-wise bias within 
+
+±0.01 m , and a random latency of 0–1 frame. A motion-state dropout probability of 0.10 is also applied during training. 
+
+2) Simulation Switching Performance: We evaluate the mode selector in MuJoCo under four scenarios: Takeoff and Landing, driven by the reference trajectory, and Ground Support Loss and Ground Recovery, triggered by changes in ground-support conditions. These scenarios cover Ground-to-Air (G →A) and Air-to-Ground (A →G) transitions. The switching delay is defined as 
+
+Tswitch = tactual − texpected , (11) where texpected is the label transition time determined by the scenario-specific labeling rules in Sec. III-C, and tactual is the time at which the corresponding control policy is actually activated. A negative Tswitch indicates early switching. The switching success rate is defined as 
+
+Rsucc = Nsucc 
+
+Ntrial 
+
+× 100% , (12) where Ntrial and Nsucc denote the total number of trials and successful trials, respectively. A trial is successful if the selector completes the required mode transition within the evaluation horizon without an incorrect mode transition. For Ground Support Loss, success additionally requires that the robot never fall more than 0.05 m below the pre-event reference height after support loss. Takeoff, Landing, and Ground Recovery are each evaluated over 50 independent trials. Table II reports 100% success in all three scenarios, TABLE II SIMULATION SWITCHING PERFORMANCE (DELAY : MEAN ± STANDARD DEVIATION ).                     
+
+> Scenario Trials Success [%] Delay [ms]
+> Takeoff 50 100.0 126 ±9
+> Landing 50 100.0 125 ±28
+> Ground Recovery 50 100.0 262 ±53
+> Fig. 7. Simulation scenarios for comparison with the rule-based FSM: (a) Gradual Support Loss and (b) Fast Narrow Gap at 1.8 m /s. The red line denotes the reference trajectory.
+
+with mean switching delays of 126 ms , 125 ms , and 262 ms ,respectively. For the Ground Support Loss scenario, we eval-uate the selector at five terrain-drop heights, h ∈{0.075 , 0.125 , 0.175 , 0.225 , 0.275 } m. The TABV follows a 
+
+6.5 m straight reference trajectory at 1.0 m /s, with 50 trials for each height. Results are summarized in Table III, with delays reported as mean ± standard deviation. Across all 250 Ground Support Loss trials, the selector successfully completes the Ground-to-Air transition in every trial, resulting in an overall success rate of 100% and a mean switching delay of 28 ± 12 ms . The switching delay remains short across all tested terrain-drop heights, indicating that the selector can respond rapidly and reliably to sudden loss of ground support. 
+
+3) Mode Selector Ablation Study: To assess the contri-bution of different selector inputs, we compare Full with three ablated variants. Full uses 20-frame ToF and motion-state histories together with future reference intent. w/o ToF 
+
+removes the ToF distance and validity inputs, whereas w/o Intent removes future reference intent. Current ToF Only uses the current ToF measurement while retaining motion-state history and future reference intent. All models are trained from scratch using the same architecture, dataset split, and training configuration. Each model is evaluated over 100 
+
+trials per scenario in a test batch independent of the main switching evaluation. As shown in Table IV, removing ToF reduces the Ground Support Loss success rate from 100% to 3% and lowers success rates in Landing and Ground Recovery, highlighting the importance of ToF observations for reliable switching in these scenarios. Removing future reference intent reduces Takeoff success from 100% to 0% , indicating that takeoff decisions depend strongly on future trajectory information.                                                                       
+
+> TABLE III GROUND SUPPORT LOSS PERFORMANCE UNDER DIFFERENT TERRAIN -DROP HEIGHTS .
+> Drop h[m] Success/Trials Success [%] Delay [ms]
+> 0.075 50/50 100.0 40 ±14
+> 0.125 50/50 100.0 25 ±9
+> 0.175 50/50 100.0 25 ±9
+> 0.225 50/50 100.0 25 ±9
+> 0.275 50/50 100.0 26 ±12
+> TABLE IV ABLATION RESULTS OF THE MODE SELECTOR OVER 100 TRIALS PER MODEL PER SCENARIO . S WITCHING DELAYS ARE REPORTED OVER SUCCESSFUL TRIALS ONLY .
+> Scenario Full w/o ToF w/o Intent Current ToF Only (a) Success Rate [%]
+> Takeoff 100.0 100.0 0.0 100.0 Ground Support Loss 100.0 3.0 100.0 76.0 Landing 100.0 64.0 72.0 100.0 Ground Recovery 100.0 25.0 92.0 73.0
+> (b) Mean Switching Delay [ms]
+> Takeoff 103 75 –110 Ground Support Loss 31 265 21 29 Landing 107 146 15 86 Ground Recovery 289 101 470 227
+
+Using only the current ToF measurement also lowers success rates in Ground Support Loss and Ground Recovery relative to Full , showing the benefit of temporal ToF information. Switching delays are averaged over successful trials only and should therefore be interpreted together with the correspond-ing success rates. 
+
+4) Comparison with a Rule-based mode selector: We compare the learned and rule-based selectors in the Gradual Support Loss and Fast Narrow Gap scenarios shown in Fig. 7, with the latter tested at 1.8 m /s. The former progres-sively reduces ground support, whereas the latter requires rapid mode switching. Both methods use the same ToF stream, 50 Hz decision frequency, two-frame confirmation, simulation initializations, and ToF perturbations. The rule-based selector uses the ToF distance recorded with the robot initially level on the ground as a fixed baseline and switches to Air when the ToF return is invalid or exceeds this baseline by 0.04 m for two consecutive frames. A trial fails if the robot falls more than 0.05 m below the pre-event reference height. All thresholds are tuned once and then fixed for testing. Each method is evaluated over 50 trials per scenario. The learned selector achieves success rates of 
+
+92 .0% and 96 .0% , compared with 54 .0% and 56 .0% for the rule-based selector, demonstrating more reliable switching in both scenarios. 
+
+5) Real-World Mode Switching Evaluation: Following simulation evaluation, we directly deploy the trained mode selector on the physical TABV without fine-tuning. In a TABLE V COMPARISON WITH THE RULE -BASED SELECTOR UNDER CHALLENGING TERRAIN -INDUCED SWITCHING SCENARIOS .
+
+Scenario Method Success [%] 
+
+Gradual Support Loss Learned 92.0 Rule-based 54.0 Fast Narrow Gap Learned 96.0 Rule-based 56.0 
+
+Fig. 8. Real-world autonomous air-ground mode switching in a stair-like environment. Green and blue indicate ground and aerial locomotion, respectively. 
+
+stair-like environment with large height variations, the robot follows a reference trajectory and autonomously switches between ground and aerial locomotion. As shown in Fig. 8, the TABV successfully completes both Ground-to-Air and Air-to-Ground transitions while maintaining reference tracking across different locomotion modes. Using the same event definitions as in simulation, the measured switching delay for Ground Support Loss is 
+
+20 .0 ms , which is comparable to the simulated result of 
+
+28 ± 12 ms . For the Air-to-Ground transition, the switching delay under the Ground Recovery definition is 240 .1 ms ,compared with 262 ± 53 ms in simulation. 
+
+D. Integrated System Evaluation 
+
+To evaluate the complete air-ground control framework, we conduct a long-horizon real-world experiment on the physical TABV, where the robot follows a reference trajec-tory and autonomously switches between ground and aerial locomotion using the proposed mode selector. As shown in Fig. 1, the TABV completes a 101 m air-ground trajectory with multiple autonomous mode transitions and achieves a position RMSE of 0.08 m , demonstrating reliable long-horizon trajectory tracking and mode coordination. V. C ONCLUSION 
+
+This paper presents a learning-based air-ground control framework for passive-wheeled terrestrial-aerial bimodal ve-hicles. The framework combines independently trained aerial and ground policies with a temporal mode selector, enabling autonomous air-ground switching under limited onboard per-ception. Simulation and real-world experiments demonstrate robust ground trajectory tracking across diverse terrains and reliable mode switching. The complete system achieves a position RMSE of 0.08 m over a 101 m real-world air-ground trajectory. Future work will focus on more complex and dynamic environments. REFERENCES [1] S. Sabet, A.-A. Agha-Mohammadi, A. Tagliabue, D. S. Elliott, and P. E. Nikravesh, “Rollocopter: An energy-aware hybrid aerial-ground mobility for extreme terrains,” in 2019 IEEE Aerospace Conference ,2019, pp. 1–8. [2] A. Kalantari, T. Touma, L. Kim, R. Jitosho, K. Strickland, B. T. Lopez, and A.-A. Agha-Mohammadi, “Drivocopter: A concept hybrid aerial/ground vehicle for long-endurance mobility,” in 2020 IEEE Aerospace Conference , 2020, pp. 1–10. [3] R. Zhang, Y. Wu, L. Zhang, C. Xu, and F. Gao, “Autonomous and adaptive navigation for terrestrial-aerial bimodal vehicles,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 3008–3015, 2022. [4] X. Li, T. Lai, M. Lai, J. Lin, M. Zhang, J. Zhi, C. Xu, F. Gao, and Y. Cao, “Triphibot: a triphibious robot combining foc-based propulsion with eccentric design,” arXiv preprint arXiv:2602.01385 , 2026. [5] M. Pimentel and M. Basiri, “A bimodal rolling-flying robot for micro level inspection of flat and inclined surfaces,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 5135–5142, 2022. [6] N. Takahashi, S. Yamashita, Y. Sato, Y. Kutsuna, and M. Yamada, “All-round two-wheeled quadrotor helicopters with protect-frames for air–land–sea vehicle (controller design and automatic charging equipment),” Advanced Robotics , vol. 29, no. 1, pp. 69–87, 2015. [7] Y. Gao, R. Zhang, T. Lai, Y. Cao, C. Xu, and F. Gao, “Autonomous exploration with terrestrial-aerial bimodal vehicles,” IEEE Robotics and Automation Letters , vol. 10, no. 10, pp. 9987–9994, 2025. [8] D. D. Fan, R. Thakker, T. Bartlett, M. B. Miled, L. Kim, E. Theodorou, and A.-a. Agha-mohammadi, “Autonomous hybrid ground/aerial mo-bility in unknown environments,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2019, pp. 3070–3077. [9] T. Wu, Y. Zhu, L. Zhang, J. Yang, and Y. Ding, “Unified terres-trial/aerial motion planning for hytaqs via nmpc,” IEEE Robotics and Automation Letters , vol. 8, no. 2, pp. 1085–1092, 2023. [10] S. Atay, G. Buckner, and M. Bryant, “Dynamic modeling for bi-modal, rotary wing, rolling-flying vehicles,” Journal of Dynamic Systems, Measurement, and Control , vol. 142, no. 11, p. 111003, 2020. [11] J. Lin, R. Zhang, N. Pan, C. Xu, and F. Gao, “Skater: A novel bi-modal bi-copter robot for adaptive locomotion in air and diverse terrain,” 
+
+IEEE Robotics and Automation Letters , vol. 9, no. 7, pp. 6392–6399, 2024. [12] Y. Qin, Y. Li, X. Wei, and F. Zhang, “Hybrid aerial-ground locomotion with a single passive wheel,” in 2020 IEEE/RSJ International Confer-ence on Intelligent Robots and Systems (IROS) , 2020, pp. 1371–1376. [13] D. Zhang, M. Xu, P. Zhu, C. Guo, Z. Zhong, H. Lu, and Z. Zheng, “The development of a novel terrestrial/aerial robot: autonomous quadrotor tilting hybrid robot,” Robotica , vol. 42, no. 1, pp. 118–138, 2024. [14] J. Colmenares-V´ azquez, P. Castillo, N. Marchand, and D. Huerta-Garc´ ıa, “Nonlinear control for ground-air trajectory tracking by a hybrid vehicle: theory and experiments,” IFAC-PapersOnLine , vol. 52, no. 8, pp. 19–24, 2019. [15] S. Atay, M. Bryant, and G. Buckner, “Control and control allocation for bimodal, rotary wing, rolling–flying vehicles,” Journal of Mecha-nisms and Robotics , vol. 13, no. 5, p. 050904, 2021. [16] R. Zhang, J. Lin, Y. Wu, Y. Gao, C. Wang, C. Xu, Y. Cao, and F. Gao, “Model-based planning and control for terrestrial-aerial bimodal vehi-cles with passive wheels,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2023, pp. 1070– 1077. [17] R. Wang, X. Liu, Z. Wu, Z. Guo, W. Ding, and B. M. Chen, “Tilt-ropter: A fully actuated hybrid aerial-terrestrial vehicle with tilt rotors and passive wheels,” arXiv preprint arXiv:2602.01700 , 2026. [18] G. L’Erario, D. Hanover, A. Romero, Y. Song, G. Nava, P. M. Viceconte, D. Pucci, and D. Scaramuzza, “Learning to walk and fly with adversarial motion priors,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 10 370–10 377. [19] I. Mandralis, R. M. Murray, and M. Gharib, “Quadrotor morpho-transition: Learning vs model-based control strategies,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025, pp. 7202–7209. [20] Z. Yin and H. Pei, “Reinforcement learning for trajectory tracking of a ducted-fan air-ground amphibious uav,” Guidance, Navigation and Control , vol. 6, no. 02, pp. 189–200, 2026. [21] J. Li, W. Tian, X. Xu, J. Yuan, S. Scherer, and M. Cao, “Learning energy-efficient air–ground actuation for hybrid robots on stair-like terrain,” arXiv preprint arXiv:2603.26687 , 2026. [22] M. Mittal, P. Roth, J. Tigue, A. Richard, O. Zhang, P. Du, A. Serrano-Mu˜ noz, X. Yao, R. Zurbr¨ ugg, N. Rudin, et al. , “Isaac lab: A gpu-accelerated simulation framework for multi-modal robot learning,” 
+
+arXiv preprint arXiv:2511.04831 , 2025. [23] E. Todorov, T. Erez, and Y. Tassa, “Mujoco: A physics engine for model-based control,” in 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems . IEEE, 2012, pp. 5026–5033. [24] Z. Wang, X. Zhou, C. Xu, and F. Gao, “Geometrically constrained tra-jectory optimization for multicopters,” IEEE Transactions on Robotics ,vol. 38, no. 5, pp. 3259–3278, 2022. [25] W. Xu, Y. Cai, D. He, J. Lin, and F. Zhang, “Fast-lio2: Fast direct lidar-inertial odometry,” IEEE Transactions on Robotics , vol. 38, no. 4, pp. 2053–2073, 2022.

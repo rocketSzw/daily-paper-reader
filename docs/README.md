@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-25</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-26</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 5 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 1 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>1</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-25 21:55:58 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-26 22:22:08 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-25 日报：共筛出 5 篇无人机与机器人导航论文，精读 2 篇、速读 3 篇，主题集中在遮挡感知控制与不确定性下的安全飞行。</p>
-<p>最值得看的是两篇 8.0 分精读：OA-MPPI 用遮挡感知的模型预测路径积分控制提升无人机飞行安全性，另一篇则研究不确定性下固定翼无人机的安全学习自适应增稳控制，两篇都直指&quot;复杂环境下如何飞得稳&quot;。</p>
-<p>普通读者建议先读这两篇精读的摘要与实验部分，速读中的火星视觉可通行性估计、空地协同主动感知和远程相机视觉导航可作扩展了解。</p>
+<p>今日速读1篇，聚焦空地运动控制中的时序模式切换与跨地形跟踪。值得关注的是该工作尝试用模式切换应对不同地形下的运动策略衔接，但评分6.0属中等水平。普通读者可先看摘要与实验视频，判断其跨地形效果是否可靠，再决定是否深入。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight">OA-MPPI: Occlusion-Aware Model Predictive Path Integral Control for UAV Flight</span></li><li><span class="dpr-home-dashboard-paper-title" title="Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty">Safe Learning-Based Adaptive Augmentation Control for Fixed-Wing UAV under Uncertainty</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning to Drive on Mars: Visual Multimodal Traversability Estimation for Off-World Navigation">Learning to Drive on Mars: Visual Multimodal Traversability Estimation for Off-World Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Robust Active-Perception Control for Global-State-Free Aerial-Ground Cooperation">Robust Active-Perception Control for Global-State-Free Aerial-Ground Cooperation</span></li><li><span class="dpr-home-dashboard-paper-title" title="ReVNM: Learning-Based Visual Navigation from a Remote Camera">ReVNM: Learning-Based Visual Navigation from a Remote Camera</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking">Learning Air-Ground Motion Control with Temporal Mode Switching and Cross-Terrain Tracking</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 
