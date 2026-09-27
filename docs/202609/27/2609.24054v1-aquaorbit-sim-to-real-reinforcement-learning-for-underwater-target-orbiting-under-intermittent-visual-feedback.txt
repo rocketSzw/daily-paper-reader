@@ -1,0 +1,370 @@
+Title: AquaOrbit: Sim-to-Real Reinforcement Learning for Underwater Target Orbiting under Intermittent Visual Feedback
+
+URL Source: https://arxiv.org/pdf/2609.24054v1
+
+Published Time: Tue, 22 Sep 2026 02:45:02 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# AquaOrbit: Sim-to-Real Reinforcement Learning for Underwater Target Orbiting under Intermittent Visual Feedback 
+
+Kanzhong Yao 1, Jinyi Leng 1,2, Hao Zhang 1,3, Zhe Sun 1,∗, and Xuelong Li 1,∗
+
+Abstract — Intermittent visual loss disrupts target-relative feedback during underwater orbiting, making it difficult to maintain coordinated motion and reacquire a moving target. We present AquaOrbit, a reinforcement-learning controller with a recovery module for underwater target orbiting under interrupted visual feedback. During detection loss, the recovery module uses latched line-of-sight, roll, and depth references to support stabilization and target reacquisition. We train the con-troller in Isaac Sim with dynamics, observation, and vision-loss randomization. Evaluated without retraining in Gazebo/ROS 2 under a different physics engine and perception perturbations, AquaOrbit completes 20/20 orbiting trials in each of the static-and moving-target conditions on an unseen variable-depth 3-D trajectory. In the moving-target condition, it reduces mean line-of-sight error by approximately 46% relative to a PID-based visual servoing controller with recovery while maintaining com-parable path-tracking accuracy; removing the recovery module reduces completion to 9/20. Zero-shot physical deployment with fully onboard perception and control demonstrates elliptical, figure-eight, and variable-depth circular trajectories, including the latter two trajectory types absent from training. The robot maintains attitude stability during manual occlusions lasting up to 8 s and reacquires the target within 2.5 s in the reported attitude-induced field-of-view loss events. 
+
+I. I NTRODUCTION 
+
+Autonomous target-relative motion is a core capability for underwater inspection, monitoring, and intervention. Among such behaviors, orbiting, also termed target circumnaviga-tion, is a useful motion primitive: by continuously moving around a target at a desired stand-off distance, a vehicle can acquire multi-aspect inspection views, improve observ-ability for active target localization, and maintain persistent observation of mobile marine assets and animals [1]–[3]. Unlike conventional leader–follower control, which regulates a fixed relative offset, orbiting requires sustained nonzero tangential motion while maintaining the desired distance from the target. Classical visual control approaches typically rely on explicit geometric models. Position-based visual servoing (PBVS) reconstructs the target’s relative three-dimensional pose and uses this estimate to compute control commands, whereas image-based visual servoing (IBVS) regulates image features through an analytical image Jacobian [4]–[6]. Both approaches face challenges underwater: pose estimation can degrade with turbidity [7], [8], increasing range, and oblique tag viewing angles, while image-based feedback becomes   
+
+> 1Institute of Artificial Intelligence (TeleAI), China Telecom, China.
+> 2Harbin Engineering University, China.
+> 3Tongji University, China.
+> ∗Corresponding authors: Zhe Sun ( sunzhe@nwpu.edu.cn ); Xuelong Li ( xuelong li@chinatelecom.cn ).
+> Fig. 1: 3-D orbiting around the target AprilTag with continuous visual fixation on its center. A manual occlusion of up to ∼8s is introduced from the left.
+
+unavailable when the target leaves the camera’s field of view or its features cannot be detected [9], [10]. These challenges are particularly relevant to moving-target orbiting, where changing viewpoints and target motion can repeatedly interrupt visual feedback. Recent approaches, such as the virtual elastic tether [11], address temporary line-of-sight loss in leader–follower sce-narios. However, extending such 2.5D task-specific mecha-nisms to three-dimensional orbiting is challenging, because the desired target-relative position changes continuously throughout the maneuver. Learned policies have also demon-strated the feasibility of underwater vehicle control, including performance comparable to PID control in the tasks studied [12], [13]. Nevertheless, robustness to intermittent target vis-ibility remains insufficiently explored in these studies [14], [15]. The controller must therefore combine coordinated target-relative tracking with recovery behavior when visual feedback becomes unavailable. This motivates our central question: can a learned policy use intermittent visual relative-position measurements and onboard vehicle state to sustain orbiting around a moving underwater target and recover from detection loss? 
+
+We address this question with AquaOrbit, a reinforcement-learning (RL) controller for moving-target orbiting under in-termittent visual feedback (Fig. 1). An AprilTag-based visual estimation node [16] provides the target’s three-dimensional position relative to the camera. The policy combines this measurement and its recent history with positional-reference features, detection validity, onboard vehicle state, action feedback, and recovery latch variables to generate individual thruster commands. We formulate the task as a partially observable control problem to account for observation gaps caused by target motion, tag-face transitions, and detection failures. Training incorporates explicit vision-loss random-ization, and a recovery module supports operation during arXiv:2609.24054v1 [cs.RO] 21 Sep 2026 intermittent target visibility. Policies are trained in Isaac Sim, evaluated without retraining in Gazebo to assess sensitivity to simulator-specific characteristics, and subsequently deployed on an underwater robot in an indoor test pond. This paper makes the following contributions:  
+
+> •
+
+An RL policy that drives a 6-DoF underwater vehicle to orbit a moving target from the target’s relative 3D position and onboard proprioception alone, maintain-ing line-of-sight alignment while orbiting along unseen commanded trajectories.  
+
+> •
+
+Zero-shot deployment on a physical six-DoF vehicle with fully onboard perception and inference, sustaining orbits under intermittent visual dropout, external force disturbances, and irregular target motion, and merging into the orbit from a relaxed release region without a predefined guidance path.  
+
+> •
+
+A three-stage evaluation spanning Isaac Sim training, cross-simulator testing in Gazebo without retraining, and physical deployment in an indoor pond, using target-frame orbit metrics and comparisons against observation-matched and privileged baselines. II. R ELATED WORK 
+
+A. Reinforcement Learning for Underwater Vehicles 
+
+Learning-based underwater control predates modern deep RL. Wettergreen et al. learned stable AUV controllers and coupled visual feature tracking with vehicle guidance, demonstrating the early potential of feature-driven learned control [17]. Carlucho et al. mapped onboard sensory mea-surements to continuous low-level thruster commands with an actor–critic policy and validated it on a real AUV [18]. Deep RL has since been applied to goal-conditioned under-water maneuvers: Anderlini et al. compared DQN and DDPG with classical controllers for simulated docking [19], and Cai et al. trained six-DoF control policies in a parallelized simulator and transferred them to a physical vehicle without real-world fine-tuning [15]. Closest to our sensing setup, Bharti et al. combined TD3, PID demonstrations, and April-Tag localization for sim-to-real AUV docking [20]. Docking, however, terminates at a goal configuration; orbiting instead demands persistent tangential motion, continuous regulation relative to a moving target, and repeated recovery from field-of-view loss. 
+
+B. Underwater Visual Servoing 
+
+Underwater visual servoing is commonly organized as PBVS, which controls a reconstructed relative pose, or IBVS, which regulates features in the image plane. Gao et al. 
+
+combined an estimated image Jacobian with adaptive neural control for fixed-target dynamic positioning in simulation [4]. Heshmati-Alamdari et al. used visual pose estimation with self-triggered nonlinear model predictive control, validated experimentally on a small underwater vehicle [5]. Moving targets add estimation and prediction burdens: Liu et al. 
+
+proposed an IBVS tracker with an unscented Kalman filter and image-Jacobian MPC, validated in simulation [6]; Wang and Gao incorporated actor–critic adaptation into a hybrid visual-servo controller for a vehicle–manipulator system, while retaining a model-based kinematic layer and multi-camera depth, in simulation [21]. In contrast, AquaOrbit uses no analytical image Jacobian, model-based servoing law, or target-orientation estimate in its deployed control path: the learned policy maps the detector’s relative-position output and onboard proprioception directly to thruster commands, and learns its own recovery behavior rather than switching to a hand-designed fallback. III. P ROBLEM FORMULATION 
+
+A. Moving-Target Orbiting 
+
+Let FT , FB , and FC denote the target, robot’s body, and camera frames. The task is to track a time-varying 
+
+guidance point (a series of virtual references) gt ∈ R3
+
+defined in the target frame while keeping the target centered in the camera’s field of view; the guidance point decouples the desired viewpoint from the target body, so tracking it drives the robot to orbit and inspect the target rather than approach it. The reference orbit trajectory can take various predefined forms—vertical-plane ellipses, figure-eights, and 3D orbits. Training uses only parameter-randomized elliptical trajectories, while generalization to the other trajectory types is assessed in the experimental section. At time t, the policy must minimize the camera-frame tracking error 
+
+eg,t = etag ,t + RFC ←F T gt, (1) where etag ,t = [ ex,t , e y,t , e z,t ]⊤ is the observed target po-sition in camera coordinates (from the AprilTag detector) and RFC ←F T rotates the target-frame guidance-point offset into the camera frame. Notably, the target frame FT only translates with the target center and keeps its axes parallel to the world frame without rotating with the target, so this rotation is determined solely by the robot’s attitude and is independent of the target’s orientation. Simultaneously, the policy must keep the target centered in the image by driving the lateral and vertical components of etag ,t toward zero: 
+
+e⊥ 
+
+> tag ,t
+
+= [ ey,t , e z,t ]⊤ → 0, (2) where ex,t is the range along the optical axis and (ey,t , e z,t )
+
+are the image-plane offsets. 
+
+B. Observation Space 
+
+The actor observes only quantities available in real-robot deployment: a visual target measurement zt from the April-Tag estimation node, the IMU/AHRS vehicle state st, the ap-plied thruster command at, and lost-target latch references lt.These form a single-frame observation ot = [ zt, st, at, lt] ∈
+
+R44 .
+
+Target measurement zt ∈ R13 : the camera-frame target position etag ∈ R3, the guidance-point tracking error eg ∈
+
+R3 (Eq. 1), a binary detection flag δ (set to 0 when the target leaves the FOV or is occluded), and the 10 - and 20 -step displacements ∆10 e, ∆20 e ∈ R3 of etag , which capture short-horizon relative motion at two timescales to trade off signal-to-noise ratio against timeliness. Vehicle state st ∈ R19 from the noisy IMU/AHRS chain: attitude quaternion q, angular velocity ω, body-frame gravity direction, the body x/z axes in the world frame (a redundant, singularity-free attitude cue), and a 15 -frame angular-velocity change ∆15 ω. Linear velocity is excluded, as underwater it can only be recovered by integrating IMU acceleration, whose drift makes the estimate too unreliable. 
+
+Applied action at ∈ R8 is the post-lag per-thruster throt-tle. Vision-loss latch lt ∈ R4 records the signed deviations of depth, heading, pitch, and roll from references latched at the last detected frame ( δ : 1 → 0), where the heading and pitch references are the line-of-sight attitude toward the target’s last-seen position (Sec. IV-C). 
+
+C. Action Space 
+
+The policy directly outputs at = πθ (ot) ∈ [−1, 1] 8, the normalized throttle command for each of the eight thrusters. The vectored eight-thruster configuration lets these com-mands span the full six-DOF wrench, so all translational and rotational degrees of freedom are learned jointly end-to-end. Each command passes through a thruster model comprising a first-order throttle lag, a piecewise-linear throttle-to-speed map with a deadband, and an empirical quadratic speed-to-thrust curve. IV. A PPROACH 
+
+A. Policy Architecture and Training 
+
+The actor and critic are two separate three-layer MLPs (256 hidden units, LeakyReLU activations, with layer nor-malization after each layer). We train in 4096 parallel Isaac Sim environments (Fig. 2); a single training run of 4000 iter-ations takes about one hour on a single NVIDIA RTX 4090. We adopt an asymmetric actor–critic architecture: beyond the actor’s observation, the critic additionally receives privileged ground-truth simulator information opriv  
+
+> t
+
+∈ R10 , comprising the camera-frame target position ∈ R3, the camera-frame target tracking-point position ∈ R3, the body-frame linear velocity ∈ R3, and the target FOV visibility ∈ R1; the privileged visual information remains unaffected by target loss and random occlusion. Instead of rendering, we emulate the deployment-time AprilTag detector by ground-truth geometry. Using the sim-ulator’s ground-truth vehicle and tag poses, the tag center is mapped into the camera frame by a single rigid-body transform, 
+
+pC 
+
+> tag
+
+= RBW
+
+ pW 
+
+> tag
+
+− pWr
+
+ − tBc , (3) where pW 
+
+> tag
+
+and pWr are the tag and vehicle positions in the world frame, RBW is the world-to-body rotation from the vehicle attitude, and tBc is the fixed camera offset in the body frame. We write etag = pC 
+
+> tag
+
+= [ x, y, z ]⊤ (x along the optical axis, y lateral, z vertical). Since a real tag is detected only when the whole marker lies within the image, we bound it by a sphere of radius r and require the entire sphere to stay inside the frustum, i.e. the center’s distance to each lateral face is at least r:
+
+δ = 1[ x > 0 ∧ mh ≥ r ∧ mv ≥ r ∧ ∥ etag ∥ < d max ] ,
+
+(4) with margins mh = x sin( θh/2) − | y| cos( θh/2) and mv =
+
+x sin( θv /2) − | z| cos( θv /2) . This yields an effective FOV that is narrower than the nominal one and contracts as the tag approaches, and it naturally induces a near blind zone; the slant-range term ∥etag ∥ < d max adds the far detection limit. We set r = L/ √2 (the circumradius of the L = 0 .16 m tag face) and dmax = 5 m. Sensor noise, latency, and occlusion bursts (Sec. IV-D, IV-C) are layered onto this clean flag. 
+
+B. Reward Design 
+
+When the target is visible ( δt=1 ), the policy is driven by a visual-orbit reward: an instantaneous weighted sum of tracking, visual, stability, and control groups, 
+
+rt = wtr rtrack  
+
+> t
+
++ wce rcenter  
+
+> t
+
++ wat ratt  
+
+> t
+
++ wda rdamp 
+
+> t
+
++ wac raccel  
+
+> t
+
++ wef reff  
+
+> t
+
++ wsm rsm  
+
+> t
+
+, (5) The tracking term applies a bi-exponential shaping on the camera-frame guidance error, whose steep component gives tight regulation near the target while the shallow one pre-serves the gradient at range. The center term rcenter  
+
+> t
+
+drives the image-plane error (ey , e z ) of Eq. (2) to zero, keeping the target centered in the FOV to preserve observability; the attitude term applies a soft limit σ(x; k, c )=(1+ ek(x−c))−1
+
+that grants roll a permissive band, letting the policy explore freer motion within a safe range, while pitch is given a wider limit as it must keep the tag aligned across orbiting phases; and the accel term penalizes the angular acceleration 
+
+∆15 ωa over a 0.15 s window, mainly suppressing attitude oscillation/jitter around 0.5–2 Hz while leaving constant-rate functional maneuvers, whose acceleration is near zero, unpenalized. The physical meaning, functional form, and coefficients of all terms are summarized in Table I. During vision loss ( δt=0 ) the tracking and visual terms are replaced by a vision-loss recovery reward (Sec. IV-C); the stability and control terms remain active throughout. An episode terminates on either range violation ( ∥pWr −
+
+pW
+
+> tag
+
+∥ > 3.0 m, contact lost) or sustained vision loss (target undetected for > 15 consecutive frames, counting only FOV departure and excluding transient occlusion). 
+
+C. Vision-Loss Handling 
+
+The policy must cope with two sources of detection loss encountered in deployment (Fig. 3): (i) geometric FOV departure , where the target leaves the field of view (FOV) because the vehicle-to-target bearing grows too large—e.g. an abrupt change in target velocity or a swing in the vehicle’s own attitude; and (ii) detection failure with the target still inside the FOV , where the target is transiently occluded by external moving obstacles or the upstream vision module drops out briefly due to water turbidity or target jitter. Both appear identically to the policy—as a single dropped detection ( δt=0 )—and both are handled by the same learned recovery behavior. Fig. 2: Framework of the AquaOrbit algorithm. Left: the sim-to-real pipeline from parallel training to real-world deployment. Middle: Gazebo simulation and real-world deployment rely on an upper-level target-position estimation module, whereas Isaac Sim training computes the camera-frame target position directly from ground-truth world-frame poses; the dashed box denotes the effective FOV. Right: curriculum learning progressively introduces static, dynamic, and occluded AprilTag targets to enhance robust target tracking. 
+
+TABLE I: Reward terms. The upper block applies when the target is visible ( δt=1 ); the lower block is the recovery reward during vision loss ( δt=0 ). r=∥eg ∥, ωa are body angular rates, ui thruster throttles, σ the soft-limit function, and (·)lk the value latched at the instant of loss.                                                           
+
+> Group/term Form wKey params
+> visual-orbit
+> track α1e−k1r+α2e−k2r5.0α=( .3, . 7) , k =(10 ,1)
+> center exp( −kc
+> q
+> e2
+> y+e2
+> z)3.0kc=8
+> att 12[βrσ(|ϕ|)+ βpσ(|θ|)] 1.0k=(8 ,12) , c =( .65 , . 85)
+> damp 12
+> P
+> aγae−kωω2
+> a1.0kω=5 , γ =(1 .2, . 5, . 3)
+> accel 12
+> P
+> aηae−kα(∆ 15 ωa)2
+> 1.2kα=300 , η =( .7,1,1)
+> eff 18
+> P
+> ie−keu2
+> i1.0ke=3
+> sm exp( −ks∥ut−ut−1∥)2.0ks=1
+> vision-loss recovery
+> pitch exp( −kp|θ−θ⋆
+> lk |)2.5kp=6
+> roll exp( −kr|ϕ−ϕlk |)2.5kr=6
+> head exp( −kh(1 −cos( ψ−ψ⋆
+> lk ))) 2.0kh=20
+> depth exp( −kd|z−zlk |)3.0kd=5
+> z-vel exp( −kv|˙z|)2.6kv=10
+
+1 2 3 4
+
+> Fig. 3: First-person views: (1) nominal detection, (2) occlusion, (3)–(4) partial FOV exit due to viewing angle.
+
+When the target is lost ( δt=0 ), the replaced tracking, visual, and attitude-limit terms form a vision-loss recovery 
+
+reward 
+
+rhold  
+
+> t
+
+= wp rpitch  
+
+> t
+
++ wr rroll  
+
+> t
+
++ wh rhead  
+
+> t
+
++ wd rdepth  
+
+> t
+
++ wz rz-vel  
+
+> t
+
+,
+
+(6) 
+
+1) Latched Hold and Active Reacquisition: At the instant of vision loss ( δ : 1 → 0), the depth, heading, pitch, and roll references are latched and exposed to the policy through 
+
+lt (Sec. III-B), and the recovery reward penalizes deviation from them (lower block of Table I). Here heading and pitch latch to the target-pointing line-of-sight bearing on the last visible frame, so the attitude terms both hold the camera on an occluded target and actively reacquire a target lost to FOV departure. Roll latches its instantaneous body value to preserve pose coherence. Horizontal position has no direct sensor, so no explicit term is imposed—lateral motion is constrained indirectly by the control cost, tolerating small-range coasting—while depth, being directly measurable, is regulated by a depth-hold term. 
+
+D. Domain and Observation Randomization 
+
+To bridge the sim-to-real gap, we follow the domain-randomization paradigm [22], [23] and randomize sensor characteristics, task geometry, and target motion at the start of every episode. All ranges are listed in Table II. We inject noise matched to the onboard sensing chain: additive Gaussian noise on the IMU angular rate, and an anisotropic, distance-dependent term on the AprilTag detec-tion. The visual observation is further passed through a per-episode latency buffer (a fixed 3–5 frame delay drawn at reset) to emulate the processing and transmission lag of the tag pipeline; only camera-detected quantities are delayed, while the proprioceptive channels and the reward remain synchronous. Together these force the policy to act robustly under noisy, delayed, and intermittent feedback. We further randomize the vehicle hydrodynamics, which are poorly identified underwater. Starting from the nominal parameters of the open-source BlueROV2 benchmark simula-tor [24], at each reset every environment independently scales its added-mass, linear-damping, and quadratic-damping ma-trices by a factor drawn from U[0 .5, 1.5] , and perturbs the centre of buoyancy by a random 3-D offset. This exposes the policy to a wide spread of drag, inertial, and restoring-torque behaviours, so it does not overfit the nominal model. For task geometry, the reference orbit trajectory is an ellipse whose semi-axes, plane tilt, angular rate, and initial phase are all randomized. We adopt a three-stage curriculum that progressively increases task difficulty. 
+
+(i) First 1000 iterations The spawn pose is relaxed in three levels: the robot first spawns along the ellipse’s initial-phase direction, then at a randomly sampled phase on the ellipse, and finally fully at random within a cylindrical shell around the target ( 360 ◦ horizontal azimuth plus a height offset of [−0.35 , 0.35] m). As the spawn distance and phase offset relative to the trajectory’s start point grow, the policy progressively learns to approach distant trajectory points; under a large phase offset the robot must aim at the tag and execute an arc-like motion toward the target point to TABLE II: Domain randomization ranges (per episode unless noted; brackets denote uniform U[·]; s.a.: semi-axis).                                                        
+
+> Param. Range Param. Range IMU ωnoise σ=0 .008 rad/s Orbit s.a. (lat) [0 .5,0.9] mTag noise (range) 0.004+0 .003 d2Orbit s.a. (vert) [0 .3,0.6] mTag noise (lat) 0.002+0 .001 dOrbit ang. rate [0 .15 ,0.25] rad/s Detect. dropout 15–280 frames Phase/azim. [0 ,2π]
+> Percept. latency 3–5 frames Plane pitch β[−20 ,20] ◦
+> Added-mass [0 .5,1.5] ×Init. dist. [0 .5,1.4] mLin/quad damp. [0 .5,1.5] ×Spawn height [−0.35 ,0.35] mCoB offset ±0.3/0.3/0.5cm Walk ampl. (2 ,2,1) mWalk freq. [0 .005 ,0.015] hz Walk phase [0 ,2π]
+
+maximize reward. This capability substantially relaxes the position and attitude requirements at the release point during deployment and generalizes to other plausible scenarios. 
+
+(ii) Iterations 1000–2000 The target transitions from stationary to a Lissajous walk, with the walk probability ramped from 0 to 40% and then held. As the target moves at a bounded but unknown velocity, the policy leverages cross-frame jitter observations over 10- and 20-frame windows to indirectly estimate its relative motion trend, yielding smoother tracking of continuously moving targets under varying speed. 
+
+(iii) After 2000 iterations Since occlusion-type loss carries no geometric signature, we overlay burst-mode de-tection dropout on the visual observation to emulate the missed detections, tag occlusion, and tag-face transitions of deployment. Its intensity (trigger probability and maximum duration) is ramped linearly from 0 over the following 500 it-erations to its final values of 0.0025 per step and 280 frames, forcing the policy to acquire a hold-and-reacquire behavior under intermittent blindness and thereby become robust to the unstable visual observations encountered underwater. V. E XPERIMENTS & R ESULTS 
+
+A. Sim-to-Sim Cross-Engine Evaluation 1) Cross-Engine Simulation Environment: To assess the transferability and robustness of the learned recovery policy beyond its training distribution, we evaluate the frozen policy in the Gazebo physics engine, driven by the same ROS 2 architecture as the physical vehicle and topped with an AprilTag detection node in place of a ground-truth target feed, so that the perception–control loop matches the on-robot deployment. The vehicle dynamics and thruster model follow the same formulation as in Isaac Sim, with the hydrodynamic parameters fixed at the most adverse end of their training randomization range (weaker self-stabilization and lower water damping). To better approximate underwater visual conditions, the detection node is subject to four perturbations: additive zero-mean Gaussian noise of 3 mm (1σ) on the three-axis target-center position; a 5% per-frame solve-failure rate (emulating sporadic frame loss from suspended particulates); a 35 ms 
+
+pipeline delay (matching the measured end-to-end latency on the NX board); and random occlusion events triggered with probability 0.15 per second, each lasting 1–5 s .                                                         
+
+> TABLE III: Reference orbit and target trajectories.
+> Trajectory Parametrization
+> Ellipse x=x0, y =Aycos φ, z =z0+Azsin φ
+> Figure-8 x=x0+Azsin 2 φsin θ, y =Aycos φ, z=z0+Azsin 2 φcos θ
+> 3-D orbit x=rcos φ, y =rsin φ, z =z0+Azsin kzφ
+> Lissajous (tgt) ptgt
+> i=Aisin( ωit+φi), i ∈ { x, y, z }
+
+2) Evaluation Trajectories: To probe generalization, the vehicle tracks a variable-depth 3-D orbit never seen during training (Table III): a horizontal circle of radius r = 0 .75 m ,modulated by a vertical sinusoid ( Az = 0 .3 m , kz = 2 )whose out-of-plane motion stresses full three-axis tracking. We evaluate two target conditions: static , with the April-Tag held fixed; and moving , where it follows a Lissajous tra-jectory as in training (Table III), with A = (2 .0, 2.0, 0.6) m ,
+
+ωi = 2 π ·0.01 rad /s, and φ = ( −1.6, 1.8π, 0.8π) rad . For moving-target trials the occlusion duration is shortened to 
+
+1–3 s ; other perturbations are unchanged. 
+
+3) Baselines: We compare four methods to assess their performance under the primary metrics of target alignment and tracking accuracy:  
+
+> •
+
+PBVS-PID: a position-based visual servoing controller with a cascaded outer-loop reference generation and inner-loop PID tracking structure, in which vertical and horizontal motion are decoupled; the pitch and yaw channels keep the vehicle aligned with the tag center, while the horizontal and depth channels track the reference orbit trajectory.  
+
+> •
+
+PBVS-PID + Rec: the same PID augmented with a hand-designed recovery module that, upon detecting a failed measurement, resets the reference orbit trajectory to zero while holding the attitude and depth of the last visible frame.  
+
+> •
+
+AquaOrbit (w/o Rec): our policy architecture trained 
+
+without dropout-segment observations or the explicit recovery reward.  
+
+> •
+
+AquaOrbit: the full proposed policy (this work). For both recovery-free variants (PBVS-PID and AquaOrbit (w/o Rec)), the observation during a lost frame is carried over from the previous frame. For each method and target condition we run 20 contin-uous orbiting trials; a cycle is terminated early and counted as a failure if the range to the AprilTag exceeds 3 m , or if detection is continuously lost for more than 5 s outside any scripted occlusion, after which it is restarted. We report the completion rate, path deviation, and radius error eR, together with the LOS error (the absolute line-of-sight bearing error over frames with a valid detection) and the attitude stability ,the time-averaged magnitude of the composite three-axis angular acceleration. 
+
+4) Results: Table IV summarizes the quantitative compar-ison. AquaOrbit completes all 20 continuous orbiting cycles under both the static- and moving-target conditions—the highest success rate among all methods—while attaining the lowest line-of-sight error; its position-tracking accuracy is Fig. 4: Rows, top to bottom: 3D orbit; 30 ◦-pitch Figure-8 (water quality was relatively poor here); vertical-plane Ellipse under applied force disturbances; and manually controlled irregular AprilTag motion (multi-directional linear/curved motions and box-shaped attitude oscillations). 
+
+TABLE IV: Cross-engine comparison and ablation on the 3-D orbit.                                                                                             
+
+> Target Method Succ. rate LOS err. [ ◦]Path dev. [m] eR
+> [m]
+> |α|
+> [rad/s 2]Mean P90 Mean RMS Static PBVS-PID 12/20 9.64 13.08 0.145 0.186 0.069 1.205 PBVS-PID + Rec 20/20 9.49 13.10 0.100 0.107 0.051 0.772
+> AquaOrbit (w/o Rec) 18/20 12.65 18.57 0.196 0.214 0.089 0.793
+> AquaOrbit 20/20 5.24 8.66 0.125 0.144 0.045 0.877 Moving PBVS-PID 5/20 10.50 15.29 0.168 0.179 0.135 0.969 PBVS-PID + Rec 18/20 9.64 13.89 0.139 0.153 0.113 0.888
+> AquaOrbit (w/o Rec) 9/20 9.75 17.97 0.224 0.253 0.145 1.325
+> AquaOrbit 20/20 5.19 9.68 0.141 0.157 0.088 1.141 Moving (Ablation) w/o ∆Obs 19/20 5.92 9.89 0.171 0.221 0.106 1.080 w/o Jitter 16/20 7.52 11.62 0.166 0.180 0.136 2.094 w/o Latency 18/20 6.28 10.32 0.196 0.239 0.104 1.183 w/o ResetRand 16/20 6.52 10.77 0.231 0.256 0.144 1.238
+
+on par with the strongest baseline. In the dynamic scenario, PBVS-PID + Rec attains competitive path deviation and attitude stability, but its LOS error is markedly higher than ours, and its success rate on the moving-target task drops to 18 /20 ; the failures occur when the relative velocity with respect to the tag is large and the orbiting path is near the extremal points of its depth profile. The contribution of the recovery mechanism is more pronounced in the dynamic-target scenario: removing the recovery module reduces the completion rate of the reinforcement-learning policy from 
+
+20 /20 to 9/20 , and that of the PID method from 18 /20 to 
+
+5/20 . As the occlusion duration grows (beyond roughly 2 s ), both recovery-free methods exhibit sharply higher loss rates accompanied by a degradation in LOS tracking accuracy. This stems from their reliance on coasting on stale measure-ments during visual dropout, followed by large abrupt atti-tude and position corrections upon reacquisition—an effect that is more severe for the PID-based method. 
+
+5) Ablation Study: With the experimental conditions un-changed, we ablate four factors in isolation (Table IV, lower block): the historical target-displacement observation ( w/o 
+
+∆Obs ), the anti-jitter terms in the reward and observation 
+
+Fig. 5: The robot freely cuts into the reference orbit from an off-orbit release point with no predefined guidance path, requiring only that the target tag stay within the FOV. 
+
+(w/o Jitter ), the visual measurement latency applied during training ( w/o Latency ), and the reset randomization of the robot and reference orbit trajectory ( w/o ResetRand ). As shown in the table, removing the anti-jitter terms affects motion smoothness the most— |α| nearly doubles as short-period pitch/yaw oscillation reappears; removing the reset randomization mainly enlarges the path deviation and the LOS error, reflecting degraded generalization to the tracking trajectory; the visual-latency and ∆Obs terms have milder effects, the latter concentrated on the LOS error under the moving-target condition. 
+
+B. Sim-to-real Results 1) Experimental Platform: The experiments use a custom underwater robot with eight thrusters providing full six-degree-of-freedom (6-DoF) actuation and a total mass of about 16 kg. An NVIDIA Jetson NX and a Pixhawk flight controller serve as the onboard controllers: the Pixhawk receives the eight thruster commands from the reinforcement-learning (RL) node and provides IMU and depth measure-ments, while a monocular grayscale image serves as the visual input. All physical experiments were conducted in a transparent experimental pond measuring 5 m × 3 m × 1.8 m 
+
+(length × width × water depth). A tether transmits only start/stop commands; all perception, policy inference, and control run entirely onboard, with no external computing devices or sensors in the loop. TABLE V: Real-world task evaluation across different scenarios                                            
+
+> Trajectory Succ. rate LOS err. [ ◦]Path dev. (m) Ang. accel. (rad/s 2)Mean P90 Mean RMS |αx||αy||αz|
+> Ellipse 7/8 11.96 17.89 0.150 0.169 0.272 0.227 0.130 Figure-8 9/11 9.08 15.53 0.136 0.151 0.349 0.338 0.337 3D Orbit (Occl.) 5/6 6.63 14.97 0.134 0.148 0.284 0.230 0.312 3D Orbit (Mov.) 8/10 7.99 15.17 0.156 0.174 0.285 0.222 0.339
+
+2) Real-World Pond Experiments: We run multi-scenario experiments covering the three reference orbits (Ellipse, Figure-8, 3D orbit; see Fig. 4 and the video). On the 3D-orbit task (Sec. V-B.3 and Sec. V-B.4), we focus on evaluating the policy’s recovery under sustained target occlusion and its ability to track an irregularly moving AprilTag. 
+
+3) Sustained-Occlusion Experiments: We emulate under-water moving obstacles by manually blocking the camera’s line of sight with a baffle (top of Fig. 6). Without occlusion, the 3D-orbit period is about 60 s and the pitch oscillates within ±20 ◦, as required to keep the target centered. Long occlusions of 8 s and 5 s are introduced around 75 s 
+
+and 125 s , and brief occlusions of under 1 s around 23 s ,
+
+115 s , and 139 s . During occlusion the robot’s yaw stays nearly unchanged and its pitch and roll fluctuate within 2◦,indicating a stable attitude. Around 32 s and 87 s the target is lost to a large yaw excursion rather than occlusion; the model re-acquires it within 2.5 s by quickly adjusting its attitude. Interestingly, the model learns a freer 3D motion in which the roll angle varies periodically with the orbiting phase rather than being held at zero. This emerges as a trade-off among the attitude-amplitude constraint, the thrust (energy) penalty, and the smoothness penalty on angular velocity and acceleration, yielding overall smoother motion. 
+
+4) Moving-Target Experiments: We manually drive the AprilTag mount with a long rod, covering translations of the AprilTag target along multiple directions, yaw rotations, and attitude jitter, as shown in the bottom of Fig. 6. Here, a single occlusion of about 5 s is introduced at 23 s , and the AprilTag begins to move at 53 s . The target loss lasting about 
+
+2.5 s around 62 s is caused by the large attitude jitter of the AprilTag during motion; in this case the robot performs an aggressive maneuver and promptly recovers tracking. A clear gradient in the robot’s yaw is observed while the target is moving: for example, the slope over 104 –120 s is steeper than that over the stationary-target interval of 120 –125 s ,because the target moves in the direction opposite to the robot’s orbiting. Fig. 7 visualizes this task: when tracking the slowly moving AprilTag, the policy attains position-tracking and line-of-sight alignment accuracy comparable to the stationary-target case. 
+
+5) Free Cut-in Without a Guidance Path: None of the experiments above require the robot to be released on the reference orbit with its line of sight pre-aligned to the tag. Fig. 5 shows the robot acquiring the tag from a large distance and merging into the Figure-8 through a free arc, with no scripted guidance path; the left panel of Fig. 7 shows it launching from the water surface, descending autonomously,   
+
+> Fig. 6: Robot three-axis attitude angles and angular velocities over time. Top: the AprilTag is stationary throughout, with only manual occlusions. Bottom: the AprilTag moves during the pink-shaded intervals. twall = 0
+> denotes the instant of initial target acquisition.
+
+and merging into the 3D orbit. Both cases show that AquaOr-bit can track from an off-orbit, sparse guidance point. 
+
+6) Results Analysis: Table V summarizes the pond exper-iments, with metrics computed identically to the simulation. The real-world positional accuracy is close to Gazebo and the line-of-sight error is slightly larger, while all motion-jitter metrics fall below the simulated values, since the Gazebo hydrodynamic coefficients and injected sensor noise were set to deliberately aggressive levels. The Ellipse task shows a relatively higher LOS error, because it involves larger in-plane displacement relative to the tag over most of the cycle and incurs relatively more collisions with the wall edges. The moving-target orbit exhibits the largest path deviation, 
+
+16% above the static-target case but still acceptable; its two terminations stem from target loss caused by the tag approaching too quickly and from an accidental detachment of the tag. The terminations on the Figure-8 and Ellipse both occur at the lowest point of the trajectory, near the pond floor: the tag’s lower side is fixed to the mount so the ROV can only observe the tag’s front face, and ground contact induces abrupt pitch excursions that further raise the probability of target loss. Overall, the policy exhibits strong cross-scenario generalization in the real world and strong robustness to target jitter, external forces, visual occlusion, and distant initial positions. Fig. 7: Left: 3D orbit of the ROV in the target frame; the ROV position is reconstructed by fusing IMU measurements with visual target displacement. Green/pink points denote samples with the AprilTag stationary/moving. Top-right: 3D vector from the camera to the AprilTag, with the dashed box indicating the camera field of view (FOV). Bottom-right: perspective projection of the target center on the image plane. 
+
+VI. C ONCLUSION AND LIMITATIONS 
+
+A. Conclusion 
+
+We presented AquaOrbit, an RL controller that maps visual relative-position estimates, positional references, and onboard state to thruster commands for underwater orbiting. Domain randomization and a latched recovery mechanism enable operation under intermittent visual feedback. Without retraining, in Gazebo the policy completed 20/20 3-D orbit-ing trials with random occlusion for both static and moving AprilTag targets; removing recovery reduced moving-target completion to 9/20. Compared with PBVS-PID with recov-ery, it reduced moving-target line-of-sight error by 46% with comparable path accuracy. Zero-shot onboard deployment demonstrated trajectory types unseen in training, free cut-in without a predefined guidance path, attitude stability during occlusions up to 8 s, and reacquisition within 2.5 s in reported attitude-induced detection-loss events. 
+
+B. Limitations and Future Work 
+
+Validation relies on AprilTag-based position estimates and pond experiments with manually driven targets. Recovery does not predict target motion, and physical trajectories lack independent ground truth. Future work will evaluate faster targets, design a freer recovery strategy, improve measure-ment validation, and extend the approach to natural targets and open water. REFERENCES [1] Z. Yang, S. Zhu, C. Chen, G. Feng, and X. Guan, “Entrapping a target in an arbitrarily shaped orbit by a single robot using bearing measurements,” Automatica , vol. 113, p. 108805, 2020. [2] A. Wolek, J. McMahon, B. R. Dzikowicz, and B. H. Houston, “The orbiting Dubins traveling salesman problem: Planning inspection tours for a minehunting AUV,” Autonomous Robots , vol. 45, no. 1, pp. 31– 49, 2021. [3] I. Masmitja, M. Martin, K. Katija, S. Gomariz, and J. Navarro, “A reinforcement learning path planning approach for range-only underwater target localization with autonomous vehicles,” in Proc. IEEE 18th Int. Conf. Automation Science and Engineering (CASE) ,2022, pp. 675–682. [4] J. Gao, A. Proctor, and C. Bradley, “Adaptive neural network visual servo control for dynamic positioning of underwater vehicles,” Neu-rocomputing , vol. 167, pp. 604–613, 2015. [5] S. Heshmati-Alamdari, A. Eqtami, G. C. Karras, D. V. Dimarogonas, and K. J. Kyriakopoulos, “A self-triggered position based visual servoing model predictive control scheme for underwater robotic vehicles,” Machines , vol. 8, no. 2, p. 33, 2020. [6] J. Liu, J. Gao, W. Yan, Y. Chen, and B. Yang, “Image-based visual servoing of underwater vehicles for tracking a moving target using model predictive control with motion estimation,” International Jour-nal of Vehicle Design , vol. 91, no. 1–3, pp. 46–66, 2023. [7] X. Cheng, K. Yao, A. West, S. Watson, O. Marjanovic, B. Lennox, and K. Groves, “Confined space underwater positioning using collaborative robots: A proposed system,” IEEE Robotics & Automation Magazine ,pp. 2–14, 2026. [8] Z. Sun, T. Tian, H. Hu, Y. He, M. Shangguan, T. Yu, Q. Yang, M. Chen, X. Wang, Y. Chen, K. Yao, Y. Zheng, Y. Qian, M. Dou, J. Xu, Q. Li, G. Wu, and X. Li, “Extreme-depth water-related optical imaging: conquering ultra-low illumination environments from epipelagic zone to mariana trench,” PhotoniX , vol. 7, p. 7, 2026. [9] K. Yao, N. Bauschmann, T. L. Alff, W. Cheah, D. A. Duecker, K. Groves, O. Marjanovic, and S. Watson, “Image-based visual ser-voing switchable leader-follower control of heterogeneous multi-agent underwater robot system,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 5200–5206. [10] C. Yuan, Z. Jia, J. Shao, and X. Li, “Enhancing neural video com-pression of static scenes with positive-incentive noise,” 2026. [11] K. Yao, X. Cheng, K. Groves, B. Lennox, O. Marjanovic, and S. Watson, “Virtual elastic tether: A new approach for multi-agent navigation in confined aquatic environments,” Journal of Field Robotics , vol. 43, no. 5, pp. 3332–3350, 2026. [Online]. Available: https://onlinelibrary.wiley.com/doi/abs/10.1002/rob.70195 [12] T. Chaffre, J. Wheare, A. Lammas, P. Santos, G. L. Chenadec, K. Sammut, and B. Clement, “Sim-to-real transfer of adaptive control parameters for auv stabilisation under current disturbance,” The International Journal of Robotics Research ,vol. 44, no. 3, pp. 407–430, 2025. [Online]. Available: https://doi.org/10.1177/02783649241272115 [13] J. Shao and X. Li, “AI flow at the network edge,” IEEE Network ,vol. 40, no. 1, pp. 330–336, 2026. [14] S. Chu, Z. Huang, Y. Li, M. Lin, D. Li, I. Carlucho, Y. R. Petillot, and C. Yang, “Marinegym: A high-performance reinforcement learning platform for underwater robotics,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 17 146–17 153. [15] L. Cai, K. Chang, and Y. Girdhar, “Learning to swim: Reinforcement learning for 6-DOF control of thruster-driven autonomous underwater vehicles,” in Proc. IEEE Int. Conf. Robotics and Automation (ICRA) ,2025, pp. 11 286–11 293. [16] E. Olson, “AprilTag: A robust and flexible visual fiducial system,” in Proc. IEEE Int. Conf. Robotics and Automation (ICRA) , 2011, pp. 3400–3407. [17] D. Wettergreen, C. Gaskett, and A. Zelinsky, “Reinforcement learning for a visually-guided autonomous underwater vehicle,” in Proc. 11th Int. Symp. Unmanned Untethered Submersible Technology , 1999. [18] I. Carlucho, M. De Paula, S. Wang, Y. Petillot, and G. G. Acosta, “Adaptive low-level control of autonomous underwater vehicles using deep reinforcement learning,” Robotics and Autonomous Systems , vol. 107, pp. 71–86, 2018. [19] E. Anderlini, G. G. Parker, and G. Thomas, “Docking control of an autonomous underwater vehicle using reinforcement learning,” Applied Sciences , vol. 9, no. 17, p. 3456, 2019. [20] V. Bharti, S. Tunc ¸ay, I. Carlucho, M. Koskinopoulou, and Y. R. Petillot, “From simulation to reality: Deep reinforcement learning for autonomous underwater vehicle docking,” in OCEANS 2025 Brest ,2025, pp. 1–7. [21] Y. Wang and J. Gao, “Reinforcement-learning-based visual servoing of underwater vehicle dual-manipulator system,” Journal of Marine Science and Engineering , vol. 12, no. 6, p. 940, 2024. [22] J. Tobin, R. Fong, A. Ray, J. Schneider, W. Zaremba, and P. Abbeel, “Domain randomization for transferring deep neural networks from simulation to the real world,” in Proc. IEEE/RSJ Int. Conf. Intelligent Robots and Systems (IROS) , 2017, pp. 23–30. [23] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-real transfer of robotic control with dynamics randomization,” in 
+
+Proc. IEEE Int. Conf. Robotics and Automation (ICRA) , 2018, pp. 3803–3810. [24] M. von Benzon, F. F. Sørensen, E. Uth, J. Jouffroy, J. Liniger, and S. Pedersen, “An open-source benchmark simulator: Control of a BlueROV2 underwater robot,” Journal of Marine Science and Engineering , vol. 10, no. 12, p. 1898, 2022.
