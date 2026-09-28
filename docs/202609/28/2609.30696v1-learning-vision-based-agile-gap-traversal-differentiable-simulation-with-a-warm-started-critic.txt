@@ -1,0 +1,541 @@
+Title: Learning Vision-Based Agile Gap Traversal: Differentiable Simulation with a Warm-Started Critic
+
+URL Source: https://arxiv.org/pdf/2609.30696v1
+
+Published Time: Mon, 28 Sep 2026 00:26:36 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Learning Vision-Based Agile Gap Traversal: Differentiable Simulation with a Warm-Started Critic 
+
+Nuthasith Gerdpratoom, Tianchen Sun, Yichao Gao, and Lin Zhao 
+
+Abstract — Traversing narrow gaps is challenging for au-tonomous quadrotors, especially when control commands come directly from high-dimensional visual observations. Existing end-to-end methods often rely on behavior cloning or full-rollout backpropagation through time (BPTT) via differen-tiable simulation, which can limit policy performance or incur high training costs. We propose a two-stage reinforcement learning framework for more efficient ego-centric visuomotor gap-traversal policy training, leveraging quasi-analytical policy gradients (QPG) via differentiable simulation and critic warm-starting. The framework utilizes QPG to avoid backpropagation through visual rendering, reducing computation and memory costs while improving sample efficiency. In the first stage, an expert actor and critic are trained using privileged observations, including gap geometry. Unlike prior gap-traversal approaches, our training utilizing QPG does not require resetting the agent along optimized reference trajectories. In the second stage, a visual policy is trained using binary gap masks from two ego-centric cameras and low-dimensional observations, while its privileged critic is warm-started from the first stage. This substantially improves training efficiency and traversal success compared with cold-starting the critic or using full-rollout BPTT. Our framework does not require retraining the expert actor when system parameters change, enabling more efficient generalization across drone platforms than state-of-the-art visual gap-traversal methods based on action supervision. The learned visual policy also generalizes to gaps with unseen shapes. Extensive real-world experiments further demonstrate robust gap traversal using binary masks rendered online. Beyond gap traversal, the proposed framework is generic and can be extended to other visuomotor robot learning tasks. 
+
+I. I NTRODUCTION 
+
+Maneuvering through tight gaps is one of the most challenging tasks in quadrotor autonomous navigation in obstructed environments, especially when the gaps are much narrower than the vehicle’s lateral dimension. In such cases, the agent must adjust its attitude to pass through narrow gaps, requiring robust SE (3) planning and control [1]–[4]. Traditional autonomous navigation is usually structured as a modular pipeline, which propagates and compounds errors throughout the system. This has motivated deep learning approaches in which neural network policies are trained for gap traversal [5]–[10], enabling the direct use of high-dimensional observations, such as images, as policy inputs. In particular, model-free reinforcement learning (RL) ap-proaches generally rely on estimated policy gradients while treating the system dynamics as a black box. However, these estimates can exhibit high variance, causing unstable  
+
+> The authors are with the Department of Electrical and Computer Engi-neering, National University of Singapore, 4 Engineering Drive 3, Singa-pore 117583, Singapore. Email:
+
+{nuthasith, tianchen.sun, yichao gao }@u.nus.edu, zhaolin@nus.edu.sg             
+
+> Fig. 1. Visual agile gap traversal. Top right: the deployed policy maps the binary gate mask Ikfrom ego-centric cameras, along with low-dimensional observations (the agent’s roll ϕk, pitch θk, accelerometer reading ˜abk, goal position pb
+> goal ,k , and past action uk−1) to thrust and body-rate commands. Left and bottom right: a quadrotor executes the policy in real flight.
+
+training and sample inefficiency. This motivates utilizing analytical policy gradients (APG) for controller learning [11]. APG uses a differentiable simulator, allowing gradients to flow through trajectories and yielding low-variance policy gradients, thereby improving sample efficiency. However, it suffers from vanishing or exploding gradients and getting stuck in local minima for long-horizon tasks. Short-Horizon Actor-Critic (SHAC) [12] circumvents these problems. In-stead of performing BPTT over an entire episode, SHAC truncates the computational graph into shorter segments and incorporates a value function, providing gradients while accounting for long-term returns. [13] extends SHAC to a partially observable control problem, where the observation is excluded from the gradient computation, avoiding large gradients from pixels. The policy is then updated via quasi-analytical policy gradient (QPG), which provides both long-term credit and an implicit feedback pathway from the smooth learned critic rather than from the observations. Our setup of the gap traversal, shown in Fig. 2, leaves 6 cm of lateral clearance per side for a perfectly aligned traversal and allows only 23 ◦ of roll misalignment. Relying on ego-centric vision sensing also poses significant challenges, as the agent must infer the gap geometry from high-dimensional vi-sual cues, which are tightly coupled with its agile movement. [14] and [15] demonstrate distilling an expert policy, trained via RL with the known gap geometry, into a vision-based policy that accepts a binary mask. The policy is supervised to reproduce the expert’s actions that are optimal only for the training plant and, thus, cannot adapt when the dynamics shift. Moreover, training the expert policy requires trajectory optimization to avoid undirected exploration, which adds arXiv:2609.30696v1 [cs.RO] 25 Sep 2026 computational overhead to the pipeline. [10] proposes policy optimization via a differentiable simulator with depth obser-vation, showing the potential of first-order policy gradients for this task. Unlike depth images, binary masks provide shapes without direct ranges, demanding that the policy infer geometry from them. In this work, we directly use the binary masks of the gap to reduce the dependence on visual textures and to support vectorized rendering alongside the physics simulator. A binary mask encoder can be further deployed to achieve a visuomotor policy from the RGB image. Nevertheless, the derivatives of the binary masks are zero almost everywhere. QPG decouples observations from backpropagation and propagates gradients through short rollouts, with a privileged critic estimating the credit beyond the horizon [12], [13]. Full-episode BPTT in the previous work propagates gradients through all steps, which can cause exploding gradients and hinder optimization. Although QPG is effective, it depends more on the critic than SHAC does. A randomly initialized critic offers no guidance until it has been fitted on the visual actor’s rollouts, which is poor at first. Since the critic sees the privileged state, it can warm-start another actor. We therefore pretrain a privileged expert and its critic, then warm-start that critic to train the visual actor. For this task, this improves performance over training an actor-critic from scratch with QPG. We propose a two-stage training framework for vision-based agile gap traversal via differentiable simulation. In the first stage, an expert policy and critic are trained jointly via QPG. In the second stage, the pretrained critic warm-starts the value function for learning a visual policy, which observes binary gate masks from two ego-centric cameras and low-dimensional inputs. Our contributions are threefold. First, we introduce an efficient two-stage rein-forcement learning framework that leverages short-horizon quasi-analytical policy gradient (QPG) and privileged critic pretraining; the warm-started critic accelerates and stabi-lizes visuomotor policy learning in the second stage (IV-B). To the best of our knowledge, we are the first to apply short-horizon QPG to visual agile narrow-gap traversal, and the framework proposed is not limited to visual agile gap traversal and can extend to other challenging robotics tasks. Second, compared with the state-of-the-art reinforcement-imitation learning pipeline for gap traversal [14], [15], our design eliminates the need to reset agents along optimized trajectories during expert training and action supervision (IV-A). Moreover, compared with policy distillation, our method does not require retraining the expert actor or critic for plant-parameter changes, improving generalization across drone platforms (IV-C). Third, our trained policy generalizes to gaps with previously unseen shapes, and we further demon-strate real-world vision-based quadrotor narrow-gap traversal in confined spaces with binary masks rendered online. II. R ELATED WORK 
+
+A. Agile Gap Traversal for Quadrotors 
+
+In agile gap traversal, traditional approaches plan a dynam-ically feasible SE (3) trajectory from the gap geometry, then track it using a lower-level policy [3], [4]. Data-driven tech-niques learn the policy via expert demonstration or agent-environment interaction. Given the gap pose, [7] imitates a model-based pipeline and fine-tunes with RL, [5] trains an end-to-end policy via model-free RL with a curriculum, [6] incorporates safety-aware exploration, and [16]–[18] train a network to adaptively parameterize a predictive controller. With onboard sensing, [8] detects the gap from a camera for RL training, [9] and [10] map depth images to commands via differentiable physics, and [14] and [15] distill a model-free RL-trained expert, which observes the gap edges and is reset along optimal trajectories, into a pixel-based student. Our policy observes binary gate masks from two ego-centric cameras, learns via first-order gradients, and requires neither a trajectory optimizer nor distillation. We exploit the actor-critic structure by feeding exposed privileged information into the critic network during training, while the actor remains identical to the deployed policy [19], [20]. 
+
+B. Policy Optimization via Differentiable Simulator 
+
+Policy optimization via a differentiable simulator has gained attention. Sample-based policy optimization al-gorithms [21]–[23] require a large number of agent-environment interactions to estimate gradients. APG via a differentiable simulator provides low-variance gradients and thus more sample-efficient learning [11], [24], although BPTT over long horizons yields chaotic gradients, which motivates the short-horizon and decoupled formulations [12], [13] that we build on. For quadrotors, differentiable physics has been used to learn recovery from visual features [25], agile navigation using a depth camera [26], obstacle avoid-ance from optical flow [27], drone racing with vector-field-augmented gradients [28], and gap traversal from depth images [9], [10]. Most quadrotor work optimizes the policy via BPTT through rollouts without a value function, which requires far more samples to achieve a comparable success rate. Instead, we adopt QPG with a privileged critic and backpropagate through a simplified model. Hence, the ren-derer is detached from the gradient path, and the observation can be chosen for the task rather than for differentiability. We also use binary masks as visual cues instead of depth images, which omit the gap’s geometry, posing an additional challenge for policy learning. III. M ETHODOLOGY 
+
+A. Problem Formulation 
+
+The task is for a quadrotor to traverse a tight gap agilely without colliding with obstacles and then hover stably at a goal position. The quadrotor is modeled as a rigid body with the state evolution defined as xi+1 = f (xi, ui), where 
+
+xi ∈ X ⊂ Rn and ui ∈ U ⊂ Rm are the system’s state and control input at time i ∈ Z, respectively. We formalize the gap as a slab shape with a rectangular opening. The geometric collision of the quadrotor is defined as an oriented bounding box C(xi), and the gap is described as a thin planar gate frame G with the inner opening. The dimensions are specified in Fig. 2. The drone traverses the gate cleanly if and Fig. 2. Left: the bounding box (transparent green) C, representing the quadrotor’s collision. Right: opening dimensions of the gap G. Both are visualized through Isaac Sim. 
+
+only if the centroid of the bounding box passes through the opening and there is no intersection between the box and the gate frame at every time step i, i.e., C(xi) ∩ G = ∅, ∀i. The task is considered successful if the drone traverses cleanly and stabilizes at the goal for a period of time thereafter. Each control step contains N = ∆ tc/∆tp ∈ N physics substeps, where ∆tc and ∆tp are the control and physics intervals in seconds. We denote i as a physics step, and 
+
+k = ⌊i/N ⌋ as a control step. A zero-order hold is applied to the input throughout the control step, i.e., ui = uk for 
+
+i ∈ kN, (k + 1) N  ∩ Z, ∀k. The feedback controller is defined as a stochastic policy πθ (·| ok), modeled as a Gaussian distribution, where θ is the parameter, and ok ∈ O 
+
+is an observation vector, obtained through a sensor model. The policy is expressed through the reparameterization trick as follows to enable learning via backpropagation: 
+
+uk = tanh  μθ (ok) + ϵkσθ
+
+, ϵk ∼ N (0 , Im) (1) where μθ ∈ Rm and σθ ∈ Rm are the mean and standard deviation. The deployed policy accepts a visual observation (i.e., the gate’s binary mask Ik, as shown in Fig. 3 right), and extra low-dimensional observations (i.e., roll ϕk, pitch θk,accelerometer reading ˜abk, and goal position in body frame 
+
+pb
+
+> goal ,k
+
+), and then outputs collective thrust and body rates (CTBR) commands to an autopilot. 
+
+B. Quadrotor Dynamics 
+
+The state evolution of a quadrotor is governed by the continuous-time rigid body dynamics as follows: 
+
+˙p = v, ˙v = 1
+
+m R(q)f b − gˆz, (2) where p ∈ R3 and v ∈ R3 are position and velocity in world frame. q ∈ R4 is a quaternion from the body frame to the world frame. R(q) ∈ SO (3) is a rotation matrix. 
+
+f b = [0 , 0, T ]⊤ is a body-frame force acting on the body, and T ∈ R+ is thrust. m ∈ R is a quadrotor’s mass in kg. 
+
+g = 9 .81 m/s 2 is the acceleration due to the Earth’s gravity, multiplied by a unit vector ˆz = [0 , 0, 1] ⊤. For the attitude, q
+
+evolves under the following quaternion kinematics: 
+
+˙q = 12 q ⊗
+
+ω
+
+0
+
+
+
+, (3) where ω ∈ R3 is an achieved body rate in body frame, and 
+
+⊗ is a quaternion multiplication operator [29]. In this work, we approximate the autopilot’s closed-loop body rate dynamics as a second-order low-pass filter with internal states [ ˙ ω⊤, ω⊤]⊤, defined as: 
+
+¨ω + 2 ζω n ˙ω + ω2
+
+> n
+
+ω = ω2
+
+> n
+
+Kωref (4) with constant scalar parameters ωn, ζ, and K. The achieved thrust T is also modeled as a first-order filter to represent the actuation delay with a time constant τ as: 
+
+τ ˙T + T = T ref . (5) The state equations are discretized with a physics substep interval ∆tp. Ti and ωi are updated first through the exact discretized inner-loop models of (4) and (5), respectively, and then are used to integrate the rigid body dynamics as: 
+
+vi+1 = vi + ˙ vi∆tp,
+
+pi+1 = pi + vi∆tp + 12 ˙vi∆t2
+
+> p
+
+,
+
+qi+1 = qi + ˙ qi∆tp
+
+∥qi + ˙ qi∆tp∥2
+
+.
+
+(6) From (6) and the discrete-time inner-loop dynamics models, the quadrotor’s state is xi = [ p⊤ 
+
+> i
+
+, v⊤ 
+
+> i
+
+, q⊤ 
+
+> i
+
+, ˙ω⊤ 
+
+> i
+
+, ω⊤ 
+
+> i
+
+, T i]⊤ ∈
+
+R17 , T ref  
+
+> k
+
+= 0.5T max (uk, [0] + 1) ∈ R, and ωref  
+
+> k
+
+=
+
+ωmax uk, [1:3] ∈ R3 (the last three entries of uk), for all physics step i and control step k, where T max and ωmax are the maximum thrust and body rate, respectively. 
+
+C. Policy Optimization via Differentiable Simulation 
+
+In this work, policy learning via differentiable physics is based on QPG by minimizing SHAC’s actor loss: 
+
+Lθ = − 1
+
+h
+
+"k0+h−1X
+
+> k=k0
+
+γk−k0 R(xk, uk(ok)) + γhVϕ(ck0+h)
+
+#
+
+,
+
+(7) where R(xk, uk) is a single-step total reward, γ ∈ (0 , 1) 
+
+is a discount factor, a short horizon h ∈ N, and privileged observations ck = Ψ( xk, G). A rollout consists of the sensor model, the policy with recurrent state hk (which exists only in the second stage), and the dynamics f . The total derivative of the action can be derived as: 
+
+duk
+
+dθ = ∂π θ
+
+∂θ + ∂π θ
+
+∂hk
+
+dhk
+
+dθ + ∂π θ
+
+∂ok
+
+∂ok
+
+∂xk
+
+dxk
+
+dθ ,
+
+which includes an observation-feedback term at the end, and the same holds for dhk/dθ . Let sg (·) denote a stop-gradient operator that blocks gradients. The quasi-analytical policy gradient is the gradient of the actor loss (7) in which every observation is constant, ok ← sg (ok), removing the feedback term from both duk/dθ and dhk/dθ , defined as follows: 
+
+˜∇θ L =
+
+> k0+h−1
+
+X
+
+> k=k0
+
+duk
+
+dθ sg (ok )
+
+!⊤  ∂Lθ
+
+∂uk
+
+⊤
+
+, (8) where the factor ∂Lθ /∂ uk is accumulated through the sim-ulator by the adjoint recursion, starting with the terminal adjoint, expressed as follows: 
+
+∂Lθ
+
+∂xk0+h
+
+= − γh
+
+h∂V ϕ
+
+∂ck0+h
+
+∂Ψ
+
+∂xk0+h
+
+, (9) Fig. 3. Overview of the proposed two-stage training pipeline. In the first stage, a critic Vϕ and an expert policy πe                   
+
+> θare trained through QPG in a symmetric actor-critic manner, where the networks accept privileged observations: states (agent’s velocity in its body frame vbk, quaternion qk,and accelerometer readings ˜abk), corner positions gbn,k for n∈[0 ,3] ∩Z, goal position in body frame pb
+> goal ,k , and previous action uk−1. In the second stage, the critic is copied from the pretraining phase to warm-start the value function. The policy is trained in an asymmetric actor-critic fashion, accepting a binary gate mask from the two ego-centric cameras and low-dimensional observations. The right side shows the policy execution during deployment.
+
+then compute the state and action adjoints backward to k0:
+
+∂Lθ
+
+∂xk
+
+= − γk−k0
+
+h∂R
+
+∂xk
+
++ ∂Lθ
+
+∂xk+1 
+
+∂f ∂xk
+
+,∂Lθ
+
+∂uk
+
+= − γk−k0
+
+h∂R
+
+∂uk
+
++ ∂Lθ
+
+∂xk+1 
+
+∂f ∂uk
+
+.
+
+(10) This recursion incorporates the dynamics Jacobian; thus, 
+
+˜∇θ L is a first-order policy gradient, discarding only the observation-feedback term. From (9), everything beyond the short-horizon h contributes to the policy parameter θ only through ∂V ϕ/∂ c. The critic parameter ϕ is then updated via TD-λ after the policy parameter θ is updated. 
+
+D. Two-Stage Training with Warm-Started Value Prior 
+
+We propose a two-stage approach, depicted in Fig. 3: (i) an expert policy πe 
+
+> θ
+
+is trained with access to the gate geometry and the quadrotor’s states, and (ii) a vision-based policy πv 
+
+> θ
+
+,where visual inputs are binary masks of the gate from two ego-centric cameras, is trained in an asymmetric actor-critic manner, warm-starting only the expert’s privileged critic Vϕ.Transferring the learnable critic gives the policy a task-shaped terminal adjoint from the first policy update, resulting in better visual policy performance than training the visual actor from scratch or freezing the critic. To achieve the task, a high-level reward function is defined as: 
+
+R(x, u) = wprog rprog + walign ralign + wmargin rmargin 
+
++ whover rhover + waction raction . (11) The time indices are omitted for brevity. w with a subscript indicates the weights, and the terms are:  
+
+> •
+
+Progress reward rprog : the inner product between the agent’s velocity and the target direction, i.e., v⊤ ˆutarget ,where ˆutarget is the unit vector pointing from the agent to the target. The target is initially the gate centroid and switches to the goal upon the agent traversing the gap.  
+
+> •
+
+Alignment reward ralign : a penalty for the agent’s roll and pitch misalignment with respect to the gate. Let ˆzg =
+
+R⊤(qg )R(q)ˆ z denote the agent’s body z-axis expressed in the gate frame, where qg is the gate quaternion. The alignment reward is defined as 
+
+ralign = −∥ ˆzg
+
+> [0:1]
+
+∥22 exp 
+
+
+
+−
+
+
+
+pg
+
+> [0]
+
+/σ x
+
+2
+
+sg (1 − P ),
+
+where ˆzg 
+
+> [0:1]
+
+denotes the first two components of ˆzg ,
+
+pg denotes the agent’s position in the gate frame, and 
+
+pg 
+
+> [0]
+
+is its first component. σx determines the spread of the Gaussian-like function. P is an indicator function that returns 1 when the agent has already passed the gap aperture regardless of collision, while it returns 0 otherwise. This term encourages the agent to match its attitude with the gate during traversal.  
+
+> •
+
+Clearance shaping reward rmargin : a term that rewards the clearance of each corner and penalizes when the corners of C protrude outside the aperture. Let cgj ∈ R3 be the position of the box’s jth corner in the gate frame, and let 
+
+wa and ha be half of the aperture’s width and height in meters, respectively. The term is expressed as: 
+
+rmargin =
+
+> M
+
+X
+
+> j=0
+
+tanh ( mj /σ m) exp 
+
+
+
+−
+
+
+
+cgj, [0] /σ x
+
+2
+
+,
+
+(12) where mj = min( wa − | cgj, [1] |, h a − | cgj, [2] |), representing the distance between corner j to the nearest aperture’s edge, M is the number of C’s corners, and σm = 0 .5ha.128 512 2,048 8,192 32,768        
+
+> Parallel environments
+> 020 40 60
+> Gradient time (ms)
+> 05,000 10,000 15,000 20,000 25,000
+> Epoch
+> 0.00 0.25 0.50 0.75 1.00
+> Success rate
+> Simplified model Full model Fig. 4. Comparing the gradient computation time (left) and success rate (right; mean and variation over three seeds) between using a simplified or full model to compute gradients.
+> •
+
+Hovering reward rhover : a term that encourages the agent to approach the goal and hover stably, defined as: 
+
+rhover = exp 
+
+
+
+− (dgoal /σ p)2 − (∥v∥2/σ v )2
+
+sg (P),
+
+(13) where dgoal is an agent’s distance-to-goal in meters. σp
+
+and σv characterize the spread of both terms.  
+
+> •
+
+Action regularization term raction penalizes actions and action variation to promote energy-efficient trajectories and prevent actuator degradation, expressed as: 
+
+raction ,k = −∥ uk∥22 − ∥ uk − uk−1∥22. (14) 
+
+E. Simplified Jacobian 
+
+The presented model includes inner-loop dynamics, which produce stiff gradients and could destabilize training. Addi-tionally, the computation adds N physics substeps per control step, making the gradient computation expensive. We hence employ a simplified surrogate model f sim : (xk, uk) 7 →
+
+xsim  
+
+> k+1
+
+for backpropagation, assuming instantaneous body rate tracking and omitting thrust lag, i.e., (Tk, ωk) = ( T ref  
+
+> k
+
+, ωref  
+
+> k
+
+).The gradient is computed through the simple model via the semi-implicit Euler method without physics substeps at ∆tc.To make the forward pass value agree with the accurate state, we perform state alignment as follows: 
+
+xk+1 = xsim  
+
+> k+1
+
++ sg (xfull  
+
+> k+1
+
+− xsim 
+
+> k+1
+
+), (15) where xfull  
+
+> k+1
+
+is the state produced by the accurate model f
+
+that includes substeps and inner-loop dynamics. Only factor 
+
+∂f sim /∂ (xk, uk) exists during the gradient computation. This ensures the rollout value remains valid while backpropa-gation runs through the simplified dynamics, inspired by [25] and [30]. Fig. 4 shows one-batch gradient computation time on NVIDIA GeForce RTX 5080 and training curves of policy learning via QPG, using a simplified and full model to compute gradients. The figure shows that using the simplified model enhances training without sacrificing performance. 
+
+F. Visual Observation Renderer 
+
+During training and evaluation, we utilize the gate’s binary mask as a visual observation, obtained through perspective transformation and rasterization at every control step. We use a mask rather than a photorealistic or depth image to simplify training and experimentation, as it retains the gap geometry, bypasses texture, lighting, and motion blur in the sim-to-real gap, and is analytic; thus, it can be compiled and vectorized with the simulator. Let gcn be the nth gate corner position in the camera frame, where the optical axis is along 
+
+gcn, [0] . an = [ un, v n]⊤ is the gate corner in pixel coordinates, computed through pinhole projection. The aperture’s edges are constructed cyclically via ln(tn) = an + tndn, where 
+
+dn = an+1 − an, ∀n = 0 , 1, . . . , L − 1, and L is the number of aperture’s corner. For a pixel center b = [ u, v ]⊤,the squared distance from the pixel to the edge is 
+
+d2
+
+> n
+
+(b) = min  
+
+> s∈[0 ,1]
+
+∥b − ln(s)∥22, (16) and the gate’s aperture mask is defined as: 
+
+mmask (b) = 1[min  
+
+> n∈E
+
+d2
+
+> n
+
+(b) < (wl/2) 2], (17) where 1[·] is an indicator function, wl is a line width, and E
+
+is an index set of edges for which at least one endpoint is in front of the camera. When traversing the gap, a corner may be behind the camera, and the drawn line is incorrect. To avoid this, we adjust the edge endpoint by sliding it along the edge to the point where it crosses the gcn, [0] = 0 .001 
+
+plane and project this point instead. This process repeats for the second camera, and the policy’s visual observation is the concatenation of the two binary masks, shown in Fig. 3 right. 
+
+G. Training Details 
+
+We implement the trainer and environment using JAX [31]. The episode length is 500 steps at a control frequency of 100 Hz, and the short-horizon length h is 64 . For both stages, the policy and critic initial learning rates are 5×10 −4
+
+and 2 × 10 −3, respectively, and decay linearly. The policy is optimized using Adam via Optax for 25 , 000 iterations. The discount factor γ is 0.99 for both stages. The critic is learned via TD-λ with λ = 0 .95 . We train the policies with 1024 parallel environments on NVIDIA A40 GPUs. The weights for each term in the total one-step reward function (11) are as follows: wprog = 1 .0, walign = 8 .0, wmargin = 12 .0,
+
+whover = 10 .0, and waction = 0 .01 . The parameters in reward terms (12) and (13) are σx = 0 .6, σp = 0 .25 , and σv = 0 .5.The quadrotor parameters are specified in Table I in Nominal column. For the gate renderer parameter, wl = 1 .5 pixels. IV. E XPERIMENTS 
+
+This section evaluates the key components of our ap-proach. First, QPG is used to pretrain a task-informed privileged critic, then its value function is transferred to warm-start visual policy training. We compare our method with baseline approaches, show ablation studies, and evaluate generalization to unseen gap shapes. We further compare it with the two-stage reinforcement–imitation learning ap-proach similar to the prior works and validate the trained visual policy in the real world. All reported results are based on three random seeds. 
+
+A. Pretraining a Task-Informed Critic 
+
+In this stage, both networks receive the same privileged observations, including body-frame velocity vb, attitude q,accelerometer readings ˜ab, the four gate-corner positions in 0 5,000 10,000 15,000 20,000 25,000  
+
+> Epoch
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Success rate
+> QPG BPTT PPO QPG w/o V-grad Fig. 5. Training curves of the privileged pretraining stage: QPG, full-episode BPTT, PPO, and the ablation without the critic gradient (QPG w/o V-grad).
+
+body frame gbn, the goal position in body frame pb
+
+> goal
+
+, and the previous action uk−1. The networks are modeled as three-layer MLPs with 256 units each and ELU activations. We compare the expert policy trained using our approach with the PPO and BPTT baselines. The latter baseline refers to untruncated full-episode BPTT without the terminal-value bootstrap. We also ablate the value gradient by detaching the terminal value, which is equivalent to h-step BPTT. This isolates the value-gradient contribution at a fixed horizon. In Fig. 5, QPG (blue) reaches 0.8 in 12 minutes and saturates near 1.0, while BPTT (orange) reaches a success rate close to that of QPG, but it requires 16000 epochs. Detaching the terminal value (QPG w/o V-grad; yellow) rises earlier, but then saturates at 0.38. Finally, the PPO curve (green) remains at zero for the first 19,500 epochs in our settings, consistent with the result reported in [14] during the first-stage RL training without the informed reset. From the results, PPO has to infer the gradients from sampled discounted returns. Without directed exploration, the rollouts almost never attain the tight success set. BPTT and QPG, instead, provide more useful gradients by dif-ferentiating a task loss through differentiable physics, re-sulting in more effective policy updates. However, BPTT propagates through 500-step dynamics Jacobians, which can cause exploding gradients and unstable training. Although it still achieves a high success rate, it does so more slowly and requires more samples than QPG, which backpropagates through only 64 steps and utilizes the critic’s gradient to approximate long-term credit assignment. Without the value gradient (w/o V-grad), the policy update accounts for only 64 steps ahead, and the curve plateaus. 
+
+B. Vision-based Policy Learning 
+
+The visual policy accepts the rendered binary mask Ik
+
+(Section III-F), augmented with low-dimensional observa-tions: the agent’s roll ϕ, pitch θ, an accelerometer reading ˜ab,a goal position in the body frame pb
+
+> goal
+
+, and the previous ac-tion uk−1. The policy architecture consists of a convolutional neural network (CNN), a gated recurrent unit (GRU), and a two-layer MLP. The 84 × 300 concatenated mask, 84 × 150 
+
+from each of the two cameras, passes through the CNN (32/64/64 filters, 8/4/3 kernels, 4/2/1 strides); the convolution kernel slides across both views, allowing the network to fuse cross-camera information early. The flattened output is then concatenated with the low-dimensional observations (scaled by a fixed gain of 10) and is passed to a 256-unit GRU that carries temporal context across the rollout, followed by a two-layer MLP. The camera configuration is similar to that in [32], except that only frontal cameras are used. We use the same extrinsics as in our real platform, where both camera centers are 10 cm forward, 2.9 cm up, and ±4.2 cm left and right relative to the agent centroid. The optical axes splay ±45 ◦ outward from the quadrotor front. The fisheye lenses are approximated with a field-of-view-matched pinhole model rather than replicating their distortion. The training curves of this stage are shown in Fig. 6, where we train the policy via QPG, warm-starting the value function from the pretrained critic in the first stage (blue), and compare the policy trained using our approach with full-episode BPTT without a value function (orange). We also ablate our approach with three scenarios: (i) training both critic and policy from scratch using QPG (cold-start critic; yellow), (ii) freezing the critic from the first stage while training the visual policy (no critic adaptation; green), and (iii) changing the visual observation to a single face-forward camera (purple). The results show that our trained visual policy achieves a peak success rate of 0.893, while BPTT, although its training curve grows steadily, requires more samples as it cannot leverage privileged information from the critic. In the ablation study, the cold-start critic with QPG outperforms BPTT as it implicitly utilizes privileged information from the asymmetric actor-critic structure and the training is more stable, but it still cannot match the two-stage approach, showing that the two-stage approach substantially improves learning. For the frozen critic, the pretrained critic provides useful initial guidance but remains below 0.25 afterward, as its value function is fixed to the expert’s state distribution and cannot adapt to the visual policy’s. The single-camera ablation shows that the two-outward-splayed camera setting improves performance slightly due to its wider field of view, which keeps the gate in view as the agent passes it. Fig. 7 (a) displays the trajectory of the agent executing the trained policy (our approach) to pass the rectangular gap and hover stably at the goal with a maximum speed of up to 5.0 m/s. Interestingly, we demonstrate that our trained vision-based policy traverses gap shapes never exploited during training. We replace the rectangular gap with an elliptical, trapezoidal, and triangular gap while using the same policy trained only on the rectangular gap. The same policy completes each traversal with unseen shapes in Fig. 7 (b)–(d). 
+
+Why warm-starting matters : For the rollout step beyond 64 short-horizon, credit reaches the policy only through the terminal adjoint. Also, with detached observations, the critic provides a feedback pathway to the policy gradients. Thus, initially, a cold-started critic supplies an arbitrary direction while the policy is still learning. In the two-stage approach, the pretrained critic provides the actor with a task-shaped boundary derivative from the first epoch, which serves as adaptable and useful guidance. The same critic can also warm-start an actor with different observations. 0 5,000 10,000 15,000 20,000 25,000 
+
+> Epoch
+> 0.0 0.2 0.4 0.6 0.8
+> Success rate
+> Ours (2-cam) Ours (1-cam) Cold-start critic No critic adaptation BPTT
+
+Fig. 6. Training curves of the second stage: ours with two- or one-camera configuration, full-episode BPTT, and the ablations with cold-start critic and a frozen critic (no critic adaptation). 
+
+Fig. 7. Trajectories of a quadrotor gap traversal using our vision-based policy for different gap shapes. (a) rectangular gap, similar to the one used during training, (b) elliptical gap, (c) trapezoidal gap, and (d) triangular gap. The spherical shapes in each image represent the goal region. 
+
+C. Transfer Under a Plant Revision 
+
+A practical advantage of our approach is that it does not require retraining the expert policy when plant parameters change, since only the second stage is rerun with the old pretrained critic to train the policy for the revised quadrotor plant. We construct a revised plant by changing parameters of the nominal plant as shown in Table I. We employ data aggre-gation (DAgger) [33] to perform behavior cloning, where the experience is generated with the revised plant while action labels are queried from the old expert. Fig. 8 shows the difference in success rates between the policy trained on the revised and the nominal plants. For behavior cloning (orange), although it yields a strong baseline when the plant parameters match those used to train the expert policy, it shows significant degradation when distilling from the old teacher. On the other hand, our two-stage approach (blue) can reuse the old pretrained critic to train the second stage for the revised dynamics without sacrificing performance. 
+
+D. Real-world Experiments 
+
+We deploy our visual policy on a 1.279 kg quadrotor platform with the dimensions shown in Fig. 2 left. The onboard computer is an NVIDIA Jetson Orin NX, connected to a Holybro Pixhawk 6X Mini flight controller, operating the PX4 autopilot [34]. We synthesize a binary mask for the visual observation with the mechanism in III-F and the configurations explained in IV-B. In the experiment, 
+
+TABLE I PLANT PARAMETERS OF THE NOMINAL AND REVISED QUADROTOR .Parameter Nominal Revised Mass m [kg] 1.279 1.407 ( +10% )Body-rate’s ωn [rad/s] 100 70 Body-rate damping ζ 1.00 0.80 Body-rate DC gain K 0.58 0.75 Thrust time constant τ [ms] 12.5 25 −70 −60 −45 −30 −15 0 15 30 45 60 70 
+
+> Gate roll (deg)
+> −1.0 −0.8 −0.6 −0.4 −0.2 0.0 0.2 0.4
+> Δ success rate (revised − nominal plant)
+> Ours (old critic) BC (old teacher)
+
+Fig. 8. Success rate differences between training with the revised plant (with the old critic or teacher) and the nominal plant. Our two-stage approach is shown in blue, and behavior cloning (BC) is shown in orange. 
+
+a motion capture system provides the poses of the gate and the quadrotor, from which the gate’s binary mask is rendered online and additional low-dimensional observations are computed. The experiment is conducted in a highly confined space with a 4 × 4 m2 area and a 2 m operating height. The trained policy is exported to ONNX and runs via its Runtime C++ on Jetson. We construct a real rectangular gate with the dimensions shown in Fig. 2 (right) for the real quadrotor to perform the task. We conduct four experiments at four gate roll angles: 45 ◦, 60 ◦, 70 ◦, and 80 ◦. The real-world experiments in a confined space are shown in Fig. 9 with an average maximum speed of 3.5 m/s. 
+
+Fig. 9. Time-lapse images of the real-world experiments. The trained visual policy is executed with a gate binary mask observation rendered online. The gate roll angle varies as follows: (a) 45 ◦, (b) 60 ◦, (c) 70 ◦, and (d) 80 ◦.
+
+V. C ONCLUSION 
+
+We propose a two-stage policy learning, leveraging dif-ferentiable simulation for a quadrotor agile gap traversal. The visual policy observes a binary gate mask from two ego-centric cameras plus extra low-dimensional observation, without knowing the gap geometry. We show that warm-starting a privileged critic trained with an expert policy greatly improves visual policy training. The trained policy also traverses through unseen gap shapes. We show the advantage of our approach over the previous RL-imitation learning method when the plant parameters change, as ours does not require retraining the expert policy. Furthermore, we deploy the trained visual policy on a real quadrotor. For limitations and future work, in this experiment, the binary gate mask is rendered from motion-capture poses rather than obtained from the onboard cameras, neglecting perception flaws. Thus, a robust binary gate predictor [20] or an end-to-end policy from raw images specifically for tight-gap traversal would eliminate the need to synthesize the mask online. Moreover, the policy receives the goal’s relative position; following [32]’s camera configuration, it could learn to stabilize behind the gate after traversing without it. Finally, the proposed scheme could also be applied to other challenging robotics applications. REFERENCES [1] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control of a quadrotor uav on se (3),” in 49th IEEE conference on decision and control (CDC) . IEEE, 2010, pp. 5420–5425. [2] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in 2011 IEEE international conference on robotics and automation . Ieee, 2011, pp. 2520–2525. [3] D. Falanga, E. Mueggler, M. Faessler, and D. Scaramuzza, “Aggres-sive quadrotor flight through narrow gaps with onboard sensing and computing using active vision,” in 2017 IEEE international conference on robotics and automation (ICRA) . IEEE, 2017, pp. 5774–5781. [4] S. Liu, K. Mohta, N. Atanasov, and V. Kumar, “Search-based motion planning for aggressive flight in se (3),” IEEE Robotics and Automa-tion Letters , vol. 3, no. 3, pp. 2439–2446, 2018. [5] C. Xiao, P. Lu, and Q. He, “Flying through a narrow gap using end-to-end deep reinforcement learning augmented with curriculum learning and sim2real,” IEEE transactions on neural networks and learning systems , vol. 34, no. 5, pp. 2701–2708, 2021. [6] S. Chen, Y. Li, Y. Lou, K. Lin, and X. Wu, “Learning real-time dynamic responsive gap-traversing policy for quadrotors with safety-aware exploration,” IEEE Transactions on Intelligent Vehicles , vol. 8, no. 3, pp. 2271–2284, 2022. [7] J. Lin, L. Wang, F. Gao, S. Shen, and F. Zhang, “Flying through a narrow gap using neural network: an end-to-end planning and control approach,” in 2019 IEEE/RSJ international conference on intelligent robots and systems (IROS) . IEEE, 2019, pp. 3526–3533. [8] Y. Xie, M. Lu, R. Peng, and P. Lu, “Learning agile flights through nar-row gaps with varying angles using onboard sensing,” IEEE Robotics and Automation Letters , vol. 8, no. 9, pp. 5424–5431, 2023. [9] Y. Hu and D. Zou, “Narrow gap traversing via differentiable physics,” 
+
+Journal of Shanghai Jiaotong University (Science) , pp. 1–8, 2025. [10] L. Zhang, Y. Hu, F. Yu, Y. Deng, W. Yu, and D. Zou, “Vision-based end-to-end learning for uav traversal of irregular gaps via differentiable simulation,” IEEE Robotics and Automation Letters , 2026. [11] N. Wiedemann, V. W¨ uest, A. Loquercio, M. M¨ uller, D. Floreano, and D. Scaramuzza, “Training efficient controllers via analytic policy gradient,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 1349–1356. [12] J. Xu, V. Makoviychuk, Y. Narang, F. Ramos, W. Matusik, A. Garg, and M. Macklin, “Accelerated policy learning with parallel differen-tiable simulation,” in International Conference on Learning Represen-tations , 2022. [13] H. You, Y. Liu, and I. Abraham, “Accelerating visual-policy learning through parallel differentiable simulation,” Advances in Neural Infor-mation Processing Systems , vol. 38, pp. 51 896–51 925, 2026. [14] T. Wu, Y. Chen, T. Chen, G. Zhao, and F. Gao, “Whole-body control through narrow gaps from pixels to action,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 11 317–11 324. [15] T. Wu, G. Xu, Z. Wang, J. Lin, T. Chen, Y. Wu, Z. Han, Z. Liu, and F. Gao, “Precise aggressive aerial maneuvers with sensorimotor policies,” Science Robotics , vol. 11, no. 115, p. eaeb0180, 2026. [16] Y. Wang, B. Wang, S. Zhang, H. W. Sia, and L. Zhao, “Learning agile flight maneuvers: Deep se (3) motion planning and control for quadrotors,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 1680–1686. [17] A. Romero, E. Aljalbout, Y. Song, and D. Scaramuzza, “Actor–critic model predictive control: Differentiable optimization meets reinforce-ment learning for agile flight,” IEEE Transactions on Robotics , vol. 42, pp. 673–692, 2025. [18] T. Sun, B. Wang, N. Gerdpratoom, L. Tang, Y. Gao, and L. Zhao, “Learning agile gate traversal via analytical optimal policy gradient,” 
+
+arXiv preprint arXiv:2508.21592 , 2026, accepted to 2026 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). [19] L. Pinto, M. Andrychowicz, P. Welinder, W. Zaremba, and P. Abbeel, “Asymmetric actor critic for image-based robot learning,” in Proceed-ings of Robotics: Science and Systems , Pittsburgh, Pennsylvania, June 2018. [20] I. Geles, L. Bauersfeld, A. Romero, J. Xing, and D. Scaramuzza, “Demonstrating Agile Flight from Pixels without State Estimation,” in Proceedings of Robotics: Science and Systems , Delft, Netherlands, July 2024. [21] J. Schulman, S. Levine, P. Abbeel, M. Jordan, and P. Moritz, “Trust region policy optimization,” in International conference on machine learning . PMLR, 2015, pp. 1889–1897. [22] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [23] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning . PMLR, 2018, pp. 1861–1870. [24] C. D. Freeman, E. Frey, A. Raichuk, S. Girgin, I. Mordatch, and O. Bachem, “Brax–a differentiable physics engine for large scale rigid body simulation,” Advances in Neural Information Processing Systems ,2021. [25] J. Heeg, Y. Song, and D. Scaramuzza, “Learning quadrotor control from visual features using differentiable simulation,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 4033–4039. [26] Y. Zhang, Y. Hu, Y. Song, D. Zou, and W. Lin, “Learning vision-based agile flight via differentiable physics,” Nature Machine Intelligence ,vol. 7, no. 6, pp. 954–966, 2025. [27] Y. Hu, Y. Zhang, Y. Song, Y. Deng, F. Yu, L. Zhang, W. Lin, D. Zou, and W. Yu, “Seeing through pixel motion: Learning obstacle avoidance from optical flow with one camera,” IEEE Robotics and Automation Letters , 2025. [28] Y. Su, F. Yu, Y. Hu, X. Niu, L. Zhang, F. Sun, and D. Zou, “Vector field augmented differentiable policy learning for vision-based drone racing,” IEEE Robotics and Automation Letters , 2026. [29] J. C. Chou, “Quaternion kinematic and dynamic differential equa-tions,” IEEE Transactions on robotics and automation , vol. 8, no. 1, pp. 53–64, 1992. [30] Y. Song, S. Kim, and D. Scaramuzza, “Learning quadruped locomotion using differentiable simulation,” in Proceedings of The 8th Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 270. PMLR, 2025, pp. 258–271. [31] J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, Y. Katariya, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang, “JAX: composable transformations of Python+NumPy programs,” 2018. [Online]. Available: http://github.com/jax-ml/jax [32] P. Liu, C. Feng, Y. Xu, Y. Ning, H. Xu, and S. Shen, “Omninxt: A fully open-source and compact aerial robot with omnidirectional visual perception,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 10 605–10 612. [33] S. Ross, G. Gordon, and D. Bagnell, “A reduction of imitation learning and structured prediction to no-regret online learning,” in Proceedings of the fourteenth international conference on artificial intelligence and statistics . JMLR Workshop and Conference Proceedings, 2011, pp. 627–635. [34] L. Meier, D. Honegger, and M. Pollefeys, “Px4: A node-based multithreaded open source robotics framework for deeply embedded platforms,” in 2015 IEEE international conference on robotics and automation (ICRA) . IEEE, 2015, pp. 6235–6240.

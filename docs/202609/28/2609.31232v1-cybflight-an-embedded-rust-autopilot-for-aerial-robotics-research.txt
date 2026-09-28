@@ -1,0 +1,137 @@
+Title: Cybflight: An Embedded Rust Autopilot for Aerial Robotics Research
+
+URL Source: https://arxiv.org/pdf/2609.31232v1
+
+Published Time: Mon, 28 Sep 2026 01:22:35 GMT
+
+Number of Pages: 4
+
+Markdown Content:
+# Cybflight: An Embedded Rust Autopilot for Aerial Robotics Research 
+
+Yifan Lin ∗, Chao Qin, H S Helson Go, and Hugh H.-T. Liu 
+
+Abstract — Bringing an aerial robotics method from simulation to flight should not require rebuilding a mature autopilot or adding a companion computer. Cybflight is an open-source embedded Rust research autopilot whose typed, replaceable interfaces connect hardware access, perception, state estimation, trajectory planning, and control. This modular development and compile-time optimization workflow is demonstrated with replaceable Rust implementations of model predictive contour-tracking control (MPCTC) and incremental nonlinear dynamic inversion (INDI) running on one STM32H743 without acompanion computer. Using this configuration, the vehicle reaches 12.38 m/s during indoor flight, while an outdoor flight using global navigation satellite system (GNSS) position updates reaches 31.4 m/s. These flights show that running demanding estimation and nonlinear control entirely on a flight-controller microcontroller need not come at the expense of a modular autopilot structure. Code: github.com/cybird-robotics/cybflight 
+
+Video: youtu.be/awRv8zCM5KA 
+
+I. I NTRODUCTION 
+
+Research on agile flight often starts from a mature autopilot that already provides reliable operation and broad vehicle support. The challenge comes when a core estimator or con-troller needs to be replaced: device abstractions, configuration layers, and coupled subsystems can turn a local change into substantial firmware-specific work. One can then spend as much effort adapting the flight stack as evaluating the method. A common workaround is to keep low-level control on the embedded flight controller and move experimental autonomy to a Linux companion computer. This provides more compute, but also adds mass, power, wiring, software integration, and cost. These penalties matter on small high-speed aircraft, where payload margin is scarce and each crash risks another expensive component. To address these limitations, we built Cybflight around a simple goal: changing the underlying hardware or replacing an estimator, controller, or learned policy should not require reorganizing neighboring modules. Typed interfaces separate hardware access, perception, state estimation, trajectory planning, control, and actuation. A vehicle description selects concrete implementations at build time, allowing the compiler to specialize a no std program for the target microcontroller. We demonstrate this workflow by implementing MPCTC and INDI as replaceable Rust modules. Cybflight compiles them with the selected estimator and hardware support into one program for a single flight-controller microcontroller.     
+
+> The authors are with the Institute for Aerospace Studies, University of Toronto, Toronto, Canada. Emails: {i.lin,chao.qin,hei.go }
+> @mail.utoronto.ca and hugh.liu@utoronto.ca .
+> ∗Corresponding author.
+> Fig. 1. Outdoor Split-S maneuver. The corresponding flight reached 31.4 m/s with global navigation satellite system (GNSS) position updates and fully onboard MPCTC–INDI.
+
+High-speed indoor and outdoor flights then evaluate the resulting autopilot. Our contributions are:  
+
+> •
+
+we introduce Cybflight, an open-source no std Rust autopilot that separates hardware-specific code from replaceable research algorithms;  
+
+> •
+
+we demonstrate its modular development and compile-time optimization workflow through Rust implemen-tations of MPCTC and INDI integrated into a single-microcontroller autopilot;  
+
+> •
+
+we validate fully onboard autonomous flight indoors and outdoors at 12.38 m/s and 31.4 m/s, respectively. II. R ELATED WORK 
+
+To place Cybflight in context, we ask how existing platforms admit a new algorithm and whether it runs on the flight-controller microcontroller, a companion computer, or offboard hardware. That choice directly shapes the research workflow. PX4 provides embedded modularity through NuttX tasks and uORB publish–subscribe middleware [1], however in practice, adding a new estimator or controller often requires firmware-specific work [2]. Researchers often use Betaflight as a high-rate inner-loop controller behind a software bridge; in [3], Robot Operating System 2 (ROS 2) autonomy runs on an NVIDIA Jetson Orin NX and exchanges inertial measurement unit (IMU) data and radio-control channels through Betaflight’s MultiWii Serial Protocol override mode. MonoRace uses a related split: vision and the main estima-tor remain on a Jetson Orin NX, while a direct-to-motor neural policy runs on an embedded microcontroller [4], [5]. arXiv:2609.31232v1 [cs.RO] 25 Sep 2026 HARDWARE INTERFACE HARDWARE-INDEPENDENT RESEARCH CORE HARDWARE INTERFACE  
+
+> onboard sensors
+> IMU barometer magnetometer motor-speed feedback (eRPM)
+> external position updates
+> MoCap GNSS
+> state estimator
+> ESKF
+> trajectory representation
+> polynomial discrete
+> reference sampler
+> time spatial
+> outer controller
+> rigid-body NMPC MPCTC neural network geometric tracking
+> inner control
+> INDI PID
+> actuators
+> rotors servos gimbals Fig. 2. Cybflight’s flight graph. Hardware interfaces (blue) map sensor observations and actuator commands to a hardware-independent research core (orange). Stacked entries denote sensor and actuator classes or algorithm families admitted by the interfaces; a vehicle build selects a compatible estimation, trajectory representation, sampling policy, and control path.
+
+Agilicious co-designs open hardware and software around interchangeable estimators, controllers, and flight-controller bridges [6]. Model predictive control (MPC) delivers high-performance flight by considering vehicle dynamics and constraints, but its online optimization is computationally demanding. As a result, model predictive contouring control (MPCC) for aggressive flight typically runs on a companion computer [7]: MPCC++ uses a 100-Hz optimizer on an Intel processor and sends thrust and body-rate commands to Betaflight [8]. Recent work has brought MPC onto microcontrollers by narrowing the online problem. TinyMPC uses linear dynamics [9], while embed-ded nonlinear model predictive control (NMPC) on nano quadrotors uses short horizons and real-time iterations [10]. Rust is also gaining ground in aerial robotics through incre-mental C/C++ migration, shared embedded/host estimation, and educational flight stacks [11], [12], [13]. Cybflight brings these strands together in one Rust-native embedded program: replaceable interfaces span the perception-to-actuation path, while state estimation, a 20-step nonlinear MPCTC, and INDI run on the same microcontroller. III. C YBFLIGHT ARCHITECTURE 
+
+Cybflight combines two design choices: modular interfaces separate hardware support from replaceable research algo-rithms, and an embedded numerical core keeps model-based code readable and predictable on the microcontroller. 
+
+A. Separating hardware from research algorithms 
+
+Fig. 2 shows how typed hardware interfaces isolate hardware-facing perception and actuation from a board-independent research core. The key idea is to exchange information rather than device handles. Typed observations, vehicle states, references, and actuator commands form the module boundaries. Motion capture (MoCap) and GNSS adapters publish the same vehicle-odometry type, allowing us to change the position source without changing estimation or control. We also separate trajectory representation from reference sampling. At build time, a vehicle configuration selects concrete implementations, allowing the compiler to specialize the resulting code; fixed-capacity channels and workspaces make memory use known before flight. These boundaries let us replace a board, estimator, controller, or learned policy without restructuring neighboring modules. 
+
+B. Embedded numerical core                          
+
+> const {assert !(NX >= 7); }
+> let j: SMatrix <f32, 3, 4> =de * dqa_dq;
+> let w=Matrix3 ::from_diagonal( &Vector3 ::from(*w_att));
+> let h: SMatrix <f32, 4, 4> =j.transpose() * w * j * (2.0 * dt); hess_xx.fixed_view_mut::<4, 4>(3, 3) .copy_from(&h);
+> Listing 1. Fixed-size attitude Hessian shared by MPCTC and NMPC.
+
+For researchers to develop and modify algorithms rapidly, the implementation must keep the underlying mathematics readable. We use fixed-size nalgebra [14] types in no std 
+
+mode, keeping vectors, matrices, rotations, and unit quater-nions explicit without dynamic allocation. The compiler can then catch dimension mismatches in code that stays close to the equations. Listing 1 shows the Gauss–Newton attitude Hessian shared by the MPCTC and NMPC implementation; the operand types encode its matrix dimensions. We use Fig. 3. Experimental quadrotor and STM32H743 flight controller (upper right), which executes all estimation and control. 
+
+the same pattern for model Jacobians, cost derivatives, and horizon workspaces. IV. H IGH -S PEED FLIGHT VALIDATION 
+
+We test Cybflight indoors and outdoors. In both settings, we run the complete perception-to-actuation path onboard and change only the position source. High-speed flight provides a demanding system-level test beyond a comparison between control methods. 
+
+A. Experimental configuration 
+
+Unless otherwise stated, we select an error-state Kalman filter (ESKF), MPCTC, and an INDI inner loop. MPCTC commands collective thrust and body rates; INDI tracks them using angular acceleration and a control-effectiveness model before allocating rotor commands [15]. We generate the reference using our previous planning methods [16], [17]. The vehicle in Fig. 3 has a mass of 0.60 kg, a 0.227-m diagonal arm length, and a nominal thrust-to-weight ratio of 8.2. We run the complete feedback path on a 480-MHz STM32H743 without a companion computer. MoCap and real-time kinematic (RTK) GNSS update the ESKF indoors and outdoors, respectively. We define tracking error as the three-dimensional distance from estimated position to the nearest point on the planned path. 
+
+B. Indoor validation 
+
+We first fly circle, figure-eight, slalom, and Split-S paths at three aggressiveness levels. The vehicle reaches 12.38 m/s with a root-mean-square tracking error of 0.153 m. Fig. 6(a) describes the correlation between speed and tracking error. Fig. 4 shows one flight in the image plane, while Fig. 5 reports the time-optimal Split-S trajectory and tracking error. We schedule MPCTC every 10 ms. Successful solves in Fig. 6(b) have a 4.29-ms mean, 4.27-ms median, and 4.55-ms maximum.          
+
+> Fig. 4. Composite of an indoor high-speed flight. −2 02
+> y[m]
+> −2 −1 0123
+> x [m]
+> (a)
+> 036912
+> speed [m/s]
+> 02468
+> time [s]
+> 0.00 0.25 0.50
+> tracking error [m]
+> (b)
+> Fig. 5. Indoor time-optimal Split-S flight. (a) Planned path (gray dashed) and executed trajectory, colored by estimated speed. (b) Three-dimensional tracking error. The dashed line denotes the mean. The planned path is 73.7 m; the vehicle reaches 11.90 m/s with 0.278 m root-mean-square tracking error.
+
+C. Outdoor validation 
+
+We then move outdoors by replacing MoCap with RTK GNSS; reference generation and control remain unchanged. The three-lap reference in Fig. 1 covers 438.6 m in 21.49 s over a 32 .2 × 36 .7 m footprint. With the complete stack onboard, the vehicle reaches 31.4 m/s (113.04 km/h). V. D ISCUSSION AND CONCLUSION 
+
+Cybflight makes the flight controller firmware itself part of the research workflow rather than a fixed layer beneath it. Its typed interfaces admit different hardware, estimators, refer-ences, and controllers, while build-time selection specializes the program for the target microcontroller. Our indoor and outdoor flights close the complete perception-to-actuation path on one STM32H743. The results show that a modular Rust autopilot can execute demanding estimation and nonlinear 3 4 5 6 7 8 9
+
+average speed [m/s] 
+
+> 0.10 0.15 0.20 0.25 0.30
+> tracking error [m]
+
+(a)      
+
+> Circle Figure-eight Slalom Split-S Low Medium Time-optimal
+> 4.1 4.2 4.3 4.4 4.5 4.6
+
+MPCTC solve time [ms] 
+
+> 020
+> samples [%]
+
+(b) Fig. 6. Indoor operating envelope and onboard MPCTC solve time. (a) Average executed speed and root-mean-square tracking error across four path geometries and three aggressiveness levels. Connected markers denote the same geometry. (b) Distribution of MPCTC solve times; the dashed line denotes the mean. 
+
+control fully onboard. The design deliberately favors explicit, build-time compo-sition. Changing a module requires rebuilding and flashing the firmware, and fixed-size nalgebra types catch matrix-dimension errors but not mistakes in physical units or coordinate frames. We therefore keep those conventions explicit at module boundaries and verify each configuration on the vehicle. Within these constraints, a new method remains local to its module instead of requiring changes throughout the flight stack. This modular foundation opens three immediate paths for future research. 
+
+Embedded learned control. Direct-to-motor neural poli-cies already show the potential of running learned control on a flight microcontroller [4]. We will connect neural-network policies through the same typed state, reference, and actuator interfaces as model-based controllers, so researchers can introduce a learned policy without reorganizing perception and estimation. 
+
+Swarm flight. Crazyswarm showed that onboard computa-tion and low-bandwidth communication can scale to dozens of aerial vehicles [18]. We will add typed peer-state and coordination interfaces, allowing each vehicle to keep its perception, estimation, and control onboard while sharing only the information needed for coordination. 
+
+Offboard control. Some algorithms will still exceed the flight microcontroller’s computational budget. Aggressive predictive controllers, for example, often run on larger processors [8]. We will add transport adapters that preserve the same state, reference, and command types, so an algorithm can move between the flight microcontroller, a companion computer, and offboard hardware without rewriting the surrounding experiment. REFERENCES [1] L. Meier, D. Honegger, and M. Pollefeys, “PX4: A node-based multithreaded open source robotics framework for deeply embedded platforms,” in Proc. IEEE ICRA , 2015, pp. 6235–6240. [2] S. D’Angelo, F. Pagano, F. Longobardi, F. Ruggiero, and V. Lippiello, “Efficient development of model-based controllers in PX4 firmware: A template-based customization approach,” in Proc. IEEE ICUAS , 2024, pp. 1155–1162. [3] M. Bosello et al. , “Race against the machine: A fully-annotated, open-design dataset of autonomous and piloted high-speed flight,” IEEE Robot. Autom. Lett. , vol. 9, no. 4, pp. 3799–3806, 2024. [4] S. A. Bahnam et al. , “MonoRace: Winning champion-level drone racing with robust monocular AI,” arXiv:2601.15222, 2026. [5] T. M. Blaha, E. J. J. Smeur, and B. D. W. Remes, “Control of unknown quadrotors from a single throw,” in Proc. IEEE/RSJ IROS , 2024, pp. 10350–10355. [6] P. Foehn et al. , “Agilicious: Open-source and open-hardware agile quadrotor for vision-based flight,” Science Robotics , vol. 7, no. 67, Art. no. eabl6259, 2022. [7] A. Romero, S. Sun, P. Foehn, and D. Scaramuzza, “Model predictive contouring control for time-optimal quadrotor flight,” IEEE Trans. Robot. , vol. 38, no. 6, pp. 3340–3356, 2022. [8] M. Krinner, A. Romero, L. Bauersfeld, M. Zeilinger, A. Carron, and D. Scaramuzza, “MPCC++: Model predictive contouring control for time-optimal flight with safety constraints,” in Proc. RSS , 2024. [9] K. Nguyen, S. Schoedel, A. Alavilli, B. Plancher, and Z. Manch-ester, “TinyMPC: Model-predictive control on resource-constrained microcontrollers,” in Proc. IEEE ICRA , 2024. [10] M. Kazim et al. , “Aggressive trajectory tracking for nano quadrotors using embedded nonlinear model predictive control,” arXiv:2312.01015, 2023. [11] T. Engels et al. , “FORCES: An incremental transpiler from C/C++ to Rust for robust and secure robotics systems,” presented at the ICRA Workshop on Rust for Robotics , 2025. [12] J. Schulz-Andres, H. Hose, and S. Trimpe, “Robust radar–inertial odometry with Rust: A seamless integration from embedded to high-level robotics,” presented at the ICRA Workshop on Rust for Robotics ,2025. [13] W. H¨ onig, C. Scherer, and K. Wahba, “Rusty flying robots: Learning a full robotics stack with real-time operation on an STM32 microcon-troller,” arXiv:2604.00032, 2026. [14] S. Crozet, “nalgebra: General-purpose linear algebra for Rust,” ver. 0.34.2, Mar. 2026. [Online]. Available: https://docs.rs/ nalgebra/0.34.2/ 
+
+[15] E. J. J. Smeur, Q. P. Chu, and G. C. H. E. de Croon, “Adaptive incremental nonlinear dynamic inversion for attitude control of micro air vehicles,” J. Guid. Control Dyn. , vol. 39, no. 3, pp. 450–461, 2016. [16] C. Qin, M. S. J. Michet, J. Chen, and H. H.-T. Liu, “Time-optimal gate-traversing planner for autonomous drone racing,” in Proc. IEEE ICRA , 2024, pp. 8693–8699. [17] C. Qin, J. Chen, Y. Lin, A. Goudar, A. Schoellig, and H. Liu, “Time-optimal quadrotor maneuver: From optimality analysis to trajectory planning,” Int. J. Robot. Res. , Jul. 2026. [18] J. A. Preiss, W. H¨ onig, G. S. Sukhatme, and N. Ayanian, “Crazyswarm: A large nano-quadcopter swarm,” in Proc. IEEE ICRA , 2017, pp. 3299–3304.

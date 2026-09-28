@@ -1,0 +1,421 @@
+Title: Compact Force Sensor for Dual-UAV Cable-Suspended Payload Transport with Tension-Aware Outer-Loop Control
+
+URL Source: https://arxiv.org/pdf/2609.31035v1
+
+Published Time: Mon, 28 Sep 2026 00:50:03 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 1
+
+# Compact Force Sensor for Dual-UAV Cable-Suspended Payload Transport with Tension-Aware Outer-Loop Control 
+
+Andrea Delbene 1, Giorgio Cannata 1, Giorgio Carlini 1, Filippo Sante 1, and Marco Baglietto 1
+
+Abstract —Cooperative payload transportation using multiple 
+
+Unmanned Aerial Vehicles (UAVs) poses challenges in stability, coordination, and robustness, especially under external distur-bances and unmodeled dynamics. This work proposes a dual-UAV payload transportation framework supported by a compact, custom-designed force sensor measuring the interaction force at the UAV cable anchor point. The sensor design and mathemat-ical model are presented, and its performance is characterized through static and dynamic tests evaluating linearity, hysteresis, repeatability, and crossload. The control architecture follows a cascade structure: fast inner loops handle vehicle stabilization, while outer loops are designed to compensate for the mea-sured forces. The approach is validated through simulations and indoor experiments under position uncertainty. Payload-drop and constrained-space tests assess the proposed sensing and control architecture against literature-based distributed references, showing improved stabilization, coordination, and disturbance rejection. A video of the experiments is available at: https://youtu.be/rIw9-fvV8Qw. 
+
+Index Terms —Aerial Systems: Mechanics and Control; Coop-erating Robots; Distributed Robot Systems. 
+
+I. I NTRODUCTION 
+
+# IN recent years, UAVs have become increasingly popular for cooperative tasks such as payload transportation, which introduces challenges including the design of the UAV-payload connection. Solutions include robotic arms [1], rigid connec-tions with grippers or magnets [2], [3], and rigid bars [4], each prioritizing structural rigidity over formation modularity. Flexible cables remain the most practical choice, enabling full payload pose control [5], [6] and formation changes for collision avoidance [7]. Other challenges include the design of stable and robust de-centralized control under limited or absent inter-UAV commu-nication, and modeling, estimating, or measuring interaction forces. Approaches assuming full or partial state knowledge use Optimal or Model Predictive Control [7]–[9], while leader-follower strategies are common with limited communication: in [10], authors use a Linear Quadratic Regulator on both UAVs with only Inertial Measurement Unit (IMU) and Visual Odometry , whereas authors in [11] neutralize leader accelera-tions from IMU data. Leader-follower admittance controllers have also been proposed for force compensation [2], [12]–[14].                           
+
+> Manuscript received: July, 16, 2026; Accepted September, 6, 2026. This paper was recommended for publication by Editor G. Loianno upon evaluation of the Associate Editor and Reviewers’ comments.
+> 1The authors are with the Department of Informat-ics, Bioengineering, Robotics and Systems Engineering, Universit` adegli Studi di Genova, Via all’Opera Pia 13, 16145, Genoa, Italy andrea.delbene@edu.unige.it; giorgio.cannata@unige.it; giorgio.carlini@unige.it; filippo.sante@unige.it; marco.baglietto@unige.it
+> Digital Object Identifier (DOI): see top of this page.
+
+Fig. 1: Experimental setup: two PX4/ROS2-powered UAVs connected to a 1 kg payload by nylon cables. Left column: top and bottom views of the custom force sensor. Accurate estimation or direct measurement of UAV–payload interaction forces is essential for robust cooperative transport. Some works treat tensions as external disturbances [15], while others use state-based models: when full state information is available, such as in simulations or with Motion Capture 
+
+(MoCap), tensions are modeled from the system state [7], [8], [16]–[19], or computed from load statics and nullspace force allocation [20]. In [18], [19], tensions are modeled through a mass-spring-damper system, with [18] identifying its parameters via Nonlinear Least Squares ; in [19], this model supports the EKF-based planner, while onboard external forces are estimated from measured acceleration and thrust. A more detailed cable model uses successions of point-like mass-spring-damper elements [21]. In [22], reference tensions are computed from planned acceleration, orientation, and thrust. When states are uncertain and must be estimated, cable tensions can be inferred using various methods: reversing torque dynamics [11], combining Recursive Least-Squares Approximation with an Acceleration-Based Force Observer 
+
+[23], stochastic filtering using Extended or Unscented Kalman Filters [2], [14], [17], [19], or Momentum-Based Observers 
+
+[12], [13], [24]. These approaches provide model-based, lightweight force predictions without additional hardware, but their accuracy depends on state estimation and model fidelity; moreover, these schemes typically require sufficiently informative measurements and communication to reconstruct the full system state, and they inherently introduce delays in response to abrupt force variations. Such limitations are critical in applications requiring fast responses, such as [29], where the authors study the failure of a single UAV during transportation and propose rapid recovery strategies to avoid compromising the mission. More-over, they are relevant in scenarios where full state infor-mation—especially the payload state—is not available, such arXiv:2609.31035v1 [cs.RO] 25 Sep 2026 2 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 
+
+as outdoor deployments without MoCap, and with potentially limited inter-UAV communication. A practical alternative is then to employ commercial force sensors, as in [25]–[28] (the latter considers a single-UAV setup). Unlike estimators, force sensors are model-independent, provide direct high-rate measurements, and can serve as ground-truth instruments in research. Drawbacks include added weight, integration complexity, and sensitivity to electronic noise and disturbances. In [25]–[27], a uniaxial force sensor is used, which is more affordable than the six-axis force/torque sensor adopted in [28]; however, reconstructing three-axis forces requires extra hardware (e.g., cardan joints and magnetic encoders), making the system bulky and heavy for aerial platforms. For validation, [17] relies on a uniaxial load cell combined with MoCap, whereas [14] employs a three-axis optical force sensor that is smaller and lighter but more delicate and typically less accurate than strain-gauge or capacitive sensors. The main contribution of this letter is the development of a custom, compact three-axis force sensor that provides a low-cost alternative to those commonly adopted in related work, while maintaining comparable performance, weight, and size. To validate the sensor, we consider a PX4/ROS2-based framework for cooperative payload transportation with two UAVs connected by flexible cables, in which the sensor integrates straightforwardly, and we introduce a decentralized cascade-control architecture explicitly accounting for cable tension. The framework requires limited information sharing: each UAV uses only its own state and exchanges minimal data for state transitions. The work is organized as follows: Section II presents the mathematical model of the system, while Section III details the design and characterization of the custom force sensor, comparing it with sensors reported in the literature. Section IV introduces the decentralized cascade-control strategy, and Sec-tion V describes the software and hardware architecture and the evaluation method. Section VI reports the simulation and indoor experimental results, including payload-drop tests and maneuvers in a constrained space. Finally, Section VII discusses conclusions and future work. II. S YSTEM MODELING 
+
+Two quadrotors transporting a payload through flexible cables with equal lengths are considered, as shown in Fig. 1. The attachment points for both quadrotors and the payload are placed with an offset from their center of mass (COM). This section briefly introduces the system dynamics. In the following, explicit time dependencies are omitted for concise-ness, vectors are denoted in boldface to differentiate them from scalars and matrices, i = 1 , 2 identifies the i-th quadrotor, 
+
+p refers to the payload, and a superscript dot indicates time differentiation. A reference inertial North-East-Down (NED) frame is defined as FI (OI , xI , yI , zI ). Additionally, three local body-fixed frames are introduced: one for each quadrotor, 
+
+Fi(Oi, xi, yi, zi) and one for the payload Fp(Op, xp, yp, zp),with the z-axis pointing downwards. For the i-th UAV, the state vector is defined as νi = [ξi, ˙ξi, ηi, ˙ηi]⊤ =[xi yi zi ˙xi ˙yi ˙zi ϕi θi ψi ˙ϕi ˙θi ˙ψi]⊤ ∈ R12 with an analogous definition νp for the payload. There, ηi = [ ϕi θi ψi]⊤ indicates the i-th UAV orientation expressed with Tait-Bryan angles (roll, pitch, yaw), while ˙ηi the angular velocities; same is valid for the payload. The translational dynamics of the UAVs and payload, derived from the classical Newton-Euler formulation, are expressed as: 
+
+(
+
+mi ¨ξi = −uiRie3 + Pi + Ti
+
+mp ¨ξp = P2 
+
+> i=1
+
+Tip + Pp
+
+, (1) while the rotational dynamics are given by: 
+
+(
+
+Ii ˙ωi = τi + ri × (R⊤ 
+
+> i
+
+Ti) − ωi × (Iiωi)
+
+Ip ˙ωp = P2 
+
+> i=1
+
+rip × (R⊤ 
+
+> p
+
+Tip ) − ωp × (Ipωp) . (2) Here, Ri, R p ∈ R3×3 are rotation matrices mapping body-fixed frames to the inertial frame FI . For the i-th UAV, ui
+
+represents the thrust generated, with Rie3 (e3 = [0 0 1] ⊤)expressing it in FI ; τi is instead the control torque; Pi, Pp
+
+are gravitational forces acting on the UAVs and payload, with masses mi and mp. Cartesian positions are denoted as ξi, ξp ∈
+
+R3, while ˙ξi, ˙ξp and ¨ξi, ¨ξp correspond to linear velocities and accelerations, respectively; body angular velocities and accelerations are denoted as ωi, ωp and ˙ωi, ˙ωp. The inertia matrices are diagonal and are indicated as Ii, I p ∈ R3×3.The vectors ri, ri,p define the cable anchor-point locations wrt the i-th UAV and payload COM, respectively. Finally, the cable tension acting on the i-th UAV and the payload are Ti = [ Ti,x Ti,y Ti,z ]⊤ and Tip = [ Tip,x Tip,y Tip,z ]⊤,respectively, expressed in FI .III. F ORCE SENSOR DESIGN 
+
+A. Sensor Description 
+
+A custom strain-gauge-based force sensor was designed to measure cable tension. It consists of four small load cells arranged in a Wheatstone bridge configuration and integrated into a compact mechanical structure. Each cell supports up to 5 kg, includes two 1 kΩ active gauges, has a precision of 
+
+0.05 % Full Scale (FS), and an overload capacity of 120 % FS. As shown in Fig. 2, the load cells are mounted on an aluminium base and connected to a dedicated Printed Circuit Board (PCB), while a cross-shaped support links the UAV to the payload, with each arm rigidly attached to a load cell. The compact PCB is centrally housed within the load-cell arrangement to minimize connection length and electromag-netic interference, while remaining securely attached to the mechanical support. It conditions and digitizes the load-cell signals through four parallel MCP3423 sigma-delta analog-to-digital converters, each operating at 240 samples per second 
+
+with 12 -bit resolution. The converters share a single I 2Cbus using unique chip addresses; this solution was preferred to a single multi-channel converter to maximize sampling frequency, despite increased power consumption and footprint. As the MCP3423 internal amplifier gain is insufficient for the load cell signals, four AD8293 differential amplifiers with a fixed gain of 160 were added, acting also as anti-aliasing filters. A 0.5 V reference, corresponding to the at-rest output of DELBENE et al. : COMPACT FORCE SENSOR FOR DUAL-UAV CABLE-SUSPENDED PAYLOAD TRANSPORT 3lightening holes Board -Bottom Main support Board -Top Cross support cable anchor load cell anchor load cell anchor lightening holes load cell attachment holes AD8293 MCP3423 Load Cell 
+
+Fig. 2: Force sensor components: top-left, base supporting the cells and board; top-right, cross structure linking the cells with the anchor point; bottom-left and bottom-right, load cells and electronic board (top and bottom views). the load cells, is applied to the negative differential inputs and summed with the output, ensuring a positive signal compatible with a single power supply circuit. 
+
+B. Measures to Force 
+
+Measurements from individual load cells alone are not sufficient to determine the full three-dimensional force applied to the sensor. In this section, we explain how the forces measured by each cell are transformed into the force vector applied at the cable anchor point. First, consider the sensor flipped, as shown in Fig. 3, and a local frame Fs centered at the origin Os of the circuit board. Each cell is located at position cj , j = 1 , 2, 3, 4, at a distance d0 from Os, with vector position rcj /O = cj − Os. The anchor point P is at an altitude h from Os, defined by rP/O = P − Os. Each cell measures, at position cj , a scalar force fcj < 0, indicating that the cell operates under tension. The system is then supposed to be in static equilibrium *, or: 
+
+(F T + P4 
+
+> j=1
+
+Fcj = 0
+
+rP/O × F T + P4 
+
+> j=1
+
+rcj /O × Fcj = 0 , (3) where Fcj = [0 0 fcj ]⊤, is the vectorial definition of the force measured by cell j, and F T = [ F Tx, F Ty , F Tz ]⊤ ∈ R3 is the tension force in the sensor (or UAV) body frame. From the first equation, the vertical tension component follows:  
+
+> F
+
+Tz = −
+
+> 4
+
+X
+
+> j=1
+
+fcj . (4) Since the load cells measure only normal forces, the first rela-tion in (3) is used only to recover F Tz ; the lateral components  
+
+> F
+
+Tx and F Ty cannot be obtained from the direct force balance. 
+
+> *The displacement of the load cells is considered negligible.
+
+By then taking advantage of the symmetry rc1/O = −rc3/O 
+
+and rc2/O = −rc4/O , the moment equilibrium equation in (3) is developed: 
+
+rP/O ×F T +rc1/O ×(Fc1 −Fc3 )+ rc2/O ×(Fc2 −Fc4 ) = 0 .
+
+(5) From equation (5), it follows:  
+
+> F
+
+Tx = − d0
+
+h (fc1 − fc3 ) , F Ty = − d0
+
+h (fc2 − fc4 ) . (6) The tension vector F T can then be reconstructed from the load cell measurements. These computations are based on the assumption that the measurement retrieved from each load cell directly represents the true force applied to it. In practice, the load cells must be calibrated through a series of static and dynamic tests. The next subsection shows the methods considered for this purpose and the respective results. 
+
+C. Calibration 
+
+Calibration steps are performed in static and dynamic con-ditions. In static calibration, the sensor is fixed to a leveled structure and the mean of the first 3000 raw force outputs is recorded for each cell j (fcj ,calib ) under an applied force reference ftruth . Ideally, each of the four cells should measure 
+
+ftruth /4, but structural imperfections cause slight deviations. Raw force signals fcj ,raw are then converted as: 
+
+fcj = γcj fcj ,raw , γ cj = fcj ,calib /f truth . (7) To reduce high-frequency noise, a moving average filter with a window of 4 samples is applied, introducing a small time delay ( ∼ 6 ms), acceptable for the 100 Hz outer control loop. Sensor performance is characterized using incremental weights up to 5.5 kg applied on the z-axis, during 10 load-ing/unloading cycles. The following metrics are computed following practical calibration guidelines: † hysteresis (max difference between loading and unloading), non-linearity 
+
+(max deviation from a linear fit), repeatability (consistency under repeated loads), and crossload (sensitivity on non-measurement axes to forces applied on another axis). An initial analysis yielded a non-linearity of 1% FS (Fig. 4.1); after applying a linear regression correction, this dropped to 
+
+0.5% FS, while the others changed only slightly. Fig. 5 details the performance indexes. As shown in Ta-ble I, hysteresis and non-linearity are comparable with other        
+
+> †ISOBudgets, sensor calibration resources, available at: https://www. isobudgets.com/blog/. xxyyzzOs
+> Os
+> PPrP/O
+> rc3/O
+> rc2/O
+> rc4/O
+> rc4/O
+> rc1/O
+> rc2/O rc3/O rc1/O
+> load cell/cross anchor points cross/cable anchor point load cell board
+
+Fig. 3: Geometric representation of load cells positions and cable anchor point relative to board center, in bottom (z-out) and lateral (y-out) views. 4 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 
+
+DDE-100N-002-000 FRC4115-0 [17] FSE1001 [25] OMD-20-FE-200N [14] SRI-M3713A1 [28] Custom Sensor Technology Strain Gauge Strain Gauge Capacitive Optical Strain Gauge Strain Gauge Measured Axes Uniaxial Uniaxial Uniaxial 3-Axis Force 6-Axis Force/Torque 3-Axis Force Dimension (mm) Ø32 × 50 h 58 w×13 l×13 h Ø60 × 16 h 11 w×15 l×10 h Ø45 × 19 h 80 w×80 l×21 hMass (g) 96 N/A (∼ 100 ) 80 1.5 106 118 
+
+Excitation (V) 2-15 AC/DC 5 DC 2.8-5.3 DC N/A (0.24 W) 5 DC 5 DC Data Rate (Hz) 530 50 200 1000 2000 240 
+
+OLC (%FS) 150 120 200 200 300 450 
+
+Hyst. (%FS) < 0.3 < 0.3 N/A < 2 < 0.5 < 0.5
+
+Non-Lin. (%FS) < 0.3 < 0.3 N/A < 2 < 0.5 < 0.5
+
+Repeat. (%FS) < 0.2 < 0.3 N/A N/A N/A < 0.2
+
+XLoad (%FS) N/A N/A N/A < 5 < 2 < 0.6
+
+Cost Medium Cheap Medium Medium-High High Cheap Interface Analog, RS-232 USB USB USB, CAN, UART Ethernet, RS-232, ... I²C 
+
+TABLE I: Comparison with commercial sensors used in similar works in the literature. For sensors used in [26], [27], exact models are unknown; data from a similar one (DDE-100N-002-000) are shown for reference. Our custom sensor has competitive accuracy and low cost; its size is slightly larger, and its acquisition rate is lower than most of the other devices. sensors, while repeatability matches the DDE-100N-002-000. Crossload initially reached 3.8% FS (Fig. 4.2); after applying a calibration-based matrix compensation on all axes, it drops to 0.6% FS, excellent compared to alternatives. Improved mechanical alignment could achieve similar or better results. The same testing procedure is repeated on the x and y
+
+axes to evaluate the sensor around its mechanical singularity, using the same metrics. These tests revealed a slight non-linear response that required higher-order regression, and their performance indexes were approximately twice those on the z-axis, confirming consistent performance even in less favorable orientations. However, its use in this work is far from these conditions; future work includes defining valid operating thresholds and/or adding a regression-switching rule when the measured forces get close to the singularities. Dimensions and mass are higher, though the aluminum frame supporting the cells has a lot of room for optimization. The acquisition rate is lower than most of them, but it remains suitable for the target application. The overload capacity is the maximum load of the four cells, scaled to the considered FS. Unlike other sensors requiring USB, CAN, or Ethernet hardware/drivers, our sensor uses I²C and is read directly by a custom Python/ROS2 script. Considering both component and labor costs, the proposed sensor stands as a valid alternative to commercial solutions, enabling straightforward integration in UAV applications. The dynamic behavior is tested using a practical alter-native, as no setup was available to generate a three-axis step force. The sensor was mounted on the UAV inside a Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 Sensor Output (kg) 0246 Sensor Response to Applied Weights   
+
+> Mean Loading Mean Unloading Ideal Linear Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 Crossload (%FS) -4 -2 02Crossload Medians and Linear Fits
+> Median X Median Y Fit X Fit Y
+> 4.1 4.2
+
+Fig. 4: Left: Mean load/unload cycles per weight. Right: Median crossload per applied weight; dotted lines show linear fits illustrating growth with load. (tests on z-axis.) MoCap-equipped room, where fused MoCap-onboard IMU data provided accurate orientation. The UAV was manually tilted across roll and pitch angles up to ∼ ±70 °, while applying weights and recording three-axis tension and orien-tation. The expected force, computed from the applied weight and measured orientation, showed a linear relationship with the sensor output, aside from small scaling factors. Although not a precise step-force test, this method allows assessment of orientation-dependent behavior under realistic conditions. Instrumentation generating a controlled step force remains preferable for precise dynamic characterization. IV. C ONTROL ARCHITECTURE 
+
+The control strategy is decentralized and organized as a cascade architecture inspired by [30], where each high-level block generates references for the subsequent lower-level blocks (see Fig. 6). Each UAV computes its own references using only onboard estimates, without payload or other UAV data. The objective is to demonstrate how the custom force sensor improves in-flight tension compensation through asimple control method, while more advanced schemes are left for future work. For simplicity, index i is omitted hereafter; the outer loop runs at 100 Hz as the pose estimate on PX4. 
+
+A. Position Control 
+
+The outermost block regulates position and provides veloc-ity setpoints through a Proportional controller: 
+
+˙ξd = KP (ξd − ξ) , (8) where KP = diag( kP,x , kP,y , kP,z ) is the diagonal matrix composed of the proportional gains, and ξd is generated from a nominal target ¯ξd, and adjusted using tension feedback: 
+
+ξd = ¯ξd + KTP eT + KTI
+
+Z t
+
+> 0
+
+eT dt − KTD
+
+ddt Tf , (9) with KTP , KTI , and KTD diagonal gain matrices in R3×3.The term eT = Td − Tf is the tension error with respect to the nominal static tension Td, expected when the UAV rests at ¯ξd, while Tf is a lightly low-pass-filtered version of T .DELBENE et al. : COMPACT FORCE SENSOR FOR DUAL-UAV CABLE-SUSPENDED PAYLOAD TRANSPORT 5Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 %FS -0.5 -0.4 -0.3 -0.2 -0.1 00.1 0.2 
+
+Hysteresis - Z 
+
+> Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 %FS -0.3 -0.2 -0.1 00.1 0.2 0.3 0.4
+
+Non-linearity - Z 
+
+> Cycles Up Cycles Down Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 %FS 020 40 60 80 100
+
+Repeatability - Z  
+
+> Cycles Up Cycles Down Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 %FS -0.6 -0.4 -0.2 00.2 0.4 0.6
+
+Crossload - Z/X  
+
+> X up X down Applied Weight (kg) 00.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0 5.5 %FS -0.6 -0.4 -0.2 00.2 0.4 0.6
+
+Crossload - Z/Y 
+
+> Y up Y down
+
+Fig. 5: Box plots of Hysteresis, Non-Linearity, Repeatability and Crossload (% FS) for each applied weight, relative to the measures taken on the z-axis test. Box body spans from first quartile (Q1 - lower side of the box) to third one (Q3 - upper side), horizontal line marks the median (Q2), and wicks show the observed minimum and maximum. Outliers are red + for cycles up, × for down (indifferent in Hysteresis chart). 
+
+B. Velocity Control 
+
+The velocity block receives the commanded velocity vector from the previous stage and computes desired accelerations through a Proportional-Integral-Derivative controller: 
+
+¨ξd = KvP ( ˙ξd − ˙ξ) + KvI
+
+Z t
+
+> 0
+
+( ˙ξd − ˙ξ) dt − KvD
+
+ddt ˙ξf , (10) where ˙ξf is the low-pass filtered velocity vector state. Again, 
+
+KvP , K vI , K vD are three diagonal gain matrices ∈ R3×3.
+
+C. Thrust and Attitude Mapping 
+
+The resulting acceleration commands, along with the desired yaw ψd, are mapped into thrust and attitude references for the low-level loops. From the desired force vector: 
+
+Fd = [ Fd,x Fd,y Fd,z ]⊤ = m ¨ξd − P , (11) the thrust input command is obtained from the z-component of the force, corrected by the vehicle tilt: 
+
+u = Fd,z /(cϕcθ )‡ . (12) To generate the desired attitude quaternion qd, desired axes are defined in FI : the z-axis aligns opposite to the normalized 
+
+> ‡
+
+cα = cos( α), sα = sin( α) for any angle α.Attitude Control (250Hz) Position Control (100Hz) Velocity Control (100Hz) Ang. Rate Control (1Khz) State Estimation 
+
+> τdudOnboard Sensor Data Thrust & Attitude Mapping (100Hz)
+
+ROS2 PX4    
+
+> FT
+> Force Sensor
+> Td
+> qd
+> qωωd
+> ξd
+> ξξξd
+> .ξd
+> .. .
+> ψd
+
+UAV 
+
+> _
+
+Fig. 6: Cascaded distributed control scheme for each UAV. Red-dotted blocks run on ROS2, while green-dotted blocks are handled by PX4. Desired position, yaw, and cable tension generate quaternion and thrust references for the inner loops. desired force ˜zd = −Fd/|| Fd|| . By defining a heading vector encoding the yaw reference χψ = [ cψd sψd 0] ⊤, the y and x
+
+axes follow from orthogonalization: 
+
+˜yd = ( ˜ zd × χψ )/(|| ˜zd × χψ || ) , ˜xd = ˜ yd × ˜zd . (13) Thus, the desired rotation matrix is Rd = [ ˜ xd; ˜ yd; ˜ zd], from which the quaternion qd ∈ R4 is extracted. V. E XPERIMENTAL SETUP 
+
+A. Software Architecture 
+
+The framework used for both Software-In-The-Loop sim-ulations and indoor experiments relies on a ROS2 stack, Humble on Ubuntu 22, running high-level control and planning nodes. PX4 v1.16.1, an open-source flight-control software for multirotors and other unmanned vehicles, handles low-level control loops and actuator commands. Gazebo, a physics engine providing realistic dynamics and sensor data, is used only in simulation; it also provides the 3D tension at the UAV-cable joint. QGroundControl (QGC) is used as ground-station software for telemetry, mission planning, and pre-flight param-eter tuning, interfacing with PX4 through MAVLink. Com-munication between ROS2 and PX4 relies on the lightweight uXRCE-DDS protocol, preserving the same software structure in simulation and experiments. The system behavior is handled by a decentralized state machine running on both UAVs. State transitions are syn-chronized through ROS2 topics over the same Wi-Fi network, where the UAVs publish ready signals. 
+
+B. Hardware Architecture 
+
+The experimental platform consists of two modified Holybro x500 v2 quadrotors ( ∼ 2 kg each, battery included), each equipped with a Pixhawk 6C running PX4 and integrating an IMU, barometer, and magnetometer. A 3D-printed PLA battery compartment moves the battery closer to the UAV COM and leaves space for the force sensor. A Raspberry Pi 4 
+
+(8 GB RAM, quad-core Cortex-A72 at 1.8 GHz) runs Ubuntu with ROS2, executes high-level nodes, and communicates with the Pixhawk through a serial uXRCE-DDS link. External pose feedback is provided by an OptiTrack system with eight Flex 13 cameras (Fig. 1) covering about 3 × 4 ×6 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 x (m) -2 -1.5 -1 -0.5 00.5 11.5 2y (m) -1 -0.5 0.5 10
+
+> Payload des UAV1 des UAV2 des Start (B0) Middle (B1) End (B2) Direction Obstacle
+> ★★★
+> 7.3 7.2 7.1
+
+Fig. 7: Motion composites of Test A payload-drop (7.1) and Test B constrained-space maneuvers (7.2), with A0-A3 and B0-B4 marking successive instants. Test B top-view desired trajectories are shown in 7.3; return paths are mirrored. 
+
+2.5 m3. Measurements are streamed over Wi-Fi to the UAVs and fused on the Pixhawk for odometry. QGC connects to the Pixhawk through MAVLink radio for supervision. 
+
+C. System Evaluation 
+
+The two UAVs are connected to a 1 kg payload (two 0.5 kg lead ballasts equipped with MoCap markers for tracking) using 
+
+∼ 1.5 m nylon cables and placed at predefined locations and yaw angles ( 60 deg. phase difference between the UAVs) in the MoCap arena. An experimental campaign is organized into payload-drop tests and narrow-passage maneuvers, assessing sudden load variations, payload oscillations, and dynamic constrained mo-tion. The distributed geometric controller in [19] is used as a simulation reference, while indoor experiments compare the proposed force sensor with tensions derived from the distributed external-force estimator in [19], using PX4 ac-celerometer data and motor angular velocities, available on average at 900 Hz and 60 Hz, respectively. Consistent with the proposed architecture, all methods rely on limited inter-UAV communication, no payload-state knowledge, and cable tensions either measured onboard or estimated locally. Robustness to uncertain position feedback is evaluated by artificially perturbing the UAV position with white Gaussian noise wi(t) ∼ N (0, Σi) and a slowly varying bias bi(t)
+
+modeled as a first-order Gauss-Markov process ˙bi(t) =
+
+−bi(t)/τ b + ηi(t), with ηi(t) ∼ N (0, Q i) and correlation time τb > 0. Different random seeds are used for the two UAVs to ensure independent noise sequences. The parameters of our controller are defined as: KP =diag(0.8, 0.8, 0.7), KvP = diag(2.7, 2.7, 6.0), KvI = diag(1.9, 1.9, 3.0), KvD = diag(0.3, 0.3, 0.5)), KTP = diag(0.22, 0.22, 0.06), KTI = diag(0.08, 0.08, 0.18), KTD = diag(0.02, 0.02, 0.0). Disturbance parameters are: τb = 60 .0 s, Σi = diag(0.03, 0.03, 0.06), Qi = diag(0.08, 0.08, 0.15). VI. R ESULTS 
+
+Several trials were conducted; representative cases are shown next. Flying phases are Takeoff and Move , with tran-sitions triggered when both UAVs stay within 0.3 m of their position setpoints for 1 s. The graphs report UAV and payload states as detected by the MoCap system; the desired setpoints are shown as the nominal values ¯ξd.
+
+Test A - Payload Drop 
+
+In these tests, the payload is initially placed on a box at 
+
+ξp(0) = [1 .0, 0.0, −0.5] ⊤ (Fig. 7.1, frame A0). The two UAVs take off to the desired position with slack cables and, once ready (A1), translate by 2 m toward a new setpoint, causing the payload to drop from the box (A2). The resulting sudden cable forces and payload oscillations are then stabilized in the final phase (A3). 
+
+1) Simulation: The distributed geometric controller in [19] is first tested in simulation using exact cable tensions from a Gazebo plugin, to isolate the control strategy. As shown in Fig. 8, it performs well in Takeoff , with both UAVs reaching the state-change condition, despite biased positions and minor tension oscillations on UAV2 as its cable approaches the taut condition. After the payload drop in Move phase, it initially reduces the y deviation through direct tension compensation (Fig. 8.2). However, during stabilization, the z setpoint is not tracked (Fig. 8.1), and oscillations appear, likely due to direct com-pensation under position uncertainty. This is visible in the x
+
+displacement, tensions, and especially payload motion, where oscillations persist at steady state (Fig. 8.3-6). To avoid this oscillatory response, experiments use the proposed controller and compare tensions derived from the external-force estima-tor in [19] with force-sensor measurements. z (m) -2 -1 0                           
+
+> Geometric Controller Test A - System States
+> z1 z2 zd
+> y (m) -1 01
+> y1 y2 yd1yd2
+> x (m) -1 01
+> x1 x2 xd1xd2
+> xp (m) -1 01
+> xp xdp
+> Time (s) 010 20 30 40 50 T (N) -5 05
+> UAV 1 ground truth tension
+> 8.1 8.3 8.2 8.4 8.5 8.6
+> Takeoff Move
+> Tx Ty Tz Tx,d Ty,d Tz,d Time (s) 010 20 30 40 50
+> UAV 2 ground truth tension
+
+Fig. 8: Simulation results of system states in test A with geometric controller. Legend is shared for measured tensions. DELBENE et al. : COMPACT FORCE SENSOR FOR DUAL-UAV CABLE-SUSPENDED PAYLOAD TRANSPORT 7T (N) -5 0510                                        
+
+> UAV 1 estimated tension Test A using Estimator
+> Tx est est est est est est Ty Tz Td,x Td,y Td,z
+> T (N) -5 0510
+> UAV 1 measured tension
+> Tx Ty Tz Td,x Td,y Td,z
+> T (N) -5 0510
+> UAV 2 estimated tension
+> Tx Ty Tz Td,x Td,y Td,z
+> Time (s) 010 20 30 40 50 T (N) -5 0510
+> UAV 2 measured tension
+> Tx Ty Tz Td,x Td,y Td,z
+> UAV 1 estimated tension Test A using Force Sensor UAV 1 measured tension UAV 2 estimated tension
+> Time (s) 010 20 30 40 50
+> UAV 2 measured tension
+> 9.1 9.3 9.4 9.2 9.5 9.6 9.7 9.8
+> Takeoff Move Takeoff Move
+
+Fig. 9: Experimental results of estimated and measured ten-sions in test A using Estimator (left column) and Force Sensor (right column). §
+
+2) Experiment: The indoor experiments are first analyzed by comparing estimated and measured tensions in Fig. 9. Before Takeoff , the estimator shows a spike since gravity is not yet balanced by thrust. During Takeoff , it deviates from the force sensor, mainly showing an almost constant bias in the z component for both UAVs and in the y component for UAV1, together with chattering likely due to thrust estimation and amplified by position uncertainty. After the payload drop, the estimator follows the force sensor more closely: the z component agrees well during the first ∼ 4 s of Move , while the x-y components remain consistent throughout the phase. However, the biases reappear, becoming more evident for UAV2 despite using the same motor constant for both vehicles. Other discrepancies include isolated outliers, such as the z estimate reaching ∼ 27 N at the beginning of Move in Fig. 9.2 (outside the plot range), downward spikes in Fig. 9.6, and noise intervals in Fig. 9.1 from ∼ 37 s onward, bounded or absent in the corresponding measured tension (Fig. 9.3). Overall, the force sensor provides cleaner and more re-liable tension data while capturing small force variations. For instance, around 12 s in Fig. 9.7, just before the Move 
+
+phase, the UAV2 cable slightly tightens and a small tension is measured, unlike with the estimator in Fig. 9.5. Although the estimator in [19] remains lightweight when approximate tension information is sufficient, e.g., to keep tensions within planner-defined bounds, measured tensions provide cleaner feedback and improve UAV-payload stability, especially in the 
+
+x-motion after the drop (Fig. 10.6, 10.8). 
+
+Test B - Narrow Passage Maneuvers 
+
+The final experiment evaluates a dynamic narrow-passage maneuver using only the proposed methods, since payload-drop tests showed cleaner feedback and better stabilization z (m) -2 -1 0                          
+
+> System States Test A using Estimator
+> z1 z2 zd
+> y (m) -1 01
+> y1 y2 yd1yd2
+> x (m) -1 01
+> x1 x2 xd1xd2
+> Time (s) 010 20 30 40 50 xp (m) -1 01
+> 10.1 10.2 10.3 10.4 10.5 10.6
+> xp xdp
+> Takeoff Move Takeoff Move
+> System States Test A using Force Sensor
+> Time (s) 010 20 30 40 50
+> 10.7 10.8
+
+Fig. 10: Experimental results of system states in test A using Estimator (left column) and Force Sensor (right column). §
+
+with measured tensions. Starting from hover with taut cables (Fig. 7.2, frame B0, the UAVs change formation to cross two obstacles in the MoCap room (B1), recover it (B2), wait 
+
+1 s, and perform the reverse maneuver (B3) to return to the start (B4). Formation changes use circular trajectories, while obstacle crossing uses translational ones (check desired top-view trajectories in Fig. 7.3); setpoints define an 11 s round trip, with two 5 s passages separated by the 1 s wait. Performances during Move are shown in Fig. 11. Despite the limited maneuver time, the overall system response remains smooth. Along z, the UAVs regulate their altitude to keep the measured tensions close to the desired values (Fig. 11.1,11.5-6). Along x-y, tracking degrades, likely due to inertia and conservative control gains kept unchanged across tests. This is most evident for UAV1 along y during obstacle crossing (Fig. 11.2, 11.5-6, intervals 1.3-3.7 s and 7.3-9.7 s), also causing larger deviations in the tension y component for both UAVs. In the remaining intervals, however, the system robustly tracks the desired tensions. A supplementary video is available at: https://youtu.be/ rIw9-fvV8Qw to offer clearer visual feedback on the experi-mental results. VII. C ONCLUSIONS 
+
+This work proposed a dual-UAV payload transportation framework using a custom force sensor for direct cable-tension measurement. The sensor was designed, modeled, and characterized. A decentralized cascade-control architecture exploiting force feedback has been presented. Simulations and indoor experiments under position uncertainty validated the approach through payload-drop and narrow-passage tests against methods from the literature. Results showed improved 
+
+> §
+
+Rows compare the same quantities across tests; legends are shared. 8 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED SEPTEMBER, 2026 z (m) -2 -1.9 -1.8                         
+
+> System States - Test B
+> z1 z2 zd
+> y (m) -2 02x (m) -1 01xp (m) -1 01
+> xp xdp
+> Time (s) Tx Ty Tz Td,x Td,y Td,z
+> 0510 15 T (N) -5 0510
+> UAV 1 measured tension
+> Time (s) 0510 15
+> UAV 2 measured tension
+> x1 x2 xd1xd2
+> 11.1 11.2 11.3 11.4 11.5 11.6
+> y1 y2 yd1yd2
+
+Fig. 11: Experimental results of system states in test B. Legend is shared for measured tensions. stability, coordination, and disturbance rejection with the pro-posed sensor and controller. Future work will address both hardware improvements and more advanced decentralized control strategies for cooperative transport. The force sensor can be further optimized by reduc-ing the aluminium support weight, compensating temperature drift, increasing data rate, defining operating limits, and im-proving resistance to dust and splashes. REFERENCES [1] F. Caccavale, G. Giglio, G. Muscio, and F. Pierri, “Cooperative impedance control for multiple UAVs with a robotic arm,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , Hamburg, Germany, 2015, pp. 2366-2371. [2] A. Tagliabue, M. Kamel, R. Siegwart, and J. Nieto, “Robust collaborative object transportation using multiple MAVs,” Int. J. Robot. Res. , vol. 38, no. 9, pp. 1020-1044, 2019. [3] G. Loianno and V. Kumar, “Cooperative transportation using small quadrotors using monocular vision and inertial sensing,” IEEE Robot. Autom. Lett. , vol. 3, no. 2, pp. 680-687, 2018. [4] C. Bosio and M. W. Mueller, “Automated layout and control co-design of robust multi-UAV transportation systems,” IEEE Robot. Autom. Lett. ,vol. 10, no. 4, pp. 3956-3963, Apr. 2025. [5] D. Sanalitro, H. J. Savino, M. Tognon, J. Cort´ es, and A. Franchi, “Full-pose manipulation control of a cable-suspended load with multiple UAVs under uncertainties,” IEEE Robot. Autom. Lett. , vol. 5, no. 2, pp. 2185-2191, Apr. 2020. [6] A. E. Jim´ enez-Cano, D. Sanalitro, M. Tognon, A. Franchi, and J. Cort´ es, “Precise cable-suspended pick-and-place with an aerial multi-robot system,” J. Intell. Robot. Syst. , vol. 105, no. 3, Jul. 2022. [7] B. E. Jackson, T. A. Howell, K. Shah, M. Schwager, and Z. Manchester, “Scalable cooperative transport of cable-suspended loads with UAVs using distributed trajectory optimization,” IEEE Robot. Autom. Lett. , vol. 5, no. 2, pp. 3368-3374, Apr. 2020. [8] R. C. Sundin, P. Roque, and D. V. Dimarogonas, “Decentralized model predictive control for equilibrium-based collaborative UAV bar trans-portation,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , Philadelphia, PA, USA, 2022, pp. 4915-4921. [9] N. De Carli, R. Belletti, E. Buzzurro, A. Testa, G. Notarstefano, and M. Tognon, “Distributed NMPC for cooperative aerial manipulation of cable-suspended loads,” IEEE Robot. Autom. Lett. , vol. 10, no. 10, pp. 10546-10553, Oct. 2025. [10] M. Gassner, T. Cieslewski, and D. Scaramuzza, “Dynamic collaboration without communication: Vision-based cable-suspended load transport with two quadrotors,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) ,2017, pp. 5196-5202. [11] H. Xie, X. Cai, and P. Chirarattananon, “Towards cooperative transport of a suspended payload via two aerial robots with inertial sensing,” in 
+
+Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , Las Vegas, NV, USA, 2020, pp. 1215-1221. [12] C. Gabellieri, M. Tognon, D. Sanalitro, and A. Franchi, “Force-based pose regulation of a cable-suspended load using UAVs with force bias,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , Detroit, MI, USA, 2023, pp. 6920-6926. [13] M. Tognon, C. Gabellieri, L. Pallottino, and A. Franchi, “Aerial co-manipulation with cables: The role of internal force for equilibria, stability, and passivity,” IEEE Robot. Autom. Lett. , vol. 3, no. 3, pp. 2577-2583, Jul. 2018. [14] A. Tagliabue, M. Kamel, S. Verling, R. Siegwart, and J. Nieto, “Collab-orative transportation using MAVs via passive force control,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , Singapore, 2017, pp. 5766-5773. [15] X. Zhang, F. Zhang, P. Huang, J. Gao, H. Yu, and C. Pei, “Self-triggered based coordinate control with low communication for tethered multi-UAV collaborative transportation,” IEEE Robot. Autom. Lett. , vol. 6, no. 2, pp. 1559-1566, Apr. 2021. [16] P. O. Pereira, P. Roque, and D. V. Dimarogonas, “Asymmetric collabo-rative bar stabilization tethered to two heterogeneous aerial vehicles,” in 
+
+Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , Brisbane, QLD, Australia, 2018, pp. 5247-5253. [17] G. Li, X. Liu, and G. Loianno, “Human-aware physical human-robot col-laborative transportation and manipulation with multiple aerial robots,” 
+
+IEEE Trans. Robot. , vol. 41, pp. 762-781, 2025. [18] A. Delbene and M. Baglietto, “Cables tension modeling for multi-UAV payload transportation,” in Proc. IEEE Int. Conf. Autom. Sci. Eng. (CASE) , Bari, Italy, 2024, pp. 212-218. [19] S. Sun, X. Wang, D. Sanalitro, A. Franchi, M. Tognon, and J. Alonso-Mora, “Agile and cooperative aerial manipulation of a cable-suspended load,” Science Robot. , vol. 10, no. 107, Oct. 2025. [20] C. Gabellieri, Y. Shen, M. Paolucci, and A. Franchi, “Cyclic nullspace coordination: Perpetual flight of aerial carriers for static suspension,” 
+
+IEEE Trans. Control Syst. Technol. 
+
+[21] L. R. Salinas, J. Gimenez, D. C. Gandolfo, C. D. Rosales, and R. Carelli, “Unified motion control for multilift unmanned rotorcraft systems in forward flight,” IEEE Trans. Control Syst. Technol. , vol. 31, no. 4, pp. 1607-1621, 2023. [22] K. Wahba, J. Ortiz-Haro, M. Toussaint, and W. H¨ onig, “Kinodynamic motion planning for a team of multirotors transporting a cable-suspended payload in cluttered environments,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , Abu Dhabi, United Arab Emirates, 2024, pp. 12750-12757. [23] J. Xu, L. Gao, R. Fierro, and D. Salda˜ na, “AirBender: Adaptive trans-portation of bendable objects using dual UAVs,” IEEE Robot. Autom. Lett. , vol. 10, no. 3, pp. 2790-2797, Mar. 2025. [24] D. Sanalitro, M. Tognon, A. E. Jim´ enez-Cano, J. Cort´ es, and A. Franchi, “Indirect force control of a cable-suspended aerial multi-robot manipulator,” IEEE Robot. Autom. Lett. , vol. 7, no. 3, pp. 6726-6733, Jul. 2022. [25] A. Mohiuddin, Y. Zweiri, R. Almadhoun, T. Taha, and D. Gan, “En-ergy distribution in dual-UAV collaborative transportation through load sharing,” J. Mechanisms Robot. , pp. 1-14, Apr. 2020. [26] M. Bernard, K. Kondak, I. Maza, and A. Ollero, “Autonomous trans-portation and deployment with aerial robots for search and rescue missions,” J. Field Robot. , vol. 28, pp. 914-931, 2011. [27] M. Bernard and K. Kondak, “Generic slung load transportation system using small size helicopters,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , Kobe, Japan, 2009, pp. 3258-3264. [28] H. Li, H. Zhong, J. Gao, Y. Lv, J. Sha, J. Liang, and H. Zhang, “A nonlinear trajectory tracking control strategy for quadrotor with suspended payload based on force sensor,” IEEE Trans. Intell. Veh. ,vol. 9, no. 1, pp. 704-714, 2024. [29] A. Delbene and M. Baglietto, “Recovery techniques for a multi-UAV system transporting a payload,” in Proc. IEEE Int. Conf. Autom. Sci. Eng. (CASE) , Bari, Italy, 2024, pp. 559-566. [30] L. Meier, D. Honegger, and M. Pollefeys, “PX4: A node-based mul-tithreaded open source robotics framework for deeply embedded plat-forms,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , Seattle, WA, USA, 2015, pp. 6235-6240.
