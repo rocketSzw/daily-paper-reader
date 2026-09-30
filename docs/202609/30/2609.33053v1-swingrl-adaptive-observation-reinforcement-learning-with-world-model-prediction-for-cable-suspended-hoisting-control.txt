@@ -1,0 +1,342 @@
+Title: SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control
+
+URL Source: https://arxiv.org/pdf/2609.33053v1
+
+Published Time: Tue, 29 Sep 2026 01:35:51 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control 
+
+Guangming Wang 1,∗, Xiaoyu Zhang 1,∗, Yucheng Xin 2,∗, Wanli Ma 1,†, Jiucai Liu 3,Yunxiang Ma 4, Joe Ingham 1, Haibing Wu 1, Yixiong Jing 1, Olaf Wysocki 1 and Brian Sheil 1
+
+> 1
+
+University of Cambridge 2Tsinghua University 3Cardiff University 4The University of Hong Kong 
+
+Fig. 1: Cable-Suspended Hoisting Task and Challenges. Unlike traditional pick-and-place, cable-suspended hoisting requires (a) precise positioning, (b) control of flexible cable motion, (c) rejection of external disturbances such as wind, and (d) operation under degraded observations. The center image shows the real hoisting platform, where three RGB-D cameras are evenly mounted around the green end-effector hoisting plate for payload observation. In (d), the yellow dashed outline indicates a lost frame observation during descent. 
+
+Abstract — Cable-suspended hoisting is widely used to move heavy or bulky payloads that cannot be handled conveniently by rigid pick-and-place systems, for example in crane-assisted con-struction. Robotic hoisting using flexible cables is challenging because payload motion is underactuated, external disturbances vary, and delayed or lost visual observations can make the perceived payload state stale at control execution. These effects are particularly critical during precise insertion of a suspended payload’s sockets onto rebar pins, which is a very common task in construction environments. We present SwingRL, a residual reinforcement-learning (RL) framework that combines an age-aware world model, a classical anti-swing prior, and a recurrent residual policy to address two coupled problems: stale feedback and uncertain dynamics. The world model propagates the newest received payload observation to the current control step using the executed commands, providing a time-aligned state estimate under delayed and lossy sensing. The prior supplies nominal tracking and swing damping. The residual 
+
+*Equal contribution. 
+
+> †
+
+Corresponding author. 
+
+> 1
+
+Department of Engineering, University of Cam-bridge, Cambridge, CB2 1PZ, U.K. (e-mail: 
+
+{gw462,xz573,wm369,ji291,hw657,yj401,okw24,bbs24 }@cam.ac.uk) 
+
+> 2
+
+Tsinghua University, Beijing, China (e-mail: usfinea@163.com) 
+
+> 3
+
+School of Engineering, Cardiff University, Cardiff, U.K. (e-mail: LiuJ151@cardiff.ac.uk) 
+
+> 4
+
+The University of Hong Kong, Hong Kong, China (e-mail: myx15194957135@163.com) 
+
+policy learns bounded corrections to the prior rather than the complete control law, compensating for system-parameter variation, external disturbances, and remaining state-estimation errors. We evaluate SwingRL against classical and learning-based baselines across a cumulative difficulty ladder covering system-parameter variation, wind disturbance, degraded sens-ing, and strong gusts. Under the most difficult setting, SwingRL achieves 69 .5% strict and 77 .3% broad success, exceeding all baselines by at least 60 percentage points, respectively. World-model ablations support the role of time-aligned state estimation in maintaining insertion success as observation loss increases. Finally, without real-robot fine-tuning, SwingRL achieves 90% 
+
+success on the physical rig. 
+
+I. INTRODUCTION Cable-suspended hoisting is a longstanding task in crane-assisted construction, where heavy payloads are transported and precisely positioned through cables or slings. Unlike rigid grasping, cable-suspended hoisting is underactuated: the payload is controlled indirectly through cable tension and pendular dynamics rather than through direct kinematic constraint. The controller must therefore balance rapid trans-port (for productivity) with low residual swing energy (for safety and precise placement). The challenge becomes more severe when payload and cable properties change between lifts, outdoor wind excites sway, and payload sockets must arXiv:2609.33053v1 [cs.RO] 27 Sep 2026 align with rebar pins within tight clearance. Vision closes the payload-feedback loop, so frame loss and processing delay can leave the controller with stale observations (Fig. 1). Classical anti-swing control typically relies on low-order pendulum models and nonlinear coupling laws [1], [2]. However, tracking and swing suppression depend on how closely cable properties, payload mass, damping, and dis-turbances match the controller’s design assumptions [3]. Residual learning can compensate for dynamics errors and disturbances [4]. Delayed or lost payload position obser-vation and motion estimates nevertheless leave feedback temporally misaligned with the current control step. This creates a state-estimation problem. World models learn future state prediction for planning or decision making [5], [6], [7]. However, world model for online state estimation and control under delayed and lossy sensing has not been researched. Here, the challenge is to efficiently predict only as far as the current control step while limiting cumulative error and compensate for the error and other disturbances. Propagating the latest measurement with executed commands and re-anchoring at each newly received measurement and robotic proprioception provide a time-aligned estimate. Residual recurrent reinforcement learning is used to handle with additional errors and disturbances. Based on this principle, SwingRL combines an age-aware world model, a classical tracking and anti-swing prior, and recurrent residual reinforcement learning to achieve precise socket-over-rebar insertion under uncertain dynamics and intermittent sensing. The prior supplies nominal tracking and swing damping; state prediction addresses feedback staleness, while residual learning addresses remaining control errors. The world model propagates the newest received pay-load position observation using the executed commands and combines it with current end-effector proprioception to form a time-aligned state estimate. A bounded recurrent residual policy then corrects the prior command, compensating for variation in cable and payload parameters, disturbances, and remaining state-estimation errors without learning the complete control law from scratch [4]. A performance-gated curriculum further improves residual learning under strong disturbances by progressively increasing task difficulty. The main contributions of this study are:  
+
+> •
+
+an adaptive observation reinforcement learning frame-work with world-model prediction for cable-suspended hoisting control, where an age-aware world model prop-agates delayed and lossy payload observations to the current control step for time-aligned state estimation;  
+
+> •
+
+a bounded recurrent residual policy that retains a clas-sical anti-swing controller as a prior and learns only corrective actions for system-parameter variation, dis-turbances, and state-estimation errors;  
+
+> •
+
+a cumulative simulation benchmark spanning system-parameter variation, external disturbances, degraded sensing, and strong gusts, with controlled ablations of residual learning, curriculum training, world-model completion, and wind intensity, together with zero-shot real-rig validation that tests whether predictive state completion remains beneficial under injected observa-tion loss. II. RELATED WORK 
+
+A. Anti-swing Hoisting Control 
+
+Classical anti-swing crane control addresses transport ac-curacy and payload sway through input shaping, nonlinear coupling, energy-based damping, and model predictive con-trol (MPC) [1], [2], [8], [9]. Full-scale experiments demon-strate disturbance rejection during precision positioning [10], while output-feedback methods explicitly account for actua-tor saturation [11]. More recent work develops fractional-order sliding-mode control with prescribed transient and steady-state performance under system uncertainties and external disturbances [12]. These studies address the posi-tioning, cable-motion, and disturbance challenges in Fig. 1. Our focus is the additional interaction with intermittent visual feedback and system variations: prediction aligns the payload state in time, while bounded residual actions correct the nominal anti-swing command. Rather than relying on a controller designed for a fixed nominal configuration, the learned policy is trained and evaluated across variations in system parameters, disturbances, and observation conditions. 
+
+B. Reinforcement Learning with Control Priors 
+
+Residual RL augments a fixed controller with a learned correction, allowing the policy to compensate for dynamics and disturbances that are difficult to capture with the nominal controller alone [4]. Base-controller RL incorporates base controllers more broadly into exploration, value learning, and policy optimization [13]. These approaches motivate re-taining useful control knowledge during learning. Our focus is how residual control operates when payload feedback is delayed or lost: both the prior and the bounded recurrent residual use the same predicted current-state estimate. 
+
+C. World Models under Sparse Observation 
+
+Control with deformable or flexible elements is challeng-ing because the relevant dynamics can be high-dimensional and partially observed [14]. Learning-based approaches have addressed deformable manipulation through domain-randomized sim-to-real transfer and visual model-free poli-cies [15], [16], [17]. More broadly, latent-dynamics and world-model methods learn compact predictive representa-tions for planning [18], [5], [6]. More recently, DreamerV3 learned policies from imagined trajectories across diverse control tasks [7]. In contrast to using a world model to optimize future actions, our method propagates the newest received observation to the current control step for the feed-back based control, with new measurements re-anchoring the estimate as they become available. Recurrent model-free RL can be effective under partial observability [19]. In SwingRL, recurrence integrates temporal history, while the world model explicitly reconstructs a current-state estimate from delayed or lost observations. Fig. 2: Swing-RL. Delayed and intermittent payload observations and recorded commands drive a recurrent world model. Its current-state prediction is fused with end-effector proprioception and supplied to both the prior controller and the residual actor. The residual action enters the prior controller’s target before gating, saturation, and smoothing. The asymmetric critic uses privileged state and channel information only during training. III. METHOD 
+
+A. Task Formulation 
+
+The robot carries a rigid payload suspended from four flexible cables and aligns four sockets on the underside of the payload with four upright rebar pins, then lowers the payload until the pins enter the sockets, under wind disturbances. Let 
+
+st ∈ R15 denote the instantaneous task-state vector containing the payload and end-effector quantities in Table I. The controller does not directly observe st ; instead, it receives current end-effector proprioception and delayed, intermittent payload observations by three end-effector-mounted Intel Re-alSense D435 RGB-D cameras. Let e = p∗ 
+
+> xy
+
+−ppl ,xy denote the horizontal payload position error, where p∗ 
+
+> xy
+
+and ppl ,xy denote the target and current payload positions in the horizontal x–y
+
+plane, respectively. The action at ∈ R3 is a Cartesian end-effector velocity command issued at 10 Hz. Cable length, payload mass, damping, and wind vary across the evaluated conditions. The objective is insertion without premature pin contact while limiting positioning error and swing. Success criteria are defined in Sec. IV-C. 
+
+B. Framework 
+
+Swing-RL addresses the mismatch between current end-effector feedback and stale payload observations through three modules (Fig. 2):  
+
+> •
+
+A recurrent world model propagates the newest received observation to the current control step, replacing stale payload feedback with a time-aligned estimate (Sec. III-C).  
+
+> •
+
+A classical prior provides payload tracking, anti-swing feedback, and alignment-dependent descent (Sec. III-E).  
+
+> •
+
+A residual actor learns bounded corrections to the prior using the same state estimate (Sec. III-D). 
+
+C. World Model: Age-Aware State Estimate 
+
+An observation captured at step k is scheduled to arrive at step k + d. The delay d is sampled once per episode; a bursty state loss can also prevent delivery. The delay values and loss settings are specified in Sec. IV. After initialization, the age τt of the newest received observation evolves as 
+
+τt =
+
+(
+
+d, frame t − d arrives at t,
+
+τt−1 + 1, otherwise , ct = t − τt ,
+
+(1) where ct is the capture time of the newest received observa-tion. Hence, frame loss increases the observation age beyond the nominal delay d.Starting from the newest received observation, the model propagates the task state to the current control step by predicting forward under the commands executed since the observation was captured: ˜sct = sobs  
+
+> ct
+
+,
+
+˜sk+1 = ˜sk + ∆θ (˜sk, ak), k = ct , . . . , t − 1. (2) Here ∆θ is the mean state increment predicted by a long short-term memory (LSTM) network. The LSTM also reads the physical context ξ = [ Leff , m, wx, wy], comprising the effective cable length, payload mass, and horizontal wind components, together with the number of steps since the an-choring (newest received) observation, and a binary indicator specifying whether its input is a measurement or a prediction, allowing the network to distinguish observed states from its own predictions. The LSTM recurrent state is advanced in capture-time order up to the newest received observation. Frames lost in between are bridged by the model’s own predictions, so that the controller receives a state estimate at every control step despite observation loss. From the state associated with the newest received observation, Eq. (2) predicts forward temporarily to the current control step. Whenever a new observation is received, it replaces the previous prediction as the rollout anchor. If observations are lost, the model rolls out autoregressively across the lost steps until the current control step is reached. Thus, predictions beyond the latest received observation are used only for current-state completion and are not permanently carried forward once a newer measurement becomes available. In addition, for each prediction, current proprioception replaces the predicted end-effector components of ˜ st , and the relative swing offset 
+
+r = ˆppl ,xy − pee ,xy and its rate ˙ r are recomputed, yielding ˆ st .Both the prior and actor use ˆ st , as shown by the link from Fig. 2(b) to Fig. 2(c). This reduces the residual’s need to compensate for prior commands driven by stale observations. During world-model training, each received observation provides supervision for the prediction corresponding to its capture time. Additional autoregressive updates span multiple received-frame intervals, unrolling every intervening control step [20]. The Huber loss provides robust supervision of the predicted mean by reducing the influence of large prediction errors, while the Gaussian negative log-likelihood jointly trains the predicted mean and per-dimension predictive un-certainty: 
+
+LWM =
+
+> K
+
+# ∑
+
+> j=1
+
+w j [Huber (ε j) + λ LNLL (ε j; σ j)] , (3) where j indexes the scored observations, ε j is the prediction error after fixed-scale normalization, and LNLL is its Gaus-sian negative log-likelihood under the per-dimension scales 
+
+σ j output at the final recurrent step leading to observation 
+
+j. Let h j denote the age (number of control steps since capture) associated with scored observation j. To reflect the empirical frame-age distribution while retaining training signal for infrequent long gaps, the weights follow a floored tail profile: 
+
+w j ∝ max 
+
+
+
+ρ, P(τ ≥ h j)
+
+P(τ ≥ 1)
+
+
+
+,
+
+> K
+
+# ∑
+
+> j=1
+
+w j = 1. (4) where ρ is the minimum relative weight assigned to observa-tions in the tail. Each weight w j corresponds to a successive interval between received observations, which may span multiple control steps. Thus, age conditions both prediction and training. The world model learns from policy-induced trajectories, while the actor is trained on the estimates produced by the evolving model. 
+
+D. Residual Actor-Critic 
+
+The prior controller provides nominal payload tracking, swing damping, and alignment-dependent descent, with feed-back gains fixed across episodes. The residual learns bounded corrections for system-parameter variation, disturbances, and imperfect state estimates [4]. Section IV compares the full method with the prior-only baseline. Up to fixed per-entry normalization, the actor observes 
+
+ot = ˆst , abase  
+
+> t
+
+, ares 
+
+> t−1
+
+, ξ . (5) The physical context ξ = [ Leff , m, wx, wy] is known in simula-tion and measured on the rig. The prior controller command identifies the action abase  
+
+> t
+
+being corrected. The LSTM actor uses the latest eight vectors ot to produce a bounded velocity residual ares  
+
+> t
+
+∈ R3. The previous residual ares  
+
+> t−1
+
+provides the actor with the most recent correction applied to the prior. History helps account for disturbance-driven motion and delayed effects of previous commands. The residual is added to the prior controller’s internal velocity target before the common gating, saturation, and smoothing operations, denoted by Gt :
+
+at = Gt
+
+
+
+ubase  
+
+> t
+
++ ares 
+
+> t
+
+
+
+. (6) Here, ubase  
+
+> t
+
+is the prior’s velocity target before gating, sat-uration, and smoothing. The observed abase  
+
+> t
+
+= Gt (ubase  
+
+> t
+
+) is its residual-free output after the same operation Gt , eval-uated from the same controller state. The actor observes the processed prior-only command abase t , while its residual is injected at the pre-processing target ubase t . This ensures that the actor conditions its correction on the command the prior would actually execute. The vertical residual is bounded below the nominal descent speed v0. It can therefore modulate the descent rate when descent is enabled, but cannot reverse the nominal direction or bypass the descent gate. Proximal policy optimization (PPO) [21] trains a scaled tanh-squashed Gaussian policy. Deployment applies the same transforms to the Gaussian mean. During world-model train-ing, an asymmetric critic [22] receives privileged state, frame age, and a zero-age indicator. These channel features let the critic condition its value estimates on feedback staleness. The frame age represents feedback staleness, while the zero-age indicator explicitly marks a fresh measurement. Rewards prioritize contact-free insertion, with no success bonus after premature pin contact and penalties for failure and timeout. Bounded shaping terms penalize swing and reward alignment. 
+
+E. Prior Controller 
+
+The prior combines payload tracking and anti-swing feed-back [3], using payload quantities from ˆ st :
+
+ubase  
+
+> t,xy
+
+= Kee + Ki
+
+> Z
+
+e dt + Ks
+
+ rctrl − ¯rctrl  + Kv ˆvpl ,xy ,
+
+ubase  
+
+> t,z
+
+= −v0,
+
+(7) TABLE I: Actor observation ot (25-D), normalized by per-entry scales. The world model predicts these entries; current proprioception replaces rows 4–5 and is used to recompute row 1 before the estimation.                                           
+
+> Entries Dim Source 1Swing offset rand rate ˙ r4Camera + propri-oception 2Payload height error ∆zand rate ˙ zpl 2Camera 3Payload offset (ppl ,xy −p∗
+> xy ), tilt, yaw 4Camera 4End-effector offset (pee ,xy −p∗
+> xy )2Proprioception 5End-effector velocity vee ,xy , ˙ zee 3Proprioception 6Prior command abase
+> t3Controller 7Previous residual ares
+> t−13Controller 8Physical context Leff ,m,wxy 4Measured
+
+TABLE II: Two-stage training schedule. Arrows denote within-stage ramps. Stage 2 adds 0.8 M steps to the Stage 1 checkpoint; delay and loss are introduced through a performance-gated curriculum.                      
+
+> Stage 1 Stage 2 Steps 1.2 M +0.8 M Wind (m/s) 0.5→10 4–8 Cable length (m) 0.50 →0.40–0 .60 0.40–0 .60 Payload mass (kg) 6.15 →5.5–7 .05.5–7 .0Initial XY offset range (mm) 10 →120 120 Frame delay (periods) 0{0,1,2}, ramped Frame loss rate 00→0.5World model Off Online Critic Symmetric Asymmetric
+
+with the payload velocity ˆ vpl ,xy = ˙r + vee ,xy . The swing term uses rctrl = ˆppl ,xy − pref ee ,xy , where pref ee is the end-effector position the prior has commanded so far, not the measured one. Its low-pass mean ¯ rctrl removes quasi-static equilib-rium offsets. Within Gt , horizontal speed is saturated and the vertical target is attenuated by alignment and other descent conditions, then smoothed. These restrictions reduce premature-contact risk. Gains and thresholds are tuned once and fixed across experiments. IV. EXPERIMENTS 
+
+A. Platform and Configuration 
+
+A 200 ×200 ×355 mm block hangs on four cables from the robot end-effector and must seat on four φ 10 mm pins through square sockets. Simulation uses MuJoCo with a KUKA iiwa14 at 10 Hz. The simulator uses the rig’s velocity and acceleration limits and approximates actuation latency by one control period. On the physical platform an ABB IRB 6400 carries the payload with the camera arrangement described in Sec. III-A, and an industrial blower provides the wind disturbance. Fig. 1 shows the full hardware deployment. Simulation and physical-rig settings are summarized in Table III. The cable-length and payload-mass ranges bracket the rig’s nominal 0 .50 m and 6 .15 kg. The cable in L0 is a stiff four-link chain; from L1 it is a ten-link chain with damp-ing and link mass randomised by ±20% and ±10%. Initial payload position offsets, velocities, and tilts are sampled uniformly. Cable length, payload mass, damping, and initial offsets are randomized per episode [23]; physical parameters remain fixed within each episode. Wind is quadratic drag plus an in-episode gust that drifts speed ( ±0.5 m/s or ±15%) and direction ( ±0.35 rad), which are as the extrema likely to be encountered in real-world deployments. Exact sensing is the true state at 10 Hz. From L3, camera-derived actor inputs receive 2% noise; the channel introduces a per-episode delay in {0, 100 , 200 } ms and state bursty loss (rate 0 .5). 
+
+B. Training Details 
+
+Training has two stages (Table II) and follows aperformance-gated curriculum. Stage 1 trains the residual policy on a zero-delay, loss-free channel without the world model, raising the wind ceiling and widening the randomiza-tion of physical parameters and initial payload offset. After the training converges, stage 2 continues policy training, starts online world-model training, introduces the asymmetric critic, and ramps in frame loss and delay. World-model and policy objectives are optimized separately, and PPO gradients do not propagate through the estimator. Both models transfer to the real rig without any real robot data or fine-tuning. For all experiments, we set the Gaussian prediction-loss coefficient to λ = 0.25 and the minimum tail-weight ratio to ρ = 0.15, which are chosen empirically. 
+
+C. Evaluation Metrics 
+
+To evaluate task performance, we report four metrics: (i) the broad success rate SR b, (ii) the strict success rate SR s,(iii) the mean swing angle θs, and (iv) the mean swing energy 
+
+E .An episode is labelled a success when the socket seats on the target and every pin lies within its socket clearance. 
+
+SR b counts any such seating. SR s further requires that the socket never touched a pin before entering. Payload swing is evaluated by the swing angle: 
+
+θs = arcsin (∥r∥/L) (8) and the swing energy about the end-effector: 
+
+E = 12 m∥˙r∥2 + mgL (1 − cos θ ). (9) where considering the horizontal payload offset from the end-effector r, the pendulum length L, the payload mass m
+
+and gravity g.Both quantities are averaged over every control step of every episode, failures included; otherwise a method could improve its reported results by aborting early on hard cases. 
+
+D. Baseline Comparison 
+
+To validate the effectiveness of the proposed method, we compare SwingRL with classical baselines (PID and MPC) and a learning-based baseline (Residual-RL [4]) on the simulation rungs L0–L4 of Table III. The results are shown in Table IV. PID maps Cartesian error to end-effector velocity with fixed gains. MPC plans a finite-horizon command on the nominal cable model. Residual-RL uses the same residual actor–critic structure and base controller as SwingRL, but has TABLE III: Cumulative Difficulty Ladder Configuration. L0–L4 are incremental: each level retains the factors above and changes only the bold entries. L0 is a separate simplified base used to sanity-check the classical controllers. L5 is for the physical platform. Clearance is defined as the difference between the socket radius and the rebar radius.                                                         
+
+> Level Name Cable model Clearance Start perturbation Wind Cable length Payload mass Sensing L0 Simplified 4 links 15 mm ––0.50 m 6.15 kg exact L1 Diverse system 10 links 7.5 mm 120 mm, 0.15 m/s, 2 ◦–0.40–0.60 m 5.5–7.0 kg exact L2 External disturbance 10 links 7.5 mm 120 mm, 0.15 m/s, 2 ◦2–5 m/s, gusts 0.40–0.60 m 5.5–7.0 kg exact L3 Real channels 10 links 7.5 mm 120 mm, 0.15 m/s, 2 ◦2–5 m/s, gusts 0.40–0.60 m 5.5–7.0 kg noisy, delayed, lossy
+> L4 Strong gusts 10 links 7.5 mm 120 mm, 0.15 m/s, 2 ◦4–8 m/s, gusts 0.40–0.60 m 5.5–7.0 kg noisy, delayed, lossy L5 Real case steel cables ≈7.5 mm >120 mm ≈7 m/s 0.50 m 6.15 kg real camera
+
+TABLE IV: Baseline Comparison. Task performance comparison of the proposed method and baselines across difficulty levels, evaluated on the identical 256 randomized episodes at each difficulty level.                                                                                                                       
+
+> Method Metric L0 L1 L2 L3 L4 Simplified Diverse system External disturbance Real channels Strong gusts PID [3] Success rate SR s/SR b(%) 70.7 / 100.0 0.0 / 0.0 0.0 / 0.0 0.0 / 0.8 0.0 / 0.8 Swing angle θs(◦)0.56 13.94 14.22 10.59 10.60 Swing energy E(mJ) 2.3 1116 1123 1359 1345 MPC [8] Success rate SR s/SR b(%) 96.1 / 96.1 0.0 / 0.0 0.0 / 0.0 0.0 / 0.0 0.0 / 0.0 Swing angle θs(◦)0.38 6.25 6.31 3.47 4.03 Swing energy E(mJ) 1.5 362 363 237 283 Residual-RL [4] Success rate SR s/SR b(%) 100.0 /100.0 70.3 / 92.6 57.8 / 82.0 6.2 / 19.9 4.3 / 16.0 Swing angle θs(◦)0.28 1.16 1.42 5.17 5.63 Swing energy E(mJ) 0.4 55 53 1260 1282 SwingRL (ours) Success rate SR s/SR b(%) 100.0 /100.0 96.9 /99.2 89.8 /95.3 89.8 /94.9 69.5 /77.3
+> Swing angle θs(◦)0.25 1.19 1.48 1.47 2.41
+> Swing energy E(mJ) 0.4 42 47 41 51
+
+Fig. 3: Swing Energy Comparison. Swing-energy trajectories in simulation across the five difficulty levels in Table III, from left to right: L0 (simplified), L1 (diverse system), L2 (external disturbance), L3 (real channels), and L4 (strong gusts). Markers indicate the end of the episode. no world model: on a missed frame it retains the most recent observation. On the simplified hoisting system (L0) both learning-based controllers reach 100% success rate and cut mean swing energy to 0 .4 mJ, about 5 times below PID and MPC. Once cable, payload mass and start pose vary (L1), or wind is added (L2), PID and MPC fall to 0% success: their once-tuned gains do not transfer. Residual-RL still generalises well (70 .3% /92 .6% on L1, 57 .8% /82 .0% on L2), so it is the residual correction rather than the world model that handles system-parameter and disturbance diversity. The gap opens at L3–L4, where the camera channel is delayed and lossy. Residual-RL’s SR s drops to 6 .2% and 4 .3%, and E rebounds on par with the failed classical rows. SwingRL stays at 89 .8% strict success from L2 to L3, keeps E ≤ 51 mJ on every rung, and retains 69 .5% /77 .3% under strong gusts (L4). Robustness to intermittent sensing is therefore due to the world model, not the residual architecture alone. Fig. 3 shows the same trend in time for PID, MPC, Residual-RL and SwingRL. PID fails to reduce energy during descent. MPC damps the L0 swing slowly and misses the suppression mark especially once the cable is no longer the design model. Both learning-based policies dissipate energy quickly and monotonically, and much earlier than the classical controllers; SwingRL is the fastest or joint-fastest once sensing is delayed and lossy, which reflects better disturbance-rejection performance. 
+
+E. Ablation Study 
+
+We ablate the residual policy, the Stage-1 curriculum and the world model (Table V). The residual policy substantially improves insertion ro-bustness, while the curriculum is most beneficial under strong gusts. In panel (a) we compare variants on L1–L4 with the same 256 paired episodes as Table IV. w/o residual 
+
+disables residual policy and retains only the prior controller. TABLE V: Ablation Experiments. Ablations of the residual RL, the Stage-1 curriculum, the world model, and the wind band tests. Best value per setting in bold.                                                                                               
+
+> Setting Variant SR s(%) SR b(%) θs(◦)
+> (a) Residual and curriculum – 256 paired episodes L1 (diverse system) ours 96.9 99.2 1.19 w/o residual 64.8 87.9 0.99
+> w/o curriculum 96.1 96.5 1.15 L2 (external disturbance) ours 89.8 95.3 1.48 w/o residual 53.1 78.5 1.30
+> w/o curriculum 85.9 91.0 1.41 L3 (real channels) ours 89.8 94.9 1.47 w/o residual 7.8 25.4 4.17 w/o curriculum 89.1 91.8 1.45
+> L4 (strong gusts) ours 69.5 77.3 2.41 w/o residual 3.5 7.8 4.95 w/o curriculum 58.2 63.3 2.35
+> (b) World model – L4, delayed and lossy sensing, 256 paired episodes
+> d=100 ms, p=0.3ours 69.1 80.5 2.38
+> w/o WM 44.9 66.8 3.61
+> d=100 ms, p=0.5ours 69.9 80.5 2.38
+> w/o WM 10.9 21.1 5.76
+> d=200 ms, p=0.3ours 69.9 79.3 2.40
+> w/o WM 35.5 56.2 4.22
+> d=200 ms, p=0.5ours 69.5 77.0 2.40
+> w/o WM 3.1 8.2 6.79
+> (c) Wind band – L4, 128 paired episodes 0–2 m/s ours 93.8 96.9 1.24 2–4 m/s ours 93.8 97.7 1.43 4–6 m/s ours 78.1 86.7 1.97 6–8 m/s ours 50.8 64.1 2.94
+
+w/o curriculum trains Stage 1 on the endpoint distribution (mean wind uniform on 0–8 m/s, full physical-parameter randomisation) rather than with a curriculum. The prior-only variant drops SR s to 64 .8% /53 .1% on L1–L2 (versus 96 .9% /89 .8%) and to 7 .8% /3.5% on L3–L4. Removing the curriculum barely changes L1–L3 but reduces SR s by 11 .3percentage points on L4. The world model substantially improves robustness under lossy sensing. In panel (b) we compare state-completion strategies on L4 with the same 256-episode draws, varying only the observation delay time d and loss rate p. w/o WM 
+
+disables the world model and holds the newest received observation when facing delayed and lossy sensing; ours rolls that state forward to the current control step. Holding the last frame drops SR s to 44 .9% /35 .5% at p=0.3 (versus 69 .1% /69 .9% at d=100 /200 ms) and to 10 .9% /3.1% at 
+
+p=0.5 (versus 69 .9% /69 .5%). In contrast, SwingRL main-tains approximately 70% strict success across all four delay-loss settings. In panel (c) we keep the L4 setting and vary only the mean-wind band (128 episodes per wind band). Both SR s
+
+and SR b remain high for winds below 6 m/s, with θs rising from 1 .24 ◦ to 2 .94 ◦. Performance holds in light wind and falls once gusts exceed residual authority. 
+
+F. Real-Rig Test and Visualization 
+
+We validate the policy on the physical rig with no fine-tuning (Table VI). The hardware configuration matches the TABLE VI: Real-Rig Test. Insertion success rate on the physical rig. Panel (a) fully applies our method; panel (b) injects additional lossy sensing. Best per setting in bold.                    
+
+> Setting Variant SR (%) Successes
+> (a) Rig channel p≈0.03 (measured) ours 90 18/20
+> w/o WM 80 16/20
+> (b) World model – frame loss injected
+> p≈0.33 (0.3 inj.) ours 85 17/20
+> w/o WM 70 14/20
+> p≈0.53 (0.5 inj.) ours 75 15/20
+> w/o WM 60 12/20
+
+L5 setting of Table III: a 6 .15 kg payload on four 0 .50 m steel cables is lowered onto four 10 mm rebars through 38 mm sockets from 200 mm above the seated pose, with an industrial blower producing approximately 7 m/s wind at the payload. Because RGB-D sensing, visual processing, and action execution are sequential, the physical system has an approximately 100-ms delay between the timestamp of the perceived payload state and the execution of the corresponding control action. Geometric success labels are not available on the real rig; a run succeeds if the operator judges the payload seated within 60 s. Each setting uses 20 trials. p represents the probability of observation loss in the experiment. In panel (a) we evalu-ate the full method. Statistics over the control pipeline give a natural sensing loss probability p≈0.03 which is caused by visual obstructions and computation delay in reality. Without sim-to-real fine-tuning, SwingRL still reaches 90% success (18 /20). In panel (b) we keep the natural sensing loss of the real rig ( p≈0.03) and inject additional bursty frame loss at rates 0 .3 and 0 .5. We also ablate the world model: w/o WM holds the last observation on a missed step. SwingRL stays at 85% (17 /20) and 75% (15 /20), versus 70% (14 /20) and 60% (12 /20) without the world model, a 15-percentage-point improvement in both cases. The results indicate that the policy transfers across the sim-to-real gap; the world-model comparison shows that it also mitigates observation loss on the rig. Figure 4 provides qualitative hardware evidence consistent with the simulated swing-energy trends and anti-swing be-havior. The time-ordered cyan outlines make both the lateral envelope and terminal attitude visible: the sequences of PID, MPC, and residual-RL retain wide and mess motion late in the run, MPC can barely accomplish normal movement with wind disturbances, whereas the SwingRL sequences contract around a nearly vertical pose and finish earlier. Additional visual demonstrations of cable-suspended payload insertion in physical experiments are provided in the accompanying multimedia attachment. V. CONCLUSIONS The results indicate that accurate cable-suspended inser-tion requires addressing both uncertain dynamics and stale feedback. In SwingRL, classical tracking and swing damp-ing provide the nominal control structure, residual learning corrects control errors, and world-model propagation aligns Fig. 4: Motion Visualization. Four runs on the physical rig (rows 1-4: PID, MPC, Residual-RL, SwingRL). Each row shows ten uniformly time-sampled frames; the rightmost column overlays the cyan payload outlines to show the swing envelope, with opacity increasing from the first frame to the last. payload feedback with the current control step. The simula-tion ablations and real-rig tests support the complementary role of predictive state completion under intermittent sensing. 
+
+Limitations and future work. The evaluation uses one insertion geometry and does not establish performance across other geometries. Frame-loss injection tests intermittent feed-back but does not test individual occlusions or camera-count effects. Action bounds and descent gates reduce contact risk but provide no formal safety guarantee. Future work will focus on improving deployment safety and testing on more settings. REFERENCES [1] E. M. Abdel-Rahman, A. H. Nayfeh, and Z. N. Masoud, “Dynamics and control of cranes: A review,” Journal of Vibration and Control ,vol. 9, no. 7, pp. 863–908, 2003. [2] Y. Fang, W. E. Dixon, D. M. Dawson, and E. Zergeroglu, “Nonlinear coupling control laws for an underactuated overhead crane system,” 
+
+IEEE/ASME Transactions on Mechatronics , vol. 8, no. 3, pp. 418–423, 2003. [3] L. Ramli, Z. Mohamed, A. M. Abdullahi, H. I. Jaafar, and I. M. Lazim, “Control strategies for crane systems: A comprehensive review,” 
+
+Mechanical Systems and Signal Processing , vol. 95, pp. 1–23, 2017. [4] T. Johannink, S. Bahl, A. Nair, J. Luo, A. Kumar, M. Loskyll, J. A. Ojea, E. Solowjow, and S. Levine, “Residual reinforcement learning for robot control,” in 2019 international conference on robotics and automation (ICRA) . IEEE, 2019, pp. 6023–6029. [5] D. Ha and J. Schmidhuber, “World models,” arXiv preprint arXiv:1803.10122 , 2018. [6] D. Hafner, T. Lillicrap, I. Fischer, R. Villegas, D. Ha, H. Lee, and J. Davidson, “Learning latent dynamics for planning from pixels,” in Proceedings of the 36th International Conference on Machine Learning (ICML) , ser. Proceedings of Machine Learning Research, vol. 97. PMLR, 2019, pp. 2555–2565. [Online]. Available: https://proceedings.mlr.press/v97/hafner19a.html [7] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse control tasks through world models,” Nature , vol. 640, pp. 647–653, 2025. [8] D. Q. Mayne, J. B. Rawlings, C. V. Rao, and P. O. M. Scokaert, “Constrained model predictive control: Stability and optimality,” Au-tomatica , vol. 36, no. 6, pp. 789–814, 2000. [9] D. Jolevski and O. Bego, “Model predictive control of gantry/bridge crane with anti-sway algorithm,” Journal of Mechanical Science and Technology , vol. 29, no. 2, pp. 827–834, 2015. [10] S. Garrido, M. Abderrahim, A. Gimenez, R. Diez, and C. Balaguer, “Anti-swinging input shaping control of an automatic construction crane,” IEEE Transactions on Automation Science and Engineering ,vol. 5, no. 3, pp. 549–557, 2008. [11] N. Sun, Y. Fang, H. Chen, and B. Lu, “Amplitude-saturated nonlinear output feedback antiswing control for underactuated cranes with double-pendulum cargo dynamics,” IEEE Transactions on Industrial Electronics , vol. 64, no. 3, pp. 2135–2146, 2017. [12] T. Zhang, Y. Yang, J. Li, and X. Luo, “Fractional-order composite sliding mode control for 4-DOF tower crane systems with given-performance,” Automation in Construction , vol. 168, p. 105832, 2024. [13] G. Wang, M. Xin, W. Wu, Z. Liu, and H. Wang, “Learning of long-horizon sparse-reward robotic manipulator tasks with base controllers,” 
+
+IEEE Transactions on Neural Networks and Learning Systems , vol. 35, no. 3, pp. 4072–4081, 2024. [14] X. Lin, Y. Wang, J. Olkin, and D. Held, “SoftGym: Benchmarking deep reinforcement learning for deformable object manipulation,” in Proceedings of the 2020 Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 155. PMLR, 2021, pp. 432–448. [15] J. Matas, S. James, and A. J. Davison, “Sim-to-real reinforcement learning for deformable object manipulation,” in Proceedings of The 2nd Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 87. PMLR, 2018, pp. 734–743. [16] Y. Wu, W. Yan, T. Kurutach, L. Pinto, and P. Abbeel, “Learning to ma-nipulate deformable objects without demonstrations,” in Proceedings of Robotics: Science and Systems , 2020. [17] W. Yan, A. Vangipuram, P. Abbeel, and L. Pinto, “Learning predictive representations for deformable objects using contrastive estimation,” in Proceedings of the 2020 Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 155. PMLR, 2021, pp. 564–574. [18] M. Watter, J. T. Springenberg, J. Boedecker, and M. Riedmiller, “Embed to control: A locally linear latent dynamics model for control from raw images,” in Advances in Neural Information Processing Systems , vol. 28. Curran Associates, Inc., 2015, pp. 2746–2754. [19] T. Ni, B. Eysenbach, and R. Salakhutdinov, “Recurrent model-free RL can be a strong baseline for many POMDPs,” in Proceedings of the 39th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 162. PMLR, 2022, pp. 16 691– 16 723. [20] A. Venkatraman, M. Hebert, and J. Bagnell, “Improving multi-step prediction of learned time series models,” in Proceedings of the AAAI Conference on Artificial Intelligence , vol. 29, no. 1, 2015. [21] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [22] L. Pinto, M. Andrychowicz, P. Welinder, W. Zaremba, and P. Abbeel, “Asymmetric actor critic for image-based robot learning,” in Robotics: Science and Systems (RSS) , 2018. [23] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-real transfer of robotic control with dynamics randomization,” in IEEE International Conference on Robotics and Automation (ICRA) , 2018, pp. 3803–3810.

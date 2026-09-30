@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-29</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-30</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 12 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-29 23:05:43 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-30 23:20:39 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日扫12篇、精读5篇速读7篇，无人机导航与SLAM世界模型成为最高分焦点。</p>
-<p>最值得看的是10.0分《DroneWAM》和9.0分《World SLAM Model》，方向分别指向高效世界行动模型用于无人机视觉导航、以及联合世界建模服务SLAM与导航。</p>
-<p>普通读者可先读这两篇精读，再按兴趣浏览QP策略、微出行导航与多智能体JEPA等速读。</p>
+<p>今日速读 3 篇，聚焦高效 MPC、GNSS 拒止下无人机定位与吊装控制。最值得看自适应 deliberation 的数据驱动 MPC（7.0）和 SwingRL 吊装控制。普通读者可先读 MPC 那篇，再按兴趣选无人机定位或吊装应用。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DroneWAM: Efficient World Action Model for Drone Visual Navigation">DroneWAM: Efficient World Action Model for Drone Visual Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="World SLAM Model: Joint World Modeling for SLAM and Navigation">World SLAM Model: Joint World Modeling for SLAM and Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="ForeFly: A Dual-Horizon World Action Model for Aerial Vision-Language Navigation">ForeFly: A Dual-Horizon World Action Model for Aerial Vision-Language Navigation</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="End-to-end QP-based policies: A unified perspective on robust control and robot learning">End-to-end QP-based policies: A unified perspective on robust control and robot learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Differentiable Dynamics for Autonomous Micro-Mobility Navigation">Differentiable Dynamics for Autonomous Micro-Mobility Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="MA-JEPA: Joint-Embedding World Models for Multi-Agent Reinforcement Learning">MA-JEPA: Joint-Embedding World Models for Multi-Agent Reinforcement Learning</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Think Fast, Plan Selectively: Adaptive Deliberation for Efficient Data-Driven MPC">Think Fast, Plan Selectively: Adaptive Deliberation for Efficient Data-Driven MPC</span></li><li><span class="dpr-home-dashboard-paper-title" title="Large-Scale Geometric Map-Based Localization of UAVs in GNSS-Denied Urban Environments">Large-Scale Geometric Map-Based Localization of UAVs in GNSS-Denied Urban Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control">SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>7</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 </div>
 
