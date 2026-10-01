@@ -1,0 +1,2489 @@
+Title: Amortized Feedback Planning: Turning Model-Based Rollouts into Executable Policies
+
+URL Source: https://arxiv.org/pdf/2609.35012v1
+
+Published Time: Tue, 29 Sep 2026 03:05:43 GMT
+
+Number of Pages: 44
+
+Markdown Content:
+# Amortized Feedback Planning: Turning Model-Based Rollouts into Executable Policies 
+
+# Jeonggyu Huh a
+
+> a
+
+Department of Mathematics, Sungkyunkwan University, Suwon, Republic of Korea 
+
+Abstract 
+
+Closed-loop planning accounts for future observation-dependent actions but can be expensive to repeat at deployment. Bellman-gradient (BG) refinement differentiates conditional rollouts through an existing actor, corrects the current action, and stores the result in an executable policy. A backward sweep reuses deployed future feedback; full-horizon rollouts in an identified Gaussian belief model need no learned value critic. A nonlinear error recursion links quadratic continuation error, local correction, and policy storage. A controlled non-LQG example exhibits second-order policy accuracy with consistent storage, while ideal affine LQG admits exact backward recovery. In nonquadratic thrust, BG reduces actor cost by 2.47–3.20% and remains within 0.13–0.53% of the tested feedback MPC; original policies execute in 5–6 μs in a seed-0 native audit. With matched storage, BG attains competitive plant costs at about one ninth (arm) and one sixtieth (docking) of feedback-teacher-plus-student construction time on one GPU, excluding shared learning and node preparation. Richer common maps substantially narrow some student–BG gaps. These results expose the roles of learned feedback, local correction, and storage in executable control. 
+
+Key words: Stochastic control; model-based control; policy improvement; nonlinear control; optimal control; learning systems. 
+
+1 Introduction 
+
+Future information matters only through decisions that can respond to it. A controller purchasing an observa-tion must anticipate how that observation changes later actions. Optimizing a fixed future action sequence omits this response, even if the controller replans after every measurement. This distinction between open-loop feed-back (OLF) execution and closed-loop optimization is central to dual control (Bar-Shalom and Tse, 1974; Mes-bah, 2018). Optimizing future feedback rules accounts for that re-sponse but enlarges the decision problem. Our question is whether a trained actor can supply the future feedback structure while a smaller calculation adds local precision. Instead of repeatedly optimizing all future feedback pa-rameters, we differentiate conditional rollouts through an available continuation policy and correct only the cur-rent action. Backward construction then uses the poli-cies already corrected at later dates. Regression stores these local decisions so that deployment requires a belief update and one policy evaluation. This division of work has three parts: learning supplies 
+
+Email address: jghuh@skku.edu (Jeonggyu Huh). 
+
+broad feedback, model derivatives supply local action precision, and regression makes the result reusable. We call the local refinement Bellman-gradient (BG) correc-tion. The base actor is trained by direct policy optimiza-tion (DPO), meaning policy search through simulated dynamics, unrelated to direct preference optimization. The pipeline is 
+
+(Y, C, u ) fit 
+
+−→ θ DPO 
+
+−−−→ π0 BG+storage 
+
+−−−−−−−−→ ¯π. (1.1) The model and actor are frozen during refinement. Con-ditional rollouts retain both the observation response and the state dependence of future actions; no fitted cost-to-go function is needed in the full-horizon construction. Figure 1 compares BG with feedback-MPC distillation under common map classes and fitting rules. Richer maps narrow several student–BG cost gaps; BG needs less additional construction in the tested arm and docking implementations. Target generation and BG’s rebuilt continuation still differ, so this is not an isolated target-quality comparison. Online Supplement Table S6 audits matched-map execution; Figure 2 separately shows the original task-section policies. Our central result is a nonlinear error recursion for the stored policies. Optimal-action stationarity makes 
+
+Preprint 29 September 2026 arXiv:2609.35012v1 [math.OC] 28 Sep 2026 −0.004 0.000 0.004 
+
+> Student - BG plant cost
+> Mild Anisotropic
+
+(a) Thrust   
+
+> 0.00 0.02 0.04
+> Student - BG plant cost
+> Eval. 1 Eval. 2
+
+(b) Robot arm   
+
+> 0.00 0.03 0.06
+> Student - BG plant cost
+> Regular Late noise
+
+(c) Docking     
+
+> 310 30 100 300
+> Seconds per seed (log scale)
+> Arm Docking regular Docking late noise
+
+Backward BG vs feedback-MPC distillation 
+
+> Common storage protocols; positive gap favors BG; task axes have di ff erent scales
+
+(d) Additional o ffl ine policy construction, same RTX 4070 SUPER    
+
+> Eight trained seeds. Shared learning/node preparation excluded. Native execution times are reported in Table S6.
+> Compact map Rich map
+> Backward BG Feedback teacher + student fi t
+
+Fig. 1. BG versus feedback-MPC distillation with matched storage. (a–c) Paired student-minus-BG plant-cost gaps: positive favors BG; whiskers are exploratory 95% t intervals over eight seeds. Open/filled markers use compact/rich maps; arm panels reuse the same seeds. (d) Additional construction on one RTX 4070 SUPER, excluding shared model/actor learning and node preparation. Thrust totals used different GPUs and are omitted. Section 6.4 and Table 5 give protocols; Online Supplement Table S6 audits native execution. 
+
+continuation errors quadratic in future-policy error; a polynomial–kernel storage operator connects node cor-rections to feedback accuracy, with explicit derivative, safeguard and fixed-ridge terms. Ideal affine LQG gives exact backward recovery and a separate frozen-tail re-finement reference. A controlled non-LQG experiment tests the local accuracy regime; scalar docking diag-noses precision lost in regression. These small structured tasks assess capacity, construction cost, latency and the remaining planner gap. Sections 3–5 give the model, method and guarantees; Section 6 evaluates the controllers. Complete proofs and the controlled accuracy example are in Technical Ap-pendix A–E. Protocols, storage comparisons, computa-tional audits and scalar DP are in Online Supplement S1–S6; lettered and S-prefixed references distinguish the two. 
+
+2 Related work and positioning Policy learning and explicit control. Explicit MPC moves optimization offline (Bemporad et al., 2002); learned approximate MPC fits executable policies under suitable validation conditions (Hertneck et al., 2018). Differentiable predictive control learns through model rollouts, including stochastic closed-loop objec-tives without MPC supervision (Drgoňa et al., 2022a,b). BG adds current-action refinement to such a base actor, rather than globally retraining its parameters. 
+
+Rollout improvement and storage. Newton inter-pretations of policy improvement are established (Put-erman and Brumelle, 1979; Bertsekas, 2022); Kleinman and Hewer connect LQ policy iteration to algebraic Riccati solvers (Kleinman, 1968; Hewer, 1971). For dis-counted stationary problems, Santos and Rust (2004) establish local quadratic convergence to a discretized Bellman fixed point with piecewise-linear interpolation. Finite-horizon performance iteration learns current policies through fitted future feedback with sampling and approximation bounds (Huré et al., 2021). Our re-sult instead tracks one backward sweep of local action corrections and actual storage in a weighted C2 pol-icy norm, combining quadratic continuation error with 2derivative, safeguard and polynomial–kernel storage terms, including fixed-ridge bias. Guided policy search learns from optimized trajectories or actions (Levine and Koltun, 2013, 2014; Zhang et al., 2016); POPLIN guides online planning with policies (Wang and Ba, 2020). Our matched-storage comparison uses restricted feedback-MPC teachers. 
+
+Conditional derivatives and learned models. 
+
+Stochastic value gradients differentiate simulated re-turns (Heess et al., 2015). Belief-space DDP updates local quadratic values and affine feedback around a trajectory (van den Berg et al., 2017); BG differenti-ates full conditional rollouts through stored feedback and regresses current-action targets across belief nodes. Dreamer learns actors and values from imagined tra-jectories, while TD-MPC combines short planning with learned terminal values (Hafner et al., 2020, 2025; Hansen et al., 2022, 2024). Jeon et al. (2026) recover constrained portfolio actions using fixed-latent open-loop BPTT adjoints and a generalized Hamiltonian. BG retains future feedback state derivatives and corrects against deployed continuation, storing policies back-ward in learned observation-based control. Structured Gaussian identification relates to DeepState and latent control models (Rangapuram et al., 2018; Watter et al., 2015; Tian et al., 2023); our Gaussian inference requires explicit information closure (Särkkä and Svensson, 2023). 
+
+3 Learning a Gaussian belief model 
+
+The identified model supplies conditional rollouts; the data-generating system is the plant. Fitted-model and plant costs are distinct throughout. 
+
+3.1 Dynamics and information closure 
+
+At dates t = 0 , . . . , T , let Xt ∈ Rd be latent state, Yt+1 ∈
+
+Rm the next observation, Ct observed predictors and recurrent memory, and Wt observed task variables. The controller chooses ut using history Ft before the next observation arrives. With coefficients evaluated at the known (Ct, u t), the fitted model is 
+
+Xt+1 = AtXt + at + LtξXt+1 ,Yt+1 = HtXt+1 + Dtνt+1 . (3.1) Fresh standard Gaussian noises are mutually indepen-dent and independent of the past, the initial conditional state is Gaussian, and DtD⊤ 
+
+> t
+
+≻ 0. Neural coefficient maps permit predictor-dependent dynamics. Thrust changes drift; sensing power changes observation vari-ance. 
+
+Assumption 3.1 (Predictor information closure) . The predictor update is specified by 
+
+Ct+1 = Γ t(Ct, Y t+1 , ζ t+1 ), (3.2) where fresh ζt+1 has a specified law independent of 
+
+Ft, the latent state and model noises. Conditional on 
+
+Ft, Y t+1 , the new predictor supplies no additional un-modeled latent observation. The state Ct includes any required memory. Action-dependent updates use the corresponding exten-sion. Additional latent information must enter the like-lihood; an arbitrary encoder does not ensure closure. 
+
+Proposition 3.2 (Gaussian closure) . Under Assump-tion 3.1 and the preceding noise and initial-state assump-tions, Xt | F t is Gaussian. Its mean mt and covariance 
+
+Pt follow the Kalman recursions (A.4)–(A.8) in Techni-cal Appendix A.1. That appendix gives the conditioning proof and stan-dard formulas. Innovation likelihood identifies parame-ters by differentiating through the filter and recurrent state (Ljung, 1999; Särkkä and Svensson, 2023). Param-eters are then frozen. The fitted covariance does not rep-resent parameter uncertainty or misspecification. 
+
+3.2 Conditional simulation and decision state 
+
+Joint rollouts draw the latent state from N (mt, P t),propagate fitted dynamics and observations, and ap-ply the same observation to filtering, task updates and costs. The equivalent innovation sampler is (A.11)– (A.12). Unknown future predictors require a causal model; thrust uses a deterministic schedule, and the arm a fixed goal. One-step Gaussian closure does not require a jointly Gaussian path. The task update and information state are 
+
+Wt+1 = Ψ t(Wt, C t, u t, Y t+1 ), (3.3) 
+
+st = ( Wt, C t, m t, vech( Pt)) , (3.4) 
+
+st+1 = Tθ,t (st, u t, ω t+1 ), (3.5) where ω has a state-independent base law. The belief di-mension is d + d(d + 1) /2; task state and predictor mem-ory add dimensions. Deterministic action-independent coefficient schedules can make Pt a known function of time. 
+
+Nonlinear extension. The arm uses Xt+1 =
+
+Fθ (Xt, u t) + Lθ ξXt+1 , linear noisy observations, and an EKF. It predicts m− 
+
+> t+1
+
+= Fθ (mt, u t) and P − 
+
+> t+1
+
+=
+
+JtPtJ⊤ 
+
+> t
+
++Lθ L⊤ 
+
+> θ
+
+, where Jt = DxFθ (mt, u t). Its likelihood and Gaussian posterior are approximate. Conditional 3rollouts restart from the fitted Gaussian and use the differentiable EKF. Restart and filtering errors supple-ment parameter error; Proposition 3.2 does not certify this extension. 
+
+4 Model-grounded policy correction 
+
+The baseline supplies feedback, local derivatives refine current actions, and regression stores them. The future observation response is retained in all conditional roll-outs. 
+
+4.1 Conditional derivatives with a fixed future policy 
+
+Use the cost-minimization convention 
+
+Jθ (π; s0) = Eπθ
+
+"T −1X
+
+> t=0
+
+ℓt(st, u t, ω t+1 ) + Φ( sT ) s0
+
+#
+
+.
+
+(4.1) Here ut = πt(st) ∈ U t(st). Revealed costs must enter the information state. Hidden-state scores in our tasks are evaluator-only; training samples them inside the fitted model. For example, Φ( sT ) = Eθ [ϕ(XT ) | sT ] for hid-den terminal score ϕ, with analogous stage expectations. DPO differentiates full simulated costs through belief dynamics to train π0, without assuming global optimal-ity. Define 
+
+V 0 
+
+> t
+
+(s) = Jθ (π0; t, s ), V 0 
+
+> T
+
+= Φ , (4.2) 
+
+Q0 
+
+> t
+
+(s, u ) = E ℓt(s, u, ω ) + V 0
+
+> t+1
+
+(Tθ,t (s, u, ω ))  . (4.3) The cost-to-go satisfies V 0 
+
+> t
+
+(s) = Q0 
+
+> t
+
+(s, π 0 
+
+> t
+
+(s)) . Complete conditional rollouts evaluate these functions without a learned critic. At a correction date t, choose an admissible future feed-back sequence ρt+1: T −1 and define 
+
+Qρt (s, u ) = Eθ [ℓt(s, u, ω ) + V ρt+1 (Tθ,t (s, u, ω ))] . (4.4) The continuation ρ is the baseline tail for static BG and the completed deployed tail ¯πt+1: T −1 for backward BG. Both anchor at u0 = π0 
+
+> t
+
+(s). Future coefficients are fixed while their dependence on state inputs remains active. Let Gt contain the fitted model, baseline, correction nodes and completed future maps before the current date’s derivative samples are drawn. Conditional on Gt,fresh base-noise units have the declared law, indepen-dent of the variable current action. Let C ρt (s, u, ω t+1: T )
+
+be the complete sampled cost with current action u and continuation ρ. This specifies the conditioning for the pathwise statement (Heess et al., 2015). 
+
+Proposition 4.1 (Conditional closed-loop return derivatives) . Condition on Gt, so that (s, u 0, ρ ) and the fitted model are fixed. Suppose the base-noise law is independent of u and, on an open neighborhood U of 
+
+u0, C ρt is almost surely C2 in u, with 
+
+E
+
+
+
+sup 
+
+> u∈U
+
+|C ρt | + ∥∇ uC ρt ∥ + ∇2
+
+> uu
+
+C ρt F Gt
+
+
+
+< ∞.
+
+Use smooth local coordinates for any differentiated positive-definite covariances. Then 
+
+gt = ∇uQρt (s, u 0) = E[∇uC ρt | G t],Bt = ∇2
+
+> uu
+
+Qρt (s, u 0) = E[∇2
+
+> uu
+
+C ρt | G t]. (4.5) Averages over fresh conditionally independent rollout units are unbiased for these derivatives conditional on 
+
+Gt.Technical Appendix A.2 proves the interchange. BPTT retains future-action and filter state dependence, freez-ing parameters and base noise; it does not differentiate policy construction. Unbiasedness conditions on Gt be-fore current samples, not on maps selected using those samples. 
+
+4.2 Local correction and acceptance 
+
+Fix the continuation ρ declared in (4.4). Write gt, B t for its current-action gradient and Hessian at u0 = π0 
+
+> t
+
+(s),suppressing ρ in these two symbols. For a positive-definite action metric Mt, a shift λt ≥ 0 gives 
+
+eBt = Bt + λtMt ≻ 0,dt = arg min  
+
+> d:u0+d∈U t(s)
+
+{g⊤ 
+
+> t
+
+d + 12 d⊤ eBtd}. (4.6) For unrestricted actions the solution is 
+
+dt = − eB−1 
+
+> t
+
+gt. (4.7) Estimated Hessians are symmetrized. Thrust floors eigenvalues at 0.01 and caps displacements at norm 2. This Euclidean radial safeguard is not the norm-constrained metric-QP solution. Rejection returns u0;numerical failure stops construction. A proposed action takes the form 
+
+uprop  
+
+> t
+
+= u0 + αtdt, 0 ≤ αt ≤ 1. (4.8) For this same fixed continuation, exact backtracking can enforce 
+
+Qρt (s, u 0 + αtdt) ≤ Q ρt (s, u 0) + cα tg⊤ 
+
+> t
+
+dt,c ∈ (0 , 1) .
+
+(4.9) The implementation instead accepts one safeguarded proposal only if separate paired Monte Carlo rollouts 4give lower estimated cost. Both actions share the same tail and comparison noise, independent of derivative noise (thrust: 128 derivative, 256 acceptance paths). This zero-margin check differs from Armijo sufficient decrease; its error enters the comparison bounds. 
+
+4.3 Backward policy construction on sampled belief nodes 
+
+Sample dated belief nodes St = {st,i }Ni=1 from fitted-model baseline trajectories with declared mean pertur-bations. Descending in time, correct π0 
+
+> t
+
+(st,i ) through the chosen fixed tail. Given accepted targets vt,i (baseline after rejection), store 
+
+bft = Fit t
+
+ {(st,i , v t,i )}Ni=1 ; Pt, Lt
+
+. (4.10) Here Pt is the map class and Lt its loss and selection rule. Date-specific residual maps reuse the actor; op-tional cross-validation selects using targets only. Fitting before a nonlinear action transform can differ from fit-ting executed actions (Online Supplement S2). In the nonquadratic experiment, the executed policy also limits extrapolation relative to the baseline: 
+
+¯πt(s) = π0 
+
+> t
+
+(s) + Cr ( bft(s) − π0 
+
+> t
+
+(s)) ,
+
+Cr (d) = d min {1, r/ ∥d∥} , r = 2 . (4.11) with Cr (0) = 0 . Acceptance precedes regression, so tar-gets and executed actions may differ. The cap bounds displacement, not cost. Action constraints require a fea-sible parameterization or projection, included in the de-ployed tail. Backward reuse of fitted policies relates to performance iteration (Huré et al., 2021); here condi-tional simulation evaluates continuation cost. 
+
+Regularity and deployment. Hard caps are piece-wise smooth, so pathwise automatic differentiation need not estimate the population Hessian without bias. Reg-ularized curvature can instead serve as a metric under Proposition 5.5, without asserting Newton convergence. Technical Appendix D.1 gives a boundary-term example and Lemma D.1 a smooth alternative. The cost identi-ties permit nonsmooth policies under integrability, with acceptance and storage errors retained. Algorithm 1 uses actual deployed future maps throughout. With N nodes per date and M rollout paths per node (derivative and acceptance combined), the backward sweep requires approximately 
+
+N M  
+
+> T−1
+
+X
+
+> t=0
+
+(T − t) = O(N M T 2) (4.12) 
+
+Algorithm 1 Backward BG policy construction  
+
+> 1:
+
+Fit and freeze the belief model; train baseline π0. 
+
+> 2:
+
+Sample dated nodes from fitted-model baseline paths.  
+
+> 3:
+
+for t = T − 1, . . . , 0 do  
+
+> 4:
+
+Fix deployed tail ρ = ¯ πt+1: T −1; retain its state derivatives, including deployment transforms.  
+
+> 5:
+
+for each node st,i do  
+
+> 6:
+
+Estimate current-action derivatives around 
+
+π0 
+
+> t
+
+(st,i ) with fresh conditional rollouts.  
+
+> 7:
+
+Safeguard the proposal; compare it with the baseline on separate paired rollouts using the same tail.  
+
+> 8:
+
+Accept the target or retain the baseline; stop and report numerical failures.  
+
+> 9:
+
+end for  
+
+> 10:
+
+Fit and, where specified, target-validate the physical-action map ¯πt, including its safeguard.  
+
+> 11:
+
+end for  
+
+> 12:
+
+Freeze and evaluate on held-out episodes.  
+
+> 13:
+
+Deploy by updating the belief and evaluating ¯πt.model steps before differentiation, cross-validation, and regression overhead; dense Hessian work also depends on action dimension. Deployment uses only filtering and policy features, but richer fitted maps increase storage and action latency. Total cost therefore includes DPO, correction, map fitting, and deployment volume, whereas independent MPC requires no DPO training. Model fitting, construction, and testing use separate data and random streams; held-out evaluation measures transfer beyond the sampled nodes. 
+
+5 Guarantees and evaluation criteria 
+
+All results condition on the fitted model. The nonlinear recursion connects continuation, correction and storage; affine LQG supplies exact references. 
+
+5.1 Backward improvement and deployment error 
+
+Condition on the completed construction: ¯π is fixed and evaluation trajectories are fresh. With ¯Vt = V ¯πt , define 
+
+¯Qt(s, u ) = Eθ [ℓt(s, u, ω ) + ¯Vt+1 (Tθ,t (s, u, ω ))] ,dback  
+
+> t
+
+(s) = ¯Qt(s, ¯πt(s)) − ¯Qt(s, π 0 
+
+> t
+
+(s)) . (5.1) Both actions use the same actual corrected tail. Set 
+
+π[t] = ( π00 , . . . , π 0
+
+> t−1
+
+, ¯πt, . . . , ¯πT −1), t = 0 , . . . , T. 
+
+(5.2) 
+
+Theorem 5.1 (Backward policy comparison) . Let π0, ¯π
+
+be measurable admissible policies with the same initial 5state and terminal cost. If the hybrid-policy costs and the following defects are integrable, then 
+
+Jθ (¯ π; s0) − Jθ (π0; s0) = Eπ0 
+
+> θT−1
+
+X
+
+> t=0
+
+dback  
+
+> t
+
+(st). (5.3) If dback  
+
+> t
+
+≤ bt almost surely under the baseline state laws, then 
+
+Jθ (¯ π; s0) − Jθ (π0; s0) ≤ Eπ0 
+
+> θT−1
+
+X
+
+> t=0
+
+bt(st). (5.4) In particular, nonpositive defects imply nominal cost nonincrease. 
+
+Proof. Adjacent hybrids share the baseline prefix and corrected tail. Conditioning on their common state st
+
+gives Jθ (π[t]; s0) − Jθ (π[t+1] ; s0) = Eπ0 
+
+> θ
+
+dback  
+
+> t
+
+(st). Sum over t: π[0] = ¯ π, π[T ] = π0, and the costs telescope. The baseline visitation law matches the construction nodes, but finite-node diagnostics do not certify the de-ployed policy. 
+
+Corollary 5.2 (Acceptance and interpolation defect) .
+
+At states almost surely under the baseline laws, let a target rule return the baseline or accept at(s) using the actual corrected tail, with indicator It(s). At an accepted pair assume absolute action-value approximation errors at most εt(s) and 
+
+b¯Qt(s, a t) − b¯Qt(s, π 0 
+
+> t
+
+(s)) ≤ − ηt(s), ηt(s) ≥ 0.
+
+If ¯Qt(s, ·) is LQt (s)-Lipschitz between the target and de-ployed action, and eint  
+
+> t
+
+= ∥¯πt − at∥, then 
+
+dback  
+
+> t
+
+≤ It(2 εt − ηt) + LQt eint  
+
+> t
+
+. (5.5) When integrable, this is a budget in (5.4). The two accepted-pair errors contribute 2εt, rejection gives zero target defect, and the Lipschitz bound con-trols storage. Full proofs and baseline-continuation re-sults are in Technical Appendix A.4 and A.3 (Proposi-tion A.1, Theorem A.2, Corollary A.3). Regression and caps may alter targets without renewed acceptance at unseen states; fresh closed-loop tests evaluate improve-ment. 
+
+5.2 Nonlinear backward accuracy 
+
+Write π⋆ = πθ,⋆ and, for v ≥ 1, define 
+
+∥f ∥2,v =
+
+> 2
+
+X
+
+> k=0
+
+1
+
+k! sup 
+
+> s
+
+Dkf (s)
+
+v(s) . (5.6) Set Et = ∥¯πt − π⋆t ∥2,v t . Let ϵ0 
+
+> t
+
+be the maximum baseline action error relative to π⋆t on construction nodes. State derivatives enter because earlier rollouts differentiate fu-ture feedback. 
+
+Regularity and storage assumptions. Fix asmooth policy class containing the stored maps and an interior optimum, with integrable envelopes permitting differentiation under expectations. Put 
+
+Hρt,α (s) = Q⋆t,uu (s, π ⋆t (s) + α(ρt(s) − π⋆t (s))) . For weights wt ≥ χtv2 
+
+> t
+
+, assume uniformly over this class and 
+
+α ∈ [0 , 1] that 
+
+Hρt,α 2,χ t
+
+≤ L⋆t ,
+
+∥Pρt f ∥2,w t ≤ Ctr  
+
+> t
+
+∥f ∥2,w t+1 . (5.7) Here Pρt is the one-step expectation operator under policy ρ. Finite weighted moments of transition deriva-tives also bound the action gradient and Hessian of 
+
+Ef (Tθ,t (si, u, ω )) by Γg,t ∥f ∥2,w t+1 and ΓH,t ∥f ∥2,w t+1 
+
+on node action balls. The explicit moment conditions in Technical Appendix C.1 allow unbounded states with suitable growth envelopes. On each radius-rB,t ball about π⋆t (si), assume 2μtI ⪯
+
+Q⋆t,uu ⪯ L∗,t I and a Lipschitz actual-tail Hessian. The used matrix satisfies bBt ⪰ bmtI; its Hessian, gradi-ent and solve residual errors relative to that tail are 
+
+δH,t , δ g,t , δ lin ,t. Proposal shaping changes the raw step by at most ηnode ,t. A paired acceptance difference has absolute error at most τt. Finally, storage must satisfy 
+
+Et ≤ sreg  
+
+> t
+
+bt + F reg  
+
+> t
+
++ ηdep ,t. (5.8) Here bt bounds node-target error, sreg  
+
+> t
+
+is storage stabil-ity, F reg  
+
+> t
+
+includes approximation and regularization bias, and ηdep ,t bounds the deployment-transform error in the norm (5.6). Equation (C.8) derives this bound for the polynomial–kernel map, including its intermediate cap and arithmetic error. Node MSE alone does not control derivatives or off-node approximation. 
+
+Theorem 5.3 (Nonlinear stored-policy error recursion) .
+
+Under the preceding assumptions, fix a finite horizon and impose the local radius checks stated below. There are finite nonnegative constants such that 
+
+Et ≤ AN 
+
+> t
+
+(ϵ0 
+
+> t
+
+)2 + X
+
+> j>t
+
+Btail  
+
+> tj
+
+E2 
+
+> j
+
++ F reg  
+
+> t
+
++ ηdep ,t
+
++ Cerr  
+
+> t
+
+(δH,t ϵ0 
+
+> t
+
++ δg,t + δlin ,t + ηnode ,t + √τt).
+
+(5.9) Future errors concern the actual stored and deployed policies. 6Proof. Continuation. For a tail ρ, put ht = ρt − π⋆t and 
+
+Dt = V ρt −V ⋆t . Optimal-action stationarity and Taylor’s formula give 
+
+Aρt (s) := Q⋆t (s, ρ t(s)) − V ⋆t (s)=
+
+Z 10
+
+(1 − α)ht(s)⊤Hρt,α (s)ht(s) dα. 
+
+The weighted product bound makes its C2 norm at most 
+
+L⋆t ∥ht∥22,v t /2. The Bellman difference Dt = Q⋆t (·, ρ t) −
+
+V ⋆t + Pρt Dt+1 , DT = 0 , therefore yields, with ρ>t = ¯ π>t ,
+
+∥Dt+1 ∥2,w t+1 ≤ R t = X
+
+> j>t
+
+L⋆j
+
+2
+
+ j−1Y
+
+> k=t+1
+
+Ctr 
+
+> k
+
+
+
+E2 
+
+> j
+
+. (5.10) The action-gradient and Hessian discrepancies are at most Γg,t Rt and ΓH,t Rt.
+
+Correction and acceptance. Suppress t and set q =
+
+Qρt (si, ·), u∗ = π⋆t (si). If ΓH Rt ≤ μ, then μI ⪯ q′′ ⪯ LI 
+
+on the ball, where L = L∗ + Γ H Rt. Taylor expan-sion bounds the raw Newton proposal n = u0 + d by 
+
+∥n − u∗∥ ≤ bN , where 
+
+bN = Lh(ϵ0)2/2 + δH ϵ0 + δg + δlin + Γ g Rt
+
+bm , (5.11) where Lh is the Hessian Lipschitz constant. The shaped proposal p has error at most bN + ηnode . If Γg Rt < μr B ,the local minimizer xρ is interior and ∥xρ − u∗∥ ≤ c =Γg Rt/μ . The paired comparison accepts p when b∆ < 0
+
+and otherwise returns u0. For u0, p in the ball, the re-sulting label y satisfies q(y) ≤ q(p) + τ , including rejec-tion. With κ = pL/μ , strong convexity and smoothness imply 
+
+∥y − u∗∥ ≤ b = κ(bN + ηnode ) + ( κ + 1) c + p2τ /μ. 
+
+Storage and closure. Substitute this target bound into (5.8), then substitute (5.10). Collect coefficients to ob-tain (5.9); Technical Appendix C.2–C.3 gives constants and storage algebra. Prescribe envelopes and radii Et be-fore construction. Descending in time, insert later radii in Rt, check the curvature/interiority conditions and 
+
+ϵ0 
+
+> t
+
+, b N,t + ηnode ,t ≤ rB,t , and require the explicit stor-age bound to be at most Et, preserving the envelopes. This verifies the local regime in the norm used at earlier dates. 
+
+Corollary 5.4 (A consistent second-order regime) . Un-der Theorem 5.3, let the constants and inverse-curvature margins be uniform as ϵ → 0, preserve the regularity class, and assume ϵ0 
+
+> t
+
+= O(ϵ). If δH,t = O(ϵ), τt = O(ϵ4),and 
+
+δg,t + δlin ,t + ηnode ,t + F reg  
+
+> t
+
++ ηdep ,t = O(ϵ2),
+
+then Et = O(ϵ2) at every date for sufficiently small ϵ
+
+within the local regime. 
+
+Proof. At T −1, RT −1 = 0 gives ET −1 = O(ϵ2). Second-order future errors make (5.10) fourth order, so back-ward induction gives the same current-policy rate. The same weighted advantage and transition bounds yield 0 ≤ Jθ (¯ π; s0) − Jθ (π⋆; s0) = O(ϵ4) after one com-plete backward sweep at each fixed s0. This is a nomi-nal value-accuracy result, not an unconditional improve-ment claim or a rate for the learned controllers. Hard-cap crossings can violate derivative regularity; the smooth-cap bound is (D.5). Acceptance margins can replace the sufficient τt = O(ϵ4) allocation; see (C.6) and Technical Appendix C.2. 
+
+Storage consistency. Fixed direct-action ridge need not reproduce an optimal baseline (Proposition C.2); its consistency defect does not estimate experimental cost loss. The sufficient representation and ridge scal-ing in (C.11) are not certified by fixed budgets. Reduc-ing ridge can amplify finite-sample target noise. Since optimal-policy error ϵ is unobserved, these rates describe a sufficient regime rather than an implemented tuning rule; a node-correction-magnitude proxy is possible but untested and does not certify the regime. Section 6.4 measures storage capacity empirically. 
+
+Controlled non-LQG evidence. Table 1 shows second-order residual storage with decreasing ridge, first-order error with fixed residual ridge, and a fixed-direct-ridge floor. The two-decision test uses a fixed smooth perturbation represented in the residual dictio-nary and the actual smooth stored tail; its decreasing-ridge continuation-gradient order is 3.970. These sam-pled local orders use bounded intervals (Technical Appendix E).                      
+
+> Table 1 Sampled weighted C2policy-error orders, ϵ:0.0125 →
+> 0.00625 . Direct storage includes a reference-policy feature. Storage Date 0 Date 1 Residual, λ=ϵ1.993 1.983 Residual, λ= 0 .05 1.033 0.982 Direct, λ= 0 .01 −0.0001 −0.010
+
+75.3 Local action correction and alignment 
+
+Proposition 5.5 (Inexact metric correction) . Fix a continuation ρ and q(u) = Qρt (s, u ) with L∇-Lipschitz gradient on a convex neighborhood of the feasible segment [u0, u 0 + d]. For symmetric M ≻ 0 and 
+
+bg − ∇ q(u0) ≤ δ, put 
+
+ξ = max {0, bg⊤d + 12 d⊤Md}. (5.12) For α ∈ [0 , 1] , q(u0 + αd ) − q(u0) ≤ bmet (α), where 
+
+bmet (α) = α(ξ − 12 d⊤Md + δ ∥d∥)+ 12 L∇α2 ∥d∥2 . (5.13) If d̸ = 0 and ξ + δ ∥d∥ < d ⊤Md/ 2, small positive α gives strict descent. Thus positive metrics can support descent without esti-mating the population Hessian. Feasible metric-QP and radially shortened unconstrained steps have ξ = 0 ; fur-ther projection may not. 
+
+Proposition 5.6 (Action alignment) . Let U be nonempty, closed and convex, q⋆ = Qθ,⋆ t (s, ·) be μ-strongly convex with minimizer u⋆θ , and q⋆, q ρ = Qρt (s, ·)
+
+have differentiable neighborhood extensions. For feasi-ble v, put ερ
+
+> cont
+
+(v) = ∥∇ qρ(v) − ∇ q⋆(v)∥ and 
+
+rρ(v) = dist(0 , ∇qρ(v) + NU (v)) , (5.14) where NU (v) is the convex normal cone. Then 
+
+∥v − u⋆θ ∥ ≤ (rρ(v) + ερ
+
+> cont
+
+(v)) /μ. (5.15) No convexity of qρ is required. The bound uses the population residual after storage and safeguards. Exact selected-tail minimization may retain continuation error. Technical Appendix A.5 and A.2 give both proofs and the deployment and continuation iden-tities (A.22) and (A.14). 
+
+5.4 Affine LQG as an exact reference 
+
+For a known deterministic context schedule, take 
+
+Xt+1 = AX t + Bu t + bt + Lξ Xt+1 ,Yt+1 = HtXt+1 + Dtνt+1 , (5.16) 
+
+ℓt(X, u ) = 12 X⊤Cxt X + 12 u⊤Cut u, (5.17) with Φ( X) = X⊤CxT X/ 2, action-independent noise co-variances, Cxt , C xT ⪰ 0 and Cut ≻ 0. Fitted coefficients define the nominal Riccati reference (B.10); plant coef-ficients define an evaluator-only oracle. 
+
+Proposition 5.7 (Exact backward recovery in fitted affine LQG) . Fix this model, finite horizon and initial co-variance, with finite coefficients and covariances and un-restricted actions. At each date, apply one exact Newton step under the constructed tail from any finite u0 
+
+> t
+
+(m):
+
+vt(m) = u0 
+
+> t
+
+(m) − B−1 
+
+> t
+
+gt, (5.18) where gt, B t are the population action gradient and Hes-sian at (m, u 0 
+
+> t
+
+(m)) . Without damping, curvature modifi-cation or clipping, exact affine storage (or unregularized full-rank affine least squares) yields 
+
+¯πt(m) = −Ktm − kt = uθ,⋆ t (m), t < T, (5.19) for all m after one backward sweep. Exact nonincrease acceptance may be included. 
+
+Proof. The last action value is strictly convex quadratic, so Newton recovers its affine minimizer and exact stor-age preserves it. An optimal future tail gives the same property one date earlier. Induction proves the result; Technical Appendix A.6 supplies details. For a frozen affine baseline tail, Theorem B.1 in Tech-nical Appendix B.1 instead bounds corrected coefficient error by Cδ ϵ2 for initial error ϵ ≤ δ, paralleling classical Newton/policy improvement (Kleinman, 1968; Hewer, 1971; Puterman and Brumelle, 1979; Bertsekas, 2022). Constants need not be uniform in horizon or dimension. Refreshed-tail propagation and realization errors are in (B.9) and Corollary B.2. 
+
+5.5 Model transfer and evaluation 
+
+For plant cost J⋆ of the complete controller, including its fitted filter, suppose |J⋆(πj ) − Jθ (πj )| ≤ ej . These bounds guarantee plant improvement whenever the nominal improvement exceeds e0 + e1. They require separate evidence (Technical Appendix A.7); fitted covariance does not measure parameter uncertainty. Plant cost uses each deployed policy’s own observation history. Action MSE uses common histories and either the fitted optimum or an evaluator-only plant oracle. Policy and model/filter discrepancies have a cross term, so their squared errors are not additive; see (A.28). Con-ditional action diagnostics concern their declared contin-uation and independent rollout noise, and do not replace deployed-policy evaluation (Online Supplement S4.3). 
+
+6 Experiments 
+
+The experiments test inexpensive executable feedback in thrust, active-sensing docking, and a nonlinear arm. 8Each task uses eight models fitted to action–observation data without latent-state labels, with supplied model families and priors. Filtering is exact within fitted thrust/docking models; the arm uses an approximate EKF. Open-loop feedback (OLF) MPC optimizes action se-quences and replans after observations; restricted feed-back MPC (FB-MPC in tables) optimizes future belief-dependent actions. Neither uses DPO/BG initialization or continuation. Costs use paired physical trajectories and each controller’s own belief history. Unless stated otherwise, intervals are exploratory 95% Student-t in-tervals over eight fitted-model seed means. Map fami-lies were developed after earlier diagnostics and selected by fitted-model target actions; fresh episodes reuse the training seeds. Full protocols and solver budgets are in Online Supplement S1. 
+
+Reading the time columns. Timing markers: C de-notes date-zero native medians across eight seed medi-ans on one Ryzen 9 7950X3D thread; C0 denotes seed 0. 
+
+G denotes archived cold-start A6000 PyTorch planners at dates 0, 8, 15 ; P, a seed-0 date-zero docking PyTorch CPU pilot; A, acados CPU execution with panel-specific validation. All exclude filtering, fitting, and construc-tion. Preloading, parity, and audit scopes are detailed in Online Supplement S4. Cross-marker quotients are not algorithmic speedups. 
+
+Online planning and executable feedback. Fig-ure 2 compares costs and available latencies of the orig-inal task policies; Figure 1 gives the separate common-map comparison. 
+
+6.1 Thrust: exact recovery and inexpensive refinement LQG reference 
+
+The thrust model has six latent position/velocity/wind states, two actions and T = 16 . Quadratic costs provide exact fitted Riccati feedback. BG reduces fitted-optimal action MSE by over 99.99%; plant costs match Ric-cati feedback at reported precision, approximately re-alizing Proposition 5.7. The analytic controller remains cheaper and more accurate when available. Online Sup-plement S6 gives the full eight-seed reference panel (Ta-ble S10); identification and training are in Section S1.2. 
+
+Nonquadratic cost and the value of local calculation 
+
+Quartic position and coupled-action penalties remove the Riccati solution. BG stores target-validated maps and rebuilds earlier corrected tails. In Table 2, backward BG lowers DPO cost by 2.47%/3.20%; its advantage over                               
+
+> Table 2 Nonquadratic thrust: eight-seed plant costs; paired cells stack mild above anisotropic. BG uses target-validated maps. Timing: native C(eight seeds), C0(seed 0); A6000 planners
+> G. Fixed-belief acados results have no episode costs (Online Supplement Table S7). Controller Plant cost Action time DPO 1.697575 2.221337 1.407 1.409 μsC
+> DPO+150 1.698865 2.227725 1.448 1.421 μsC
+> Static BG 1.658031 2.156786 5.587 5.385 μsC0
+> Backward BG 1.655677 2.150216 5.820 5.280 μsC0
+> OLF, L-BFGS 1.657344 2.148585 269 .205 305 .617 ms G
+> OLF, CEM 1.657510 2.149064 72 .472 67 .529 ms G
+> FB-MPC 1.653464 2.138939 1826 .580 1771 .013 ms G
+
+the equally enriched static map repeats on fresh paired episodes (Online Supplement S2). BG is within 0.13%/0.53% of tested restricted feedback MPC; paired intervals are in Online Supplement S2. Anisotropic OLF planners remain modestly better; mild OLF contrasts are small. Section 6.4 compares exe-cutable feedback-MPC students under common storage. 
+
+Checking a dedicated native solver. At fixed held-out beliefs, acados solves the same Gaussian-moment objectives. OLF SQP converges; capped feedback SQP reaches its iteration limit. These fixed-belief results sup-ply no closed-loop costs (Online Supplement Table S7). 
+
+6.2 Active-sensing docking 
+
+Docking couples bounded thrust to sensing power that reduces the next position-observation variance. Its three-state Gaussian model tracks position, velocity, and hid-den disturbance over 12 decisions; late noise increases observation noise in the second half. Success imposes terminal position/velocity tolerances. BG fits physical actions and rebuilds earlier corrected tails (Online Sup-plement S1.1). With future thrust fixed during optimization, OLF as-signs no value to sensing and chooses zero power. DPO and BG retain observation-dependent actions; restricted feedback MPC uses tanh-affine belief-mean thrust and a datewise sensing schedule. A validated 128-path acados OLF solver succeeds in all 98,304 calls yet retains the zero-sensing continuation’s poor performance (Table 3). Backward BG reduces DPO cost by 0.03796 /0.06746 
+
+and raises success by 1.22/2.63 points in regular/late-noise docking. The regular cost gain repeats on fresh 91 ¹s 3 ¹s 10 ¹s01234
+
+> Cost gap to feedback MPC (%)
+
+(a) Nonquadratic thrust        
+
+> 0.1 s 1 s 1¹s3¹s10 ¹s
+> ¡2024
+
+(b) Active-sensing docking       
+
+> 0.1 s 1 s
+> off scale: +282 to +447%
+> 1¹s3¹s10 ¹s02468
+
+(c) Two-link arm  
+
+> 0.1 s 1 s
+
+Decision latency after the belief update (log scale) 
+
+> DPO actor Backward BG Feedback MPC OLF-MPC (L-BFGS) OLF-MPC (CEM) mild / regular anisotropic / late noise
+
+Fig. 2. Original task policies: eight-seed plant-cost gaps 100( J/J FB − 1) versus online feedback MPC and available action latencies. Arrows connect DPO to backward BG; filled/open symbols denote mild/anisotropic thrust and regular/late-noise docking. Docking OLF costs are off scale. Timings exclude filtering and follow the task tables’ implementation scopes; their quotients are not algorithmic speedups. Historical students appear in Online Supplement Figure S1; Figure 1 gives the separate common-map comparison. Table 3 Docking: eight-seed means; paired cells stack regular above late noise. BG uses physical-action fits. Timing: native C
+
+(eight seeds), C0 (seed 0); validated acados A; seed-0 CPU planner pilot P.Controller Plant cost Success (%) Action time DPO 0.8603 4.0925 81.35 48.05 1.434 1.366 μsC
+
+DPO+extra 0.8546 4.0849 81.79 48.41 1.493 1.404 μsC
+
+Static BG 0.8249 4.0318 83.13 50.61 1.374 1.399 μsC0
+
+Backward BG 0.8223 4.0250 82.57 50.68 1.389 1.848 μsC0
+
+OLF, L-BFGS 4.5741 15.1212 35.60 26.15 92 .901 97 .753 ms P
+
+OLF, CEM 4.5660 15.1397 36.01 26.10 225 .704 209 .911 ms P
+
+OLF, acados 4.5675 15.1203 35.60 26.07 0.827 0.822 ms A
+
+FB-MPC 0.8357 3.9535 82.42 49.98 855 .195 713 .144 ms P
+
+episodes; the late-noise change is unresolved. Feedback MPC costs 0.01335 [0 .00455 , 0.02215] more than BG in regular docking and 0.07158 [0 .01710 , 0.12606] less under late noise. The fitting loss thus affects the comparison, while DPO already supplies the sensing-dependent con-tinuation missing from OLF (Online Supplement S2). 
+
+Where precision is lost. A scalar companion ad-mits numerical belief-space DP (Online Supplement S5). Backward BG closes 53.9% of the eight-seed DPO-to-DP mean cost gap. Terminal-node targets are nearly opti-mal, but regression loses precision; exact terminal-thrust replacement lowers full-policy cost (Online Supplement Table S9). This identifies a storage bottleneck at those nodes, without attributing all three-state docking error to regression. A second sweep gives no reliable improve-ment. 
+
+6.3 Nonlinear robot arm 
+
+The two-link arm has four latent angle/velocity states, noisy angles, bounded two-dimensional torque, and 16 decisions. Its EKF is approximate. Policies use belief means, covariance diagonals, goal, and time; rollouts re-tain full covariance. Costs combine squared/quartic fin-gertip, velocity, and torque penalties; attainment is a terminal threshold event. Target validation selects resid-ual/Nyström BG maps (Online Supplement S1.4). Backward BG lowers DPO cost by 0.09382 (inter-val [0 .07156 , 0.11609] ) and raises attainment by 10.74 points [8 .65 , 12 .83] (Table 4); fresh episodes with the same model seeds give cost 6.68845 . Static BG attains 3.03 points more often but costs 0.02343 more. BG costs 4.64% more than OLF L-BFGS; feedback MPC lowers BG cost by 5.81%. Thrust’s near-planner performance therefore does not extend to the arm. Same-noise finite differences give refreshed-tail Hessian discrepancy up to 0.0874, not a population-bias esti-mate. With nonsmooth caps, branchwise curvature is in-10 Table 4 Two-link arm: eight-seed plant cost and attainment, 256 paired episodes/seed. BG uses target-validated maps. Tim-ing: date-zero native C (eight seeds, same-process BG audit); archived A6000 planners G.Controller Plant cost Attain. (%) Action time DPO 6.77187 48.49 2.698 μsC                          
+
+> DPO+150 6.74886 49.85 2.734 μsC
+> Static BG 6.70148 62.26 3.659 μsC
+> Backward BG 6.67805 59.23 3.837 μsC
+> OLF, L-BFGS 6.38183 66.06 699 .24 ms G
+> OLF, CEM 6.45990 64.01 100 .14 ms G
+> FB-MPC, K= 0 6.36050 66.11 700 .32 ms G
+> FB-MPC 6.28979 66.02 2703 .97 ms G
+> Native parity and scope: Online Supplement S4.
+
+terpreted as a regularized metric under Proposition 5.5; held-out costs assess the deployed controller. The rich-map student also retains a planner gap (Section 6.4), motivating investigation of shared storage constraints and visitation mismatch alongside BG correction error without identifying their contributions. Online Supple-ment S3.3 gives construction-node teacher-projection and storage diagnostics. 
+
+6.4 Matched policy-storage comparison 
+
+Figure 1 summarizes the main BG–student compari-son. Students store first actions from finite-budget re-stricted feedback-MPC solves at DPO-visited beliefs; on-line MPC instead replans along its own trajectories. His-torical distinct-map results and teacher-budget sweeps are in Online Supplement Tables S1 and S3. We cross backward BG and student construction with compact/rich common map families. Models, DPO actors, visitation nodes, action bounds/transforms, fit-ting loss, map-selection rule, and evaluation paths are matched within each task. BG is rebuilt backward with each map’s stored future policy; only MPC first actions are distilled, with teacher labels shared between stu-dent maps. Thrust/arm validation may select different realized rich features from the common candidate class. This matches storage protocols while retaining different target generators and finite budgets; map changes also alter BG continuations and targets. Historical absolute costs are not paired contrasts with this evaluation. The rich class reduces the student-minus-BG mean cost gap by 59–61% in the two arm streams and 61% in reg-ular docking (Table 5, Figure 1); all three paired gap-change intervals exclude zero. Rich-map arm still fa-vors BG in cost on one stream and attainment on both; regular docking retains a small BG attainment advan-tage. Thrust resolves no method difference in either map,                              
+
+> Table 5 Matched storage: eight-seed plant cost. Thrust uses rebuilt maps and 512 episodes/seed, distinct from Table 2’s 256-episode panel. Arm Eval. 1/2 are archived streams 12/22 on the same seeds. Figure 1 and Online Supplement S3.3 give paired contrasts. Compact map Rich map Task / condition BG Student BG Student Thrust, mild 1.629484 1.629304 1.627984 1.627820 Thrust, aniso. 2.086755 2.087783 2.083432 2.084063 Arm, Eval. 1 6.714405 6.737905 6.678051 6.687144 Arm, Eval. 2 6.717764 6.744071 6.688447 6.699184 Docking, regular 0.822330 0.828730 0.818491 0.820978 Docking, late 4.025040 4.050587 4.027685 4.059673
+
+without establishing equivalence. Late-noise docking fa-vors BG in both maps, but the map effect remains un-resolved. Intervals are exploratory and unadjusted for multiplicity. Rich-map incremental construction takes BG versus teacher-plus-student fit 9.34/82.78 seconds in arm, 5.09/313.39 in regular docking, and 4.99/298.16 under late noise on the same local GPU. These budget-specific times exclude shared model/actor training, node prepa-ration, evaluation, and export. Thrust reuses teachers from another GPU, precluding a matched total-time ratio. Matched rich-map date-zero native medians are 
+
+2.49 –5.46 μs over eight seeds/condition, excluding fil-tering and per-action Python overhead (Online Supple-ment Table S6). Full paired contrasts and timing scopes appear in Online Supplement S3.3. 
+
+7 Discussion and conclusion 
+
+BG refines current actions through deployed future feed-back and stores the corrections. The nonlinear recursion tracks continuation, derivative, safeguard and represen-tation errors; the controlled non-LQG example demon-strates consistent second-order policy accuracy. Affine LQG provides exact backward recovery. Thrust BG approaches the tested feedback planner; docking shows the value of future observation response and sensitivity to physical-action fitting. The arm re-tains a planner gap. Richer matched maps narrow student–BG differences in arm and regular docking; late-noise docking favors BG, while thrust resolves no difference. Scalar DP diagnoses precision lost in regres-sion. 
+
+Scope. The tasks use supplied low-dimensional model families, two actions and 12–16 decisions; the arm EKF 11 is approximate. Piecewise-smooth caps motivate Propo-sition 5.5; fixed ridge and cap crossings preclude an implementation-wide rate certificate from Corollary 5.4. Finite-node checks certify neither all-state accuracy nor plant transfer. Full rollouts cost O(N M T 2) model steps before derivative/storage overhead; large-model and long-horizon scaling is untested. 
+
+Acknowledgements 
+
+Jeonggyu Huh acknowledges financial support from the National Research Foundation of Korea (NRF; grant no. RS-2025-00562904). 
+
+Declaration of generative AI and AI-assisted technologies 
+
+Under the author’s direction, ChatGPT/Codex (Ope-nAI) and Claude (Anthropic) assisted idea/argument examination and manuscript editing; ChatGPT/Codex also assisted implementation and debugging (Online Supplement S1). The author retains responsibility for all content. 
+
+References 
+
+Y. Bar-Shalom and E. Tse. Dual effect, certainty equivalence, and separation in stochastic control. IEEE Transactions on Automatic Control , 19(5):494–500, 1974. A. Bemporad, M. Morari, V. Dua, and E. N. Pistikopoulos. The explicit linear quadratic regulator for constrained systems. Au-tomatica , 38(1):3–20, 2002. D. Bertsekas. Newton’s method for reinforcement learning and model predictive control. Results in Control and Optimization ,7:100121, 2022. J. Drgoňa, K. Kiš, A. Tuor, D. Vrabie, and M. Klaučo. Differen-tiable predictive control: Deep learning alternative to explicit model predictive control for unknown nonlinear systems. Jour-nal of Process Control , 116:80–92, 2022. J. Drgoňa, S. Mukherjee, A. Tuor, M. Halappanavar, and D. Vra-bie. Learning stochastic parametric differentiable predictive control policies. IFAC-PapersOnLine , 55:121–126, 2022. D. Hafner, T. Lillicrap, J. Ba, and M. Norouzi. Dream to control: Learning behaviors by latent imagination. In In-ternational Conference on Learning Representations , 2020. arXiv:1912.01603. D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap. Mastering diverse control tasks through world models. Nature , 640:647–653, 2025. N. A. Hansen, H. Su, and X. Wang. Temporal difference learn-ing for model predictive control. In Proceedings of the 39th International Conference on Machine Learning , volume 162 of PMLR, pages 8387–8406, 2022. PMLR paper. N. Hansen, H. Su, and X. Wang. TD-MPC2: Scalable, robust world models for continuous control. In International Confer-ence on Learning Representations , 2024. arXiv:2310.16828. N. Heess, G. Wayne, D. Silver, T. Lillicrap, Y. Tassa, and T. Erez. Learning continuous control policies by stochastic value gradi-ents. Advances in Neural Information Processing Systems , 28, 2015. arXiv:1510.09142. M. Hertneck, J. Köhler, S. Trimpe, and F. Allgöwer. Learning an approximate model predictive controller with guarantees. 
+
+IEEE Control Systems Letters , 2(3):543–548, 2018. G. A. Hewer. An iterative technique for the computation of the steady state gains for the discrete optimal regulator. IEEE Transactions on Automatic Control , 16(4):382–384, 1971. C. Huré, H. Pham, A. Bachouch, and N. Langrené. Deep neural networks algorithms for stochastic control problems on finite horizon: Convergence analysis. SIAM Journal on Numerical Analysis , 59(1):525–557, 2021. J. Jeon, J. Huh, H. K. Koo, and B. H. Lim. Scalable Pontryagin-guided adjoint-to-control recovery for constrained dynamic portfolio choice. arXiv:2608.15667v3, 2026. D. L. Kleinman. On an iterative technique for Riccati equa-tion computations. IEEE Transactions on Automatic Control ,13(1):114–115, 1968. S. Levine and V. Koltun. Guided policy search. In Proceedings of the 30th International Conference on Machine Learning ,volume 28(3) of PMLR, pages 1–9, 2013. PMLR paper. S. Levine and V. Koltun. Learning complex neural network poli-cies with trajectory optimization. In Proceedings of the 31st International Conference on Machine Learning , volume 32(2) of PMLR, pages 829–837, 2014. PMLR paper. L. Ljung. System Identification: Theory for the User . 2nd edition, Prentice Hall PTR, 1999. Author’s book page. A. Mesbah. Stochastic model predictive control with active un-certainty learning: A survey on dual control. Annual Reviews in Control , 45:107–117, 2018. M. L. Puterman and S. L. Brumelle. On the convergence of policy iteration in stationary dynamic programming. Mathematics of Operations Research , 4(1):60–69, 1979. S. S. Rangapuram, M. Seeger, J. Gasthaus, L. Stella, Y. Wang, and T. Januschowski. Deep state space models for time se-ries forecasting. Advances in Neural Information Processing Systems , 31, 2018. NeurIPS proceedings. M. S. Santos and J. Rust. Convergence properties of policy itera-tion. SIAM Journal on Control and Optimization , 42(6):2094– 2115, 2004. S. Särkkä and L. Svensson. Bayesian Filtering and Smoothing .Cambridge University Press, second edition, 2023. Y. Tian, K. Zhang, R. Tedrake, and S. Sra. Can direct latent model learning solve linear quadratic Gaussian control? In 
+
+Proceedings of the 5th Annual Learning for Dynamics and Control Conference , volume 211 of PMLR, pages 51–63, 2023. PMLR paper. J. van den Berg, S. Patil, and R. Alterovitz. Motion planning un-der uncertainty using differential dynamic programming in be-lief space. In H. I. Christensen and O. Khatib, editors, Robotics Research , Springer Tracts in Advanced Robotics, volume 100, pages 473–490. Springer, 2017. T. Wang and J. Ba. Exploring model-based planning with policy networks. In International Conference on Learning Represen-tations , 2020. OpenReview paper. M. Watter, J. Springenberg, J. Boedecker, and M. Riedmiller. Embed to control: A locally linear latent dynamics model for control from raw images. Advances in Neural Information Processing Systems , 28, 2015. NeurIPS proceedings. T. Zhang, G. Kahn, S. Levine, and P. Abbeel. Learning deep con-trol policies for autonomous aerial vehicles with MPC-guided policy search. In IEEE International Conference on Robotics and Automation , pages 528–535, 2016. 
+
+12 Technical Appendix 
+
+This appendix supplies the mathematical references used in the main paper. Section A proves the local and backward comparisons, Section B develops finite-horizon LQG error propagation, Section C proves the nonlinear stored-policy recursion and its consistency limits, Section D states the regularity and belief conditions, and Section E tests the local non-LQG accuracy regime. Main-paper equation and result numbers are retained. 
+
+A Proofs of the main comparisons 
+
+The Gaussian closure proof is in Section A.1. Section A.2 establishes conditional derivative and action-alignment bounds. Section A.3 records the baseline-continuation comparison, while Section A.4 proves the backward comparison and its regression-error bound. The implemented metric safeguards are covered in Section A.5; Section A.6 proves exact affine LQG backward recovery. Section A.7 collects model-transfer and action-error accounting. 
+
+A.1 Proof of Proposition 3.2 
+
+Gaussian filtering and innovations likelihood. For the controlled model (3.1), substitute the corresponding coefficients evaluated at the known (Ct, u t) for A, f t, L θ (Ct), H t, D θ (Ct) below; the same conditioning formulas apply. For completeness, the action-independent core model and its standard filtering calculations are recorded here. Fresh 
+
+ξX , ν are independent standard Gaussians, ft = fθ (Ct), Ht = Hθ (Ct), Xt | F t ∼ N (mt, P t), and LY,t +1 = chol(Ω t+1 ).
+
+Xt+1 = AX t + fθ (Ct) + Lθ (Ct)ξXt+1 , ξXt+1 ∼ N (0 , I d), (A.1) 
+
+Yt+1 = Hθ (Ct)Xt+1 + Dθ (Ct)νt+1 , νt+1 ∼ N (0 , I m), (A.2) 
+
+Qt = Lθ (Ct)Lθ (Ct)⊤, Rt = Dθ (Ct)Dθ (Ct)⊤ ≻ 0. (A.3) 
+
+at+1 = Am t + ft, P − 
+
+> t+1
+
+= AP tA⊤ + Qt, (A.4) 
+
+μt+1 = Htat+1 , Ωt+1 = HtP −
+
+> t+1
+
+H⊤ 
+
+> t
+
++ Rt. (A.5) 
+
+KKF  
+
+> t
+
+= P −
+
+> t+1
+
+H⊤ 
+
+> t
+
+Ω−1
+
+> t+1
+
+, (A.6) 
+
+mt+1 = at+1 + KKF  
+
+> t
+
+(Yt+1 − μt+1 ), (A.7) 
+
+Pt+1 = P − 
+
+> t+1
+
+− KKF  
+
+> t
+
+Ωt+1 (KKF  
+
+> t
+
+)⊤. (A.8) 
+
+pθ (Yt+1 | F t, u t) = N (Yt+1 ; μt+1 , Ωt+1 ). (A.9) 
+
+Lpred (θ) = 12
+
+X
+
+> t
+
+log det Ω t+1 + e⊤
+
+> t+1
+
+Ω−1
+
+> t+1
+
+et+1 + m log(2 π) + λreg R(θ), et+1 = Yt+1 − μt+1 . (A.10) 
+
+Yt+1 = μt+1 + LY,t +1 Et+1 , (A.11) 
+
+mt+1 = at+1 + KKF  
+
+> t
+
+LY,t +1 Et+1 . (A.12) The predictive likelihood differentiates through the filter and recurrent predictor state. The observation score alone need not be the joint likelihood of predictors and observations. The final two equations use fresh Et+1 ∼ N (0 , I m);latent-state-dependent scores can instead be evaluated by jointly simulating the latent belief, physical dynamics and observations. 
+
+Proof. Conditional on Ft and the chosen action, the transition is affine in a Gaussian state with independent Gaus-sian noise. Hence (Xt+1 , Y t+1 ) is jointly Gaussian. Conditioning on Yt+1 gives the displayed mean and covariance. Assumption 3.1 ensures that subsequently observing Ct+1 introduces no omitted likelihood factor. Induction proves the result. 13 A.2 Conditional derivatives and action alignment 
+
+Derivative statements condition on pre-sampling Gt; performance identities condition on completed policies and fresh evaluation paths. 
+
+Proof of Proposition 4.1. On a smaller neighborhood, the mean-value formula bounds a first difference quotient of C ρt
+
+by its local gradient envelope. Conditional dominated convergence gives the first interchange in (4.5). Applying the same argument to the pathwise gradient, using the Hessian envelope, gives the second. The differentiated composition includes the state derivative of every future continuation action, although model and policy parameters are fixed. The common innovation law is independent of the differentiated argument; all action-dependent conditional laws enter through the simulator. For a vector D(ω) containing the selected gradient and Hessian entries at a fixed (t, s, u ), suppose E[∥D∥2 | G t] < ∞.Fresh conditionally independent rollout units give 
+
+E[ bdM − d 2
+
+| G t] = E[∥D − d∥2 | G t]
+
+M , d = E[D | G t], bdM = M −1
+
+> M
+
+X
+
+> i=1
+
+Di. (A.13) Conditional centering removes cross terms. For antithetic simulation, M counts independent pair averages. This pointwise identity for the declared discrete model implies neither a uniform deployment bound nor unbiasedness after inversion, flooring, clipping, or acceptance. In particular, unbiased derivative estimates need not give an unbiased Newton step or justify evaluation at a data-dependent action. 
+
+Proof of Proposition 5.6. The minimizing variational inequality gives n⋆ = −∇ q⋆(u⋆θ ) ∈ NU (u⋆θ ). The normal cone is monotone. For e = v − u⋆θ and any n ∈ NU (v), strong convexity implies 
+
+μ ∥e∥2 ≤  ∇q⋆(v) − ∇ q⋆(u⋆θ ) + n − n⋆
+
+⊤e =  ∇q⋆(v) + n⊤e. 
+
+Add and subtract ∇qρ(v), apply Cauchy–Schwarz, and minimize over n. If e = 0 the bound is immediate; otherwise divide by ∥e∥. For (A.14), subtract the two action values: their stage costs cancel and their transition laws coincide. Differentiating the remaining expectation gives the displayed identity. This proof also covers any feasible action satisfying selected-tail stationarity, even when qρ is nonconvex. Put ∆V = V ρt+1 − V θ,⋆ t+1 and F (u, ω ) = Tθ,t (s, u, ω ). When differentiation under the expectation is justified, 
+
+∇qρ(v) − ∇ q⋆(v) = E[Fu(v, ω )⊤∇∆V (F (v, ω ))] . (A.14) This follows by differentiating the common-transition expectation of ∆V . Exact minimization of a selected-tail action value need not remove this discrepancy, and backward refresh need not decrease it monotonically. 
+
+What a sampled, safeguarded Newton step leaves unresolved. At the fixed state, let g = ∇qρ(u0) and 
+
+B = ∇2qρ(u0). Suppose the Hessian is L-Lipschitz on a neighborhood of the segment from u0 to the feasible returned action v = u0 + h. Let bg, bB be the derivative estimates and eB the matrix actually used after symmetrization and regularization. Put 
+
+ϵg = ∥bg − g∥ , ϵB = bB − B op 
+
+, ϵreg = eB − bB op 
+
+,ζ(v) = dist  0, bg + eBh + NU (v). (A.15) The integral Taylor remainder gives the deterministic bound 
+
+rρ(v) ≤ ϵg + ( ϵB + ϵreg ) ∥h∥ + ζ(v) + L 
+
+> 2
+
+∥h∥2 . (A.16) 14 The Taylor remainder satisfies ∥∇ qρ(v) − g − Bh ∥ ≤ L ∥h∥2 /2; adding estimation and regularization errors and minimizing over the normal cone gives the bound. An exact QP solve on the original feasible set has ζ = 0 , but damping, clipping, or an added trust constraint can leave a nonzero original-action residual. All terms vanish for an unconstrained quadratic with exact unmodified derivatives and solve. Combining (A.16) and (5.15) gives the alignment budget under these error and smoothness conditions. 
+
+A.3 Baseline continuation and descent 
+
+Proposition A.1 (The exact local direction is a descent direction) . Fix an admissible continuation ρ and take 
+
+gt = ∇uQρt (s, u 0). In (4.6), allow eBt to be any symmetric positive-definite matrix; it need not equal or approximate the Hessian. Suppose Ut(s) is convex, contains u0, and the quadratic minimizer exists. If dt̸ = 0 , then g⊤ 
+
+> t
+
+dt < 0. If 
+
+Qρt (s, ·) is continuously differentiable near the feasible segment, sufficiently small positive steps satisfy (4.9) for that same continuation. 
+
+Proof. The zero correction is feasible. Optimality therefore gives g⊤ 
+
+> t
+
+dt + 12 d⊤ 
+
+> t
+
+eBtdt ≤ 0. Positive definiteness makes g⊤ 
+
+> t
+
+dt
+
+strictly negative when dt̸ = 0 . The first-order expansion along the feasible segment proves the Armijo statement. 
+
+Theorem A.2 (Policy comparison using the baseline continuation) . Assume the finite-horizon costs are integrable and the model and state construction are fixed. Define 
+
+A0 
+
+> t
+
+(s, u ) = Q0 
+
+> t
+
+(s, u ) − V 0 
+
+> t
+
+(s). (A.17) For an admissible feedback policy π1, deterministic or randomized with fresh internal randomness independent of future transition noise conditional on the current state, let Ut ∼ π1 
+
+> t
+
+(· | st). Then 
+
+Jθ (π1; s0) − Jθ (π0; s0) = Eπ1
+
+> θ
+
+"T −1X
+
+> t=0
+
+A0 
+
+> t
+
+(st, U t)
+
+#
+
+. (A.18) Consequently, if the exact acceptance test ensures EU ∼π1 
+
+> t(·| s)
+
+[A0 
+
+> t
+
+(s, U )] ≤ 0 at every relevant state, then Jθ (π1; s0) ≤
+
+Jθ (π0; s0).
+
+Proof. Under π1, the conditional expectation of ℓt(st, U t, ω t+1 ) + V 0
+
+> t+1
+
+(st+1 ) − V 0 
+
+> t
+
+(st) given (st, U t) is A0 
+
+> t
+
+(st, U t).Summing and taking expectations telescopes the value terms. Since V 0 
+
+> T
+
+= Φ and V 00 (s0) = Jθ (π0; s0), the identity follows. The sign condition gives the inequality. Online correction with independent simulation noise is randomized. For offline policies, condition on the completed construction Cbuild and use fresh evaluation trajectories; an outer construction expectation is then permitted under integrability. This differs from the pre-sampling Gt conditioning in Proposition 4.1. Equation (A.18) is the finite-horizon performance-difference identity (Kakade and Langford, 2002). It also holds for backward-constructed ¯π,but corrected-tail acceptance does not imply its Q0 sign condition. The main paper’s Theorem 5.1 addresses that continuation directly. 
+
+Corollary A.3 (Approximate action-value comparisons) . Suppose an approximation bQ0 
+
+> t
+
+has absolute error at most 
+
+εt(s) at both u0 and an accepted action u1. If 
+
+bQ0 
+
+> t
+
+(s, u 1) − bQ0 
+
+> t
+
+(s, u 0) ≤ − δt(s), (A.19) let at ∈ { 0, 1} indicate acceptance, and return u0 otherwise. With errors controlled at each realized accepted pair, the deployed policy satisfies 
+
+Jθ (π1; s0) − Jθ (π0; s0) ≤ Eπ1 
+
+> θT−1
+
+X
+
+> t=0
+
+at
+
+2εt(st) − δt(st). (A.20) 15 Proof. At the two accepted actions, the approximation errors add at most 2εt(s) to the estimated difference. A rejected proposal returns the baseline and contributes exactly zero advantage. Substitute into (A.18), including internal randomness when present. At the implemented zero margin δt = 0 , this bounds deterioration by Eπ1 P 
+
+> t
+
+2atεt, without guaranteeing improvement. A finite acceptance sample alone does not control errors along every state visited by the candidate. 
+
+A.4 Backward comparison and regression error Proof of Theorem 5.1. The policies π[t] and π[t+1] have the same distribution of st, generated by the common baseline prefix. Conditional on st, their costs up to t − 1 cancel, and their remaining expected-cost difference is dback  
+
+> t
+
+(st)
+
+because both use the same corrected tail after date t. Hence 
+
+Jθ (π[t]; s0) − Jθ (π[t+1] ; s0) = Eπ0 
+
+> θ
+
+[dback  
+
+> t
+
+(st)] .
+
+Sum over t = 0 , . . . , T − 1. The policy costs telescope to Jθ (¯ π; s0) − Jθ (π0; s0), proving (5.3). The sign condition and pointwise upper bounds give the stated inequalities. 
+
+Proof of Corollary 5.2. At an accepted target, adding the two approximation errors bounds ¯Qt(s, a t(s)) − ¯Qt(s, π 0 
+
+> t
+
+(s)) 
+
+by 2εt(s) − ηt(s). At a rejected target that difference is zero. The remaining change from at(s) to ¯πt(s) is at most 
+
+LQt (s)eint  
+
+> t
+
+(s); add these bounds. 
+
+A.5 Inexact metrics and implemented safeguards Proof of Proposition 5.5. Fix a realized gradient estimate, metric and proposal. The definition of ξ and Cauchy– Schwarz give 
+
+∇q(u0)⊤d ≤ bg⊤d + δ∥d∥ ≤ − 12 d⊤Md + ξ + δ∥d∥.
+
+Integrating the gradient along the segment yields the descent-lemma bound q(u0 + αd ) − q(u0) ≤ α∇q(u0)⊤d + 
+
+> 12
+
+L∇α2∥d∥2. Substitution proves (5.13). If cd = 12 d⊤Md − ξ − δ∥d∥ > 0, any feasible 0 < α ≤ 1 with L∇α∥d∥2 < 2cd
+
+gives strict decrease. For L∇ = 0 , every 0 < α ≤ 1 does. This is a realized-error bound. The gradient estimate and metric may use the same noise and need not be independent. Unbiasedness of bg alone does not establish the bound δ, and gradient interchange still needs its own assumptions. Positive definiteness of a floored branchwise matrix supplies a metric, not a bound on population-curvature error. The proposition uses only a Lipschitz population gradient; this regularity is weaker than the pathwise C2 interchange hypotheses but is not automatic for a capped continuation. 
+
+Which implemented steps have zero residual? For an exact constrained quadratic solve with 0 feasible, com-parison with 0 gives bg⊤d + 12 d⊤Md ≤ 0. More generally, a quadratic objective within ϵsolve ≥ 0 of its feasible minimum gives ξ ≤ ϵsolve . For an unconstrained step v = −M−1bg and radial shortening d = γv , 0 ≤ γ ≤ 1,
+
+bg⊤d + 12 d⊤Md = −γ(1 − γ/ 2) v⊤Mv ≤ 0. (A.21) Thus thrust’s eigenvalue floor and radial shortening give ξ = 0 in exact arithmetic, even when the input curvature is only branchwise. Linear-solve error can be included by evaluating (5.12) at the returned step. The arm additionally projects onto its action box after radial shortening. The residual must then be evaluated using the displacement after that projection. Euclidean projection does not in general preserve descent in an anisotropic metric. For example, take bg = (1 , 1) ⊤, M = ( 1 2 2 5 ) ≻ 0, and u0 = ( −2, 0) ⊤ in [−2, 2] 2. Then v = ( −3, 1) ⊤ and 
+
+bg⊤v = −2, but projecting u0 + γv onto the box for 0 < γ ≤ 1 returns displacement (0 , γ )⊤ with positive gradient product. Equation (5.12) accounts for such a change; it does not assume it is small. Subsequent target regression and the deployed cap are covered separately by eint  
+
+> t
+
+. The stored experimental diagnostics do not certify δ, L∇, or the final projected-step residual over the baseline state laws. 16 Acceptance and backward comparison. 
+
+dback  
+
+> t
+
+≤ It min {bmet  
+
+> t
+
+, 2εt − ηt} + LQt eint  
+
+> t
+
+. (A.22) For an accepted target, Proposition 5.5 bounds its true action-value change by bmet  
+
+> t
+
+, while the independent comparison error bound gives 2εt − ηt. Both refer to the same actual corrected continuation and the same accepted action, so their minimum is also an upper bound. Rejection returns the baseline and contributes zero. Adding the action-value change between the target and the deployed regression proves (A.22); Theorem 5.1 then sums it under baseline visitation. These statements condition on completed construction and require their bounds at the realized proposals, almost surely under the indicated state laws. Independent acceptance samples avoid reusing derivative noise, but do not provide these error bounds by themselves. A negative integrated bound certifies fitted-model improvement; a nonnegative bound only limits possible deterioration. Plant transfer still requires (A.24). 
+
+A.6 Proof of Proposition 5.7 Proof. Under the fixed context schedule, Pt is deterministic and independent of the action. The belief mean has the form mt+1 = Am t + Bu t + bt + ξt+1 , with centered Gaussian ξt+1 whose covariance is action independent. Conditional stage cost is 12 m⊤Cxt m+ 12 u⊤Cut u+ 12 tr( Cxt Pt). At the terminal date ST = CxT , qT = 0 , and cT = 12 tr( CxT PT ). Suppose inductively that the constructed continuation is optimal and has value ¯Vt+1 (m) = 12 m⊤St+1 m + q⊤
+
+> t+1
+
+m + ct+1 , with 
+
+St+1 ⪰ 0. Gaussian expectation then gives 
+
+¯Qt(m, u ) = 12 u⊤Gtu + u⊤B⊤{St+1 (Am + bt) + qt+1 } + dt(m),Gt = Cut + B⊤St+1 B ≻ 0, (A.23) where dt is independent of u. Thus (5.18) cancels its starting action and equals the unique minimizer −Ktm − kt. The target is affine. Its coefficients give zero least-squares residual, and full column rank makes them the unique fitted coefficients. Exact fitting therefore reproduces the minimizer for every m, not just at the nodes. Its cost is no greater than that of u0 
+
+> t
+
+, so the stated exact acceptance test preserves it. Substitution into the action value gives the Riccati recursion and a quadratic value at date t; its state Hessian St is positive semidefinite by the Schur complement of the joint state–action quadratic. Induction from T − 1 to zero completes the proof. Pooling context schedules requires a policy representation containing their optimal coefficients and a full-rank pooled design; a truncated feature basis need not suffice. Active sensing, action bounds and nonquadratic costs generally remove the closed-form LQG reference. Small action error on a finite evaluation panel does not establish the coefficient-error hypothesis of Theorem B.1. 
+
+A.7 Model-transfer and action-error accounting 
+
+Performance transfer under plant–model mismatch. Let J⋆(π) denote the cost of the same observation-adapted policy in the plant. If, for the two policies under comparison, |J⋆(πj )−Jθ (πj )| ≤ ej , then elementary addition and subtraction gives 
+
+J⋆(π1) − J⋆(π0) ≤ Jθ (π1) − Jθ (π0) + e1 + e0. (A.24) The bound guarantees transfer when nominal improvement exceeds e0 + e1. These require separate bounds; fitted posterior covariance does not measure parameter uncertainty. For the backward controller, take π1 = ¯ π and apply Corollary 5.2. Under its assumptions and full-policy transfer bounds e¯π , e π0 ,
+
+J⋆(¯ π) − J⋆(π0) ≤ Eπ0
+
+> θ
+
+X
+
+> t<T
+
+It(2 εt − ηt) + LQt eint 
+
+> t
+
+ + e¯π + eπ0 . (A.25) Transfer bounds must cover the complete corrected controller and its fitted filter in the plant. A one-action probe followed by DPO is insufficient. Derivatives, acceptance, interpolation, and comparison must use the same corrected tail. 17 Action errors on common histories. Let ht denote the observed history and let sθt (ht) be the controller’s fitted-model information state. In the quadratic companion, define the action errors on a specified distribution ρ of history– time pairs as 
+
+Eθ (π; ρ) = Eρ uπt (ht) − uθ,⋆ t (ht) 2
+
+, (A.26) 
+
+E⋆(π; ρ) = Eρ ∥uπt (ht) − u⋆t (ht)∥2 . (A.27) The first measures distance from the fitted model’s own optimal decision; the second includes disagreement between the fitted model and plant and their conditional beliefs. The plant oracle is evaluator-only. These are action-space errors, not Kalman-gain errors. The squared errors are not additive: with a = uπ − uθ,⋆ and b = uθ,⋆ − u⋆,
+
+E⋆(π; ρ) = Eθ (π; ρ) + Eρ ∥b∥2 + 2 Eρ[a⊤b]. (A.28) Hence fitted-model-to-plant discrepancy is not a lower bound for every policy. Greedification under a suboptimal frozen tail also differs from full-horizon optimal control. 
+
+B Finite-horizon error propagation and LQG structure 
+
+Section B.1 proves the frozen-continuation O(ϵ2) coefficient bound. Section B.2 tracks local solve and representation errors through the actual corrected affine tail. The Riccati reference in Section B.3 fixes the optimal coefficients, and Section B.4 accounts for numerical deployment errors. These results retain the fixed fitted model and finite horizon. 
+
+B.1 Finite-horizon affine refinement 
+
+In the fitted LQG model, fix the initial covariance and the deterministic context schedule. Gaussian filtering yields a deterministic covariance sequence and the innovation representation 
+
+mt+1 = Am t + Bu t + bt + ηt+1 , E[ηt+1 | F t, u t] = 0 , Cov( ηt+1 | F t, u t) = Ξ t,
+
+where the Gaussian innovation law is independent of state and action. The conditional stage cost is 12 m⊤Cxt m + 
+
+> 12
+
+u⊤Cut u + qcov  
+
+> t
+
+, where qcov  
+
+> t
+
+= 12 tr( Cxt Pt); the terminal conditional cost has the analogous variance term. These statements concern the fitted model’s own conditional law. Set 
+
+¯At = A b t
+
+0 1
+
+!
+
+, ¯B = B
+
+0
+
+!
+
+, ¯Ct = diag( Cxt , 0) , ¯Wt = diag(Ξ t, 0) , Rut = Cut . (B.1) For u = −Ltz, put ALt = ¯At − ¯BL t. A canonical augmented quadratic matrix SLt and separate scalar cLt satisfy 
+
+SLT = ¯CT , cLT = qcov  
+
+> T
+
+,
+
+SLt = ¯Ct + L⊤ 
+
+> t
+
+Rut Lt + ( ALt )⊤SLt+1 ALt ,cLt = qcov  
+
+> t
+
++ cLt+1 + 12 tr( SLt+1 ¯Wt), V Lt (m) = 12 z⊤SLt z + cLt . (B.2) Thus SLt ⪰ 0. Its final row and column include deterministic affine costs; accumulated noise costs remain in cLt .This convention avoids folding the noise constants into the matrix recurrence. The optimal and baseline-continuation greedy coefficients are 
+
+Git = Rut + ¯B⊤Sit+1 ¯B, L⋆t = ( G⋆t )−1 ¯B⊤S⋆t+1 ¯At, L+ 
+
+> t
+
+= ( G0 
+
+> t
+
+)−1 ¯B⊤S0 
+
+> t+1
+
+¯At. (B.3) The optimal recursion agrees with (B.10); S is the augmented matrix, distinct from its physical-state block S there. 
+
+Theorem B.1 (Frozen-continuation refinement of an affine LQG policy) . Fix a fitted model satisfying (5.16)–(5.17), a finite horizon, a known deterministic context schedule, and an initial belief covariance. Actions are unrestricted, all coefficients and noise covariances are finite, and Cut ⪰ rI for some r > 0. Write z = ( m⊤, 1) ⊤, u0 
+
+> t
+
+(m) = −L0 
+
+> t
+
+z, and 18 uθ,⋆ t (m) = −L⋆t z. Evaluate the affine baseline exactly once and let u+ 
+
+> t
+
+(m) = arg min u Q0 
+
+> t
+
+(m, u ) = −L+ 
+
+> t
+
+z. For every fixed radius δ > 0, the finite constant Cδ in (B.7) satisfies 
+
+ϵ = max  
+
+> t<T
+
+L0 
+
+> t
+
+− L⋆t op ≤ δ =⇒ max  
+
+> t<T
+
+L+ 
+
+> t
+
+− L⋆t op ≤ Cδ ϵ2. (B.4) For any fixed distribution ρ of history–time pairs with Mρ = Eρ (mθt (h)⊤, 1) ⊤ 2 < ∞, evaluating both actions at the same fitted belief gives 
+
+Eρ u+ 
+
+> t
+
+(h) − uθ,⋆ t (h) 21/2
+
+≤ pMρ Cδ ϵ2. (B.5) 
+
+Proof of Theorem B.1. Let Dt = L0 
+
+> t
+
+− L⋆t , ∆St = S0 
+
+> t
+
+− S⋆t , and A⋆t = ¯At − ¯BL ⋆t . Completing the square around the optimal coefficient cancels the linear term in Dt and gives 
+
+∆ST = 0 , ∆St = ( A0 
+
+> t
+
+)⊤∆St+1 A0 
+
+> t
+
++ D⊤ 
+
+> t
+
+G⋆t Dt, (B.6) 
+
+∆cT = 0 , ∆ct = ∆ ct+1 + 12 tr(∆ St+1 ¯Wt).
+
+Both differences are nonnegative in their respective matrix/scalar orders. Define the finite quantities 
+
+b = ¯B op , a⋆ = max  
+
+> t<T
+
+∥A⋆t ∥op , g⋆ = max  
+
+> t<T
+
+∥G⋆t ∥op , aδ = a⋆ + bδ, HT (a) =  
+
+> T−1
+
+X
+
+> j=0
+
+a2j , Cδ = ba ⋆g⋆
+
+r HT (aδ ). (B.7) Since A0  
+
+> top
+
+≤ aδ , backward induction in (B.6) gives 
+
+∥∆St∥op ≤ g⋆ϵ2 
+
+> T−t−1
+
+X
+
+> j=0
+
+a2jδ .
+
+Subtracting the two stationarity systems in (B.3) yields the exact identity 
+
+G0 
+
+> t
+
+(L+ 
+
+> t
+
+− L⋆t ) = ¯B⊤∆St+1 A⋆t . (B.8) Because G0 
+
+> t
+
+⪰ Rut ⪰ rI , the preceding bound proves (B.4). At the final decision ∆ST = 0 , so its exact correction is optimal even without a small initial error. At other dates a finite Cδ exists for every finite horizon, although it can grow rapidly with that horizon. Finally, u+ 
+
+> t
+
+(h) − uθ,⋆ t (h) ≤ Cδ ϵ2 ∥zt(h)∥. Square, integrate under the same ρ, and take a square root to obtain (B.5). The premise controls all affine coefficients, intercepts, and remaining dates. Small finite-panel action MSE, including the five-date experimental panel, does not establish it. Neural continuations need additional approximation arguments. The affine augmentation includes a constant coordinate, so its transition matrix has an eigenvalue at one. The bound above is finite-horizon; no contraction or horizon-uniform constant is asserted. 
+
+B.2 Propagation through a refreshed affine tail 
+
+The preceding cancellation also quantifies the effect of already-corrected future policies. Retain the fitted LQG assumptions and augmented notation, and condition on an arbitrary sequence of deployed affine maps ¯πj (m) = − ¯Lj z.Let ¯Sj be their exact evaluation matrices, and define the exact greedy coefficient at date t using this actual tail by 
+
+eLt = ( ¯Gt)−1 ¯B⊤ ¯St+1 ¯At, ¯Gt = Rut + ¯B⊤ ¯St+1 ¯B. 
+
+19 Write ej = ¯Lj − L⋆j op and ηt = ¯Lt − eLt op 
+
+. The latter includes departure from the exact current-action solve and its affine representation. Put ¯Acl  
+
+> j
+
+= ¯Aj − ¯B ¯Lj , A⋆t = ¯At − ¯BL ⋆t , and 
+
+Φt+1 ,t +1 = I, Φt+1 ,j = ¯Acl  
+
+> j−1
+
+· · · ¯Acl  
+
+> t+1
+
+(j > t + 1) .
+
+Then, for Rut ⪰ rI ,
+
+et ≤ ηt +
+
+¯B op ∥A⋆t ∥op 
+
+r 
+
+> T−1
+
+X
+
+> j=t+1
+
+∥Φt+1 ,j ∥2op G⋆j op e2 
+
+> j
+
+. (B.9) Indeed, completion of the square gives 
+
+¯St+1 − S⋆t+1 = 
+
+> T−1
+
+X
+
+> j=t+1
+
+Φ⊤ 
+
+> t+1 ,j
+
+( ¯Lj − L⋆j )⊤G⋆j ( ¯Lj − L⋆j )Φ t+1 ,j ,
+
+and subtraction of the greedy stationarity equations gives 
+
+¯Gt(eLt − L⋆t ) = ¯B⊤(¯St+1 − S⋆t+1 )A⋆t .
+
+Apply the operator norm and ¯G−1  
+
+> top
+
+≤ 1/r , then add ηt. The final-date sum is empty, so zero local errors yield exact backward recovery. Nonzero local errors and corrected-tail coefficients determine earlier errors. Node-fit MSE alone does not bound ηt, and nonlinear or capped maps require further approximation. 
+
+B.3 Riccati reference coefficients 
+
+For the main paper’s fitted affine LQG model and cost, the deterministic covariance separates from the action optimization. In the main paper’s notation, set ST = CxT and qT = 0 ,
+
+Gt = Cut + B⊤St+1 B, Kt = G−1 
+
+> t
+
+B⊤St+1 A, kt = G−1 
+
+> t
+
+B⊤(St+1 bt + qt+1 ),St = Cxt + A⊤St+1 A − A⊤St+1 BG −1 
+
+> t
+
+B⊤St+1 A, qt = A⊤(St+1 bt + qt+1 )
+
+− A⊤St+1 BG −1 
+
+> t
+
+B⊤(St+1 bt + qt+1 ). (B.10) The fitted feedback is uθ,⋆ t (m) = −Ktm − kt; plant coefficients instead define the evaluator-only oracle. 
+
+B.4 Numerical deployment of the finite-horizon correction 
+
+Corollary B.2 (Numerical deployment of the affine correction) . Under Theorem B.1, let a returned action rule v
+
+satisfy ∆ρ = ( Eρ ∥v − u+∥2)1/2 < ∞, including any internal correction randomness in this expectation. Then 
+
+
+
+Eρ v − uθ,⋆ 21/2
+
+≤ pMρ Cδ ϵ2 + ∆ ρ. (B.11) Minkowski’s inequality proves the claim. The term ∆ρ includes sampling, solving, regularization, clipping, and rejection errors and requires independent control. For other baseline classes, replace pMρCδ ϵ2 by the exact correction’s actual policy error. The same accounting gives the damping bound below. 20 Damping and the numerical margin. In one fixed norm ∥·∥ N , for example L2(ρ) with internal randomness included, define EN (w) = w − uθ,⋆  
+
+> N
+
+. If ∆N = ∥v − u+∥N , then for a constant 0 ≤ α ≤ 1 and a feasible mixture, 
+
+EN ((1 − α)u0 + αv ) ≤ (1 − α)EN (u0) + α{EN (u+) + ∆ N }. (B.12) If the bracket is below EN (u0), every constant α > 0 gives strict improvement. State-dependent acceptance belongs inside v and ∆N ; a varying gain cannot be pulled outside the norm. 
+
+Why action accuracy and percentage cost improvement differ. For any admissible policy with finite second moments in the fixed LQG model, completion of the optimal Bellman square and telescoping give 
+
+Jθ (π) − Jθ (πθ,⋆ ) = 12 EπθT −1X
+
+> t=0
+
+e⊤ 
+
+> t
+
+G⋆t et, et = ut − uθ,⋆ t (mt). (B.13) The optimal advantage is e⊤G⋆t e/ 2; summing under π proves the identity, including covariance-dependent constants. Fitted excess cost is therefore curvature-weighted action error under the policy visitation law. Total cost, plant evaluation, and common-history action MSE use different baselines or measures. 
+
+C Nonlinear backward accuracy and storage 
+
+This appendix proves Theorem 5.3 and Corollary 5.4. Section C.1 derives continuation errors from policy errors, Sec-tion C.2 treats correction and the implemented thrust storage, Section C.3 closes the recursion, and Section C.4 iden-tifies the fixed-ridge obstruction. Throughout, V ⋆, Q ⋆, π ⋆ abbreviate the fitted-model optimum, not a plant reference. 
+
+C.1 Weighted continuation cancellation 
+
+Use the norm (5.6) with induced multilinear derivative norms. Its factorial weights imply ∥f g ∥2,vw ≤ ∥ f ∥2,v ∥g∥2,w for compatible products, by Leibniz’ rule. Consider a prescribed class of C2 feedback policies ρ and weights vt, w t, χ t ≥ 1
+
+with wt ≥ χtv2 
+
+> t
+
+. Assume differentiation under expectations is justified by integrable envelopes, the optimum is interior, and 
+
+Q⋆t,u (s, π ⋆t (s)) = 0 , sup 
+
+> ρ,α ∈[0 ,1]
+
+Q⋆t,uu (·, π ⋆t + α(ρt − π⋆t )) 2,χ t
+
+≤ L⋆t . (C.1) The latter is a uniform composition bound, not a small-error assumption. Derivatives of Q⋆ through order four and bounded weighted policy derivatives suffice when the corresponding growth bounds hold. Write Gρt (s, ω ) = Tθ,t (s, ρ t(s), ω ) and Pρt f = Ef (Gρt ). Assume uniform bounds p0, p 1, p 2, p K on the respective ratios 
+
+Ewt+1 (G)
+
+wt(s) , E[wt+1 (G) ∥DsG∥]
+
+wt(s) , E[wt+1 (G) ∥DsG∥2]
+
+wt(s) , E[wt+1 (G) D2 
+
+> s
+
+G ]
+
+wt(s) .
+
+The chain rule then gives 
+
+∥Pρt f ∥2,w t ≤ Ctr  
+
+> t
+
+∥f ∥2,w t+1 , Ctr  
+
+> t
+
+= max {p0, p 1 + pK /2, p 2}. (C.2) Indeed the zeroth-, first- and half-second-derivative bounds are respectively p0a0, p1a1, and (p2a2 + pK a1)/2, where 
+
+ak = sup Dkf /w t+1 .
+
+Lemma C.1 (Quadratic continuation error) . Put Eρj = ρj − π⋆j 2,v j
+
+. Under (C.1)–(C.2), 
+
+V ρt+1 − V ⋆t+1 2,w t+1 
+
+≤ R t := X
+
+> j>t
+
+L⋆j
+
+2
+
+> j−1
+
+Y
+
+> k=t+1
+
+Ctr 
+
+> k
+
+!
+
+(Eρj )2. (C.3) 21 At construction nodes and their action balls, let F (u, ω ) = Tθ,t (si, u, ω ) and assume finite uniform bounds 
+
+Γg,t = sup 
+
+> i,u
+
+E[wt+1 (F ) ∥Fu∥], ΓH,t = sup 
+
+> i,u
+
+E[wt+1 (F )(2 ∥Fu∥2 + ∥Fuu ∥)] .
+
+Then the action-gradient and action-Hessian differences between Qρt and Q⋆t are at most Γg,t Rt and ΓH,t Rt, respec-tively. 
+
+Proof. For h = ρt − π⋆t , stationarity and Taylor’s formula give 
+
+Q⋆t (s, ρ t(s)) − V ⋆t (s) = 
+
+Z 10
+
+(1 − α)h(s)⊤Q⋆t,uu (s, π ⋆t (s) + αh (s)) h(s) dα. 
+
+The weighted product bound makes its C2 norm at most L⋆t (Eρt )2/2. Subtracting Bellman equations yields Dt =
+
+Q⋆t (·, ρ t) − V ⋆t + Pρt Dt+1 , with DT = 0 and Dt = V ρt − V ⋆t . Backward substitution proves (C.3). Finally differentiate 
+
+EDt+1 (F ) once and twice in u. The terms are E[DD t+1 (F )Fu] and E[D2Dt+1 (F )[ Fu, F u] + DD t+1 (F )Fuu ]. The norm bounds its first derivative by wt+1 Rt and its second by 2wt+1 Rt, giving the stated constants. These conditions allow unbounded Gaussian states when the policies, transitions and optimal solution have suitable polynomial-growth envelopes and the weights dominate the displayed moments. They do not follow from Gaussianity alone. For a uniform action-Hessian Lipschitz constant in the actual continuation, it suffices additionally to have third-order rollout derivatives with integrable envelopes; a finite smooth dictionary with bounded coefficients can supply policy derivative bounds. Covariance inverses require a positive lower eigenvalue bound. Hard-cap crossings require the separate treatment in Section D.1. 
+
+C.2 Node correction, acceptance and policy storage 
+
+Fix a date and node, suppress t, and set q = Qρt (si, ·), u∗ = π⋆t (si), u0 = π0 
+
+> t
+
+(si). On a ball of radius rB around u∗
+
+suppose 2μI ⪯ Q⋆t,uu ⪯ L∗I and ΓH Rt ≤ μ. Lemma C.1 gives μI ⪯ q′′ ⪯ LI , with L = L∗ + Γ H Rt. Let q′′ be 
+
+Lh-Lipschitz there. For the used matrix and computed step assume 
+
+bB ⪰ bmI, bB − q′′ (u0) ≤ δH , bg − q′(u0) ≤ δg , bBd + bg ≤ δlin .
+
+Thus δH includes curvature-floor bias. Taking uniform node bounds and ϵ0 = max i u0 − u∗ , the raw Newton proposal n = u0 + d and shaped proposal p satisfy 
+
+∥n − u∗∥ ≤ bN := Lh(ϵ0)2/2 + δH ϵ0 + δg + δlin + Γ g Rt
+
+bm , ∥p − u∗∥ ≤ bP := bN + ηnode . (C.4) To prove this, multiply n − u∗ by bB, add and subtract q′(u0) and q′′ (u0)( u0 − u∗), and integrate q′′ along [u∗, u 0]. The Taylor remainder is bounded by Lh(ϵ0)2/2 and ∥q′(u∗)∥ ≤ Γg Rt. A radial step cap gives ηnode = ( ∥d∥ − r)+; fixed damping gives (1 − α) ∥d∥, which need not be second order. If Γg Rt < μr B , the minimizer xρ on the closed ball is interior: on its boundary, (u − u∗)⊤q′(u) ≥ μr 2 
+
+> B
+
+− Γg RtrB >
+
+0. Strong convexity gives ∥xρ − u∗∥ ≤ c := Γ g Rt/μ . Assume u0, p lie in this ball. A paired comparison b∆ with 
+
+| b∆ − (q(p) − q(u0)) | ≤ τ accepts p if b∆ < 0 and otherwise returns u0. In both cases the accepted label y obeys 
+
+q(y) ≤ q(p) + τ . Hence 
+
+∥y − u∗∥ ≤ b := κb P + ( κ + 1) c + p2τ /μ, κ = pL/μ. (C.5) Indeed, μ ∥y − xρ∥2 /2 ≤ L ∥p − xρ∥2 /2 + τ . Exact acceptance therefore preserves second-order target accuracy even upon rejection. A sharper alternative is 
+
+∥p − xρ∥ ≤ η u0 − xρ , Lη 2 ≤ μ/ 2, τ < μ
+
+4 u0 − xρ 
+
+> 2
+
+. (C.6) 22 Strong convexity and smoothness give q(p) − q(u0) ≤ − μ u0 − xρ 
+
+> 2
+
+/4, so the comparison accepts p and the sharper bound bP applies. Under the other scaling assumptions of Corollary 5.4, second-order accepted targets also follow if each node either already has u0 − u∗ = O(ϵ2) or satisfies (C.6): in the first case both possible labels are second-order accurate, and in the second the accurate proposal is accepted. 
+
+Sampling scope of the margin alternative. Condition on the constructed actions and stored tail, and use M
+
+fresh independent paired rollout units, each with conditional mean q(p) − q(u0). If a pathwise action-gradient envelope on the segment has second moment at most K2, the paired sample-mean error satisfies 
+
+Var( b∆) ≤ K2 p − u0 2 /M. 
+
+Thus, for a fixed failure probability, p − u0 = O(ϵ) gives an O(ϵ/ √M ) comparison-error bound. Realizing τ =
+
+O(ϵ4) by this bound has sufficient sample order ϵ−6. Under (C.6)’s contraction and the additional nondegeneracy 
+
+u0 − xρ = Θ( ϵ), order ϵ−2 suffices for the comparison margin instead. These are conditional sufficient allocations, not sample-complexity lower bounds; an O(ϵ) baseline upper bound alone does not imply nondegeneracy. With uniformly bounded gradient-estimator variance, achieving δg = O(ϵ2) by independent sample means still has sufficient sample order ϵ−4 at fixed confidence, before bias and the other errors are controlled. 
+
+The sequential polynomial–kernel map. The thrust storage in Online Supplement S2 first fits direct actions and then fits a kernel to the residual after an intermediate cap. For fixed normalized features and a selected candidate, let Y contain accepted labels, Z the polynomial design, z(s) its feature column, and 
+
+M = Z⊤Z + Λ , A = M −1Z⊤, H = ZA, R = ( K + λK I)−1, Kij = kj (si).
+
+Here Λ ⪰ 0, M is invertible, K ⪰ 0, and λK > 0; the code’s intercept penalty is also positive. Let b0 
+
+> i
+
+= π0 
+
+> t
+
+(si) and apply the hard cap rowwise. Before the final deployment cap the actual real-arithmetic map is 
+
+fY (s) = z(s)⊤AY + k(s)⊤R{Y − b0 − C r (HY − b0)}
+
+= SY (s) + k(s)⊤RD cap (Y ), (C.7) 
+
+SY (s) = [ z(s)⊤A + k(s)⊤R(I − H)] Y, Dcap (Y ) = HY − b0 − C r (HY − b0).
+
+Thus replacing the intermediate prediction by HY would analyze a different operator. Set r(s)⊤ = z(s)⊤A +
+
+k(s)⊤R(I − H) and sreg = √N ∥r∥2,v t . Since 0 ⪯ H ⪯ I, a bound is sreg ≤ √N (∥z∥2,v t ∥A∥ + ∥k∥2,v t ∥R∥); no full column rank of Z is needed. Polynomial weights and the feature-scale/kernel-width floors give finite derivative envelopes, although narrow kernels can make them large. Choose any comparator g† = z⊤W + k⊤C with g† − π⋆t 2,v t
+
+≤ α. Put 
+
+ν2 = N −1 X
+
+> i
+
+vt(si)2, DW = AKC − M −1ΛW, β = z⊤ − k⊤RZ 2,v t ∥DW ∥F + λK k⊤R 2,v t ∥C∥F ,χY = k⊤RD cap (Y ) 2,v t ≤ k⊤R 2,v t ∥Dcap (Y )∥F .
+
+For maximum node-label error b,
+
+∥fY − π⋆t ∥2,v t ≤ sreg b + F reg  
+
+> t
+
+, F reg  
+
+> t
+
+= (1 + sreg ν)α + β + χY + ηarith . (C.8) To see this, ∥S∆Y ∥2,v t ≤ ∥ r∥2,v t ∥∆Y ∥F , and exact comparator labels satisfy 
+
+S(ZW + KC ) − g† = ( z⊤ − k⊤RZ )DW − λK k⊤RC. 
+
+23 The comparator’s node residual has Frobenius norm at most √N να . Decompose around those labels and add the intermediate-cap term. Here ηarith bounds residual rounding and stored-coefficient errors in the smooth map; the float32 intermediate prediction contributes at most k⊤R 2,v t times its rounding-error Frobenius norm. Polynomial-only storage omits all kernel terms. Finite candidate selection may depend on targets: the bound applies to the realized frozen candidate, or uniformly over the candidate list, without differentiating selection. This is a derivative-norm bound obtained from action-value labels, but its approximation term is essential. For finitely many nodes, a smooth bump ψ supported away from them gives the strongly convex objective qϵ(s, u ) = 
+
+∥u − ϵψ (s)∥2 /2. Exact optimal labels at every node are zero, while the optimal policy differs from zero by O(ϵ) away from them. Smoothness and zero node MSE therefore do not imply second-order policy accuracy. Likewise the coupling term AKC in β need not disappear when only the kernel penalty is decreased. 
+
+C.3 Closing the recursion Proof of Theorem 5.3. At date t, use the actual stored tail ρ>t = ¯ π>t in Lemma C.1, so Eρj = Ej . Combine (C.4)– (C.8), and add the deployment discrepancy ηdep ,t = ∥¯πt − fYt ∥2,v t . This gives 
+
+Et ≤ sreg 
+
+> t
+
+
+
+κt
+
+ Lh,t (ϵ0 
+
+> t
+
+)2/2 + δH,t ϵ0 
+
+> t
+
++ δg,t + δlin ,t + Γ g,t Rt
+
+bmt
+
++ ηnode ,t
+
+
+
++( κt + 1) Γg,t Rt
+
+μt
+
++ p2τt/μ t
+
+
+
++ F reg  
+
+> t
+
++ ηdep ,t. (C.9) Equation (5.9) follows with 
+
+AN 
+
+> t
+
+= sreg  
+
+> t
+
+κtLh,t /(2 bmt),Btail  
+
+> tj
+
+= sreg  
+
+> t
+
+Γg,t (κt/ bmt + ( κt + 1) /μ t) ( L⋆j /2) 
+
+> j−1
+
+Y
+
+> k=t+1
+
+Ctr  
+
+> k
+
+,Cerr  
+
+> t
+
+= sreg  
+
+> t
+
+max {κt/ bmt, κ t, p2/μ t}.
+
+The same policy norm is produced by storage and required by the earlier-date continuation calculation, closing the backward recursion. 
+
+Local radius conditions. Prescribe policy derivative/coefficient envelopes and error radii Et before the construc-tion. Descending in t, insert later radii in (C.3). Check ΓH,t Rt ≤ μt, Γg,t Rt < μ trB,t , and ϵ0 
+
+> t
+
+, b P,t ≤ rB,t . Require (C.9) to be at most Et, with the stored map satisfying the prescribed regularity envelopes. Induction verifies the local regime without assuming the desired policy-error conclusion. These are mathematical sufficient conditions, not certificates supplied by the recorded finite-node diagnostics. 
+
+Proof of Corollary 5.4. At the terminal decision RT −1 = 0 , and (C.9) is O(ϵ2). If all later errors are O(ϵ2), the fixed finite sum Rt is O(ϵ4), so the same bound holds at date t. Backward induction proves the result. Under the same weighted advantage and transition bounds, the nominal value error is then O(ϵ4). The constants need not be uniform in horizon. 
+
+C.4 Storage consistency and fixed ridge 
+
+Proposition C.2 (Nonzero consistency defect of the direct fit) . For (C.7), let both node baseline and exact optimal labels be Y ∗̸ = 0 , with Λ ≻ 0 and λK > 0. Let Y be the final capped node actions. Then 
+
+Y − Y ∗ 
+
+> F
+
+≥ min {c ∥Y ∗∥F , r } > 0, c = λK
+
+λmax (K) + λK
+
+11 + ZΛ−1/2 2 . (C.10) For polynomial-only storage omit the first factor in c.24 Proof. Write EN = I − H = ( I + ZΛ−1Z⊤)−1 ≻ 0 and d = −EN Y ∗. The raw node error, including the intermediate cap, is e = d − KR Cr (d). Since ∥KR ∥ = λmax (K)/(λmax (K) + λK ) < 1 and the cap does not increase the Frobenius norm, ∥e∥F ≥ (1 − ∥ KR ∥) ∥d∥F ≥ c ∥Y ∗∥F . Finally Y − Y ∗ = Cr (e) rowwise, and ∥C r (e)∥F ≥ min {1, r/ ∥e∥F } ∥ e∥F .This proves (C.10), including both caps. The thrust polynomial penalty is 0.01 with intercept penalty 10 −12 ; each selected kernel penalty is positive. Thus an unchanged direct fit need not preserve even an optimal baseline after storage. The lower bound may be very small and is not an estimate of performance loss in the experiments. It establishes a consistency obstruction to an unconditional asymptotic rate claim. Finite target-based selection cannot remove it automatically: every branch is continuous in its node data, and the minimum of finitely many positive limiting bounds is positive. A concrete sufficient regime is available when Z⊤Z/N ⪰ κI , dictionary derivative envelopes are uniform, and the kernel penalty is bounded below. With inactive caps and a polynomial comparator z⊤W satisfying z⊤W − π⋆t 2,v t ≤ α,the preceding storage proof gives 
+
+∥¯πt − π⋆t ∥2,v t ≤ C b + α + λP ∥W ∥F
+
+, λP = ∥Λ∥ /N. (C.11) Indeed its reproduction defect is −(z⊤ − k⊤RZ )M −1ΛW , and M −1Λ ≤ λP /κ . Direct fitting with bounded W ,
+
+b, α = O(ϵ2) and λP = O(ϵ2) preserves second-order accuracy. A baseline-residual fit instead permits λP = O(ϵ)
+
+if the first-order correction has coefficients W = O(ϵ) and approximation error O(ϵ2). These representation and conditioning assumptions are essential; this latter construction is a sufficient alternative, not a change to the reported thrust algorithm. On unbounded Gaussian state domains, weighted closeness alone does not establish cap inactivity. 
+
+D Nonsmooth safeguards and belief regularity 
+
+Section D.1 distinguishes branchwise curvature under hard caps from valid population derivative identities and gives a smooth alternative. Section D.2 records the information and state conditions required for an exact Gaussian belief. The metric bound in Section A.5 remains available without Hessian consistency, subject to its gradient-error and smoothness assumptions. 
+
+D.1 Derivative chain rule and nonsmooth safeguards 
+
+For F (u, ω ) = Tθ,t (s, u, ω ), when the required value derivatives and differentiation under expectation are justified, the corresponding chain-rule expressions are 
+
+gt = E ℓu + F ⊤ 
+
+> u
+
+∇V ρt+1 (F ) , (D.1) 
+
+Bt = E
+
+ℓuu + F ⊤ 
+
+> u
+
+∇2V ρt+1 (F )Fu + X
+
+> j
+
+∂j V ρt+1 (F ) ∇2
+
+> uu
+
+Fj
+
+ . (D.2) Stage-cost derivatives include dependencies through simulated arguments. The last Hessian term is generally nonzero; dropping it approximates the pathwise derivative (Heess et al., 2015). 
+
+Differentiability of the implemented continuation. The radial cap is nonsmooth at radius r. If positive-probability noise paths cross that surface as u varies over U , the almost-sure C2-on-U hypothesis of Proposition 4.1 fails, even if the surface has zero probability at one fixed action. Automatic differentiation then computes branchwise curvature without an established population-Hessian unbiasedness guarantee. First derivatives have a weaker sufficient condition: almost-sure differentiability at the fixed action, together with a local random Lipschitz bound having finite conditional expectation, permits dominated convergence of difference quotients. Lipschitz continuity alone does not ensure differentiability at every fixed action. Second derivatives require 25 additional control. For example, let Z ∼ N (0 , 1) and f (u, Z ) = max {− 1, min {u + Z, 1}} . The pathwise second derivative is zero almost surely at fixed u, whereas 
+
+d2
+
+du 2 Ef (u, Z ) = ϕ(1 + u) − ϕ(1 − u),
+
+which equals −0.222548 at u = 1 /2; ϕ is the standard-normal density. Differentiating the selected branches misses the moving-boundary contribution. Finite differences of a fixed finite sample away from its kinks need not detect this population discrepancy. The reported derivative checks therefore retain their tested sample and continuation scope. 
+
+Smooth safeguards and exact pathwise derivatives. The following construction makes the regularity route explicit without changing the interpretation of the reported hard-cap experiments. 
+
+Lemma D.1 (Smooth radial caps and continuation regularity) . For r > 0 and an integer p ≥ 1, define 
+
+Cr,p (d) = d
+
+[1 + ( ∥d∥/r )2p]1/(2 p) . (D.3) Then Cr,p is C∞, its norm is strictly below r, and, for the hard cap Cr in (4.11), 
+
+sup 
+
+> d
+
+∥C r,p (d) − C r (d)∥ = r(1 − 2−1/(2 p)) −→ 0. (D.4) Fix a finite horizon and an open neighborhood of the current action. Suppose every map evaluated in the actual continuation, including its feasible action parameterization, dynamics, costs and filter, is C2 on the reachable domain. If the complete sampled cost’s first and second action derivatives have integrable local envelopes, Proposition 4.1 applies to this smooth continuation. A sufficient way to obtain these envelopes is polynomial growth of the maps and their derivatives through order two, uniformly on that domain, together with base noise having moments of every order and a fixed initial information state. Any inverses or Cholesky factors used in this condition require covariance matrices bounded away from singularity. 
+
+Proof. Since (∥d∥/r )2p = ( d⊤d)p/r 2p is a polynomial and the denominator is positive, the map is smooth even at 
+
+d = 0 . Put x = ∥d∥/r and hp(x) = x(1 + x2p)−1/(2 p). Then hp(x) < 1 for finite x and h′
+
+> p
+
+(x) = (1 + x2p)−1−1/(2 p).The normalized approximation error is x − hp(x) for x ≤ 1 and 1 − hp(x) for x ≥ 1. It increases on the first interval and decreases on the second, proving (D.4) at x = 1 . Finite composition preserves C2 regularity. Under the stated polynomial conditions, induction over the finite rollout bounds the states and their first two action sensitivities by a polynomial in the finitely many base-noise magnitudes, uniformly on a smaller bounded action neighborhood. The same holds for the cost derivatives. Finite noise moments make these envelopes integrable, and conditional dominated convergence gives the two pathwise identities. At p = 1 , (D.3) is the alternative d/ p1 + ∥d∥2/r 2; at ∥d∥ = r it returns norm r/ √2. Larger fixed p approximates the hard cap more closely, but the lemma gives no uniform second-derivative bound as p → ∞ . Uniform action-map convergence therefore does not justify taking a hard-cap limit inside the Hessian identity. Nor does it by itself bound full-policy cost differences. All safeguards in the evaluated future state-to-action map must satisfy the regularity conditions. For a box [ℓj , h j ], one smooth feasible coordinate map is Sj (v) = cj + aj tanh(( v − cj )/a j ), where cj = ( hj + ℓj )/2 and aj = ( hj − ℓj )/2 > 0.It takes values strictly inside the box and changes actions relative to hard clipping. A C2 saturation with constant exterior pieces is another possible design if exact endpoint values are needed. Merely smoothing the radial cap while retaining a hard final action projection does not satisfy the lemma. The node QP, acceptance decision and regression procedure are not differentiated through: their completed coefficients are fixed when an earlier action is varied. Their own smoothness is therefore unnecessary for this lemma. In contrast, the smooth map must be the one used both in future rollouts and in deployment. Changing it requires rebuilding the backward policy; differentiating a smooth surrogate while deploying a hard map introduces a different-continuation 26 error. Section E evaluates the p = 1 smooth cap in a controlled non-LQG example. The main learned-controller experiments retain hard safeguards, and the sufficient growth and covariance conditions have not been certified for those tasks. The policy-comparison identities remain valid for the existing nonsmooth policies under their own integrability assumptions. 
+
+Accuracy and regularity of the deployment cap. If πθ,⋆ t (s) − π0 
+
+> t
+
+(s) ≤ r, nonexpansiveness of projection implies π0 
+
+> t
+
+(s) + Cr (f (s) − π0 
+
+> t
+
+(s)) − πθ,⋆ t (s) ≤ f (s) − πθ,⋆ t (s) . This controls action values, not policy derivatives. For a smooth residual d(s) = f (s) − π0 
+
+> t
+
+(s), a transverse crossing of ∥d∥ = r has a derivative jump −nn ⊤Dd , with 
+
+n = d/r . Moreover, a bounded baseline and finite Gaussian-kernel sum cannot make a nonconstant polynomial residual uniformly bounded along an unbounded state ray. A global inactivity claim therefore needs an explicit domain and coefficient argument. For the smooth family (D.3), let d = f − π0 
+
+> t
+
+and suppose ∥d∥2,1 ≤ E ≤ r. Then the deployment term in Theorem 5.3 satisfies 
+
+ηdep ,t = ∥C r,p (d) − d∥2,v t ≤ (4 p + 6) r−2pE2p ∥d∥2,v t . (D.5) For completeness, R(x) = Cr,p (x) − x on ∥x∥ ≤ r obeys ∥R∥ ≤ r−2p ∥x∥2p+1 /(2 p), ∥DR ∥ ≤ (1 + 1 /(2 p)) r−2p ∥x∥2p,and D2R ≤ (4 p + 2) r−2p ∥x∥2p−1. The chain rule for R ◦ d, bounding one factor Dd by E, gives (D.5). Thus a fixed smooth cap has higher-order distortion for uniformly small residuals. Weighted closeness on an unbounded domain alone does not imply the unweighted condition ∥d∥2,1 ≤ E, and a hard-cap crossing does not satisfy this smooth argument. 
+
+D.2 Exact-belief conditions 
+
+Information. New predictor information about the latent state must enter the likelihood or satisfy Assumption 3.1; a current outcome cannot predict itself before observation. 
+
+State. Recurrent predictor states and random future covariates require their own retained states and transition laws. Filtering Xt alone does not supply these omitted dynamics. 
+
+Improvement. Exact filtering, derivatives, local optimization, and action-value decrease are separate requirements. Theorems A.2 and 5.1 also require their acceptance/model conditions; regressed policies retain the interpolation term in Corollary 5.2. 27 E A controlled non-LQG quadratic-accuracy regime 
+
+Figure E.1 displays the error curves underlying Table E.1. This experiment connects the correction, storage, and smooth deployment operations in Corollary 5.4. The reference policy is perturbed by a fixed smooth direction, and the deployed future map is used in the preceding-date calculation. 
+
+Problem and reference. There are two scalar decisions, with unrestricted actions, 
+
+s1 = tanh( s0) + u0 + 0 .4ξ, ξ ∼ N (0 , 1) ,ℓ0(s0, u 0) = 0 .35 u20, ℓ1(s1, u 1) = 12 (s1 + u1)2 + 14 u41. (E.1) The last optimum is the unique root of u3 + u + s = 0 :
+
+π⋆ 
+
+> 1
+
+(s) = 2
+
+√3 sinh 
+
+ 13 arsinh( −3√3s/ 2) 
+
+
+
+.
+
+Writing p = π⋆ 
+
+> 1
+
+(s) gives (V ⋆ 
+
+> 1
+
+)′ = s + p and (V ⋆ 
+
+> 1
+
+)′′ = 3 p2/(1 + 3 p2) ∈ [0 , 1) , so 0.7 ≤ Q⋆ 
+
+> 0,uu
+
+≤ 1.7. We solve the first-date stationarity equation using 256-point Gauss–Hermite quadrature; reference state derivatives follow by implicit differentiation. 
+
+Backward construction and storage. Set π0,ϵ t = π⋆t + ϵh t, where h0(s) = 0 .5 + sin s, h1(s) = sin s, and ϵ ∈{0.2, 0.1, 0.05 , 0.025 , 0.0125 , 0.00625 }. At each date, one Newton step uses the gradient and Hessian of the action value under the actual stored future policy. The proposal displacement is transformed by C1,1(d) = d/ √1 + d2. All construction-node targets pass the conditional-cost comparison within 10 −12 numerical tolerance. Storage uses 101 equally spaced nodes on [−1.5, 1.5] at date zero and 161 on [−5, 5] at date one. We apply the same smooth cap to the fitted displacement from the baseline before deployment and before evaluating the earlier continuation. The principal comparison fits the residual target with the single feature ht(s), minimizing n−1 P
+
+> i
+
+(ch t(si) − [yi −
+
+π0,ϵ t (si)]) 2 + λc 2. The first-order correction direction is therefore representable. We compare λ = ϵ with fixed λ = 0 .05 .A separate direct-action diagnostic uses features [π⋆t , h t], with ridge λ = ϵ2 or fixed λ = 0 .01 . Including the reference-policy feature removes its dictionary approximation error and isolates direct-ridge bias; this diagnostic is not the thrust storage dictionary. Both fits use the normalized penalty convention above. 
+
+Measurements. For v(s) = 1 + s2, we measure 
+
+Egrid  
+
+> t
+
+=
+
+> 2
+
+X
+
+> k=0
+
+1
+
+k! max 
+
+> s∈Gt
+
+|Dk(πt − π⋆t )( s)|
+
+1 + s2 , (E.2) separately for the baseline, correction target, raw fit, and deployed map. The evaluation grids have 181 points on 
+
+[−1.5, 1.5] and 241 on [−5, 5] . These sampled compact-domain errors do not bound the global weighted supremum in (5.6). The continuation diagnostic is max s∈G0 |Q¯π1
+
+> 0,u
+
+(s, π ⋆ 
+
+> 0
+
+(s)) |/(1 + s2); the optimal-tail gradient vanishes. 
+
+Observed regime. Table E.1 gives orders over the final halving 0.0125 → 0.00625 ; all halving intervals appear in the numerical archive. Decreasing residual ridge yields approximately second-order deployed policies at both dates and fourth-order continuation-gradient error. The individual action, first-derivative, and second-derivative errors also have orders 1.98–1.99. The deployment cap’s difference from the raw residual fit has order 2.95–2.96, consistent with the higher-order distortion in (D.5). At ϵ = 0 .00625 , date-zero target and deployed errors are 4.76 × 10 −5 and 1.26 × 10 −4;the corresponding date-one errors are 7.72 × 10 −5 and 1.09 × 10 −4.28 10 −2 
+
+10 −1 
+
+Baseline perturbation ε
+
+10 −4 
+
+10 −3 
+
+10 −2 
+
+10 −1 
+
+> Sampled weighted  C2 error
+
+(a) Current-date policy     
+
+> Baseline Correction target Residual, λ=ε
+> Residual, fixed λ
+
+10 −2 
+
+10 −1 
+
+Baseline perturbation ε
+
+10 −4 
+
+10 −3 
+
+10 −2 
+
+10 −1 
+
+> Sampled weighted  C2 error
+
+(b) Stored future policy     
+
+> Baseline Correction target Residual, λ=ε
+> Residual, fixed λ
+
+10 −2 
+
+10 −1 
+
+Baseline perturbation ε
+
+10 −4 
+
+10 −3 
+
+10 −2 
+
+10 −1 
+
+> Sampled weighted  C2 error
+
+(c) Direct fi t with reference-policy feature             
+
+> t= 0, λ=ε2
+> t= 1, λ=ε2
+> t= 0, fixed λt= 1, fixed λ
+
+10 −2 
+
+10 −1 
+
+Baseline perturbation ε
+
+10 −8 
+
+10 −7 
+
+10 −6 
+
+10 −5 
+
+10 −4 
+
+10 −3 
+
+> Sampled weighted absolute error
+
+(d) Continuation gradient at optimum     
+
+> Residual, λ=ε
+> Residual, fixed λ
+
+Fig. E.1. Controlled non-LQG order measurements. Panels (a)–(b) separate baseline, target, and deployed residual-policy errors. Panel (c) isolates direct-ridge bias using a dictionary containing the reference policy. Panel (d) uses the actual stored, smooth deployed tail. Errors are sampled quantities defined in the text; smaller perturbations are to the right. Table E.1 Final-halving orders of sampled errors. A value near two denotes quadratic accuracy; near zero denotes a plateau. Direct fits include the reference policy as a feature. Storage Target t = 0 Deployed t = 0 Deployed t = 1 Tail gradient Residual, λ = ϵ 2.017 1.993 1.983 3.970 Residual, fixed λ 2.018 1.033 0.982 1.966 Direct, λ = ϵ2 2.018 1.984 1.995 4.022 Direct, fixed λ 0.450 −0.0001 −0.010 −0.022 
+
+Fixed residual ridge leaves an approximately first-order bias, rather than a nonzero absolute floor. Fixed direct ridge has a floor: even at ϵ = 0 , deployed errors are 0.09374 and 0.01562 at dates zero and one. Its nonvanishing future-policy error also limits the preceding target. The current Newton target remains second order even with a first-order residual tail; backward refresh reduces the continuation contribution, without generically increasing the full current-step order beyond two. 29 Numerical checks and scope. Changing from 192 to 256 quadrature points changes reference actions by at most 2.13 × 10 −14 and their first two derivatives by 5.75 × 10 −11 . At ϵ = 0 .0125 with decreasing residual ridge, the date-zero target’s sampled C2 error changes by 9.29 × 10 −13 ; doubling evaluation-grid density changes the principal measurements by at most 6.0 × 10 −5 relatively. Analytic action derivatives and implicit reference-policy derivatives agree with independent automatic differentiation within 2.8 × 10 −17 and 1.9 × 10 −16 , respectively. The minimum date-zero construction curvature is above 0.8968. This is a local perturbation experiment with a baseline constructed from the reference policy, a representable residual direction, and deterministic quadrature. It illustrates the consistent regime of Corollary 5.4, including actual smooth deployment, while leaving global derivative envelopes and the learned-controller conditions unverified. The four storage settings are diagnostics of order and bias, not performance comparisons of learned actors. The numerical archive 
+
+nonlinear_quadratic_regime_20260928 contains the implementation, per-component errors, and quadrature/grid checks. 
+
+References    
+
+> S. Kakade and J. Langford. Approximately optimal approximate reinforcement learning. In Proceedings of the 19th International Conference on Machine Learning , pages 267–274, 2002. Conference paper.
+
+30 Online Supplement 
+
+Reading guide 
+
+This supplement provides the experimental details needed to interpret the main paper. Section S1 specifies the task models, fitting data, controller budgets, and paired evaluation. Section S2 isolates policy storage through target validation and fresh episode panels. Section S3 documents independent OLF solver checks, restricted feedback-MPC student construction, and the matched policy-storage comparison in Section S3.3. Section S4 gives current native deployment measurements and local numerical checks. Section S5 reports the separate scalar docking DP reference and regression diagnostic. Section S6 preserves the full quadratic-thrust reference panel. The Technical Appendix contains the proofs, safeguard analysis, and controlled non-LQG accuracy experiment (Section E). 
+
+S1 Core experimental protocols 
+
+All tasks use stochastic partially observed models fitted from observations. Filtering is exact within the fitted Gaussian families except for the arm’s approximate EKF. The docking protocol in Section S1.1 tests information acquisition, thrust in Sections S1.2–S1.3 supplies exact LQG and nonquadratic comparisons, and the arm in Section S1.4 tests nonlinear dynamics. Independent OLF MPC optimizes future action sequences, whereas restricted feedback MPC optimizes belief-dependent future actions; neither uses DPO continuation. Policy costs use held-out paired episodes, with each controller following its own action and observation history. Common phases and exogenous noise pair methods. Fitting, target construction, and model selection use the fitted model; the plant supplies observation data and held-out evaluation. Unless stated otherwise, intervals are descriptive, unadjusted 95% Student-t intervals over eight fitted-model seed means. Episodes and antithetic pairs do not count as independent fits. Feedback-MPC students in Section S3.2 use the same model seeds as the reported BG policies but different policy representations; Section S3.3 repeats the comparison with matched representation families. 
+
+AI-assisted implementation. ChatGPT/Codex (OpenAI) assisted with implementing and debugging simulation, policy-construction, evaluation, and plotting code under the author’s direction. The reported numerical results and plots derive from computational runs and saved outputs using the models, algorithms, and evaluation protocols specified in this supplement. ChatGPT/Codex and Claude (Anthropic) also supported critical examination of ideas and mathematical arguments and manuscript editing; the mathematical claims are justified by the stated assumptions and proofs in the main paper and Technical Appendix. 
+
+S1.1 Active-sensing docking 
+
+Task and protocol. This thrust-control variant has a 12-decision Gaussian state Xt = ( pt, v t, w t) (position, velocity, and hidden disturbance). The two continuous controls are normalized thrust ft ∈ [−1, 1] and sensor power at ∈ [0 , 1] .Thrust changes the state drift; sensor power reduces the variance of the next position observation: 
+
+Var( Yt+1 | Xt+1 , a t) = c2
+
+> t
+
+
+
+r2floor + r2base 
+
+1 + κa t
+
+
+
+, ct =
+
+10 , late-noise condition and t ≥ 6,
+
+1, otherwise . (S1.1) All methods know the noise schedule and use it in fitting/simulation. Costs cover position, velocity, thrust, and sensing; success requires |pT | ≤ 0.25 , |vT | ≤ 0.35 . Uncertainty reduction earns no separate reward. The last sensor action is fixed at zero because no later decision uses its observation. Each of eight models is fitted by Gaussian observation likelihood to 8,192 randomized-action trajectories without latent labels. DPO uses 1,600 updates; BG uses 256 nodes/date, 128 derivative paths, and 256 independent acceptance paths. Evaluation uses 512 paired episodes per seed with each controller’s own belief history. 31 Independent planning comparisons. OLF-MPC (L-BFGS) and OLF-MPC (CEM) optimize future thrust se-quences and replan after observations, without DPO initialization or continuation. Their fixed future thrust cannot benefit from future observations, so sensing only adds expense; its optimal value is zero and is eliminated analytically. Replanning does not restore that omitted ex ante information value. Sensing changes future estimation uncertainty: the separate sensor input buys state information while model parameters remain fixed. Independent feedback MPC uses PyTorch L-BFGS on a sample-average objective through simulated observations/filter updates. It optimizes date-wise sigmoid-parameterized sensing and tanh-transformed affine belief-mean thrust feedback, not an exact POMDP solution. Table 3 in the main paper reports BG policies stored by physical-action fitting; Section S3.2 documents the separately trained feedback-MPC students. A separately validated acados SQP solves the same zero-sensing OLF objective with 128 planning paths. All 98,304 decisions across both regimes and eight seeds return successful solver status. Its closed-loop costs, 4.5675 and 15.1203, remain close to the L-BFGS and CEM OLF results. Faster solution of this objective does not recover the omitted value of future information. The numerical belief-space DP in Section S5 concerns a separate scalar companion, not this three-state task. 
+
+S1.2 Thrust identification and comparison protocol 
+
+The planar thrust model has latent state Xt = ( pt, v t, w t) ∈ R6 and two continuous commands ut ∈ R2. Its fitted equations are 
+
+pt+1 = pt + ∆ vt + 12 ∆2(Gθ ut + wt),vt+1 = vt + ∆( Gθ ut + wt),wt+1 = diag( ρθ )wt + fθ (Ct) + diag( σw,θ )ξXt+1 ,Yt+1 = pt+1 + diag( γθ (Ct)) wt+1 + diag( σy,θ )νt+1 . (S1.2) Here ∆ = 0 .25 , T = 16 , and Ct = (sin( φ + 0 .43 t), cos( φ + 0 .43 t)) has random initial phase. The kinematics and initial Gaussian prior are supplied. Observation likelihood learns Gθ , wind persistence, process/observation noise scales, and the context maps fθ , γ θ , supplied by a shared network with two 24-unit tanh layers. The plant’s G⋆ = ( 1 0.35 0.25 0 .75 ) is withheld from fitting and policy construction. Each of eight seeds supplies 2,048 randomized-action observation trajectories for fitting, 320 for validation, and 512 for predictive testing. Fitting uses 800 Adam updates (batch 128, learning rate 0.006), selecting validation checkpoints every 25 updates. Only contexts, actions, and noisy observations are used. The same eight identified-model checkpoints serve both effort conditions and objectives. Controllers use the fitted posterior N (mt, P t). Initial uncertainty, process noise, and observation noise are present in the plant and the fitted model. The fitted Kalman recursion is exact, but its accuracy for the plant is evaluated empirically. Here phase and time determine Pt independently of commands, so thrust tests passive belief feedback. Conditional on context, its dynamics remain linear-Gaussian under either objective. The quadratic stage and terminal costs are ℓq(X, u ) = 12 (X⊤QcX + u⊤Rcu) and Φq(X) = 12 X⊤Qf X, with 
+
+Qc = diag(0 .10 , 0.10 , 0.03 , 0.03 , 0.005 , 0.005) ,Qf = diag(6 , 6, 2, 2, 0.02 , 0.02) ,Rmild  
+
+> c
+
+= diag(0 .12 , 0.12) , Raniso  
+
+> c
+
+= diag(0 .02 , 0.50) .
+
+These are different effort costs in fixed physical coordinates, not a change of units. The nonquadratic objective adds smooth position and coupled-command penalties: 
+
+ℓnq (X, u ) = ℓq(X, u ) + 0 .025( p41 + p42) + 0 .015( u1 + 0 .5u2)4,
+
+Φnq (X) = Φ q(X) + 0 .03( p41 + p42). (S1.3) For each objective and frozen model, a two-layer, 48-unit tanh DPO actor maps (mt, diag( Pt), C t, t/T ) to unbounded commands. Phase and time determine the full covariance schedule. Training uses 600 Adam updates (batch 128, learning rate 0.003); DPO+150 continues the optimizer. Model and actor gradient norms are clipped at 5. 32 BG construction and independent comparators. For thrust, each date uses 128 DPO-rollout belief nodes, perturbed by 0.2 times coordinate-wise empirical standard deviations with a 0.05 scale floor. Corrections use 128 antithetic derivative paths, 256 independent antithetic acceptance paths, Hessian floor 0.01, and displacement cap 2. Static BG uses DPO continuation; backward BG uses the fitted later-date corrections. Their nodes, random numbers, features, and safeguards are matched. LQG features are affine in mt with phase harmonics; nonquadratic features add selected squared, cubic, and cross terms. Ridge penalties are 0.001 and 0.01, respectively. Nonquadratic deployment also caps DPO-relative displacement at 2. Execution evaluates the fitted map without a new acceptance test, so construction-node acceptance does not certify off-node improvement. OLF-MPC (L-BFGS) and OLF-MPC (CEM) implement OLF control: they optimize the entire remaining open-loop command sequence, execute its first action, and replan with their own shifted previous plans. They use no DPO continuation, initialization, action ball, or acceptance test. L-BFGS allows 80 iterations; CEM uses full sequence covariance, 512 candidates, and 24 generations. Exact Gaussian quadratic/fourth moments remove objective Monte Carlo noise; LQG action-independent constants are omitted. For nonquadratic thrust, restricted feedback MPC instead optimizes datewise affine belief-mean policies by PyTorch L-BFGS with exact Gaussian moments, without DPO/BG actions, continuation, or initialization. It uses the same frozen model and evaluation paths, executing its first action and replanning after each observation. These task-specific planners have different budgets and are neither exact nonlinear feedback oracles nor reproductions of PETS, POPLIN, or belief-space iLQG/DDP. 
+
+S1.3 Thrust reference checks 
+
+Section S1.3 checks fitted-model action accuracy against Riccati feedback. Section S1.3 specifies the controlled con-tinuation comparison after adding quartic costs. 
+
+LQG reference 
+
+Backward Riccati recursion gives the exact fitted-model feedback policy used to test Proposition 5.7. The action panel uses common held-out DPO histories at five dates with cold planner starts, while policy costs use each controller’s own history. BG reduces fitted-optimal action MSE by more than 99.99%, to 1.94 × 10 −6/1.72 × 10 −6 in mild/anisotropic conditions. Its plant-optimal MSEs, 0.002029 /0.001966 , approach the fitted-model–plant oracle discrepancy; these squared errors do not give an additive error decomposition. The cached fitted-LQG controller builds float32 condensed kernels, solves selected inverse columns in float64, and stores float32 coefficients. The independent action reference uses float32 Riccati recursion. This rounding explains residual self-errors of 10 −11 –10 −10 ; neither smaller numerical residuals nor sampled cost reversals indicate improvement on the mathematical optimum. 
+
+Nonquadratic continuation comparison 
+
+The quartic costs in (S1.3) remove the Riccati reference. Static and backward BG share nodes, derivative and accep-tance streams, features, and safeguards; only the continuation used to generate targets changes. Section S2 repeats this comparison with matched target-validated representations. Section S4.3 gives derivative checks; neither numerical MPC nor BG is assumed to be the optimal feedback policy. 
+
+S1.4 Nonlinear robot arm 
+
+Model and task. We use a synthetic torque-driven planar two-link arm with state X = ( q, v ) ∈ R4, observed goal g ∈ R2, and two bounded controls u ∈ [−2, 2] 2. The horizon is T = 16 with ∆ = 0 .14 . The supplied physical family contains coupled inertia, Coriolis, gravity, drag, and actuator terms. Writing its acceleration as aθ (q, v, u ), the stochastic transition and observation are 
+
+qt+1 = qt + ∆ vt + 12 ∆2 aθ (qt, v t, u t) + Σ w,θ ξXt+1 
+
+,vt+1 = vt + ∆  aθ (qt, v t, u t) + Σ w,θ ξXt+1 
+
+, Yt+1 = qt+1 + Σ y,θ νt+1 . (S1.4) The diagonal noise scales are learned along with physical coefficients. The unit-link fingertip map is r(q) = (cos q1 +cos( q1 + q2), sin q1 + sin( q1 + q2)) . Initial mean angles are uniform on [−1.2, 1.2] 2, initial mean velocities are zero, 33 and P0 = diag(0 .10 2, 0.10 2, 0.24 2, 0.24 2). Goals are r(qgoal ) for angles uniform on [−0.9, 0.9] 2. An initial noisy angle measurement updates this prior. With e = r(q) − g, the task costs are 
+
+ℓ(x, u, g ) = 0 .17 ∥e∥2 + 0 .025 ∥v∥2 + 0 .012 u21 + 0 .055 u22
+
++ 0 .025 
+
+> 2
+
+X
+
+> j=1
+
+e4 
+
+> j
+
++ 0 .012( u1 + 0 .65 u2)4,ℓT (x, g ) = 5 ∥e∥2 + 0 .35 ∥v∥2 + 0 .28 
+
+> 2
+
+X
+
+> j=1
+
+e4 
+
+> j
+
+. (S1.5) Terminal attainment requires ∥eT ∥ < 0.20 and ∥vT ∥∞ < 0.35 , a threshold diagnostic distinct from total cost. The arm is an in-house simulator, not a standard Reacher or hardware benchmark. 
+
+Learning and comparisons. Each of eight seeds fits 13 physical/noise parameters from 2,048 randomized-action observation trajectories, with 512 validation and 512 test trajectories. Fitting uses 380 Adam updates (batch 128) and the EKF Gaussian innovation score, observing only torques, noisy angles, and the prior. Hidden velocities and plant parameters are withheld. This is parameter learning in a supplied nonlinear family. The EKF maintains full covariance; the two-layer, 64-unit DPO actor and regressed policies use means, covariance diagonals, goal, and time. That compressed input need not be sufficient. DPO uses 500 full-rollout updates (batch 128), with a +150 arm. Both BG variants share 96 DPO nodes/date, 48 derivative paths, and 96 independent acceptance paths; curvature floor, DPO-relative radius, and ridge are 
+
+0.02 , 0.75 , 0.02 . Residual features include means, goals, fingertip errors, covariance diagonals, squares, and a joint-angle cross term. Backward BG differentiates complete model/EKF rollouts through regressed later policies, retaining state-input derivatives while freezing coefficients; static BG retains DPO. Node acceptance precedes regression, with no learned critic. The independent OLF controllers OLF-MPC (L-BFGS) and OLF-MPC (CEM) optimize the full remaining bounded open-loop torque sequence using 24 conditional state/process paths; they use, respectively, 30 L-BFGS iterations and eight CEM iterations with 128 candidates. They invoke neither DPO nor BG continuation and replan after every observation, carrying the previous plan between dates. The nonlinear OLF solver has no global-optimality certificate. Independent feedback MPC first solves an open-loop plan, then uses PyTorch L-BFGS to optimize affine functions of future belief-mean deviations followed by a scaled tanh torque map through model/EKF trajectories. The bounded action law is therefore nonlinear in the belief mean. Its zero-gain ablation removes observation response while retaining the same 24 paths, initial 30 open-loop iterations, and 30 additional iterations. Neither uses DPO/BG. This ablation matches sampling and iteration limits, not time, and tests feedback response beyond an extra solve. The zero-gain comparison lowers mean plant cost from 6.36050 to 6.28979 when future belief response is enabled: a paired difference of −0.07071 [ −0.08023 , −0.06118] , with similar attainment. Extra open-loop optimization alone gives an unresolved difference of −0.02133 [ −0.05262 , +0 .00996] relative to the original OLF planner. These fixed-budget ablations support a contribution from feedback response without establishing an optimal nonlinear policy. Evaluation uses 256 paired episodes per seed. 
+
+S2 Policy storage and target validation 
+
+The reported backward BG policies store accepted local actions using target-validated maps in thrust and the arm and a physical-action fit in docking. Map choices use fitted-model target-action diagnostics, never plant cost: thrust and arm use construction-node cross-validation, while docking uses a terminal held-out target pilot. These choices were developed after earlier diagnostics, so the study is exploratory. A fresh exogenous-noise evaluation panel reuses the same eight learned-model seeds and is therefore an independent episode check, not a new-model replication. 34 Nonquadratic thrust. The stored policy uses a 27-coefficient polynomial direct-action fit, optionally augmented by a 128-center local RBF correction. Kernel residuals subtract the radius-two-capped polynomial prediction from target actions; the combined map is capped again relative to DPO at deployment. Polynomial ridge is 0.01 with intercept penalty 10 −12 ; kernel penalties are selected from {0.01 , 0.1, 1}. Technical Appendix C.2 gives this operator and its storage-error bound. Four-fold target-action cross-validation admits the additional component datewise only when it lowers MSE by at least 5%; all subsequent BG targets are recomputed using the resulting corrected tail. The construction uses 128 nodes, 128 derivative paths, and 256 independent acceptance paths per date. On the fresh mild/anisotropic panels, backward BG costs 1.606786 /2.052751 , versus static BG’s 1.609062 /2.057187 . Representative seed-0 generated-C date-zero action times are 5.820 /5.280 μs for backward BG and 5.587 /5.385 μs for static BG. Backward construction takes 2.699 /2.632 seconds per fitted model on the local RTX 4070 SUPER, excluding shared model/DPO learning and node generation. On fresh mild-thrust episodes, the paired backward-minus-static BG cost is −0.00228 (interval [−0.00364 , −0.00091] ); on anisotropic episodes it is −0.00444 (interval [−0.00577 , −0.00310] ). On the original task panel, the backward-minus-online-feedback-MPC difference is +0 .002213 for mild thrust (interval [0 .001521 , 0.002905] ) and +0 .011277 for anisotropic thrust (interval [0 .007760 , 0.014793] ). These are exploratory 95% Student-t intervals across eight paired fitted-model seed means. 
+
+Docking. The actor retains its 16 features, smooth output map, and action bounds. Policy fitting minimizes de-ployed physical-action error, with coefficient penalty 10 −4; a terminal-date 2 × 2 ablation attributes most target-MSE reduction to the action loss rather than the penalty. Rebuilding the corrected tail gives backward BG original-panel costs 0.822330 /4.025040 for regular/late-noise docking and fresh-panel costs 0.821157 /3.940916 . Original-panel suc-cess is 82 .57% /50 .68% and fresh-panel success is 82 .25% /49 .80% . Static BG costs 0.824931 /4.031797 on the orig-inal panel. The original-panel backward-minus-static regular cost difference is −0.002601 [ −0.005942 , +0 .000740] ,while the fresh-panel difference is −0.005105 [ −0.007677 , −0.002534] . Relative to restricted online feedback MPC on original paths, backward BG is cheaper by 0.01335 [0 .00455 , 0.02215] in regular docking but costlier by 0.07158 [0 .01710 , 0.12606] under late noise. These are descriptive eight-seed paired intervals, not comparisons to an optimal belief policy. Static/frozen-target/backward builds average 4.44 /5.44 /5.27 seconds per model on the local RTX 4070 SUPER; separate A6000 student times below are not pooled with them. Seed-0 native-C backward actions take 
+
+1.389 /1.848 μs at date zero. 
+
+Two-link arm. Four-fold construction-target cross-validation selects among residual maps and up to 32-center Nyström maps, then the corrected tail is rebuilt. On separate fitted-model target nodes, action MSE is 0.043954 ; this measures storage of accepted actions rather than plant performance. Backward BG costs 6.678051 on the original and 6.688447 on the fresh episode panel. Original/fresh attainment is 59 .23% /57 .08% . Static BG costs 6.701478 with 
+
+62 .26% attainment on original paths. Restricted online feedback MPC costs 6.289789 . The stored arm maps average 31,065 bytes; backward/static BG date-zero native-C times are 3.837 /3.659 μs over eight seeds. Backward construction takes 9.47 seconds per model on the local RTX 4070 SUPER. The construction time conditions on the fitted model, trained actor, and prepared nodes, excluding their preparation costs. 
+
+S3 Feedback-MPC student construction 
+
+The feedback-MPC student benchmark freezes the eight fitted models and DPO actors in each condition. Student labels come from restricted feedback optimization at DPO-visited beliefs, and the fitted policy executes without online planning. Common model learning, actor training, and node generation are excluded from reported policy-construction times. The historical student representations differ from the task-section backward BG maps, so those cost differences are descriptive. Section S3.3 gives the separate common-storage comparison. 
+
+S3.1 Independent OLF solver verification 
+
+The nonquadratic-thrust OLF planner independently minimizes exact expected quartic cost from zero, without DPO/BG continuation. It uses cached population objectives and up to four consecutive 80-iteration L-BFGS solves, stopping at maximum absolute gradient 10 −5. All 256 date/seed/condition batches pass, with maximum 9.70 × 10 −6.Effort-coefficient bounds put Hessian eigenvalues above μ = 0 .12 or 0.02 , so ∥∇ f ∥2/(2 μ) bounds suboptimality by at most 1.69 × 10 −8. This verifies the OLF solve, not feedback optimality. The arm and docking feedback teachers remain finite-budget local solvers. 35 S3.2 Restricted feedback-MPC distillation 
+
+Historical deployment comparison. Table S1 compares the original task-section backward BG policies, inde-pendently fitted feedback-MPC students, and online feedback MPC. BG and student storage maps differ, so these costs are descriptive rather than a matched-capacity contrast. The principal common-storage comparison is main-paper Figure 1 and Section S3.3 below. Online feedback MPC replans along its own visited beliefs, so its gap from a student also includes visitation effects.                   
+
+> Table S1 Eight-seed mean plant cost for the task-section backward BG policies, separately constructed feedback-MPC students, and online feedback MPC (lower is better). BG costs match the preceding task tables; student maps differ in capacity. Student teacher budgets are 320 feedback iterations for thrust, 30 projected iterations for the arm, and 60 iterations for docking. Online feedback MPC replans along its own trajectories. Task / condition Backward BG Feedback-MPC student Online feedback MPC Thrust, mild 1.65568 1.65656 1.65346 Thrust, anisotropic 2.15022 2.15654 2.13894 Robot arm 6.67805 6.73788 6.28979 Docking, regular 0.82233 0.82867 0.83568 Docking, late noise 4.02504 4.05233 3.95346
+
+Frozen inputs and target generation. For each condition, the feedback teacher independently optimizes future belief-dependent response rules and labels the first action at each DPO-visited belief. Online feedback MPC instead replans along its own trajectories; its gap from the offline student combines target quality, policy fitting, and visitation effects. The arm uses 96 nodes per date over 16 dates, 24 conditional paths, and feedback checkpoints at 4, 16, 30, 80, and 320 iterations after an independent 30-iteration OLF initialization. Its DPO-anchored RefinedPolicy has ridge 0.02 
+
+and an action radius of 0.75 ; the main comparison uses radius-projected 30-iteration labels, matching the direct online planner’s feedback-iteration budget. Evaluation uses 256 paired episodes per seed. Docking uses 256 nodes per date over 12 dates, 128 antithetic planning paths, and a 60-iteration L-BFGS cap. It fits first physical actions into a DPO-anchored 16-feature smooth residual policy with ridge 10 −4 and raw-action radius two. The feedback teacher jointly optimizes sensing and affine posterior-mean thrust. Evaluation uses 512 paired episodes per seed. The feedback teachers have no global optimality or convergence certificates.                                 
+
+> Table S2 Feedback-MPC student benchmark: eight-seed mean plant cost, attainment/success, and mean sensing, with median offline construction seconds on one A6000 per seed. Arm values use the projected 30-iteration student. The online planner has no comparable offline build; its policies are replanned along their own trajectories. Backward BG values are reported in the main task tables with different stored maps. Task Controller Cost Success/attain (%) Mean sensor Build (s) Arm Feedback-MPC student 6.73788 56.84 –57.83 Online feedback MPC 6.28979 66.02 ––Docking, regular Feedback-MPC student 0.82867 81.96 0.3322 272.27 Online feedback MPC 0.83568 82.42 0.3387 –Docking, late noise Feedback-MPC student 4.05233 50.63 0.8332 266.10 Online feedback MPC 3.95346 49.98 0.5240 –
+
+Table S2 separates stored-student performance from online feedback planning. Increasing arm feedback iterations from 30 to 320 changes student cost from 6.73788 to 6.73866 , while median construction time rises from 57 .83 to 
+
+436 .23 seconds. Regular-docking student cost minus online feedback MPC is −0.00701 [ −0.01610 , +0 .00208] ; under late noise it is +0 .09887 [+0 .05022 , +0 .14752] . These are exploratory two-sided 95% Student-t intervals over eight paired seed means, without multiplicity adjustment. Episodes within a seed are not independent model fits. 36 Sensing fit and policy-class limits. In regular docking, the feedback student’s training-node sensing MSE aver-aged over dates and seeds is 0.0199 , with the residual cap active for 0.0093 of node actions. Under late noise these quantities are 0.2952 and 0.3609 . At date three, the late-noise feedback teacher’s mean sensing is 0.2084 while the fitted student’s is 0.9962 . This mismatch is consistent with restricted DPO-centered storage but does not establish the cause of the closed-loop cost difference. 
+
+Nonquadratic thrust. The thrust student uses 128 nodes per date over 16 dates, ridge 0.01 , a DPO-centered radius-two deployment cap, and 256 paired episodes per seed. Restricted affine feedback teachers start from independent OLF solutions with zero future gains and use checkpoints at 4, 16, 80, and 320 feedback iterations. OLF solves serve only as planner initialization; no OLF policy is distilled or reported. Raw and radius-projected feedback-student costs agree at the shown precision.                
+
+> Table S3 Thrust feedback-MPC students: eight-seed mean plant cost across teacher iteration limits. The task-section backward BG policy is shown for context; it uses a different storage map. Lower is better. Condition Backward BG Feedback 4 Feedback 16 Feedback 80 Feedback 320 Mild 1.655677 1.738798 1.742606 1.656518 1.656558 Anisotropic 2.150216 2.245274 2.219976 2.156664 2.156543
+
+Table S3 shows large gains between the 16- and 80-iteration teacher checkpoints, with little further change at 320. Median A6000 construction times for feedback-80/feedback-320 are 39 .42 /139 .78 seconds (mild) and 39 .66 /127 .20 
+
+seconds (anisotropic). One anisotropic seed had an archived path-replay discrepancy of 1.37 × 10 −4 after server transfer; its paired-path mean discrepancy was about 1.4 × 10 −6. It was retained after a documented numerical-tolerance recovery. These student costs are near the corresponding task-section BG means, but the different policy maps prevent an isolated target-quality comparison. 
+
+S3.3 Matched policy-storage comparison 
+
+The task-section policies and the points in Figure 2 use their originally selected maps. To examine how map capacity affects the comparison, a separate 2 × 2 experiment crosses target construction (backward BG versus feedback-MPC teacher actions fitted into a student) with a compact or richer shared map family. The eight fitted models, DPO actors, DPO-visited nodes, action transformations and limits, fitting loss and ridge penalty, and target-validation rule where applicable are held fixed within each task and map family. Only the feedback side distills teacher actions: BG directly regresses its accepted local actions. Each BG policy is rebuilt backward at each map capacity using its own stored later-date policy, so the larger map changes both storage and subsequent continuation targets. The richer thrust and arm maps share a candidate family and selection rule across methods, although target validation can select different realized features. Thus the comparison controls a major representation asymmetry but does not isolate the causal effect of target construction alone. Thrust compares a 27-coefficient polynomial map with an optional 128-center local RBF residual, admitted datewise by four-fold target-action validation after at least 5% MSE improvement; ridge is 0.01 and the DPO-relative action radius is two. Its archived feedback-320 teacher labels are held fixed for both student maps. The arm compares a 20-feature residual with a family allowing up to 32 Nyström centers, selected by four-fold validation after at least 2% improvement; ridge is 0.02 and the action radius is 0.75 . Its teacher uses 30 OLF-initialization and 30 feedback iterations. Docking compares the fixed 16-feature map with the same map plus 32 Gaussian RBF features; both methods fit physical actions with ridge 10 −4 and the same action transform and raw-action radius two. Its feedback teacher uses 60 L-BFGS iterations. Arm and docking teachers were recomputed locally; the two student maps in each condition use identical teacher node actions. The methods retain their respective finite target-generation budgets and have no global optimality certificates. 
+
+Arm teacher projection and student storage. The retained matched-comparison logs separate the feedback teacher’s raw action, its projection into the DPO-centered radius-0.75 action ball, and the deployed student prediction. Across eight seeds, projection affects 6.62% of the construction actions (seed-mean range 4.17 –8.20% ). Raw-teacher versus DPO action MSE is 0.113911 , and raw-teacher versus projected-label MSE is 0.018848 . Relative to the projected 37 Table S4 Matched policy-storage comparison on held-out plant episodes. Each entry is a mean over eight fitted-model seeds; ∆ is feedback-MPC student minus backward BG within the same map family, so positive values favor BG. Brackets give exploratory, unadjusted paired-seed 95% Student-t intervals. Thrust uses a separate 512-episode panel and rebuilt maps, as detailed below. Arm entries use evaluation stream 12; stream 22 is reported in the text. Task / condition Map BG cost Student cost ∆ [95% interval] Thrust, mild Compact 1.629484 1.629304 −0.000180 [−0.000419 , +0 .000059 ]Rich 1.627984 1.627820 −0.000164 [−0.000405 , +0 .000078 ]Thrust, anisotropic Compact 2.086755 2.087783 +0 .001027 [−0.003374 , +0 .005429 ]Rich 2.083432 2.084063 +0 .000631 [−0.002964 , +0 .004227 ]Arm Compact 6.714405 6.737905 +0 .023501 [+0 .014112 , +0 .032889 ]Rich 6.678051 6.687144 +0 .009093 [−0.000731 , +0 .018918 ]Docking, regular Compact 0.822330 0.828730 +0 .006401 [+0 .001554 , +0 .011248 ]Rich 0.818491 0.820978 +0 .002487 [−0.001124 , +0 .006099 ]Docking, late noise Compact 4.025040 4.050587 +0 .025547 [+0 .011568 , +0 .039526 ]Rich 4.027685 4.059673 +0 .031989 [+0 .008778 , +0 .055199 ]
+
+labels, deployed compact/rich student MSE is 0.031271 /0.024672 . Each squared error averages over action components and 96 DPO-visited nodes per date, then 16 dates and eight seeds. These are in-sample diagnostics of teacher projection and storage, not optimal-action errors or an additive decomposition of plant-cost loss. They differ from the BG accepted-target diagnostic on separate fitted-model nodes in Section S2. The remaining planner gap motivates joint examination of storage and visitation mismatch; these logs do not identify their relative contributions. 
+
+Thrust policy and evaluation provenance. The task-section thrust table uses target-validated maps on 256 episodes per seed; the fresh-panel storage diagnostic reevaluates those same maps on another 256 episodes. The matched comparison rebuilds compact/rich BG maps and refits both students from the fixed feedback-320 labels, then evaluates all four maps on 512 new paired episodes. For model seed s, add 10 ,000 s to each component of the base phase/noise seed pairs: (7 ,100 ,000 , 7,100 ,001) for the task panel, (7 ,500 ,000 , 7,500 ,001) for the fresh diagnostic, and (8 ,500 ,000 , 8,500 ,001) for the matched panel. Checkpoint and input hashes link each panel to its policy records in the reproducibility archive. Cross-panel absolute cost differences mix evaluation and, for the matched study, policy changes; method contrasts use paired paths within each panel. The rich-minus-compact change in ∆ is +0 .000017 [−0.000154 , +0 .000187 ] in mild thrust and −0.000396 
+
+[−0.001403 , +0 .000611 ] in anisotropic thrust. The matched-map thrust costs therefore establish neither BG superior-ity nor equivalence. In the arm, this change is −0.014407 [−0.019118 , −0.009697 ] on stream 12. An independent 256-path evaluation stream on the same eight models gives compact/rich differences +0 .026307 [+0 .014936 , +0 .037677 ]and +0 .010736 [+0 .002632 , +0 .018841 ], with a change of −0.015570 [−0.023032 , −0.008108 ]. Rich-map student at-tainment remains below BG by 2.25 /2.44 percentage points across the two streams. The second stream is an episode replication, not another set of model fits. In regular docking, the rich map reduces ∆ from +0 .006401 to +0 .002487 , a change of −0.003913 
+
+[−0.006951 , −0.000876 ]. Its student cost changes by −0.007752 [−0.013294 , −0.002210 ], while BG changes by 
+
+−0.003839 [−0.009460 , +0 .001782 ]. Under late noise, BG has lower cost with both maps, but the change in ∆ is 
+
++0 .006442 [−0.007282 , +0 .020166 ]; its direction is unresolved. The new compact docking BG exactly reproduces the earlier physical-action-fit policy on all evaluated paths. The compact student was refitted after recomputing teacher actions on an RTX 4070 SUPER and is not bitwise identical to the earlier A6000 student; the earlier raw teacher actions were not retained. This distinction does not affect matching within the new 2 × 2 experiment. Thrust and docking use 512 paired plant episodes per seed; each arm stream uses 256. Controllers follow their own closed-loop histories under common exogenous noise. Paired differences and their intervals treat the eight model/DPO seeds, not episodes, as independent units. Map selection never uses held-out plant cost. These intervals are descriptive 38 Table S5 Additional offline construction for rich-map policies on one local RTX 4070 SUPER, mean seconds per model seed. The teacher labels are generated once and shared across both student map fits. Shared model/DPO learning, node preparation, held-out evaluation, and online action selection are excluded. Task / condition Rich BG Teacher Rich student fit Teacher + fit Arm 9.343 80.624 2.151 82.776 Docking, regular 5.085 309.602 3.791 313.393 Docking, late noise 4.985 294.505 3.656 298.162 
+
+and unadjusted for multiple comparisons. Neither a zero-containing interval nor the capacity interaction certifies policy equivalence or a pure representation-only effect. Table S5 gives teacher-plus-fit/BG time ratios of 8.86 , 61 .63 , and 59 .81 for the arm, regular docking, and late-noise docking. These compare the tested implementations and finite budgets at their achieved costs; they do not estimate the minimum computation needed to attain a common accuracy. Native export and exploratory tuning are also excluded. Thrust feedback-320 teacher actions were reused from an A6000 archive whereas the matched map builds ran on the RTX 4070 SUPER; their times are not added into a same-device total. The native execution points in main-paper Figure 2 and the historical student and stage accounting in Figure S1 refer to the original policies, not the matched-map policies in Table S4. 
+
+S4 Numerical and deployment audits 
+
+Section S4.2 checks native policy execution and solver status, while Section S4.3 reports derivative checks and their numerical limits. Neither certifies global feedback optimality. The independent OLF convergence check is given in Section S3.1. 
+
+S4.1 Historical deployment and offline stage accounting 
+
+The lower row of Figure S1 accounts for the same deployed policies as the upper row: target-validated backward BG in thrust and the arm, the rebuilt physical-action fit in docking, and feedback-320, feedback-30 projected, and feedback-60 students, respectively. It does not substitute the earlier BG storage maps. Both methods inherit the same fitted model and DPO actor within each condition. The bars include their original learning times, then either the full recorded backward BG build (including its own regression and checks) or feedback-teacher construction and student fitting. No separate distillation is applied to BG. For additive accounting, each segment is the mean recorded time over eight seeds, and each bar label is the mean of per-seed sums. These statistics differ from the construction-time medians elsewhere. The recorded subtotals for BG/student are 79 .8/214 .9 seconds in mild thrust, 73 .5/202 .6 in anisotropic thrust, 89 .0/355 .5 in regular docking, 
+
+85 .1/339 .2 in late-noise docking, and 118 .8/168 .0 in the arm. Model learning and feedback-teacher construction use archived A6000 runs; thrust DPO learning and the current BG rebuilds use local RTX 4070-series runs, while docking/arm DPO learning uses A6000 runs. Hence these sums are historical stage accounting, not synchronized, same-host training benchmarks, and do not establish a hardware-controlled speed ratio. Node preparation, data collection, held-out evaluation, native export, and exploratory tuning are excluded. Missing components are not treated as zero-cost work. BG correction and regression are shown jointly because separate timers are not available for every task. The arm student-fit timer covers both raw and projected variants; the plotted policy uses the projected variant, and the small recorded joint fit cost is retained without an unmeasured allocation. Thrust teacher time includes its OLF initialization and recorded checks. The per-seed stage ledger, source hashes, and exclusions are retained with the figure. The lower panels quantify recorded preparation of the tested policies rather than minimum achievable implementation cost. 
+
+S4.2 Native policy kernels and acados 
+
+Native policy times use one AMD Ryzen 9 7950X3D CPU thread with preloaded weights and beliefs, excluding filtering, Python-call overhead, construction, and compilation. Main-paper marker C denotes the eight-seed median at date 39 1 ¹s 3 ¹s 10 ¹s01234
+
+> Cost gap to feedback MPC (%)
+
+(a) Nonquadratic thrust        
+
+> 0.1 s 1 s 1¹s3¹s10 ¹s
+> ¡2024
+
+(b) Active-sensing docking       
+
+> 0.1 s 1 s
+> off scale: +282 to +447%
+> 1¹s3¹s10 ¹s02468
+
+(c) Two-link arm              
+
+> 0.1 s 1 s
+> 0100 200 300 400
+> Recorded subtotal (s; linear scale)
+> 79.8 BG 214.9 Student 73.5 BG 202.6 Student
+> Mild Anisotropic
+> 0100 200 300 400
+> Recorded subtotal (s; linear scale)
+> 89.0 BG 355.5 Student 85.1 BG 339.2 Student
+> Regular Late noise
+> 0100 200 300 400
+> Recorded subtotal (s; linear scale)
+> 118.8 BG 168.0 Student
+> Arm
+
+Decision latency after the belief update (log scale) 
+
+Offline preparation: recorded stage costs 
+
+> DPO actor Backward BG Feedback-MPC student Feedback MPC OLF-MPC (L-BFGS) OLF-MPC (CEM) mild / regular anisotropic / late noise Model learning DPO learning Backward BG build Feedback teacher Student fit
+
+Fig. S1. Historical distinct-map deployment and mixed-hardware preparation in (a) nonquadratic thrust, (b) active-sensing docking, and (c) the two-link arm. Top: eight-seed mean plant-cost gap 100( J/J FB − 1) relative to online feedback MPC versus decision latency. Blue circles are the original task-section backward BG policies; orange squares are separately con-structed feedback-MPC students with different storage maps. Filled/open symbols distinguish mild/anisotropic thrust and regular/late-noise docking. Arrows show DPO-to-BG correction; docking OLF costs are off scale. Bottom: recorded eight-seed mean stage times for these policies: common model and DPO learning, followed by backward BG construction or feedback--teacher optimization and student fitting. Bar labels give recorded subtotals. These recorded subtotals are not same-device speed comparisons. Timing scope, hardware, and excluded stages are documented in Sections S4.1–S4.2. 
+
+zero; C0 denotes seed-0 audits of target-validated thrust and action-fit docking. Repeated calls are not independent fits. Native/PyTorch action discrepancies are at most 6.06 × 10 −6 across these audits and 1.05 × 10 −6 for target-validated arm maps. Section S2 gives map storage and timing details; archived CSVs retain dates, seed scopes, and repetitions. 
+
+Execution of the matched checkpoints. Table S6 measures the saved compact/rich BG and student maps whose costs appear in Table S4. It covers all 160 policies from 40 condition–seed sets, with eight measured seeds in every condition. Arm Eval. 1 and Eval. 2 use the same policies and share one timing row. The audit uses one pinned logical CPU (core index 2) on an AMD Ryzen 9 7950X3D, GCC 16.2.0 with -O3 -fno-fast-math , and double arithmetic retaining the stored parameter values. Each native call evaluates the actor, features, selected kernel, cap, and action transform from a supplied belief. Filtering, data loading, offline work, and per-action Python/FFI overhead are excluded. All four methods cycle through the same 64 construction beliefs per date, with 2,000 warm-up calls and seven repetitions of 20,000 calls; method order rotates. Each table entry is the 40 median across seed medians, with the seed range in brackets. Repetitions are timing measurements, not additional trained seeds.                                     
+
+> Table S6 Native matched-policy action time at date zero, in μs: seed median [minimum, maximum]. nis the number of measured model seeds. These are the realized maps from Table S4, with all eight cost-evaluation seeds measured in each condition. Compact map Rich map Task / condition nBG Student BG Student Thrust, mild 81.49 [1.46,1.50] 1.48 [1.46,1.49] 5.46 [5.43,5.50] 5.46 [5.43,5.50] Thrust, anisotropic 81.47 [1.46,1.48] 1.47 [1.46,1.50] 5.44 [1.46,5.47] 5.44 [5.43,5.46] Arm 82.39 [2.34,2.44] 2.39 [2.35,2.42] 3.39 [3.34,3.45] 3.37 [3.34,3.44] Docking, regular 81.47 [1.43,1.51] 1.48 [1.43,1.51] 2.50 [2.44,2.52] 2.49 [2.44,2.52] Docking, late noise 81.48 [1.43,1.66] 1.48 [1.44,1.57] 2.51 [2.46,2.63] 2.51 [2.46,2.57] In anisotropic thrust, date-zero validation for BG seed 6 retained the polynomial-only map; this accounts for the 1.46 μsminimum in the rich candidate family.
+
+Across 147,456 audited policy–state inputs at all dates, native C and float64 PyTorch evaluations of the same frozen maps agree within 2.30 ×10 −14 . The maximum discrepancy from archived float32 evaluations is 1.33 ×10 −5, accounted for by float32 arithmetic differences on these inputs. Checkpoint hashes, raw actions, initial diagnostic criteria and outcomes, and precision checks remain in the archive. Timing also covers dates 8 and 15 in thrust/arm and 6 and 11 in docking, with all repetitions and seed ranges archived. Realized kernel selection can vary across methods, dates and seeds, so a shared candidate class need not imply identical latency. 
+
+Feedback-student execution in Figure S1. The student points use a separate date-zero native-C audit of all eight saved feedback-target policies per condition; the DPO actors were timed as controls. Each kernel cycles through 64 common DPO-visited beliefs for seven repeats of 50,000 calls after 2,000 warm-up calls, rotating method order; the plotted student times are medians of eight seed medians. Native/PyTorch parity at all dates in the 40 condition–seed combinations has maximum error 5.30 × 10 −7. Student labels use feedback-320 in thrust, projected feedback-30 in the arm, and feedback-60 in docking (Section S3.2); their costs are the archived paired evaluations. The plotted backward BG points instead use the task-section policies and their C or C0 timings, including the target-validated thrust/arm maps and the physical-action docking fit. 
+
+Thrust acados inputs and protocol. The solver audit fixes one held-out belief for each condition, seed, and date 
+
+0, 8, 15 (48 beliefs). Acados timings take each seed’s median over nine repetitions, then the median across eight seeds. Plans start from independent model-LQR initialization at every audited date; previous plans are not reused. Table S7 reports date-zero times and the accompanying solver-status counts.                      
+
+> Table S7 Date-zero acados thrust audit, median milliseconds over eight seeds. Native time covers the solver; full decision time also covers Python-side preparation and action extraction. The last column counts status-zero and iteration-limit cases among the eight seeds. These fixed-belief checks have no closed-loop plant-cost evaluation. Planner / condition Native Full decision Status 0 / 2 OLF SQP / mild 0.187 1.104 8 / 0 OLF SQP / anisotropic 0.263 1.207 8 / 0 Feedback RTI / mild 1.93 3.41 8 / 0 Feedback RTI / anisotropic 2.54 4.02 8 / 0 Feedback SQP / mild 141 143 0 / 8 Feedback SQP / anisotropic 148 149 0 / 8
+
+Table S7 reports different solution qualities. OLF SQP succeeds on all 48 beliefs, with maximum independent Newton-reference objective discrepancy 7.11 × 10 −15 . Feedback SQP reaches its 80-iteration limit at dates zero and eight 41 (32 of 48 cases); separate maximum KKT stationarity residual is 6.82 × 10 −5. RTI completes one QP step, rather than certifying nonlinear convergence. At anisotropic date zero, its first-action distance to the numerical feedback reference has seed median 0.137. The PyTorch feedback reference is itself numerical, with maximum recorded gradient component 4.89 × 10 −4. The main paper therefore does not attach the reference’s closed-loop cost to the faster RTI time. 
+
+Other native planner coverage. Docking OLF SQP is separately validated in closed loop and in the matched date-zero timing panel in Table 3 of the main paper. Docking feedback acados instead has only fixed-belief feasibility diagnostics: all 16 RTI cases fail the declared constraint check; capped SQP passes eight regular and one late-noise case, all with iteration-limit status. Parallel diagnostic wall times are not standalone decision-latency measurements. No native feedback-acados arm result is included. The measured PyTorch planners remain distinct implementations. The main paper also identifies PyTorch planner measurements on one A6000 by the marker G. Those frozen-checkpoint, batch-one measurements pool dates 0, 8, 15 on one common held-out DPO history per seed, with one warmup and three synchronized calls per date; each seed is summarized by its median, followed by the median across eight seeds. Planners start cold. Loading, shared filtering, construction, and cached coefficient preparation are excluded. The marker P instead denotes the docking seed-0, date-zero CPU pilot. These boundaries remain distinct from native kernel and acados times. The source records are the 2026-09-27 native multiseed audit, its matched rocket acados report, and the docking OLF validation. The reproducibility package includes the aggregate CSVs and the audit reports in timing/ .
+
+S4.3 Derivative and numerical checks 
+
+Derivative checks. Common-noise finite differences give thrust refreshed-tail gradient errors 2.07 × 10 −5/3.66 ×
+
+10 −5. In the arm, the corresponding gradient error is 3.13 ×10 −4 and the smooth DPO-tail Hessian error is 2.12 ×10 −5.The actual refreshed-tail Hessian discrepancy reaches 0.0874 : radial and action caps prevent interpreting this as smooth-Hessian validation. Technical Appendix D.1 specifies the distinction between a local curvature metric and the Hessian of the expected objective. Arm test NLL improves from −1.32966 to −1.54294 , only 0.00025 above the plant-coefficient EKF score; both filters are approximate. Similar plant/fitted-model costs and persistent within-model planner gaps support investigating policy and representation error without identifying a unique cause. 
+
+Reproduction records. The experiment archive retains fitted-model and actor checkpoints, stored policy coeffi-cients, random-seed and stream identifiers, paired episode outcomes, solver budgets, implementation versions, and file hashes. Current construction stores aggregate acceptance and safeguard statistics and raw node-fit errors; those raw errors precede deployment caps and are not off-node policy guarantees. Proposal, acceptance, and held-out evaluation paths are independent. The scalar DP reference and its grid/quadrature limits are specified separately in Section S5. 
+
+S5 Numerical DP reference for scalar active-sensing docking 
+
+This stylized one-dimensional companion supplies a tractable numerical Bellman reference for an active-sensing belief state. It is a new problem, not an exact reduction of the three-state docking experiment in main paper, Section 6.2. The hidden state has Gaussian belief N (mt, P t) and obeys 
+
+Xt+1 = Xt + 0 .5ft + 0 .08 ξXt+1 , Yt+1 = Xt+1 + ηt+1 (at),
+
+Var( ηt+1 (at)) = 0 .025 2 + 0.45 2
+
+1 + 25 at
+
+, (ft, a t) ∈ [−0.4, 0.4] × [0 , 1] . (S5.1) The process and observation noises are independent centered Gaussians, with ξXt+1 ∼ N (0 , 1) . There are 12 decisions and the initial belief is N (0 .5, 0.15) . The physical stage and terminal costs are ℓ(x, f, a ) = 0 .02 x2 + 0 .03 f 2 + 0 .03( a +0.5a2) and Φ( x) = 0 .3x2 + 5 x4. A zero sensor action retains a noisy baseline observation; it does not suppress observations. The final sensor action is zero because its observation arrives after the last control decision. The Gaussian belief transition and conditional Gaussian moments are exact for this model. 42 Numerical reference and policy costs. Belief-state DP uses a rectangular grid with 201 mean points, 81 variance points, 17 thrust choices, nine sensor choices, and seven Gauss–Hermite nodes. Its initial Bellman value is 0.066349. A combined refinement to 401 mean points, 161 variance points, 33 thrust choices, 17 sensor choices, and 11 quadra-ture nodes gives 0.066089. Thus the reference remains numerical: interpolation, finite action grids, quadrature, and extrapolation are not certified error bounds. Table S8 compares deployed policies on 512 common physical-noise paths for one trained DPO/BG seed; each controller follows its own belief trajectory. The restricted feedback MPC here optimizes belief-dependent future thrust and sensing, whereas the three-state comparator in main paper, Section 6.2 uses a datewise sensing schedule. Near equality to DP in this scalar task therefore does not validate the three-state comparator as optimal.                              
+
+> Table S8 Scalar active-sensing companion: one training seed and 512 paired physical closed-loop paths. Gaps subtract the interpolated numerical DP policy’s sampled cost; ±is one paired Monte Carlo standard error. Feedback MPC and OLF have finite optimization budgets. Controller Mean physical cost Gap from DP Numerical DP policy 0.066471 reference Restricted feedback MPC 0.066518 0.000046 ±0.000341
+> Backward BG 0.069550 0.003079 ±0.000779
+> DPO 0.072665 0.006194 ±0.001231
+> OLF-MPC (L-BFGS) 0.076225 0.009754 ±0.002713
+> DP with at≡00.076252 0.009781 ±0.002700
+
+Eight independently trained DPO actors and their one-sweep BG refinements were also evaluated on 20,000 common Gaussian innovation paths per seed, integrating physical costs conditionally on each belief. Their mean conditional costs are 0.070864 (DPO) and 0.068430 (BG), with training-seed standard deviations 0.000847 and 0.000439. The numerical DP Bellman value is 0.066349. BG lowers DPO cost in all eight seeds; the mean paired reduction is 0.002434 ±
+
+0.000325 , where ± now denotes one training-seed standard error. The ratio of mean improvements, (0 .070864 −
+
+0.068430) /(0 .070864 −0.066349) = 53 .9% , describes the fraction of the DPO-to-numerical-DP gap closed by BG in this conditional-cost evaluation. It is distinct from the approximately 50% ratio in the one-seed physical-path comparison of Table S8. 
+
+Final-date local solve and regression. At t = 11 there is no future feedback tail. With μ = m + 0 .5f and 
+
+S = P + 0 .08 2, the exact conditional one-step objective is 
+
+q11 (m, P, f ) = 0 .02( m2 + P ) + 0 .03 f 2 + 0 .3( μ2 + S) + 5( μ4 + 6 μ2S + 3 S2). (S5.2) Its bounded minimizer on [−0.4, 0.4] is unique and is computed by bisection. We replayed the original BG construction at 64 DPO-visited nodes per seed (512 nodes total), using the saved policy checkpoints and the original derivative and acceptance random streams. The replay exactly reproduces every archived date-11 acceptance fraction, node action MSE, and accepted gain. All proposed terminal corrections were accepted; none reached the thrust trust-step bound. Table S9 evaluates the original accepted target and the deployed regression map against the exact minimizer at those same nodes. One standard error across the eight training seeds is shown for conditional cost excess.                   
+
+> Table S9 Final-date action diagnostic on the original 64 construction nodes per seed. Thrust RMSE and exact conditional one-step cost excess are first averaged over nodes, then over eight training seeds. The target is the accepted local BG proposal before regression. Action at t= 11 Thrust RMSE vs. exact q11 −q⋆
+> 11
+> DPO baseline —0.001400 ±0.000054
+> Accepted BG target 0.003605 0.00000460 ±0.00000055
+> Fitted BG policy 0.039431 0.000530 ±0.000080
+
+The target thrust lies within 0.01 of the exact action at 96.5% of these nodes. Its mean one-step cost excess is less than 1% of the fitted policy’s mean excess. Thus the terminal construction finds nearly optimal node actions, while 43 their regression into the executable policy loses most of that local precision. This isolates a representation bottleneck 
+
+at the terminal construction nodes ; it does not allocate the entire policy’s cost gap among theoretical error terms. Replacing only the deployed BG terminal thrust by the exact action, leaving all prior BG actions unchanged, reduces mean conditional full-policy cost from 0.068430 to 0.067486 across the eight seeds, a paired mean improvement of 
+
+0.000944 ± 0.000182 across seeds; all eight improve. Relative to the mean BG-to-Bellman gap of 0.002081, this is about 45% descriptively, but a rollout–Bellman ratio is not an additive regret decomposition. 
+
+A second backward sweep. Applying a second sweep to the same DPO visitation nodes, with independent derivative and acceptance streams, improves only three of eight trained seeds. Mean conditional cost changes from 0.068430 after one sweep to 0.068711 after two, a paired difference of +0 .000281 ± 0.000180 across training seeds. This experiment does not support a reliable improvement from repeated sweeps; changing the future tail, local target, and regression together does not isolate Newton iteration. 
+
+S6 Quadratic thrust reference panel 
+
+This numerical calibration complements the affine LQG analysis in Technical Appendix B. Table S10 preserves the full reference comparison; the nonquadratic thrust, docking, arm, and matched-storage comparisons remain in the main paper. Action MSE uses common held-out DPO histories. The DPO-to-BG plant-cost differences are −0.03694 [−0.03948 , −0.03439] (mild) and −0.06831 [ −0.07126 , −0.06536] (anisotropic), with exploratory 95% paired t intervals across eight seeds. 
+
+Table S10 Quadratic thrust. Entries are mild / anisotropic eight-seed means; costs use 256 paired episodes per seed. Action MSE is relative to fitted Riccati feedback. The time marker specifies the implementation defined above. Controller Plant cost Fitted action MSE Action time DPO 1.417321 / 1.849765 4.58 ×10 −2 / 5.91 ×10 −2 1.607 /1.583 μsC
+
+DPO+150 1.416492 / 1.844699 4.74 ×10 −2 / 5.67 ×10 −2 1.618 /1.597 μsC
+
+Backward BG 1.380383 / 1.781456 1.94 ×10 −6 / 1.72 ×10 −6 0.063 /0.063 μsC
+
+OLF-MPC (L-BFGS) 1.380386 / 1.781459 9.53 ×10 −12 / 1.35 ×10 −10 36 .653 /50 .959 ms G
+
+OLF-MPC (CEM) 1.381653 / 1.784709 0.001451 / 0.023809 4.459 /4.269 ms G
+
+Fitted Riccati 1.380386 / 1.781459 ≃ 0 / ≃ 0 < 0.01 μsC
+
+Plant Riccati 1.377876 / 1.777820 0.002034 / 0.001971 < 0.01 μsC
+
+LQG BG evaluates a stored map affine in the belief mean with phase-harmonic features, without a baseline-actor call; the DPO rows evaluate neural actors. Riccati kernel readings are near the measurement floor. Fitted-controller residuals of 
+
+10 −11 –10 −10 arise from different floating-point reference/execution paths; its mathematical self-error is zero. The plant oracle uses its own plant belief, so its fitted-reference error need not vanish. 
+
+44

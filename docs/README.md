@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-30</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-01</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-30 23:20:39 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-01 23:17:31 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读 3 篇，聚焦高效 MPC、GNSS 拒止下无人机定位与吊装控制。最值得看自适应 deliberation 的数据驱动 MPC（7.0）和 SwingRL 吊装控制。普通读者可先读 MPC 那篇，再按兴趣选无人机定位或吊装应用。</p>
+<p>今日速读4篇、精读0篇，聚焦自动驾驶世界模型、模型化规划与实时博弈规划三个方向。</p>
+<p>最值得看的是两篇7.0分工作：WALT用世界模型对齐的隐轨迹提升自动驾驶，Amortized Feedback Planning把模型推演转化为可执行策略。</p>
+<p>普通读者可先读这两篇的摘要与方法图，理解&quot;模型推演如何落地为策略&quot;这条主线即可。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -84,12 +86,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Think Fast, Plan Selectively: Adaptive Deliberation for Efficient Data-Driven MPC">Think Fast, Plan Selectively: Adaptive Deliberation for Efficient Data-Driven MPC</span></li><li><span class="dpr-home-dashboard-paper-title" title="Large-Scale Geometric Map-Based Localization of UAVs in GNSS-Denied Urban Environments">Large-Scale Geometric Map-Based Localization of UAVs in GNSS-Denied Urban Environments</span></li><li><span class="dpr-home-dashboard-paper-title" title="SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control">SwingRL: Adaptive Observation Reinforcement Learning with World-Model Prediction for Cable-Suspended Hoisting Control</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="WALT: Learning World-Model-Aligned Latent Trajectories for Autonomous Driving">WALT: Learning World-Model-Aligned Latent Trajectories for Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="Amortized Feedback Planning: Turning Model-Based Rollouts into Executable Policies">Amortized Feedback Planning: Turning Model-Based Rollouts into Executable Policies</span></li><li><span class="dpr-home-dashboard-paper-title" title="Aerial GRIPPER: A Gradient-based Real-time Inverse-game Predictor and Planner">Aerial GRIPPER: A Gradient-based Real-time Inverse-game Predictor and Planner</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 </div>
 
