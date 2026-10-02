@@ -1,0 +1,695 @@
+Title: DQ-MPCC: Dual-Quaternion MPCC for Quadrotor Racing
+
+URL Source: https://arxiv.org/pdf/2609.36482v1
+
+Published Time: Wed, 30 Sep 2026 00:40:46 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+> 1
+
+# DQ-MPCC: Dual-Quaternion MPCC for Quadrotor Racing 
+
+Bryan S. Guevara †, Luis F. Recalde †, Guanrui Li, and Tiago Nascimento 
+
+Abstract —Quadrotor racing demands aggressive attitude and progress control while passing through every gate, and conven-tional quadrotor MPCC formulations state the prediction model in inertial coordinates and the attitude error in the body frame. We present a Dual-Quaternion Model Predictive Contouring Control (DQ-MPCC) for quadrotor racing in which the pose is a unit dual quaternion and the contouring errors are projected onto the tangent space of the dual quaternion manifold, expressed in the desired body frame: the same rigid-body dynamics as the conventional model, in unified pose-twist coordinates in the body frame. We compare DQ-MPCC against a baseline MPCC through Monte Carlo software-in-the-loop simulations and real-world racing on an eight-gate circuit of 11 × 4.5 × 3.65 m. With the same gains in simulation and hardware, DQ-MPCC keeps every crossing of its completed flights within the prescribed geometric margin, whereas the baseline exceeds it, its median worst-gate offset growing by 71 .5% sim-to-real against a 10 .1% 
+
+decrease for DQ-MPCC. Among the configurations that keep every simulated gate crossing within the geometric margin, DQ-MPCC also reduces the minimum lap time by 6.7% , and by 
+
+10 .5% in the real-world flights, while running onboard at 100 Hz. 
+
+Index Terms —Aerial Systems: Mechanics and Control, Opti-mization and Optimal Control, Integrated Planning and Control, Motion and Path Planning. 
+
+I. I NTRODUCTION 
+
+# MINIMUM-TIME flight through a gate sequence is the standard autonomous racing benchmark [1]–[4]. Controllers operate under strong translational and rotational coupling, while still passing through every gate [5]. Nonlin-ear MPC now runs onboard in real time with performance competitive with learned racing policies [2], [3], [6]. Model Predictive Contouring Control (MPCC) [7], [8] has become a standard formulation for minimum-time racing because it avoids prescribing a fixed time allocation along the reference path. MPCC optimizes the path progression online, advancing as fast as the constraints allow [9]–[11]. Existing quadrotor MPCC formulations typically express the translational contouring error in inertial coordinates and the attitude error in a separate rotational representation [9]–[11], MPCC++ [11] included, which adds a terminal safety set, learned residual dynamics, and Bayesian tuning; position and attitude remain physically coupled through the dynamics. Under high-tilt maneuvers, reducing an inertial position error may require rapid attitude changes, so the position 
+
+> Submitted to IEEE Robotics and Automation Letters.
+> †These authors contributed equally to this work. Bryan S. Guevara and Tiago Nascimento are with the Laboratory of Systems and Robotics Engineering (LASER), Center of Informatics (CI), Federal University of Para´ ıba (UFPB), Jo˜ ao Pessoa, PB 58051-900, Brazil.
+
+{bguevara, tiago }@laser.ufpb.br  
+
+> Luis F. Recalde and Guanrui Li are with the Department of Robotics Engineering, Worcester Polytechnic Institute (WPI), Worcester, MA 01609, USA.
+
+lfrecalde, gli7@wpi.edu 
+
+> This work has been supported by Petrobras
+
+Fig. 1: Real-world experiment of the proposed DQ-MPCC 
+
+through the 8-gate circuit (top). The bottom plots show the gate crossings of all racing laps, with red markers for the 
+
+DQ-MPCC and blue markers for the MPCC baseline. and attitude objectives are coupled where gate margins are tightest. Both coordinate choices describe the same physical system; we compare the two formulations under one tuning and deployment protocol. Unit dual quaternions provide a unified rigid-body pose representation whose exact logarithmic map represents trans-lational and rotational errors jointly in a tangent space isomor-phic to se (3) , the Lie algebra of the pose group SE (3) [12], [13]. Geometric controllers built on this representation enable singularity-free tracking of coupled rigid-body motion [14], [15]. A related line formulates MPC directly on matrix Lie groups [16], [17]; we bring this on-manifold perspective to contouring control. Recent work on DQ-NMPC [18] has further demonstrated the effectiveness of dual-quaternion for-mulations for aggressive quadrotor trajectory tracking. Despite these advances, dual-quaternion formulations have not, to our knowledge, been investigated for minimum-time quadrotor racing. Relative to the time-indexed tracking objective of DQ-NMPC [18], DQ-MPCC makes arc-length progress adecision variable and decomposes the translational pose-error coordinate along the path tangent into separately weighted lag and contouring components, on which the soft lag and variable-radius tube constraints act. We present DQ-MPCC , a dual-quaternion MPCC for-mulation in which contouring error terms are obtained by projecting the pose error onto the tangent space of the unit arXiv:2609.36482v1 [cs.RO] 29 Sep 2026 2
+
+dual-quaternion manifold and expressing it in the desired body frame. Our method is compatible with standard flight controllers and runs onboard in real time at 100 Hz with an external state estimate. We evaluate DQ-MPCC against an MPCC baseline with the conventional inertial position-error formulation on an 8-gate circuit in both Software-in-the-Loop (SiL) simulation, in which the onboard flight computer runs the unmodified control software while the vehicle, its state estimate, and the actuator interface are simulated in MuJoCo, and real-world (RW) experiments. As shown in Table I, the compared MPCC and dual-quaternion methods do not formulate minimum-time quadrotor racing directly on SE (3) . To close this gap, this paper makes the following three contributions, building on the dual-quaternion modeling of DQ-NMPC [18]:  
+
+> •
+
+We introduce DQ-MPCC , a racing controller formulated directly on the unit dual-quaternion manifold, whose pre-diction model is the dual-quaternion dynamics in the body frame. The decomposition into lag and contouring errors is defined in the tangent space of the pose error, with pose-error, twist, and prediction quantities expressed in body-fixed coordinates; the deployed controller evaluates it with the identity approximation.  
+
+> •
+
+We demonstrate through Monte Carlo SiL simulations that, among the configurations that keep every gate cross-ing within the geometric margin, DQ-MPCC reduces the lap time by 6.7% compared with a conventional MPCC baseline using an inertial position-error formu-lation, while maintaining real-time execution.  
+
+> •
+
+We evaluate DQ-MPCC in real-world experiments on an eight-gate circuit. Without sim-to-real retuning, DQ-MPCC keeps every gate-crossing offset of its completed flights within the prescribed geometric margin, whereas the baseline exceeds that margin at its worst gate; the minimum lap time is reduced by 10 .5% compared with the baseline MPCC. II. D UAL QUATERNION MODELING OF THE QUADROTOR 
+
+A. Dual Quaternion Algebra 
+
+We summarize only what the formulation uses; see [12], [13] and DQ-NMPC [18] for complete treatments. Quaternions 
+
+q = qw + xi + yj + zk ∈ H have scalar part qw, vector part qv = [ x, y, z ]⊤, conjugate q∗, and product ⊗; the unit quaternions 
+
+S3 ≜ {q ∈ H : ∥q∥=1 }
+
+represent rotations, and the pure quaternions 
+
+Hp ≜ {q ∈ H : Re( q)=0 }
+
+embed three-dimensional vectors via a ∈ R3 7 →
+
+[0 , a⊤]⊤ [12]. A dual quaternion ˆq = qp + ε qd ∈ H pairs a primal and a dual quaternion through the dual unit ε (ε2=0 ,
+
+ε̸=0 ), with product 
+
+ˆq1 ⊠ ˆq2 = qp1 ⊗ qp2 + ε (qp1 ⊗ qd2 + qd1 ⊗ qp2 )
+
+and conjugate ˆq∗ = q∗ 
+
+> p
+
++ ε q∗ 
+
+> d
+
+.The subset of unit dual quaternions is 
+
+S ≜ { ˆq ∈ H : ∥qp∥ = 1 , ⟨qp, qd⟩ = 0 } , (1) the double cover of SE (3) , used here to represent the quadrotor pose; the pure dual quaternions Hp, with 
+
+Re( qp)=Re( qd)=0 , represent dual twists and pose errors in Section IV. 
+
+Conventions. Quaternions follow the Hamilton convention, scalar first; rotations act body-to-world; left-invariant pose errors ˆqe = ˆ qd∗ ⊠ ˆq are expressed in the desired body frame, the one attached to the reference pose and distinct from the vehicle body frame of the prediction model, with the real scalar kept nonnegative (jointly on real and dual parts) so that 
+
+∥ϕ∥ ≤ π. For a rotation of angle θ about ˆn, qw = cos θ
+
+> 2
+
+and qv = ˆn sin θ 
+
+> 2
+
+[19]; inverting gives the rotation vector 
+
+Log( q) = 2 qv arctan( ∥qv ∥, q w)/∥qv ∥ = θ ˆn, smooth for 
+
+θ < π and not continuous at θ = π, where π ˆn and −π ˆn
+
+represent the same rotation. 
+
+B. Quadrotor Model 
+
+Let p, v, ω ∈ R3 and qr ∈ S3 denote the inertial position, inertial velocity, angular velocity in the body frame, and attitude quaternion of a quadrotor with mass m, respectively. We adopt a body-rate command interface, where the onboard low-level rate controller tracks ωcmd according to a first-order lag with time constant τrc . The quadrotor model can be written as follows: 
+
+˙p = v, (2) 
+
+˙qr = 12 qr ⊗ ω, (3) 
+
+˙v = fm R(qr ) e3 + g, (4) 
+
+˙ω = 1
+
+τrc 
+
+ ωcmd − ω, (5) with f the collective thrust, R(qr ) ∈ SO (3) the rotation matrix of qr , e3 = [0 , 0, 1] ⊤, g = [0 , 0, −g]⊤, and control input u = [ f, ω⊤
+
+> cmd
+
+]⊤ ∈ R4.
+
+C. Dual Quaternion Quadrotor Dynamics 
+
+The position p and attitude qr are unified into a single unit dual quaternion 
+
+ˆq = qr + ε qd ∈ S , (6) where qd ≜ 12 p ⊗ qr , with p taken as a pure quaternion, and qr is the unit quaternion. The position is recovered as 
+
+p =  2 qd ⊗ q∗
+
+> r
+
+ 
+
+> vec
+
+(|vec : vector part). With the dual-quaternion kinematics naturally in the body frame, we use the velocity in the body frame vb = R⊤(qr )v
+
+and the dual twist 
+
+ˆξ = ω + ε vb ∈ H p,
+
+where ω and vb are defined as pure quaternions. With this convention, the pose kinematics is written compactly as 
+
+˙ˆq = 12 ˆq ⊠ ˆξ. (7) 3
+
+Differentiating vb and substituting (4)–(5) gives ˙ˆξ = ˆf + ˆ u
+
+with vector fields 
+
+fω = − 1 
+
+> τrc
+
+ω, fv = vb × ω − R⊤(qr ) g e3, (8) 
+
+uω = 1 
+
+> τrc
+
+ωcmd , uv = fm e3, (9) giving the pure dual quaternions ˆf = fω + ε fv and ˆu =
+
+uω + ε uv .The quadrotor dynamics can be compactly written using dual quaternions as 
+
+ddt 
+
+" ˆq
+
+ˆξ
+
+#
+
+=
+
+" 12 ˆq ⊠ ˆξ
+
+ˆf + ˆ u
+
+#
+
+, ˆq ∈ S , ˆξ, ˆf , ˆu ∈ H p. (10) The state and control are defined as follows: 
+
+x = [ ˆ q, ˆξ] ∈ S × H p, u = [ f, ω⊤
+
+> cmd
+
+]⊤ ∈ R4. (11) III. R EFERENCE PATH GENERATION 
+
+MPCC uses a spatial reference indexed by the path arc-length s, so that the progress speed vs= ˙ s becomes a decision variable [7], [8]. The reference pose at progress s is γ(s) =  pd(s), qdr (s) ∈ R3 × S3. We build the reference in three stages: gate layout, minimum-time point-mass model (PMM) planning, and differential-flatness lifting to an SE (3) reference with arc-length reparametrization. Each run comprises entry from hover, a low-speed warm-up, three timed analysis laps (the only part entering the continuous metrics; failures count over the full run), and an exit. 
+
+a) Gate layout: The circuit has Ng =8 gates (center 
+
+pg , normal ng ) in an 11 × 4.5 × 3.65 m space, with a wall margin confining the path to the inner corridor of Fig. 4. Each gate has aperture Rgate =0 .50 m [2] and geometric clearance Rsafe =Rgate −rdrone =0 .30 m, with rdrone =0 .20 mthe propeller-tip radius. 
+
+b) Minimum-time lap: This stage shapes the racing path through the eight gates via an offline minimum-time Optimal Control Problem (OCP) for a point-mass model [1], [5], with state [pd, vd]⊤ and control acceleration ad:
+
+min  
+
+> Tℓ,ad(·)
+
+Tℓ+λa
+
+Z Tℓ
+
+> 0
+
+∥ad∥2 dt (12a) 
+
+s.t. ˙pd = vd, ˙vd = ad, (12b) 
+
+xd(0) = xd(Tℓ), (12c) 
+
+∥pd(tk) − pg,k ∥ ≤ εg , (12d) 
+
+vd(tk)·ng,k ≥ vmin , (12e) 
+
+∥ad∥2 ≤ 5g, adz ≥ − 0.9g, (12f) for k=1 , . . . , N g , where xd=[ pd, vd]⊤ is the planner state, Tℓ
+
+is the lap time, and tk is the time at which gate k (center pg,k ,normal ng,k ) is crossed. The objective (12a) minimizes the lap time with a small control-effort regularization for smoothness (λa=10 −6, SI). The periodicity constraint (12c) yields a single repeatable lap, and (12d)–(12e) keep the path within εg =5 cm of each gate center and require a forward crossing. In (12f) the bound ∥ad∥2 ≤ 5g limits the planned acceleration, while the thrust-positive bound adz ≥ − 0.9g keeps the required thrust pointing upward, so the attitude reference stays differentiable once the path is lifted to a full pose by differential flatness. The 5g envelope exceeds the platform’s maximum thrust acceleration, so the point-mass lap cannot be tracked exactly by the real vehicle. This is intentional: MPCC does not require a dynamically feasible trajectory, only a continuously differentiable spatial path [9]. The planner therefore defines the geometric path, the speed along it being decided online under the true actuation limits. A variable tube dtube (s) is then constructed around the path: it narrows at each gate and widens between gates, bounding the admissible contour error along the path. 
+
+c) Arc-length reparametrization and flatness lifting: 
+
+The reference is resampled to arc-length s(t)= R t 
+
+> 0
+
+∥vd∥dτ 
+
+and Gaussian-smoothed ( σa=25 ms) into a C2, bounded-jerk profile ˜ad(s). Differential flatness [20] then defines the thrust axis bd 
+
+> 3
+
+and, with a fixed-yaw convention ψd=0 standard in racing [1], [5], [9], the remaining orthonormal columns of the rotation Rd(s)=[ bd 
+
+> 1
+
+bd 
+
+> 2
+
+bd
+
+> 3
+
+] ∈ SO (3) :
+
+bd 
+
+> 3
+
+= ˜ad + g e3
+
+∥˜ad + g e3∥ , bd 
+
+> 2
+
+= bd 
+
+> 3
+
+× e1
+
+∥bd 
+
+> 3
+
+× e1∥ , bd 
+
+> 1
+
+= bd 
+
+> 2
+
+× bd
+
+> 3
+
+, (13) with e1 the world x-axis. 
+
+qdr (s) is extracted from Rd with sign chosen for continuity in s; the feedforward rate in the body frame is linear in the progress speed, 
+
+ωd(s, v s) = ω0(s) vs, ω0(s) ≜
+
+
+
+Rd⊤ dRd
+
+> ds
+
+∨
+
+∈ R3, (14) where (·)∨ : so (3) → R3 returns the vector of a skew-symmetric matrix [21]. A final Gaussian low-pass ( σq =85 ms) on qdr (s) keeps ωd within the 20 rad/s envelope. References are C2 cubic B-splines evaluated symbolically inside the OCP. Since Rd(s) is lifted from the planner’s acceleration profile it is not recomputed as vs departs from the planned timing, only (14) scaling with vs; an attitude consistent with the timing would depend on (s, v s, a s). We retain the offline profile as a smooth C2 heuristic soft prior, weighted through the soft attitude term and never as a constraint. IV. DQ-MPCC The architecture of DQ-MPCC and its main components are shown in Fig. 2. The offline pipeline provides the OCP with the B-splines γ(s) and ω0(s).
+
+A. System Dynamics 
+
+We augment the pose state with the arc-length progress pair 
+
+(s, v s), letting the controller adjust speed along the path, and with the thrust f , whose rate ∆f is the smooth control, 
+
+˙s = vs, ˙vs = as, ˙f = ∆ f, (15) with as the progress acceleration. Stacked onto the dual-quaternion state (11): 
+
+xa =  ˆq, ˆξ, s, v s, f  ∈ S × H p × R3,
+
+ua =  ∆f, ω⊤
+
+> cmd
+
+, a s
+
+⊤ ∈ R5. (16) 4PMM Time Optimal Flatness lifting Arc-length reparam 
+
+> DQ-MPCC
+> Augmented Integrator
+
+UAV 
+
+Fig. 2: Control block diagram of the proposed DQ-MPCC ,with shaded regions illustrating the subsections where each component is presented. 
+
+B. Optimal Control Problem 
+
+Over a non-uniform grid of N shooting intervals spanning 
+
+Tp, DQ-MPCC solves at every step: 
+
+min     
+
+> xa,0: N,ua,0: N−1
+> N−1
+
+X
+
+> k=0
+
+ℓ(xa,k , ua,k ) + ℓe(xa,N ) (17a) 
+
+s.t. xa,k +1 = F (xa,k , ua,k ), (17b) 
+
+xa,0 = xa,init , (17c) 
+
+g(xa,k , ua,k ) ≤ 0. (17d) Here ℓ and ℓe are the stage and terminal costs, F (·) the ERK4-integrated augmented dynamics, and g(·) the input and state constraints. Following [22], the non-uniform grid (Table II) concentrates resolution near the current state. 
+
+C. Stage Cost 
+
+The stage cost combines the tangent-space pose error ( ϕe,
+
+ρlag , ρcont ), control terms, and a progress reward. With the body-rate error ˜ω = ωd(s, v s) − ωcmd relative to the feedforward, the stage cost is defined as: 
+
+ℓ(xa, ua) = ϕe⊤Qϕ ϕe + ρ⊤
+
+> lag
+
+Qℓ ρlag + ρ⊤
+
+> cont
+
+Qc ρcont 
+
++ W∆f ∆f 2 + ˜ ω⊤Wω ˜ω − Ws vs,
+
+(18) where Qϕ, Qℓ, Qc ∈ R3×3 are diagonal pose-error weights, 
+
+W∆f > 0 penalizes the thrust rate ∆f for smoothness (cf. (15)), Wω ∈ R3×3 penalizes deviations from the angular-rate feedforward ωd(s, v s) (14), and Ws > 0 weights progress along the path. The terminal cost ℓe retains only the pose-error terms of (18). 
+
+D. Dual-Quaternion Pose Error 
+
+Let ˆqd(s) be the unit dual quaternion encoding the reference pose γ(s) via (6). The left-invariant pose error 
+
+ˆqe = ˆ qd ∗(s) ⊠ ˆq ∈ S (19) expresses the rotational and translational deviation jointly in the body frame of the desired pose [23]; its real part is the rotation error qer ≜ qd∗ 
+
+> r
+
+⊗ qr ; for ˆq, ˆqd ∈ S it remains unit by group closure, so the logarithmic map below is well defined; the predicted nodes leave S by the residuals of Section VI. 
+
+Fig. 3: Dual-quaternion pose error: Log( ˆ qe) lifts the error between ˆq and ˆqd on S onto the tangent space at the desired pose, giving ϕe and ρe in the desired body frame bdi , the vehicle frame being bi; the translational coordinate is then decomposed along the path tangent into ρlag and ρcont .The logarithmic map projects ˆqe onto Hp, the Lie algebra of the unit dual quaternions; its six free parameters are identified with se (3) [13] and used as the error coordinates throughout: 
+
+Log( ˆ qe) = 
+
+ϕe
+
+ρe
+
+
+
+∈ R6, (20) where ϕe ≜ Log( qer ) = θ ˆn is the rotation vector of the rotation error; DQ-NMPC [18] penalizes half of it, 12 ϕ, and takes the position error itself as translational part, without the inverse left Jacobian of (21). The translational coordinate ρe
+
+follows from the position error in the desired body frame, 
+
+te ≜  2 qed ⊗ qe ∗
+
+> r
+
+
+
+> vec
+
+= Rd⊤(p − pd) [13], through the inverse left Jacobian of SO (3) [12], [24]: 
+
+ρe ≜ J−1 
+
+> l
+
+(ϕe) te, (21) whose closed form, with ϕe = θ ˆn the rotation vector and 
+
+α = θ 
+
+> 2
+
+cot θ 
+
+> 2
+
+, is [19] 
+
+J−1 
+
+> l
+
+(θ ˆn) = α I3 − θ 
+
+> 2
+
+[ ˆ n]× + (1 − α) ˆ n ˆn⊤, (22) which the deployed controller approximates as J−1 
+
+> l
+
+≈ I, so that ρe=Rd⊤(p−pd) as deployed: an identity approximation of the joint se (3) pose-error coordinate about zero rotation error, not the exact logarithm. Adopted as a reduced pose-error coordinate, it simplifies the translational mapping; Section VI quantifies its non-negligible racing-speed error and evaluates the exact coordinate at fixed gains. 
+
+E. Lag and Contouring Decomposition in se (3) 
+
+Projecting the error ρe in the desired body frame onto the path tangent tdb = Rd⊤(s) td, with td the unit tangent of the reference path, decomposes it into lag (along-path) and contouring (across-path) components (Fig. 3): 
+
+ρlag =  tdb tdb
+
+> ⊤
+
+ ρe, ρcont =  I3 − tdb tdb
+
+> ⊤
+
+ ρe. (23) With the rotation error ϕe, these form the pose tracking error in the cost (18), expressed throughout in the desired body frame. 5
+
+TABLE I: MPCC vs DQ control formulations. Quat: unit quaternion; DQ: unit dual quaternion; PF: path following; TK: tracking. †Non-uniform grid (Section IV-B). se (3) is the formulation of (21), deployed with J−1 
+
+> l
+
+≈I.                                                                                      
+
+> Feature [7] [10] [9] [11] [18] Ours
+> Control type PF PF PF PF TK PF Dynamics model Bicycle Point mass Full 6-DoF Full 6-DoF Full 6-DoF Full 6-DoF Pose error space R2R3R3×so (3) R3×so (3) se (3) se (3)
+> Rotation repr. ——Quat Quat DQ DQ Unified coords., body frame ——✗✗✓✓
+> Lag and cont. in se (3) ✗✗✗✗—✓
+> Progress dynamics ˙s=vs¨s=as¨s=as¨s=as—¨s=as
+> Safety constraints Track bounds Corridor —Gate avoid. —Soft lag, tube Horizon N/Tp40 /0.8s20 /1.0s20 /0.8s20 /0.8s— / 1.5s31 /1.48 s†
+> Solved onboard —✓✗✗✓✓
+
+F. Constraints 
+
+The constraint function g(xa, ua) ≤ 0 in (17d) collects the actuator, progress, and corridor limits 
+
+fmin ≤ f ≤ fmax , (24a) 
+
+|∆f | ≤ ∆fmax , (24b) 
+
+|ωcmd ,i | ≤ ωmax , i = 1 , 2, 3, (24c) 
+
+as, min ≤ as ≤ as, max , (24d) 
+
+∥ρlag ∥ ≤ Dlag + σℓ, σℓ ≥ 0, (24e) 
+
+∥ρcont ∥ ≤ dtube + σc, σc ≥ 0, (24f) 
+
+0 ≤ s ≤ smax + sm, (24g) 
+
+0 ≤ vs ≤ vs, max . (24h) Constraints (24e)–(24f) bound the lag and contouring errors softly ( Dlag , tube radius dtube (s); cost-penalized slacks); sm
+
+is a terminal progress margin. The norm constraint in (1) is maintained by a Baumgarte-type correction Kq (1 − ∥ qr ∥) qr ,
+
+Kq =10 s−1, added to ˙qr inside the integrator [25]; the orthog-onality constraint is re-established at every control iteration, where ˆq is rebuilt from the estimated pose via (6). Physical states come from the state estimator; virtual states 
+
+(s, v s, f ) are Euler-integrated locally at the loop period ∆t
+
+from u∗
+
+> a,0
+
+,
+
+sk+1 = sk + vs,k ∆t, vs,k +1 = vs,k + a∗ 
+
+> s
+
+∆t, fk+1 = fk + ∆ f ∗ ∆t, 
+
+(25) with drift absorbed by re-initialization (17c) each iteration. V. E XPERIMENTAL SETUP 
+
+Numerical implementation. The OCP is solved with aca-dos [26] via Sequential Quadratic Programming Real-Time Iterations (SQP-RTI) [27]; simulations use MuJoCo with the parameters of Table II. Inequality constraints are slack-relaxed to keep the QP feasible. All SiL evaluations run on the same Jetson Orin NX used in the real-world experiments. 
+
+Baseline. The baseline matches DQ-MPCC in solver, horizon, constraints, reference, actuation, and cost structure, but differs in state and pose-error coordinates: it propa-gates the inertial body-rate model (2)–(5), augmented with the same arc-length and thrust states (15), giving the state 
+
+xe=( p, v, qr , ω, s, v s, f ) in place of the dual-quaternion state in the body frame (16), and it uses the standard R3×so (3) 
+
+error decomposition in place of the se (3) one. The inertial TABLE II: System and OCP Parameters. 
+
+Platform Solver / OCP 
+
+m 1.08 kg solver acados SQP-RTI 
+
+τrc 30 ms integrator ERK4 
+
+f [0 , 49 .05] N horizon N 31 
+
+|∆f | ≤ 500 N/s Tp 1.48 s
+
+|ωcmd ,i | ≤ 20 rad/s loop rate 100 Hz 
+
+|as| ≤ 5g regularization PROJECT +LM ( 10 −2)
+
+Dlag 0.5 m grid [ms] 10 ×20+10 ×40+11 ×80 
+
+smax ≈118 m QP solver PARTIAL CONDENSING HPIPM 
+
+vs, max ≈14 .65 m/s Hessian approx. Gauss Newton 
+
+position error ep = pd(s) − p decouples into along-path and across-path components, 
+
+eℓ = ( td ⊤ep) td, ec = ( I3 − td td ⊤) ep,
+
+with attitude error η = Log( q∗ 
+
+> r
+
+⊗ qdr ) ∈ so (3) in the body frame; the baseline cost is (18) with η, eℓ, and ec in place of ϕe, ρlag , and ρcont , with the control and progress terms unchanged. For the deployed approximation, this cost has the same term structure as the DQ-MPCC one: Rd being orthogonal, 
+
+ρlag =−Rd⊤eℓ, ρcont =−Rd⊤ec, so the translational errors share the same norm. The two error quaternions are conju-gates, so the attitude errors are the same rotation vector up to sign, ϕe = −η, and the attitude penalties coincide under matched weights Qϕ = Qq . With the isotropic pose-error weights of Section V-A the cost shape therefore does not differ between the controllers. Equality of the instantaneous error norms does not make the two nonlinear programs equivalent: the errors are functions of different state coordinates, so the second derivatives of the two stage costs differ, and the prediction models propagate those coordinates differently over the horizon. Performance differences therefore cannot reflect missing physical coupling; they can arise from the coordinates in which the problem is stated and from the independently tuned gains, which remain a confound (Section VI). Com-paring directly to published racing MPCCs [9]–[11] would confound solver, tuning, actuation, and platform with the 
+
+SE (3) effect, the two with the full model being solved off board; Table I positions both formulations instead. 
+
+Metrics. Tmin /Tavg : minimum/average lap time over the 
+
+Nℓ analysis laps; δ: in-plane gate-crossing offset from the gate center, with maximum δmax and average δavg over the crossings of a run. Crossing-margin compliance is δ≤Rsafe at every crossing; this event metric does not guarantee collision-free traversal elsewhere. ec, eℓ: contour and lag RMSE from the same inertial path projection (independent of the repre-sentation); Lp: per-lap path length; |v|max , |a|p99 , |ω|rms :maximum speed, 99 th-percentile acceleration, RMS body rate over the racing laps (odometry and IMU). 
+
+A. Multi-Objective Tuning 
+
+Both controllers are tuned offline with Optuna [28]: a broad multi-objective NSGA-III [29] exploration, a TPE refinement, and a final evaluation under matched progress-speed bounds 
+
+vs, max , so that performance differences are not driven by different speed limits. Each stage uses 100 trials per controller and nseeds = 3 MuJoCo seeds. 6
+
+The optimized gain vector θ =qϕ, q c, q ℓ, w ω , w s, v s, max 
+
+ maps to the cost weights of (18) as Qϕ = qϕI3, Qc = qcI3, Qℓ = qℓI3, Wω = wω I3,and Ws = ws. W∆f is fixed at 10 −3, not searched. 
+
+Racing objectives. Gate crossings are sign changes of 
+
+n⊤ 
+
+> k
+
+(p − gk) within 2Rgate of the gate center; after entry, the next Nℓ+1 crossings of G0 define the racing laps. The tuning problem is formulated as the bi-objective optimization 
+
+min 
+
+> θ
+
+ Tmin (θ) + P(θ), δ worst max (θ) , (26) where P penalizes gate safety, completion, body rate, and jerk violations, applied only to the lap-time objective, keeping the worst-case gate offset unpenalized and the trade-off between speed and gate-crossing margin explicit. 
+
+Gain selection. Per controller, under identical criteria, the ten fastest configurations whose worst tuning offset stays within Rsafe are re-evaluated over five full-path SiL runs on the onboard computer with physically solid gates. Candidates completing all five are retained, and the fastest retained candidate is selected. Because a five-run screening is under-powered, deployment further requires δmax ≤ Rsafe across the 
+
+n=100 evaluation of Section VI. The baseline’s fastest five-run candidate ( 2.86 s) exceeds Rsafe in 10 of its 93 completed runs and is rejected; the deployed baseline satisfies it. A re-evaluation under one protocol ( n=30 screening, n=100 
+
+validation) confirms it. All seven non-dominated baseline configurations faster than the deployed gains exceed Rsafe :six already at n=30 (34 .0–46 .1 cm), hence also at n=100 
+
+since the criterion is a maximum over runs, and the seventh at n=100 (48 .8 cm). That seventh is also the only examined baseline configuration striking a gate inside the racing laps (7/100 , against none for either deployed pair). Rsafe is a geometric clearance, not an adjustable tolerance. The deployed 
+
+DQ-MPCC gains, two further front configurations, and the exact-J−1 
+
+> l
+
+ablation at the deployed gains all pass both stages. Implementation and results will be released publicly upon acceptance. VI. S IMULATION RESULTS 
+
+We evaluate the deployed gains in SiL over n=100 Monte Carlo seeds (pass-through gates; injected odometry noise, 
+
+σ=1 cm, 0.5◦, 0.01 m/s, 0.035 rad/s; randomized warm-start; Section V-A); Table III reports medians over completed runs: of 100 attempts, 8 and 10 are lost to a faulty simulator reset and 92 and 90 complete the laps; the campaign with solid gates below was run until 100 started correctly. 
+
+Lap time. DQ-MPCC reduces Tmin by 6.7% (3.46 →
+
+3.23 s) along a 2.9% shorter racing path (Lp=21 .8 vs. 
+
+22 .4 m/lap). The reduction comes with a similar |a|p99 , within the spread ( 29 .7 vs. 29 .9 m/s 2), and a slightly higher body rate. 
+
+Scope of the comparison. The two prediction models de-scribe the same physical system; with consistently transformed objectives and constraints, exact integration, and full conver-gence, the coordinate descriptions are equivalent (Section V). A single real-time iteration linearizes a different expression in each formulation: the attitude enters the translational dy-namics with the thrust prefactor f /m in (4) and with the TABLE III: SiL racing metrics, n=100 Monte Carlo seeds; median ± std over completed runs; bold = better of the two deployed controllers; † = same-gains ablation with the exact coordinate (21) (Section VI); solve times: overhead vs. DQ-MPCC measured side by side                                                                                                              
+
+> Metric MPCC DQ-MPCC exact J−1
+> l
+> †
+> Tmin [s] 3.457 ±0.010 3.226 ±0.007 3.141 ±0.012
+> Tavg [s] 3.478 ±0.006 3.252 ±0.004 3.164 ±0.011
+> δmax [cm] 17 .88 ±0.62 24 .53 ±0.73 24 .55 ±0.80
+> δavg [cm] 12 .01 ±0.20 15 .85 ±0.20 15 .44 ±0.44
+> ecRMSE [cm] 5.23 ±0.14 12 .70 ±0.11 12 .04 ±0.22
+> eℓRMSE [cm] 1.44 ±0.02 1.60 ±0.04 1.57 ±0.04
+> |v|max [m/s] 11 .19 11 .00 11 .09
+> |a|p99 [m/s 2]29 .7±0.429 .9±0.429 .7±1.0
+> |ω|rms [rad/s] 5.28 ±0.03 5.68 ±0.02 5.73 ±0.11
+> Lp[m/lap] 22 .44 ±0.06 21 .80 ±0.06 21 .80 ±0.07
+> solve median [ms] 5.88 7.60 +0 .2
+> solve p99 [ms] 7.64 9.63 +0 .2
+> crashes with solid gates ( n=100 )17 /100 2/100 0/100
+
+constant ∥g∥ in (8), the thrust-to-weight ratio, up to 3 in the racing laps. With solver, horizon, constraints, reference, and cost shape matched, coordinate-dependent local models and independently tuned gains remain different (contour-to-lag ratio: 287 versus 1.3). The block above exemplifies one such local-linearization difference but does not isolate representa-tion from tuning. On the tuning fronts the baseline reaches lower lap times at every matched level, though every such configuration fails the deployment rule, and exchanging the gain sets leaves neither controller deployable, each set being the operating point of its own formulation. 
+
+Runtime and constraints. The dual-quaternion state adds 
+
+∼ 1.7 ms of solve time; both controllers run without solver failures (one baseline cycle excepted). Over the racing laps, 
+
+10 ms solve overruns are rare ( 0.01% MPCC, 0.45% DQ-MPCC ; the previous command persists); neither saturates its authority in simulation ( p99 : thrust ≤64% of fmax , body rate 
+
+≤76% of ωmax ). Over the racing laps the tube is never violated and the lag bound is exceeded in 4.1% and 0.003% of samples (worst 53 and 4 cm), the baseline therefore running with its lag bound relaxed over part of the laps; with transients the tube is violated in 0.59% and 0.39% (worst 96 and 24 cm). The predicted states are not projected: in ten replayed SiL runs, over the racing laps they stay within 1.3 × 10 −2 of unit norm and 2.4 × 10 −2 of dual orthogonality, with the first node rebuilt every cycle. Solve times are measured on the deployment computer against the simulated plant, at the clock and solver build of the flights. 
+
+Contour precision. In simulation the baseline tracks the path more tightly, in contour RMSE ( 5.2 vs. 12 .7 cm) and crossing offset ( δmax =17 .9 vs. 24 .5 cm): DQ-MPCC is faster but not uniformly more accurate, every crossing still inside 
+
+Rsafe .
+
+Exact J−1 
+
+> l
+
+ablation. The approximation of Section IV-D is not negligible here: attitude errors to the nearest path point average ≈16 ◦ (p99 52 –56 ◦) in simulation and flight, for which 
+
+∥J−1 
+
+> l
+
+(ϕe)te − te∥ averages 11% of ∥te∥ (p99 42 –46% ). At the deployed gains the exact J−1 
+
+> l
+
+gives a lower median lap time, similar tracking metrics, zero rather than 2/100 crashes, 7
+
+Fig. 4: Racing laps for MPCC vs DQ-MPCC over the contour tube and gate rings, XY (top) and XZ (bottom): (a) software-in-the-loop, 92 and 90 completed runs of the n=100 campaigns; (b) Real-world experiments, six flights per controller. TABLE IV: Real-world trial accounting (racing attempts in flight).             
+
+> attempts compl. ( 3laps) failed margin comp. MPCC 11 652/6
+> DQ-MPCC 7616/6
+
+adds approximately 0.2 ms of solve time, and leaves 5/100 
+
+pass-through runs unfinished. This fixed-gain sensitivity test uses gains tuned for the deployed approximation, not an independently retuned comparison; the main comparison uses the slower deployed variant. 
+
+Solid-gate evaluation. Crossing offsets alone understate the solid-gate crash rates of Table III: the deployed baseline stays inside Rsafe at the measured crossings, yet contacts gates in the deceleration transient (all 17 after the last lap; DQ-MPCC ’s two in the entry); runs and attempts count whole, both transients being flown by the racing controller. VII. R EAL -W ORLD EXPERIMENTS 
+
+The platform is a custom quadrotor with an onboard NVIDIA Jetson Orin NX running the control optimization at 100 Hz, a Betaflight autopilot with incremental nonlinear dynamic inversion (INDI) body-rate control, and external motion-capture state at 240 Hz. Both controllers fly the circuit of Fig. 1 with the SiL gains and no retuning. SiL lap-time, tracking, and offset metrics (Figs. 5, 7) use non-colliding rings, since offsets beyond Rsafe are observable only without contact; crash rates with solid gates come from separate contact campaigns. Table IV reports the trial accounting: in-air racing attempts continued until six flights per controller completed the three analysis laps ( 18 laps per controller; Fig. 4) from a fixed warm-start hover. MPCC failed five times at racing speed and DQ-MPCC once below racing altitude, each after a solver failure reported by the controller. TABLE V: RW racing metrics, median ± std over the six completed flights per controller. ∆ vs MPCC; bold = better.                                                                                    
+
+> Metric MPCC DQ-MPCC ∆
+> Tmin [s] 3.872 ±0.032 3.464 ±0.010 −10 .5%
+> Tavg [s] 3.906 ±0.030 3.493 ±0.009 −10 .6%
+> δmax [cm] 30 .7±1.822 .1±1.0−28 .1%
+> δavg [cm] 13 .0±0.814 .7±0.4+13 .1%
+> ecRMSE [cm] 11 .5±0.914 .0±0.4+21 .3%
+> eℓRMSE [cm] 4.59 ±0.01 4.82 ±0.01 +5 .1%
+> |v|max [m/s] 10 .45 ±0.10 10 .40 ±0.06 −0.5%
+> |a|p99 [m/s 2]34 .9±2.528 .7±0.2−18 .0%
+> |ω|rms [rad/s] 6.66 ±0.26 6.47 ±0.08 −2.9%
+> Lp[m/lap] 21 .28 ±0.08 20 .75 ±0.05 −2.5%
+
+The real world preserves the lap-time ranking ( −10 .5% ,larger than SiL; Fig. 5) but the worst-case gate offset re-verses : DQ-MPCC keeps every gate inside Rsafe (6/6 flights, 
+
+δmax =22 .1 cm), whereas the MPCC baseline, tighter in sim-ulation, now deviates by 30 .7 cm, failing crossing-margin compliance on 4 of 6 flights (Fig. 6). The reversal is confined to the worst gate: the baseline keeps lower average offset and contour error (Table V). The sim-to-real change in gate offset is accompanied by a different change in the actuation envelope: under real-world mismatch and attitude lag, the baseline’s |a|p99 increases by 17 .5% sim-to-real (to 34 .9 m/s 2), whereas DQ-MPCC ’s decreases by 4.1% (28 .7 m/s 2). In the real world the baseline’s larger corrections coincide with crossings outside Rsafe , la-tency and unmodeled dynamics acting jointly. The body-frame formulation carries a countervailing sensitivity: an attitude estimate error δθ perturbs vb=R⊤v by at most ∥v∥ ∥ δθ∥,a sensitivity the inertial-coordinate baseline does not carry. Table VI and Fig. 7 show the transfer without retuning: DQ-MPCC ’s sim-to-real changes in gate-crossing offset, contour error, and lap time remain small, whereas the baseline’s worst-8
+
+Fig. 5: Per-gate lap-time build-up (median over racing laps). 
+
+DQ-MPCC ’s lead over the baseline grows over the second half of the lap and is larger in the real world than in simulation. 
+
+Fig. 6: Gate-crossing offset at each gate over the RW racing laps. DQ-MPCC stays inside Rsafe at every gate; the baseline spreads to the boundary and crosses it at its worst gate, G2.TABLE VI: Sim-to-real gap (no retuning): per-controller RW-vs-SiL change. bold : smaller absolute RW-vs-SiL change. Relative changes use unrounded medians. 
+
+Ctrl. ∆Tmin ∆δmax ∆ec ∆|a|p99 ∆ωrms ∆Lp
+
+MPCC +12 .0% +71 .5% +121% +17 .5% +26 .2% −5.2% 
+
+DQ-MPCC +7.4% −10 .1% +9.7% −4.1% +13 .9% −4.8%
+
+Fig. 7: Speed–crossing-margin plane: SiL clouds and RW flights (convex hulls). From simulation to the real world the baseline shifts across Rsafe whereas DQ-MPCC stays inside it. case gate offset increases by 71 .5% , crossing Rsafe .VIII. C ONCLUSION 
+
+We presented DQ-MPCC , a racing MPCC with dual-quaternion prediction in the body frame and tangent-space contouring errors whose principal empirical result is the no-retuning transfer from SiL to the completed flights. Without retuning, DQ-MPCC keeps crossings of the completed flights within the geometric crossing margin and is faster, while the baseline crosses that margin at its worst gate on four of its six flights. Both formulations describe the same physics, and because the deployed controllers were tuned independently, the comparison does not isolate the effect of the representa-tion. Limitations are motion-capture estimation, one confined circuit, few flights, and no safety guarantee; component effects and estimator bias, latency, drift, and outliers are not isolated. Future work targets onboard estimation, larger corridors, and an online attitude reference consistent with the timing. REFERENCES [1] P. Foehn, A. Romero, and D. Scaramuzza, “Time-optimal planning for quadrotor waypoint flight,” Sci. Robot. , vol. 6, p. eabh1221, 2021. [2] E. Kaufmann, L. Bauersfeld, A. Loquercio, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Champion-level drone racing using deep reinforcement learning,” Nature , vol. 620, pp. 982–987, 2023. [3] Y. Song, A. Romero, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Reach-ing the limit in autonomous racing: Optimal control versus reinforcement learning,” Sci. Robot. , vol. 8, p. eadg1462, 2023. [4] D. Hanover et al. , “Autonomous drone racing: A survey,” IEEE Trans. Robot. , vol. 40, pp. 3044–3067, 2024. [5] R. Penicka and D. Scaramuzza, “Minimum-time quadrotor waypoint flight in cluttered environments,” IEEE Robot. Autom. Lett. , vol. 7, pp. 5719–5726, 2022. [6] D. Hanover, P. Foehn, S. Sun, E. Kaufmann, and D. Scaramuzza, “Performance, precision, and payloads: Adaptive nonlinear MPC for quadrotors,” IEEE Robot. Autom. Lett. , vol. 7, pp. 690–697, 2022. [7] A. Liniger, A. Domahidi, and M. Morari, “Optimization-based au-tonomous racing of 1:43 scale RC cars,” Optim. Control Appl. Methods ,vol. 36, pp. 628–647, 2015. [8] D. Lam, C. Manzie, and M. Good, “Model predictive contouring control,” in Proc. IEEE Conf. Decis. Control , 2010, pp. 6137–6142. [9] A. Romero, S. Sun, P. Foehn, and D. Scaramuzza, “Model predictive contouring control for time-optimal quadrotor flight,” IEEE Trans. Robot. , vol. 38, pp. 3340–3356, 2022. [10] J. Ji, X. Zhou, C. Xu, and F. Gao, “CMPCC: Corridor-based model predictive contouring control for aggressive drone flight,” in Proc. Int. Symp. Experimental Robotics (ISER) , 2021, pp. 37–46. [11] M. Krinner, A. Romero, L. Bauersfeld, M. Zeilinger, A. Carron, and D. Scaramuzza, “MPCC++: Model predictive contouring control for time-optimal flight with safety constraints,” in Proc. Robotics: Science and Systems (RSS) , 2024. [12] J. M. Selig, Geometric Fundamentals of Robotics . Springer, 2005. [13] B. V. Adorno, “Robot kinematic modeling and control based on dual quaternion algebra – Part I: Fundamentals,” hal-01478225, 2017. [14] X. Wang and C. Yu, “Unit dual quaternion-based feedback linearization tracking problem for attitude and position dynamics,” Syst. Control Lett. ,vol. 62, pp. 225–233, 2013. [15] H. Abaunza, P. Castillo, A. Victorino, and R. Lozano, “Dual quaternion modeling and control of a quad-rotor aerial manipulator,” J. Intell. Robot. Syst. , vol. 88, no. 2–4, pp. 267–283, 2017. [16] U. V. Kalabi´ c, R. Gupta, S. Di Cairano, A. M. Bloch, and I. V. Kolmanovsky, “MPC on manifolds with an application to the control of spacecraft attitude on SO(3),” Automatica , vol. 76, pp. 293–300, 2017. [17] S. Teng, D. Chen, W. Clark, and M. Ghaffari, “An error-state model predictive control on connected matrix Lie groups for legged robot control,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2022, pp. 8850–8857. [18] L. F. Recalde, D. Agrawal, J. Arrizabalaga, and G. Li, “DQ-NMPC: Dual-quaternion NMPC for quadrotor flight,” IEEE Robot. Autom. Lett. ,vol. 10, pp. 12 644–12 651, 2025. [19] T. D. Barfoot, State Estimation for Robotics . Cambridge University Press, 2017. [20] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in Proc. IEEE Int. Conf. Robotics and Automation (ICRA) , 2011, pp. 2520–2525. [21] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control of a quadrotor UAV on SE(3),” in Proc. IEEE Conf. Decis. Control (CDC) , 2010, pp. 5420–5425. [22] H. Homburger, J. Frey, S. Wirtensohn, M. Diehl, and J. Reuter, “Mil-lisecond NMPC for swing-up and stabilization of the Furuta pendulum in real world,” IEEE Trans. Control Syst. Technol. , vol. 34, no. 1, pp. 545–551, 2026. [23] F. Bullo and R. M. Murray, “Proportional derivative (PD) control on the Euclidean group,” in Proc. Eur. Control Conf. , 1995, pp. 1091–1097. [24] F. Bullo and A. D. Lewis, Geometric Control of Mechanical Systems .New York: Springer, 2005. 9
+
+[25] J. Baumgarte, “Stabilization of constraints and integrals of motion in dynamical systems,” Comput. Methods Appl. Mech. Eng. , vol. 1, no. 1, pp. 1–16, 1972. [26] R. Verschueren et al. , “acados—A modular open-source framework for fast embedded optimal control,” Math. Program. Comput. , vol. 14, pp. 147–183, 2022. [27] S. Gros, M. Zanon, R. Quirynen, A. Bemporad, and M. Diehl, “From linear to nonlinear MPC: bridging the gap via the real-time iteration,” 
+
+Int. J. Control , vol. 93, pp. 62–80, 2020. [28] T. Akiba, S. Sano, T. Yanase, T. Ohta, and M. Koyama, “Optuna: A next-generation hyperparameter optimization framework,” in Proc. ACM SIGKDD , 2019, pp. 2623–2631. [29] K. Deb and H. Jain, “An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, Part I: Solving problems with box constraints,” IEEE Trans. Evol. Comput. , vol. 18, no. 4, pp. 577–601, 2014.

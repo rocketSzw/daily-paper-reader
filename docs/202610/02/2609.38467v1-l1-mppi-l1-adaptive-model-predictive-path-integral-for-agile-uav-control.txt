@@ -1,0 +1,597 @@
+Title: L1-MPPI: L1 Adaptive Model Predictive Path Integral for Agile UAV Control
+
+URL Source: https://arxiv.org/pdf/2609.38467v1
+
+Published Time: Thu, 01 Oct 2026 00:24:30 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# L1-MPPI: L1 Adaptive Model Predictive Path Integral for Agile UAV Control 
+
+Luk´ aˇ s Kotek, Ondˇ rej Proch´ azka, Vojˇ ech Von´ asek, Martin Saska and Robert Pˇ eniˇ cka 
+
+Abstract —This work proposes the L1 Adaptive Model Predic-tive Path Integral ( L1-MPPI). It cascades L1 adaptive control with the Model Predictive Path Integral (MPPI) to improve tracking of high-speed UAV trajectories. Thanks to the L1
+
+augmentation, the tracking remains accurate even under model uncertainties and external disturbances, such as an additional payload or a mismatch in the modeled aerodynamic drag. In contrast to existing MPPI approaches for UAV control that do not explicitly model aerodynamic effects, varying payloads, and typically neglect the dynamics of low-level motor controllers, our L1-MPPI approach enhances the dynamic model used in the MPPI by incorporating the low-level flight controller and motor dynamics, as well as an iterative mixing scheme that reflects the approach of the low-level controller. The proposed method demonstrates improved tracking performance in both simulation and the real world, even when the UAV is subjected to an unknown payload. In flight with 35 % mass increase, our approach lowers the RMSE by 58.61 % with respect to plain MPPI. Compared to the same MPPI using an online mass estimator in place of the L1 augmentation, the RMSE is lower by 38.59 %. During the real-world experiments the UAV reaches speeds up to 13.50 m s −1 and accelerations up to 2.5 g. 
+
+Index Terms —aerial systems control, adaptive control, model predictive control, agile UAV flight, model predictive path integral 
+
+SUPPLEMENTARY MATERIAL  
+
+> Video: https://youtu.be/ljqrR1NBq2w
+
+I. I NTRODUCTION 
+
+Unmanned Aerial Vehicles (UAVs) are increasingly adopted across a wide range of applications, including package de-livery [1], infrastructure monitoring [2], the digitization of historical monuments [3], and time-critical search-and-rescue missions [4]. Many of these applications benefit from fast and agile flight, which shortens the mission duration. Such flight is possible thanks to high-speed cameras and other advanced onboard sensors. During aggressive maneuvers, however, the nominal dynamics deviate more from the modeled system dy-namics. UAVs must therefore track agile trajectories accurately even under model uncertainties and external disturbances, such as uncertain aerodynamic drag, varying payloads, and wind gusts. If left uncompensated, the resulting deviations from the planned trajectory increase the likelihood of collisions and can lead to loss of stability or to mission failure by missing a crucial waypoint or sensor viewpoint.      
+
+> The authors are with the Multi-robot Systems Group, Faculty of Elec-trical Engineering, Czech Technical University in Prague, Czech Repub-lic (http://mrs.felk.cvut.cz/). This work has been supported by the Czech Science Foundation (GA ˇ CR) under research project No. 23-06162M, by the European Union under the project Robotics and advanced industrial production (reg. no. CZ.02.01.01/00/22 008/0004590), and by CTU grant no SGS26/077/OHK3/1T/13.
+> Fig. 1. Real-world agile flight of the UAV controlled by the proposed L1-MPPI at speeds up to 13.00 m s −1 and accelerations reaching 2.5 g. The UAV carries a payload of unknown weight, and the L1augmentation compensates for the resulting model mismatch online. The composite image shows the flown trajectory, with a detail of the UAV with the attached payload.
+
+Recently, in agile UAV control, Model Predictive Con-trollers (MPCs) have shown remarkable performance in track-ing partially infeasible trajectories [5], [6]. However, an inac-curate dynamic model may lead to increased tracking errors and even system instability [7]. Existing research has therefore primarily focused on improving the UAV dynamic model. Data-driven methods, such as [8], learn accurate models from data, but the learned models tend to overfit and are difficult to update online. Another source of prediction error is the hierarchical control architecture commonly used on UAV platforms [9]. The high-level controller sends commands to a low-level controller, whose dynamics are usually neglected in the dynamic model. This leads to trajectory-tracking errors, es-pecially during aggressive maneuvers. Approaches that model the low-level and inner-loop controllers [5], [6] demonstrate a significant reduction in the trajectory error. Still, no dynamic model captures the uncertainties and disturbances described above, since they vary in time and are unknown beforehand. Adaptive control approaches estimate and compensate for them online, thereby improving robustness, but they require complex adaptation laws [7]. The authors of [10] therefore cascade Nonlinear MPC (NMPC) with an L1 adaptive con-troller. This preserves the trajectory-tracking capabilities of NMPC and adds online compensation of external disturbances and model uncertainties. This paper proposes a Model Predictive Path Integral (MPPI)-based controller combined with an L1 adaptive con-troller (also referred to as L1 augmentation). MPPI uses a Graphics Processing Unit (GPU) to compute hundreds of candidate trajectories (rollouts) in parallel in each iter-arXiv:2609.38467v1 [cs.RO] 29 Sep 2026 ation [11]. In [12], [13] MPPI demonstrated the ability to track trajectories while avoiding obstacles in an unknown environment. Unlike these works, our focus is not on obstacle avoidance but on improving trajectory tracking under model uncertainties. Similarly to [6], we incorporate the low-level controller and motor dynamics into the MPPI’s dynamic model. We additionally account for communication delays between the high-level controller, flight controller, and state estimator. On top of this model, the L1 adaptive controller estimates the remaining model uncertainties online and com-pensates for them in real time. As a result, the proposed framework enables agile flight in the presence of model uncertainties and external disturbances. To the best of our knowledge, the proposed L1-MPPI is the first adaptive MPPI framework that models the low-level controller, the motor dynamics, and the communication delays, and the first adaptive MPPI demonstrated in real-world agile flight. In contrast to [14], our implementation runs fully onboard at 100 Hz. The proposed L1-MPPI controller is evaluated in both sim-ulation and real-world experiments assessing adaptive capabil-ities during agile flights. We compare the proposed controller with a plain MPPI controller and with our MPPI approach that employs online mass estimation instead of L1 augmentation. The L1 augmentation alone, compared to the same controller without it, has only a minor effect on the positional RMSE under nominal conditions, but reduces it by 51.11 % in the presence of an unknown payload. The complete L1-MPPI, which additionally models the low-level controller and motor dynamics, reduces the positional RMSE by 24.78 % with re-spect to plain MPPI under nominal conditions and by 44.37 % in the presence of uncertainties. Moreover, the proposed ap-proach demonstrates its adaptability in real-world agile flight experiments with an attached payload (see Fig. 1). II. R ELATED WORKS 
+
+This section reviews the three topics the proposed method builds upon: the UAV dynamic model used by predictive controllers, adaptive controllers that compensate online for what such a model cannot capture, and MPPI-based UAV control. To operate at the platform’s performance limits, the dynamic model used in predictive controllers must closely represent the UAV’s true behavior. One way to improve the model is to learn it from data, using Gaussian Processes [8], neural ordi-nary differential equations [15], and physics-informed neural networks [16]. However, their reliance on offline training and off-board computation limits adaptation to changing dynamics. Other works instead model the neglected effects explicitly. In [17], the authors demonstrate how modeling aerodynamic drag can improve the tracking accuracy of a Differential-Flatness-Based Controller (DFBC) in agile flight. In [18], motor dynamics and iterative motor mixing are incorporated to improve tracking performance and prevent actuator saturation during aggressive maneuvers. The authors of [6] improve tracking performance by incorporating low-level controller dynamics and iterative motor mixing into the NMPC model. The approach respects the actuator constraints, runs onboard, and is validated in real-world flight. Despite advances in dynamic modeling, prediction errors arising from model uncertainties and external disturbances remain unavoidable. Adaptive control methods address this limitation by compensating for modeling errors online while preserving robust performance [19]. Several adaptive con-trollers have been proposed for UAVs [20], [21]. However, most have only been demonstrated during hovering or low-speed flight. A composite Model Reference Adaptive Controller (MRAC), which forces the closed loop to follow the behavior of a chosen reference model, is combined with a baseline trajectory-tracking controller in [20], demonstrating adaptabil-ity both in simulation and on a UAV subjected to a sudden thrust reduction. However, the controller is executed off-board and is not evaluated on agile trajectories. A neural-network-based MRAC is proposed in [21], but its adaptation rate is insufficient for agile flight, with experiments conducted at speeds of only 2 m s −1 . Mass estimation methods based on Inertial Measurement Unit (IMU) measurements are applied for payload compensation in [22], although they are limited to slowly varying payloads. The adaptive controller proposed in [23] compensates for a broader range of uncertainties, including wind disturbances, but is also evaluated only on low-speed trajectories. A faster alternative to MRAC is L1 adaptive control, which decouples the adaptation rate from the robustness of the closed loop by low-pass filtering the estimated uncertainty. It has been successfully applied to a variety of aerospace vehicles [24], [25], including UAVs [10], [14]. In [14], the authors combine L1 adaptive control with MPPI, demon-strating improved trajectory tracking under drag and mass uncertainties. Their dynamic model treats the UAV as a rigid body driven directly by the commanded inputs, without the low-level controller dynamics and the communication delays. The approach is also not evaluated against other adaptive controllers and is demonstrated only in a simulated racing environment. The authors of [10] combine L1 adaptive control with NMPC, demonstrating robust trajectory tracking during agile real-world flights under payload variations and other model uncertainties. Model Predictive Path Integral (MPPI) is a predictive con-trol approach capable of controlling nonlinear systems [11], [12], [26]. As aforementioned, MPPI with an L1 adaptive controller is used in [14] for UAV control. In [12], the authors introduce a fully onboard MPPI-based controller for agile trajectory tracking, validated in simulation and real-world ex-periments, with obstacle avoidance shown only in simulation. The authors of [13] extend this work with an SE (3) controller applied to a subset of the generated trajectories, and demon-strate real-world obstacle avoidance using an onboard depth camera. Perception-Aware MPPI [26] adds a perception-driven cost that adapts the trajectory online and enables navigation to occluded goals, but reports higher failure rates under wind disturbances due to the lack of adaptive compensation. None of these MPPI approaches models the low-level controller, the motor dynamics, or the communication delays. Our proposed L1-MPPI cascades the L1 augmentation with MPPI instead of the NMPC used in [10], which keeps the sampling-based cost of MPPI while targeting the same agile flight regime. Compared to the L1-augmented MPPI of [14], we additionally model the low-level PID controller, the motor dynamics, and the communication delays, and we evaluate the controller onboard in real-world flight rather than in simulation only. Compared to the MPPI controllers of [12], [13], [26], which rely on a nominal model without adaptation, we compensate for the remaining model uncertainties and external disturbances online. III. M ETHODOLOGY 
+
+This section describes the building blocks of the proposed MPPI architecture (Fig. 2). Its core consists of two models, namely the dynamic model of the UAV (Section III-A) and the model of its low-level flight controller (Section III-B). Our first contribution is to consider both UAV model and its flight controller to achieve precise trajectory following using MPPI (Section III-D). MPPI provides nominal control (thrust FMPPI 
+
+and body-rate ωMPPI ). Our second contribution is the L1 adap-tive augmentation of MPPI (Section III-E). It compensates for model uncertainties and external disturbances (e.g., unknown or changing payload) by providing compensating thrust FL1
+
+and body-rate ωL1 .  
+
+> UAV Plant MPPI Controller PID-Based Low-Level Flight Controller Thrust-Throttle Mapping
+
++                                
+
+> L1Adaptive Controller
+> p,v,q,ω,Ω
+> FL1,ωL1
+> Ft,ωctc,ωc
+> rcω
+> Tref
+> FM P P I ,ωM P P I
+> Fig. 2. The proposed L1-MPPI control architecture. The state estimate
+> p,v,q,ω,Ωis provided to both the MPPI and L1adaptive controllers. The MPPI controller computes the nominal control input FM P P I ,ωM P P I
+> based on the reference trajectory Tref , while the L1controller generates the adaptive compensation command FL1,ωL1. The combined command tc,ωc
+> is sent to the PID-based low-level flight controller, which computes individual rotor throttle commands rcfor the UAV. The entire control architecture operates at 100 Hz.
+
+A. UAV Model 
+
+The UAV state is described by position p ∈ R3, velocity 
+
+v ∈ R3, body rate ω ∈ R3 and and the rotation q represented as a quaternion. The nominal UAV dynamic model is 
+
+˙p = v, ˙q = 12 q ⊙
+
+ 0
+
+ω
+
+
+
+, ˙ω = J−1 (τ − ω × Jω) ,
+
+˙v = 1
+
+m R(q)
+
+
+
+00
+
+Ft
+
+ − DR T (q)v
+
+ + g ,
+
+(1) where R(q) is the rotation matrix corresponding to q, ⊙ de-notes quaternion multiplication, J is the inertia matrix, m is the UAV mass, and linear aerodynamic drag is approximated by the diagonal matrix D [17]. The control inputs of the nominal dynamic model (1) consist of the collective thrust 
+
+Ft and body torques τ = [ τx, τ y , τ z ]T .Often, high-level controllers (e.g., trajectory tracking con-trollers like our MPPI) output collective thrust Ft and the body-rate commands ωc. The desired thrust is then converted into a normalized collective throttle command tc using a static mapping between the throttle, the produced thrust, and the battery voltage. The UAV is then controlled using a low-level flight controller that, based on the commands tc and ωc,controls the motors. The behavior of the low-level flight controller is usually ignored in the literature, yet it influences the behavior of UAVs. Therefore, in this paper, we propose to also consider the dynamics of the low-level flight controller inside the MPPI controller; these dynamics are described in the next subsection. 
+
+B. Dynamics of the Low-level flight Controller 
+
+The flight controller accepts the collective throttle com-mands tc and the body-rate command ωc and provides control inputs Ft and τ for the UAV model (1). The PID-based flight controller dynamics are modeled as 
+
+e = ωc − ω,
+
+˙eI = e,
+
+τc = kpe + kieI ,
+
+(2) where τc represents the target torques generated by the PID controller. The derivative term is neglected, as the prediction time step ∆t is too large to accurately capture the transient behavior of the body-rate dynamics, making a finite-difference approximation of ˙e unreliable. The normalized allocation matrix G is then used to compute individual motor throttle commands from the collective throttle and target torques 
+
+
+
+rc, 1
+
+rc, 2
+
+rc, 3
+
+rc, 4
+
+| {z } 
+
+> rc
+
+=
+
+
+
+1 −0.7071 −0.7071 −1.01 0.7071 0.7071 −1.01 0.7071 −0.7071 1.01 −0.7071 0.7071 1.0
+
+| {z }
+
+> G
+
+tc
+
+τc
+
+
+
+. (3) Using the desired normalized rotor throttles rc, the motor dynamics are modeled as 
+
+˙r = 1
+
+kmot 
+
+(rc − r), (4) where kmot is the time constant of the first-order motor model, and ri ∈ r is the normalized motor angular velocity 
+
+ri = Ω i/Ωmax , (5) where Ωmax is the maximum motor angular velocity. The individual rotor thrusts are obtained as 
+
+f = fmax (r ⊗ r), (6) where fmax is the maximum thrust of each motor and ⊗
+
+denotes element-wise multiplication. The control inputs of the UAV dynamics in (1) are then computed as Ft
+
+τ
+
+
+
+= Γf , (7) where Γ is the allocation matrix mapping individual actuator commands to the overall force and moment vector 
+
+Γ =
+
+
+
+1 1 1 1
+
+−l/ √2 l/ √2 l/ √2 −l/ √2
+
+−l/ √2 l/ √2 −l/ √2 l/ √2
+
+−ctf −ctf ctf ctf 
+
+ . (8) Variables l and ctf denote the arm length and rotor torque constant, respectively. As mentioned in [18], the computed single rotor thrusts must remain within the feasible range [fmin , f max ]. This constraint can also be enforced at the throttle level before computing the single rotor thrusts in (6). Our approach uses an iterative motor-mixing strategy at the throttle level. When actuator saturation occurs, the proposed controller prioritizes preserving collective thrust over torque, giving yaw the least priority. An example of actuator desaturation is shown in Fig. 3, where single rotor throttles are adjusted while main-taining the collective thrust. 0% 100% Thrust Left Motor Commanded Thrust Right Motor  
+
+> r′
+> −r′
+> 0% 100% Thrust Left Motor Commanded Thrust Right Motor
+> r′
+> −r′
+> Unsaturation
+> Fig. 3. Example of desaturation of two motors by our controller without changing the collective thrust. The image is adapted from [27].
+
+C. PID dynamics for long prediction steps 
+
+For longer MPPI prediction timesteps, we adopt the sim-plified torque computation from [12]. The desired torques are computed as 
+
+τd = J ωc − ω
+
+∆t + ω × Jω. (9) The corresponding rotor thrusts are obtained using 
+
+f = Γ−1
+
+Ft
+
+τd
+
+
+
+, (10) and clipped to the feasible range [fmin , f max ]. The clipped thrusts fcl are then converted back to the UAV inputs as 
+
+Ft
+
+τ
+
+
+
+= Γfcl , (11) which is then used to control the UAV model (1). 
+
+D. Model Predictive Path Integral 
+
+Trajectory following is a typical task of high-level UAV controllers. In our architecture, this task is performed by the MPPI. In the literature, MPPI is typically equipped only with the model of the UAV, i.e., neglecting the effect of the flight controller. In this paper, we propose to consider both the UAV model and the flight controller in the MPPI. Therefore, the proposed MPPI control can predict not only the behavior of an ideal UAV, but also take into account the effect of its low-level flight controller. The remaining model uncertainties and disturbances are compensated by the 
+
+L1 adaptive augmentation (Section III-E). For this purpose, the state considered in the high-level control is x = [ p, q, v, ω, r, eI ]T , where position p, rotation 
+
+q, velocity v and body rates ω are described in the UAV model (1), and normalized motor angular velocities r and integral error vector eI of the flight controller are described in (2). The task of the MPPI trajectory tracking control is to follow the reference trajectory represented as a time-parametrized se-quence Tref (t) = [ pr (t), vr (t), qr (t), ωr (t)] T , of desired po-sition, velocity, orientation, and body rates, respectively. MPPI provides control commands for the flight-controller — thrust 
+
+FM P P I and body-rate ωM P P I (we use subscript MPPI to dis-tinguish them from the L1 commands). MPPI assumes that the nominal control sequence unom = ( unom 0 , unom 1 , . . . , unom  
+
+> N−1
+
+),
+
+unom  
+
+> i
+
+= [ FMPPI , ωMPPI ]T is known from the previous control steps. The principle of MPPI control is described using the notation and terminology from [12], [13]. The current state x is provided by the UAV state estimator in each iteration. A set of K disturbance sequences of length 
+
+N , denoted as δuk, is sampled from a normal distribution with zero mean and covariance matrix Σ. Starting from the initial state x, K trajectories (rollouts) are generated by forward simulation of the system dynamics 
+
+δukj ∼ N (0 , Σ) 
+
+ukj = unom  
+
+> j
+
++ δukj
+
+xkj+1 = xkj + fRK4 (xkj , ukj , ∆t)
+
+
+
+k = 1 , . . . , K j = 0 , . . . , N − 1 .
+
+(12) Function fRK4 represents one step of the fourth-order Runge-Kutta method and is used to propagate the UAV dynamics (1) forward in time, generating the rollouts. The cost Ck of each rollout is evaluated using a cost function adopted from [13]. The cost function reflects how precisely the UAV follows the reference trajectory Tref . Based on the rollout costs, the weights wk are given by 
+
+wk = exp  − 1 
+
+> λ
+
+(Ck − ρ)PKi=1 exp  − 1 
+
+> λ
+
+(Ci − ρ) , ρ = min  
+
+> k
+
+Ck , (13) where λ determines how strongly the rollout costs affect the computed weights. Subsequently, the nominal control sequence is updated using a weighted average of the sampled disturbances 
+
+unom j := 
+
+> K
+
+X
+
+> k=1
+
+wk · ukj . (14) The first control command from the updated control sequence 
+
+unom 0 = [FMPPI , ω MPPI ]T is used by the L1 controller described in the following subsection. Its output is added to the MPPI command, and the resulting command is mapped to throttle and sent to the flight controller (see Fig.2). 
+
+E. L1 Adaptive Control 
+
+As illustrated in Fig. 2, the L1 adaptive controller is cas-caded with MPPI. Whereas MPPI tracks the desired trajectory, the L1 adaptive controller compensates for model uncertainties and external disturbances. The inner architecture, consisting of the L1 observer, adaptation law, and control law, is shown in Fig. 4 and described in this section.                  
+
+> Control Law
+> L1Observer Adaptation Law
+> L1Adaptive Controller
+> FM P P I ,ωM P P I
+> FL1,ωL1
+> z
+> ˆz
+> ˆσ
+> Fig. 4. The architecture of the L1adaptive controller is composed of three main blocks: the observer, adaptation law, and control law. Based on the observed state ˆz, uncertainties ˆσ= [ ˆ σm,ˆσum ]Tare estimated using an adaptation law. The control law then yields the L1adaptive controller command uL1based on the estimated uncertainties.
+
+The L1 adaptive controller is implemented according to the nonlinear reference model proposed in [28]. Our approach follows the implementations presented in [10], but the adaptive command consists of the collective thrust FL1 and desired body rates ωL1. Both matched and unmatched uncertainties are estimated using a piecewise adaptation law [29]. Considering these uncertainties, the UAV dynamics (1) can be rewritten as 
+
+˙v = 1
+
+m R(q)
+
+
+
+00
+
+Ft
+
+ + ς − DR T (q)v
+
+ + g ,
+
+˙ω = J−1 (τ − ω × Jω) + ξ ,
+
+(15) where ς = [ ςx, ς y , ς z ]T represents translational force uncer-tainties and ξ = [ξx, ξ y , ξ z ]T represents body rate uncer-tainties. Since a quadrotor can generate linear acceleration only along its body z-axis, the uncertainties σum = [ ςx, ς y ]T
+
+are unmatched and cannot be directly compensated through the control input. The matched uncertainty is defined as 
+
+σm = [ ςz , ξ x, ξ y , ξ z ]T , which can be compensated by the L1
+
+adaptive controller. We define a reduced state z = [ v, ω]T and express the rota-tion matrix as R(q) = [ b1 b2 b3]. The L1 adaptive command is denoted as uL1 = [ FL1, ωL1]T . The system dynamics can be separated into nominal and uncertain components as 
+
+˙z = f (R(q))+ g(R(q))( uL1 +σm)+ g⊥(R(q)) σum , (16) where f (R(q)) represents the nominal dynamics while 
+
+g(R(q)) and g⊥(R(q)) are the input distribution matrices. Since the control input consists of desired body rates rather than direct torque commands, the rotational dynamics are approximated using the first-order relation ˙ω ≈ (ωc − ω)/∆t.This approximation introduces an error that may be interpreted by the L1 controller as an uncertainty term ξ, potentially causing unnecessary compensation. However, this effect is considered acceptable if the approximation error remains small compared to the actual system uncertainties. The nominal dynamics obtained from the MPPI controller are defined as 
+
+f (R(q)) = 
+
+ FM P P I  
+
+> m
+
+b3 − R(q)DR T (q)v + g 
+
+> ωM P P I −ω
+> ∆t
+
+
+
+, (17) where FM P P I is the collective thrust command and ωM P P I 
+
+is the commanded body rate, both computed by the MPPI controller at the current iteration. The matched and unmatched uncertainties enter the sys-tem through the aforementioned input distribution matrices 
+
+g(R(q)) and g⊥(R(q)) . To ensure that the uncertainty ξ rep-resents body-rate disturbances, the rotational part of g(R(q)) 
+
+is defined as I/∆t. This definition ensures that the timestep terms cancel in (21). The uncertainty distribution matrices are therefore defined as 
+
+g(R(q)) = 
+
+ b3 
+
+> m
+
+0T
+
+0 I
+
+> ∆t
+
+
+
+, g⊥(R(q)) = 
+
+ b1
+
+> m
+> b2
+> m
+
+0 0
+
+
+
+. (18) The Hurwitz matrix As is defined to determine the observer convergence rate. The L1 observer (see Fig. 4) is then formu-lated as 
+
+˙ˆz = f (R(q))+ g(R(q))( uL1 +σm)+ g⊥(R(q)) σum +As ˜z ,
+
+where ˜z = ˆ z −z is the state estimation error. The L1 observer estimates the state ˆz, while the actual state z is obtained from the UAV state estimator. Defining Φ(iT s) = A−1 
+
+> s
+
+(eAsTs − I)
+
+and μ(iT s) = eAsTs ˜z(iT s), where Ts denotes the adaptation timestep, the piecewise-constant adaptation law (see Fig. 4) is given by 
+
+ ˆσm(iT s)ˆσum (iT s)
+
+
+
+= −I6×6G−1(iT s)Φ−1(iT s)μ(iT s) , (19) where G = [ g(R(q)) , g⊥(R(q))] and iT s denotes the i-th adaptation step. The L1 control law (see Fig. 4) applies a low-pass filter to the estimated matched uncertainty, resulting in the adaptive command 
+
+uL1,k = uL1,k −1e−ωco Ts − ˆσm,k (1 − e−ωco Ts ) , (20) where ωco denotes the cutoff frequency of the first-order low-pass filter. The L1 observer is propagated in discrete time as 
+
+ˆzk+1 = ˆ zk +
+
+
+
+fk + gk(uL1,k + ˆ σm,k )+ g⊥ 
+
+> k
+
+ˆσum,k + As ˜zk
+
+
+
+Ts.
+
+(21) The adaptive command from (20) is added to the MPPI command as 
+
+ud =
+
+Ft
+
+ωc
+
+
+
+= uM P P I + uL1,k . (22) The desired collective throttle tc is then obtained from the desired thrust Ft. Together with the desired body rates ωc, it is sent to the low-level flight controller (see Fig. 2). 
+
+F. Considering Communication Delay 
+
+Since the MPPI is a high-level controller, the computed command is sent to the low-level flight controller, which controls the rotor actuators. This separation introduces a com-munication delay between sending the command and the beginning of the rotor throttle response, as illustrated in Fig. 5. To compensate for this delay, the initial state of each MPPI 10 20 30 40 50 0.30.35 0.40.45 ∆tt [ms]    
+
+> throttle  [−]
+> Commanded throttle Mean of single rotor throttles
+> Fig. 5. The mean motor throttle response to a step command, highlighting the delay ∆tbetween the applied throttle command and the motor response controlled by the low-level controller.
+
+iteration is propagated forward using the last applied command 
+
+ulast 
+
+x0 = x + fRK4 (x, ulast , ∆t) , (23) where ∆t is obtained from measurements such as the one shown in Fig. 5. The predicted state x0 is then used as the initial state for generating the MPPI rollouts. 
+
+G. Separation of L1 Controller and MPPI 
+
+The MPPI prediction is initialized from the current motor state Ω (or rather its normalized value r). Since the mea-sured motor state already includes the contribution of the L1
+
+adaptive controller, this contribution must be removed before the MPPI iteration starts. Otherwise, in the presence of uncer-tainty, the MPPI prediction assumes that the L1 command will persist without accounting for the corresponding uncertainty compensation. This results in an inconsistent prediction and can cause the MPPI and L1 controllers to counteract each other. The single-rotor forces corresponding to the current motor speeds are computed from (6) as 
+
+FΩ = fmax (rΩ ⊗ rΩ), (24) where rΩ is the vector of normalized motor speeds computed from the measured motor speeds using (5). The contribution of the MPPI controller is obtained by subtracting the L1 thrust from the measured forces, 
+
+Fr = FΩ − FL1
+
+nmot 
+
+, (25) where nmot is the number of motors, FL1 = 1FL1 and 
+
+FL1 is the thrust command from the previous iteration. The corresponding normalized motor speeds are then computed element-wise as 
+
+r =
+
+s
+
+Fr
+
+fmax 
+
+, (26) and used to initialize the actuator dynamics described in Sec. III-B. IV. R ESULTS 
+
+This section presents the experimental design and results demonstrating the trajectory tracking and adaptive capabilities of the proposed L1-MPPI controller. The proposed approach is compared with existing methods to assess its performance. Additionally, an ablation study evaluates the contribution of each feature introduced in Sec. III. Simulation experiments were performed on a laptop equipped with a 12-core Intel Core i5-12450H CPU and an NVIDIA GeForce RTX 3050 GPU. Real-world experiments used a Jetson Orin NX onboard computer equipped with an 8-core Arm Cortex-A78AE CPU and an Ampere GPU. The controller outputs desired collective throttle and body-rate commands, which are tracked by a PX4 low-level flight controller. Reference trajectories were generated offline using a polynomial trajectory planner [30] and provided to the 
+
+L1-MPPI controller during flight. 
+
+A. Designed Experiments 
+
+The proposed L1-MPPI controller is compared with the plain MPPI implementation from [13], denoted as MPPI (plain) , and with our MPPI implementation augmented by a mass estimator, denoted as MPPI (mass est.) . An ablation study further evaluates the contribution of the proposed com-ponents. The evaluated L1-MPPI configurations are:  
+
+> •
+
+Ours – Our proposed L1-MPPI.  
+
+> •
+
+Ours (no delay) – Our method without communication delay compensation.  
+
+> •
+
+Ours ( L1 tr. only) – L1 Our method with augmentation applied only to the translational dynamics.  
+
+> •
+
+Ours (no L1) – Our method without L1 augmentation.  
+
+> •
+
+Ours (no PID) – Our method without integration of low-level controller and motor dynamics models. Two trajectories shown in Fig. 6 are selected to evaluate agile UAV flight. They are generated using a polynomial trajectory planner [30]. Both trajectories reach accelerations of up to 3.5 g, with maximum velocities of 17.84 m s −1 and 15.21 m s −1 for the figure 8 and hypotrochoid trajectories, respectively. The figure 8 trajectory evaluates high-speed flight with curved sections, while the hypotrochoid trajectory tests tracking performance during sharp turns and rapidly varying accelerations. To evaluate the adaptive capabilities of the proposed ap-proach, three configurations are considered for each trajec-tory: the nominal model ( No change ), an unknown additional payload that increases the UAV’s mass by 35 % ( Payload ), and doubled drag coefficients cx, cy , and cz (Drag ). These TABLE I RESULTS OF THE TRACKING EXPERIMENTS .                                                                                                                                                                                    
+
+> Traj. Controller Figure 8 Hypotrochoid pos. RMSE [m] Gain [%] pos. RMSE [m] Gain [%]
+> No change  MPPI (plain) 0.673 ±0.025 –0.609 ±0.021 –Ours 0.529 ±0.026 21 .35 0.437 ±0.024 28 .20
+> Ours (no delay) 0.529 ±0.023 21 .36 0.439 ±0.010 27 .90
+> Ours ( L1tr. only) 0.509 ±0.019 24 .35 0.451 ±0.011 25 .85
+> Ours (no L1)0.524 ±0.015 22 .16 0.439 ±0.014 27 .86
+> Ours (no PID) 0.684 ±0.023 −1.60 0.644 ±0.031 −5.76
+> MPPI (mass est.) 0.523 ±0.022 22 .26 0.437 ±0.018 28 .23
+> Payload
+> MPPI (plain) 0.750 ±0.060 –0.657 ±0.028 –Ours 0.330 ±0.034 56 .07 0.256 ±0.032 61 .14
+> Ours (no delay) 0.413 ±0.063 44 .95 0.281 ±0.035 57 .22
+> Ours ( L1tr. only) 0.419 ±0.082 44 .18 0.349 ±0.039 46 .99
+> Ours (no L1)0.661 ±0.047 11 .93 0.535 ±0.022 18 .57
+> Ours (no PID) 0.450 ±0.167 39 .95 0.376 ±0.007 42 .85
+> MPPI (mass est.) 0.517 ±0.020 31 .06 0.434 ±0.014 33 .95
+> Drag
+> MPPI (plain) 1.038 ±0.037 –0.776 ±0.041 –Ours 0.715 ±0.096 31 .12 0.550 ±0.066 29 .12
+> Ours (no delay) 0.753 ±0.078 27 .46 0.594 ±0.060 23 .39
+> Ours ( L1tr. only) 0.832 ±0.100 19 .87 0.621 ±0.043 19 .94
+> Ours (no L1)1.172 ±0.084 −12 .89 0.814 ±0.007 −4.98
+> Ours (no PID) 0.525 ±0.075 49 .40 0.460 ±0.058 40 .67
+> MPPI (mass est.) 1.622 ±0.105 −56 .20 1.047 ±0.063 −34 .94
+
+scenarios evaluate the effects of low-level dynamic modeling, 
+
+L1 augmentation, and adaptation to mass and aerodynamic uncertainties. 
+
+B. Simulated Results 
+
+The experiments described in Sec. IV-A were conducted in simulation. Each scenario was repeated at least 10 times, resulting in over 400 simulated flights. Tracking performance was evaluated using the positional Root Mean Square Error (RMSE). The results are summarized in Tab. I. The proposed L1-MPPI controller improves tracking per-formance over plain MPPI in all tested conditions, with an average improvement of approximately 24.78 % under nominal conditions, increasing to 58.61 % with an additional payload and 30.12 % under increased drag. Compared with Ours (no L1), the L1 augmentation has an insignificant effect on nominal tracking, while it substantially improves performance under parameter mismatches. Accounting for the low-level PID dynamics has a clear impact on tracking performance. Removing the PID dynamics (Ours (no PID) ) degrades performance on average by ap-proximately 25 % under nominal conditions and 16 % with an additional payload. Interestingly, the opposite trend is observed under drag mismatch, where neglecting the PID dynamics improves tracking by approximately 17 %. A possible expla-nation is that the L1 compensation of the drag disturbance interacts less favorably with the additional low-level controller 
+
+TABLE II RMSE RESULTS OF TRACKING FIGURE 8 IN THE REAL WORLD .
+
+Condition Ours [m] Ours ( L1 tr. only) [m] Ours (no L1) [m] 
+
+No change 0.703 0.707 0.654 
+
+Mass mismatch 0.727 0.981 1.266 
+
+Real payload 0.621 0.699 –
+
+states in the prediction model, as the drag force depends on the attitude, which is highly influenced by the low-level controller. Finally, the mass estimator performs comparably to the proposed approach under nominal conditions and with an additional payload, but its performance degrades substantially under increased drag, resulting in approximately 67 % higher RMSE than the proposed approach. This suggests that L1
+
+adaptation provides a more general mechanism for compen-sating for uncertainties that cannot be represented by a mass change alone. 
+
+C. Real-world Experiments 
+
+We chose three scenarios to track a figure 8 trajectory in the real-world experiment, achieving velocities up to 13.51 m s −1 
+
+and accelerations reaching 2.5 g. First, all model parameters are unchanged (No change ). Second, the Mass mismatch 
+
+condition was created by internally reducing the modeled UAV mass from 1.43 kg to 0.8 kg, corresponding to a 79 % apparent mass increase for the controller, without adding a physical payload. Finally, a physical payload is attached, which increases the UAV mass by 35 % ( Real payload ) and also influences the inertia. The real-world experiments are summarized in Tab. II. The L1 augmentation of the proposed controller shows a similar impact in real-world experiments to the simulated ones. L1-MPPI increases the position RMSE by 7.49 % in 
+
+No change scenario comapred to Ours (No L1). However, in the presence of additional payload, full L1 augmentation demonstrates its capability of compensating for the unknown payload, even outperforming Ours (No L1) in nominal set-tings, similarly to simulations. This may be due to the MPPI controller’s cost function, which was not tuned to the new dynamics. Fig. 7 illustrates the commands computed by the 
+
+L1-MPPI in the real-world Mass mismatch scenario. V. C ONCLUSION 
+
+This work proposed an L1-MPPI controller for agile flight in the presence of model uncertainties and external distur-−20       
+
+> −10 010 20 −20
+> −10 010 20 024
+> x[m]
+> y [m]
+> z [m]
+> 0510 15
+> velocity  [m /s]
+> Ours
+> 0510 15
+> velocity  [m /s]
+> plain MPPI
+> −20
+> −10 010 20 −20
+> −10 010 20 024
+> x[m]
+> y [m]
+> z [m]
+> 0510
+> velocity  [m /s]
+> Ours
+> 0510
+> velocity  [m /s]
+> plain MPPI
+
+Fig. 6. Reference and tracked trajectories under an additional payload using the proposed L1-MPPI controller and plain MPPI. 0 0.5 1 1.50510 
+
+t [s] 
+
+> F [N]
+> FL1
+> FM P P I
+
+0 10 20 30 010 20 
+
+t [s] 
+
+> F [N]
+> FL1
+> FM P P I
+
+0 10 20 30 
+
+−0.500.5
+
+t [s] 
+
+> ωL1 [rad /s]  ωL1,x
+> ωL1,y
+> ωL1,z
+
+0 10 20 30 
+
+−2
+
+−101
+
+t [s]  
+
+> ωy [rad /s]
+> ωM P P I,y ωL1,y
+
+Fig. 7. Commands from the MPPI and L1 adaptive controller during the real-world figure 8 tracking experiment. The force plots show the collective thrust of each controller over the entire trajectory and its beginning. The top-right plot illustrates the rotational dynamics compensation by the L1 adaptive controller. Bottom-right plot compares the roll rate command of MPPI and 
+
+L1 adaptive controller. 
+
+bances. To the best of our knowledge, it is the first MPPI-based controller that incorporates a low-level controller and motor dynamics. Additionally, L1-MPPI is the first adaptive MPPI suitable for onboard control. We evaluated the tra-jectory tracking performance in simulation at speeds reach-ing 17.84 m s −1 and accelerations up to 3.5 g. The proposed method demonstrates its tracking performance across various scenarios, outperforming both the existing MPPI approach on agile trajectories and the mass estimation approach in flight under uncertainties. Real-world experiments demonstrate the adaptability of the L1-MPPI without performance degradation while achieving speeds up to 13.5 m s −1 and accelerations up to 2.5 g. REFERENCES [1] F. Betti Sorbelli, “UAV-Based Delivery Systems: A Systematic Re-view, Current Trends, and Research Challenges,” ACM Journal on Autonomous Transportation Systems , vol. 1, no. 3, pp. 1–40, Sep. 2024. [2] M. Burri, J. Nikolic, C. H¨ urzeler, G. Caprari, and R. Siegwart, “Aerial service robots for visual inspection of thermal power plant boiler systems,” in 2012 2nd International Conference on Applied Robotics for the Power Industry (CARPI) , Sep. 2012, pp. 70–75. [3] P. Petracek, V. Kratky, T. Baca, M. Petrlik, and M. Saska, “New Era in Cultural Heritage Preservation: Cooperative Aerial Autonomy,” IEEE Robotics & Automation Magazine , vol. 31, no. 2, pp. 8–25, Jun. 2024. [4] M. Faessler, F. Fontana, C. Forster, E. Mueggler, M. Pizzoli, and D. Scaramuzza, “Autonomous, Vision-based Flight and Live Dense 3D Mapping with a Quadrotor Micro Aerial Vehicle,” Journal of Field Robotics , vol. 33, no. 4, pp. 431–450, 2016. [5] S. Sun, A. Romero, P. Foehn, E. Kaufmann, and D. Scaramuzza, “A Comparative Study of Nonlinear MPC and Differential-Flatness-Based Control for Quadrotor Agile Flight,” IEEE Transactions on Robotics ,vol. 38, no. 6, pp. 3357–3373, Dec. 2022. [6] P. M. Gupta, O. Proch´ azka, J. Hˇ rebec, M. Novosad, R. Pˇ eniˇ cka, and M. Saska, “LoL-NMPC: Low-Level Dynamics Integration in Nonlinear Model Predictive Control for Unmanned Aerial Vehicles,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , Oct. 2025, pp. 1186–1193. [7] H. Mo and G. Farid, “Nonlinear and Adaptive Intelligent Control Techniques for Quadrotor UAV – A Survey,” Asian Journal of Control ,vol. 21, no. 2, pp. 989–1008, 2019. [8] G. Torrente, E. Kaufmann, P. Foehn, and D. Scaramuzza, “Data-Driven MPC for Quadrotors,” Mar. 2021. [9] T. Baca, M. Petrlik, M. Vrba, V. Spurny, R. Penicka, D. Hert, and M. Saska, “The MRS UAV System: Pushing the Frontiers of Repro-ducible Research, Real-world Deployment, and Education with Au-tonomous Unmanned Aerial Vehicles,” Journal of Intelligent & Robotic Systems , vol. 102, no. 1, p. 26, May 2021. [10] D. Hanover, P. Foehn, S. Sun, E. Kaufmann, and D. Scaramuzza, “Performance, Precision, and Payloads: Adaptive Nonlinear MPC for Quadrotors,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 690–697, Apr. 2022. [11] G. Williams, A. Aldrich, and E. A. Theodorou, “Model Predictive Path Integral Control: From Theory to Parallel Computation,” Journal of Guidance, Control, and Dynamics , vol. 40, no. 2, pp. 344–357, Feb. 2017. [12] M. Minarik, R. Penicka, V. Vonasek, and M. Saska, “Model Predictive Path Integral Control for Agile Unmanned Aerial Vehicles,” Jul. 2024. [13] P. Pochobradsk´ y, O. Proch´ azka, R. Pˇ eniˇ cka, V. Von´ asek, and M. Saska, “Geometric Model Predictive Path Integral for Agile UAV Control With Online Collision Avoidance,” IEEE Robotics and Automation Letters ,vol. 11, no. 5, pp. 5334–5341, May 2026. [14] J. Pravitra, K. A. Ackerman, C. Cao, N. Hovakimyan, and E. A. Theodorou, “L1-Adaptive MPPI Architecture for Robust and Agile Control of Multirotors,” Mar. 2020. [15] K. Y. Chee, T. Z. Jiahao, and M. A. Hsieh, “KNODE-MPC: AKnowledge-based Data-driven Predictive Control Framework for Aerial Robots,” Jan. 2022. [16] S. Sanyal and K. Roy, “RAMP-Net: A Robust Adaptive MPC for Quadrotors via Physics-informed Neural Network,” Feb. 2023. [17] M. Faessler, A. Franchi, and D. Scaramuzza, “Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag for Accurate Tracking of High-Speed Trajectories,” IEEE Robotics and Automation Letters , vol. 3, no. 2, pp. 620–626, Apr. 2018. [18] M. Faessler, D. Falanga, and D. Scaramuzza, “Thrust Mixing, Saturation, and Body-Rate Control for Accurate Aggressive Quadrotor Flight,” IEEE Robotics and Automation Letters , vol. 2, no. 2, pp. 476–482, Apr. 2017. [19] E. Lavretsky and K. A. Wise, “Robust Adaptive Control,” in Robust and Adaptive Control: With Aerospace Applications , E. Lavretsky and K. A. Wise, Eds. Cham: Springer International Publishing, 2024, pp. 469–506. [20] Z. T. Dydek, A. M. Annaswamy, and E. Lavretsky, “Adaptive Control of Quadrotor UAVs: A Design Trade Study With Flight Evaluations,” 
+
+IEEE Transactions on Control Systems Technology , vol. 21, no. 4, pp. 1400–1406, Jul. 2013. [21] M. M. Madebo, C. M. Abdissa, L. N. Lemma, and D. S. Negash, “Robust Tracking Control for Quadrotor UAV With External Disturbances and Uncertainties Using Neural Network Based MRAC,” IEEE Access ,vol. 12, pp. 36 183–36 201, 2024. [22] L. Zhou, S. Xu, H. Jin, and H. Jian, “A hybrid robust adaptive control for a quadrotor UAV via mass observer and robust controller,” Advances in Mechanical Engineering , vol. 13, no. 3, p. 16878140211002723, Mar. 2021. [23] W. Xie, D. Cabecinhas, R. Cunha, and C. Silvestre, “Adaptive Backstep-ping Control of a Quadcopter With Uncertain Vehicle Mass, Moment of Inertia, and Disturbances,” IEEE Transactions on Industrial Electronics ,vol. 69, no. 1, pp. 549–559, Jan. 2022. [24] K. W. Lee and S. N. Singh, “L1 adaptive control of flexible spacecraft despite disturbances,” Acta Astronautica , vol. 80, pp. 24–35, Nov. 2012. [25] I. Gregory, C. Cao, E. Xargay, N. Hovakimyan, and X. Zou, “L1 Adaptive Control Design for NASA AirSTAR Flight Test Vehicle,” in 
+
+AIAA Guidance, Navigation, and Control Conference . Chicago, Illinois: American Institute of Aeronautics and Astronautics, Aug. 2009. [26] Y. Zhai, R. Reiter, and D. Scaramuzza, “PA-MPPI: Perception-Aware Model Predictive Path Integral Control for Quadrotor Navigation in Un-known Environments,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 3804–3811, Mar. 2026. [27] M. Lorenz and The PX4 Contributors, “PX4 Autopilot,” accessed: 2026-09-10. [Online]. Available: https://px4.io [28] X. Wang and N. Hovakimyan, “L1 adaptive controller for nonlinear time-varying reference systems,” Systems & Control Letters , vol. 61, no. 4, pp. 455–463, Apr. 2012. [29] Z. Li and N. Hovakimyan, “L1 adaptive controller for MIMO systems with unmatched uncertainties using modified piecewise constant adapta-tion law,” in 2012 IEEE 51st IEEE Conference on Decision and Control (CDC) , Dec. 2012, pp. 7303–7308, iSSN: 0743-1546. [30] Z. Wang, H. Ye, C. Xu, and F. Gao, “Generating Large-Scale Trajectories Efficiently using Double Descriptions of Polynomials,” Apr. 2022.

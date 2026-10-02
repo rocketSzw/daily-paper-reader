@@ -1,0 +1,866 @@
+Title: DSWM: Decomposed Spatio-Temporal World Model for Demand-Driven UAV Base Station Repositioning
+
+URL Source: https://arxiv.org/pdf/2609.36845v1
+
+Published Time: Wed, 30 Sep 2026 01:06:49 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+> PREPRINT SUBMITTED TO IEEE, 2026 1
+
+# DSWM: Decomposed Spatio-Temporal World Models for Demand-Driven UAV Base Station Repositioning 
+
+Shengjie Zhong, Graduate Student Member, IEEE, Zhongliang Zhao, Jingxuan Chen, Xianbin Cao, Xinmei Qiang, Dapeng O. Wu, Fellow, IEEE , Tony Q. S. Quek, Fellow, IEEE This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. 
+
+Abstract —Uncrewed aerial vehicle base stations (UAV-BSs) are expected to cover traffic demand that shifts across space and time, yet most repositioning schemes either re-solve an optimization problem per slot or learn reactive policies without an explicit demand model. We cast demand-driven fleet repositioning as latent-space decision-time planning and propose DSWM, a decomposed spatio-temporal world model: an agentic controller that perceives the demand field through a rolling observation window, retains operational context in a latent recurrent state, reasons about candidate motions by imagined rollouts under an uncertainty penalty, and coordinates the fleet through replanned first actions. DSWM learns a recurrent state-space model shaped by an exponential-moving-average (EMA) based latent predictive objective with variance regularization. It attaches a differentiable service simulator that replays the association, probabilistic line-of-sight channel, and Shannon rate chain inside latent rollouts. Planning uses a cross-entropy method whose imagined demand is anchored on the current observation window with mixing coefficient ρ = 0.95 . On a unified pipeline over three real datasets (Milan CDR (call detail record), Shanghai Telecom, YJMob100K) and 14 methods including five reproduced IEEE baselines, DSWM attains weekday served ratios of 0.889, 0.908, and 0.898, ranking first among non-ablated configurations on every dataset. On Milan it improves over the strongest non-learning baseline (Greedy, 0.780) by 0.109, a margin that comes from decision-time use of observations rather than prediction accuracy. 
+
+This work was supported by the Smart Grid-National Science and Tech-nology Major Project (2026ZD0811400). (Corresponding author: Zhongliang Zhao.) S. Zhong is with the School of Electronic and Information Engineering, Bei-hang University, Beijing 100191, China (e-mail: zhongshengjie@buaa.edu.cn). Z. Zhao is with the School of Electronic and Information Engineering, Beihang University, Beijing, with the Department of Strategic and Advanced Interdisciplinary Research, Peng Cheng Laboratory, with the Hangzhou Inter-national Innovation Institute, Beihang University, Hangzhou, with the MIIT Key Lab. of Aerospace Mobile Communication, Beijing, and also with the State Key Lab. of CNS/ATM, Beijing (e-mail: zhaozl@buaa.edu.cn). J. Chen is with the Department of Computer Science, City University of Hong Kong, Hong Kong, SAR, China, and also with the Hong Kong Generative AI Research and Development Center, Hong Kong, SAR, China (e-mail: chenjingxuan@buaa.edu.cn). X. Cao is with the School of Electronic and Information Engineering, Beihang University, Beijing, and also with the MIIT Key Lab. of Aerospace Mobile Communication, Beijing. X. M. Qiang is with the School of Electronic and Information Engineering, Beihang University, Beijing 100191, China (e-mail: qiangxm@buaa.edu.cn). D. O. Wu is with the Department of Computer Science, The City University of Hong Kong, Hong Kong, SAR, China (e-mail: dpwu@ieee.org). T. Q. S. Quek is with the Information Systems Technology and Design Pillar, Singapore University of Technology and Design, Singapore 487372 (e-mail: tonyquek@sutd.edu.sg). 
+
+Index Terms —6G mobile communication, agentic AI, rein-forcement learning, uncrewed aerial vehicles (UAVs), world model. 
+
+I. I NTRODUCTION 
+
+# THE low-altitude economy and 6G research agendas both position uncrewed aerial vehicle base stations (UAV-BSs) as a fast way to add capacity where ground infrastructure is absent or saturated [1], [2]. UAV-BSs fly at low altitude, establish line-of-sight (LoS) links with high probability, and can be repositioned within minutes [1]. Recent surveys argue that such aerial access layers must be driven by generative and predictive models of network state rather than static rules [3], [2]. The practical question is therefore not whether to move the fleet, but how to decide where each UAV-BS should be at every slot so that a demand map that drifts over hours is cov-ered. This is an agentic control problem: the controller must perceive a partially observed demand field, retain operational context over hours, reason under uncertainty about delayed consequences, and coordinate a fleet under coupled energy and coverage constraints. Two properties make this decision hard. Demand is both spatially uneven and temporally nonstationary, with commute peaks, weekend shifts, and holiday anomalies. And each repositioning decision has delayed consequences: a move that takes minutes pays off only after the demand arrives, while battery limits force charging detours that remove capacity for an hour. Any controller must therefore trade current service against future service under dynamics it cannot observe directly. Three lines of work address this question, and each leaves a specific gap. First, optimization-based designs decompose placement, trajectory, and resource allocation into subprob-lems solved by block coordinate descent (BCD) or convex relaxations [4], [5], [6], [7]. They are strong within a static or slowly changing demand snapshot, but they re-solve a nonconvex problem per decision and degrade when the de-mand drifts between solves. Second, model-free reinforcement learning (RL) and multi-agent RL (MARL) learn reactive policies for trajectory and resource control [8], [9], [10], [11], [12], [13], [14], [15], [16]. These policies carry no explicit demand model, so they need many environment samples and generalize weakly out of distribution (OOD). Third, two-stage pipelines first predict traffic with a spatio-temporal forecaster arXiv:2609.36845v1 [cs.NI] 29 Sep 2026 PREPRINT SUBMITTED TO IEEE, 2026 2return-to-charge (15% reserve)  reposition       
+
+> to hotspot
+> Aerial access layer (height = 100m)
+> charging stations
+> UAV-BS (height=100m)
+> Charging station
+> Demand hotspot
+> study area
+> y (km)
+> x(km)
+> LoS link
+> return
+> Fig. 1. Scenario and motivation. A fleet of KUAV-BSs at altitude hfly
+> covers a gridded demand map xtthat drifts over the day (commute bimodal pattern). Because the demand map is strongly structured in space and time, the bottleneck for coverage is how the current observation window is exploited at decision time, not raw forecasting accuracy. DSWM therefore plans in a learned latent space with the imagination anchored on the current observation.
+
+and then plan against the prediction [17], [18], [19], [20], [21]. Prediction error passes directly into the plan, and the forecasting objective (per-cell accuracy) is misaligned with the coverage objective (demand-weighted service). Our key insight, illustrated in Fig. 1, is that urban demand has strong spatio-temporal structure and is largely predictable, so the bottleneck is not prediction accuracy but how ob-servations are used at decision time. World models answer exactly this question: they learn latent dynamics and let the agent plan by imagination at each step [22], [23], [24]. If a planner anchors its imagined demand on the current observation window, it can in principle match a planner that sees the future. In a preliminary smaller-scale setting ( K=4 ,without the battery model), anchoring improved both splits by 
+
++0 .018 over the non-anchored variant at no cost (replicated from two checkpoints), while demand-forecasting enhance-ments were net negative; we report these as motivation—the main-table evidence appears in Section V-D. Based on this insight, we propose DSWM (Decomposed Spatio-Temporal World Model). DSWM learns a recurrent state-space model (RSSM) of the demand-service dynamics, shaped by an EMA-target latent predictive objective with a variance-margin regu-larizer (JEPA/VICReg-style) [25] and variance regularization. A decomposed service head replays the environment’s ser-vice physics—association, probabilistic LoS, Shannon rate, and capped per-cell fulfillment—as a differentiable simulator inside latent rollouts, and an ensemble disagreement term penalizes uncertain branches. A cross-entropy method (CEM) planner scores H-slot imagined trajectories with the demand anchored on the current observation with mixing coefficient 
+
+ρ = 0 .95 , and executes only the first action. The contributions are summarized as follows:  
+
+> •
+
+Modeling paradigm (Section IV, Fig. 2). We formal-ize demand-driven UAV-BS fleet repositioning as latent-space decision-time planning and propose DSWM, an RSSM world model shaped by a latent predictive reg-ularization objective. To our knowledge this is the first world-model formulation of UAV-BS repositioning with an explicit coverage objective.  
+
+> •
+
+Architecture (Section IV-C, Fig. 3). We design a de-composed demand-service physics head, a differentiable replica of the service simulator, with an ensemble uncer-tainty penalty. Ablation attributes +0 .120 of served ratio to the decomposed head (0.769 vs. 0.889) and −0.004 
+
+to the uncertainty term, which we report as an insurance mechanism rather than a gain source.  
+
+> •
+
+Algorithm (Section IV-D, Fig. 4). We propose observation-anchored CEM decision-time planning with anchor mixing coefficient ρ = 0 .95 . DSWM improves over the strongest non-learning baseline by 0.109 on Milan (0.889 vs. 0.780); in a preliminary smaller-scale setting (K=4 , without the battery model), anchoring improved both splits by +0 .018 over the non-anchored variant at no cost (replicated from two checkpoints).  
+
+> •
+
+Benchmark evidence (Section V, Tables III and IV). 
+
+We build a unified pipeline over three real datasets (Milan CDR, Shanghai Telecom, YJMob100K) with 14 methods, including five recent IEEE baselines (2023–2026), and a three-way leakage audit. DSWM ranks first among non-ablated configurations on all three datasets. A further motivation shapes our evaluation design. Com-parisons of learning-based network controllers are often under-mined by three silent leaks: random train/test splits that let the model memorize periodicity, normalization statistics computed on the full dataset, and evaluation protocols that differ across methods. We therefore fix temporal splits, derive all scaling factors from the training segment, give every method the identical observation set, and subject the full pipeline to a read-only leakage audit (Section V-B). We regard this protocol as part of the contribution, because the margin we report (0.109 over the strongest baseline on Milan) is meaningful only if the comparison is clean. The remainder of the paper is organized as follows. Sec-tion II reviews related work. Section III presents the system model and problem formulation. Section IV details DSWM. Section V reports experiments. Section VI concludes. II. R ELATED WORK 
+
+A. UAV-BS Deployment and Trajectory Design 
+
+Early work characterized the air-to-ground channel and derived optimal altitudes for coverage [5], [1]. Zeng and Zhang introduced the rotary-wing power model and opti-mized trajectories for energy efficiency [4]. Optimization-based formulations then scaled to multi-UAV settings: Sun 
+
+et al. [6] minimized a weighted sum of delay, energy, and load imbalance via BCD with Karush–Kuhn–Tucker (KKT) bisection and successive convex approximation (SCA); Jia et al. [7] combined K-means and Voronoi pre-deployment with whale optimization for hierarchical swarms. Related formula-tions addressed distributionally robust aerial edge computing PREPRINT SUBMITTED TO IEEE, 2026 3
+
+[26], wireless-powered data acquisition [27], two-timescale mobile edge computing (MEC) scheduling [28], sensing-communication-computing trajectories [29], covert integrated sensing and communication (ISAC) beamforming [30], [31], and self-adjusting slicing [32]; learning-based variants replace the solver with a policy network [33], [34], [35], [36], [37], [38], [39], [40]. The gap in this line is per-slot re-solving against a demand snapshot: when demand drifts between solves, BCD-type methods are the most sensitive in our benchmark (Section V-E). 
+
+B. Spatio-Temporal Demand Prediction 
+
+Cellular and mobility demand prediction spans graph net-works, Transformers, and large language models: MVSTGN fused multi-view spatial-temporal graphs for cellular traffic [17]; Gu et al. predicted city-level traffic with a spatial-temporal Transformer [18]; probabilistic graph networks quan-tified travel demand uncertainty [19]; recent work used con-founder representations [41], traffic LLMs [20], and diffusion-based text-to-traffic generation [21]. These models output a forecast that a downstream planner must trust; the gap is ob-jective misalignment, since per-cell forecasting accuracy does not measure demand-weighted coverage. We keep prediction inside a decision loop and show that decision-time use of observations, not forecast skill, is the binding constraint. 
+
+C. World Models and Decision-Time Planning 
+
+World models learn latent dynamics and plan by imagi-nation [42], [22]; TD-MPC combined model predictive con-trol with temporal-difference learning [23]; the Dreamer line scaled world-model agents across domains [43], [24], [44]. Self-supervised objectives [45], [25], [46] stabilize represen-tation learning without reconstruction heuristics, and general agents have been argued to require world models [47]. In wireless, MobiWorld built world models of mobile networks for traffic and channel simulation [48], and internal-inference frameworks moved learning inside the network [49]. The gap is that existing wireless world models target prediction or sim-ulation, not closed-loop repositioning with a physical service model inside the imagination. Offline model-based RL work such as MOPO [50] motivates our uncertainty penalty, which we apply to imagined rollouts rather than policy training. 
+
+D. Closest Works and Differentiation 
+
+Four works are closest to ours, and the distinctions are structural. GA-MATR [13] learns a graph-attention MARL policy with a fairness regularizer; it is model-free, so it cannot imagine counterfactual demand, yet it is the strongest learning baseline under distribution shift in our benchmark (Section V-E), though still far below DSWM on weekdays. HRL-TPRA [16] decomposes the problem hierarchically in time with pointer-network trajectory planning and per-UAV resource actors; the hierarchy is compute-bound and ranked last among learning baselines in our setting (0.485). JTORATC [6] solves a weighted BCD problem per decision window; it carries no learned demand model and suffers OOD backfire (holiday 0.495 vs. weekday 0.583). MobiWorld [48] builds a generative world model of wireless networks but does not close the loop with a service-physics-aware planner. DSWM differs from all four in that the service physics is differentiable inside the world model, so gradients and planning scores both flow through the true coverage mechanism. III. S YSTEM MODEL AND PROBLEM FORMULATION 
+
+A. Scenario and Assumptions 
+
+We consider a city-wide aerial access layer. A fleet of 
+
+K = 16 UAV-BSs hovers at altitude hfly = 100 m over a service area rasterized into G cells ( G=400 for Milan) of side 
+
+c (235 m for Milan). Time is slotted into Tslot = 10 min slots; one episode is one day of T = 144 slots. The demand in slot t is a nonnegative map xt ∈ RG
+
+> +
+
+, normalized by the 99th percentile of the training segment. We adopt the following assumptions, each of which matches the deployed environment used in all experiments. (A1) Fixed flight altitude. All UAV-BSs operate at a constant altitude of hfly = 100 m. This isolates the horizontal repositioning problem, as optimal altitude results are well-established [5]. (A2) UAV mobility. A UAV travels at most Dmax = 1500 mper 10-minute slot. This fits comfortably within the 
+
+Vmax = 25 m/s speed limit of consumer-grade platforms, requiring an average speed of only 2.5 m/s. (A3) Nearest-available association. Each cell is served by the closest active UAV-BS. This practical Voronoi-style coverage [7] simplifies the model by decoupling user association from the learning problem. (A4) Homogeneous rate demand. Each normalized demand unit corresponds to r0 = 0 .5 Mbps per user. This isolates coverage optimization from traffic heterogeneity, which is typically handled by separate prediction modules [17]. (A5) Battery constraints. Since finite endurance dictates short-horizon planning [4], we explicitly model charging cycles. A UAV dropping below a 15% reserve returns to a quadrant station, charges for 6 slots (1 hour), and redeploys. Table I lists the main notation. 
+
+B. Channel Model 
+
+Let dg,k =
+
+q
+
+h2fly + ∥pkt − cg ∥2 be the distance between UAV k at position pkt in slot t and the center cg of cell g, and let θg,k = arcsin( hfly /d g,k ) be the elevation angle, converted to degrees before evaluating (1). The LoS probability follows the standard sigmoid model [5], [1]: 
+
+Plos (θg,k ) = 11 + aenv exp   − benv (θg,k − aenv ) , (1) where aenv and benv are environment constants. The expected path loss in dB mixes LoS and non-LoS (NLoS) components with excess losses ηLoS and ηNLoS ; the constants aenv , benv 
+
+and the excess-loss terms ηLoS , ηNLoS follow the urban parametrization of [5]: 
+
+PL g,k = 20 log 10 
+
+ 4πf cdg,k 
+
+c0
+
+
+
++ Plos (θg,k ) ηLoS +  1 − Plos (θg,k ) ηNLoS , (2) PREPRINT SUBMITTED TO IEEE, 2026 4
+
+TABLE I MAIN NOTATION                                                                  
+
+> Symbol Meaning
+> t,Tslot index; slots per day ( T=144 )
+> Tslot slot duration (10 min)
+> k,KUAV-BS index; fleet size ( K=16 )
+> g,Gcell index; number of cells ( G=400 )
+> ccell side length (235/470/500 m)
+> xt∈RG
+> +normalized demand map
+> skt= ( pkt, b kt, ξ kt)UAV kstate (position, battery, charge)
+> at∈[−1,1] K×3action (∆ x, ∆y, bw logit)
+> hfly ,Dmax ,Vmax altitude; move limit; speed limit
+> B,N0,fcbandwidth; noise spectral density; carrier frequency
+> γ,Eplanner discount; ensemble size
+> Ncem ,Nelite CEM samples; elites
+> m,σ0CEM sampling mean; initial sampling std
+> νEMA coefficient of the teacher
+> otobservation (past w=6 demand, fleet, time)
+> ht,ztGRU deterministic / stochastic latent state
+> qϕ,pθposterior / prior of the RSSM
+> SR t∈[0 ,1] served ratio (aggregate demand satisfaction)
+> r0,Upeak per-user rate demand; satisfaction threshold
+> Et,Ehover ,Ebatt slot / hover / battery energy
+> Plos LoS probability
+> Rg,k Shannon rate of link (g, k )
+> H,ρhorizon; anchor mixing coefficient
+> ut,λuensemble uncertainty; penalty weight
+> rsSpearman rank correlation
+
+with carrier frequency fc = 2 GHz and light speed c0. With transmit power Pk = 0 .5 W, allocated bandwidth Bg,k , and noise spectral density N0 = 10 −20 .4 W/Hz, the Shannon rate of link (g, k ) is 
+
+Rg,k = Bg,k log 2
+
+
+
+1 + Pk 10 −PL g,k /10 
+
+N0Bg,k 
+
+
+
+, (3) where P 
+
+> g
+
+Bg,k ≤ B with B = 20 MHz per UAV-BS. The chain (1)–(3) is deterministic given positions and is differentiable almost everywhere; Section IV-C reuses it inside the world model. 
+
+C. Energy Consumption and Battery State Machine 
+
+Rotor power follows the model of Zeng and Zhang [4]: 
+
+P (V ) = P0
+
+
+
+1 + 3V 2
+
+U 2tip 
+
+
+
++ Pi
+
+s
+
+1 + V 4
+
+4v40
+
+− V 2
+
+2v20
+
+1/2
+
++ 12 d0ϱair sAV 3, (4) where V is speed, P0 and Pi are blade profile and induced power in hover, Utip is tip speed, v0 is mean rotor induced velocity, and d0, ϱair , s, A are fuselage drag ratio, air density, rotor solidity, and disc area ( ρ is reserved for the anchor mixing coefficient). The per-UAV slot energy is Ekt =
+
+P (V kt ) Tslot , and Et = P 
+
+> k
+
+Ekt is the fleet total; hover energy 
+
+Ehover = P (0) Tslot is the reference. Because repositioning spans at most 1500 m per 10-min slot, hovering dominates consumption; this physical fact explains the narrow energy spread ( ∼3%) across methods in Section V-D. The battery obeys bkt+1 = bkt − Ekt while airborne; when bkt < 0.15 Ebatt 
+
+with Ebatt = 1 ,972 ,800 J (548 Wh, DJI M300-class), UAV 
+
+k enters returning , flies to its quadrant station, charges for 6 slots, and redeploys at full charge. 
+
+D. Demand-Service Model 
+
+Cell g requests an aggregate rate xgt r0. Under nearest-available association (A3), the served demand of cell g in slot 
+
+t is 
+
+ygt = min  xgt r0, R g,k ∗(g)
+
+, k∗(g) = arg min 
+
+> k∈A t
+
+∥pkt − cg ∥,
+
+(5) where At is the set of airborne, non-returning UAV-BSs and 
+
+Rg,k is from (3). The served ratio aggregates fulfilled demand over the map: 
+
+SR t =
+
+P 
+
+> g
+
+ygt
+
+P 
+
+> g
+
+xgt r0
+
+=
+
+P 
+
+> g
+
+xgt min  1, R g,k ∗(g)/(xgt r0)P 
+
+> g
+
+xgt
+
+. (6) 
+
+SR t is demand-weighted, so covering a hotspot matters more than covering a sparse cell. A cell counts as satisfied when its fulfillment ratio reaches Upeak = 0 .8; this threshold is used only to mark satisfied cells in the Jain fairness statistic reported in Section V-D. The reward used by learning methods is 
+
+Rt = SR t − β (1 − SR t) − α Et
+
+Ehover K , (7) with α = β = 1 .0 in all experiments. 
+
+E. Problem Formulation 
+
+The operator seeks a policy π mapping observations to ac-tions that maximizes cumulative served ratio over an episode: 
+
+(P1) : max  
+
+> π
+
+E
+
+h PTt=1 SR t
+
+i
+
+(8) 
+
+s.t. ∥∆ptk∥ ≤ Dmax , ∥∆ptk∥/T slot ≤ Vmax , (C1) 
+
+bkt+1 = bkt − Ekt , b kt < 0.15 Ebatt ⇒ return ,
+
+(C2) 
+
+P 
+
+> g
+
+Bg,k ≤ B, ∀k, t. (C3) Constraint (C1) enforces kinematics, (C2) the battery state machine, and (C3) the per-UAV bandwidth budget. The obser-vation ot contains the past w = 6 demand maps, the current demand map, fleet position/battery/charge states, and a time-phase encoding; all methods in Section V share this identical information set. (P1) is hard for three reasons, and each maps to one DSWM component. First, the demand map is time-varying and partially observed through a short window, so per-slot re-optimization chases a moving target; DSWM answers this with a learned world model that carries demand dynamics in latent state. Second, the objective couples a nonconvex air-to-ground channel with association and battery constraints, so the composite problem is nonconvex and gradients through solvers are unavailable; DSWM answers this with a decom-posed differentiable service head that makes the coverage mechanism differentiable. Third, credit assignment spans slots: a repositioning decision pays off hours later, after charging and drift; DSWM answers this with CEM planning over a horizon of H = 15 slots (2.5 h) anchored on the current observation. IV. P ROPOSED METHOD : DSWM 
+
+A. Overview 
+
+Fig. 2 shows the data flow. At each slot, the encoder compresses the observation ot and the RSSM updates its latent state (ht, z t). The CEM planner samples candidate action sequences, rolls them forward for H slots inside the world model, converts each imagined latent state into a served-ratio estimate through the decomposed service head, penalizes PREPRINT SUBMITTED TO IEEE, 2026 5Encoder 
+
+Learning objectives: 
+
+Demand MSE + free-bits KL + latent predictive + service loss 
+
+h1 
+
+z1 
+
+h2 
+
+z2 
+
+h3 
+
+z3 
+
+> Demand
+> Ensemble
+> symlog
+> Decomp
+> service
+> head
+> (diff,sim)
+> Uncert.
+> (ensemble
+> Std)
+> UAV network env.
+> Observation window
+> past 6 demand maps,
+> fleet state, time
+> Replay buffer
+> (training-period transitions)
+> Three real datasets
+> Milan / Shanghai / YJMob100K
+
+① Environment & data 
+
+> Cross-entropy method:
+> Sample action sequences,
+> Refit elites iteratively
+> Score =
+> imagined served ratio
+> -Uncertainty penalty
+> execute first action
+> Candidate imagined rollouts
+> (15 slots ahead)
+
+gradients 
+
+② World model (offline training)  ③ Planning (every slot) 
+
+Execute first action in the network 
+
+Recurrent state-space model 
+
+(GRU + stochastic latent)     
+
+> selected best
+> Anchor:
+> current observation
+> Fig. 2. DSWM framework. The encoder and RSSM maintain a latent state from the observation window. The CEM planner imagines H-slot rollouts, anchors the imagined demand on the current observation with mixing coefficient ρ= 0 .95 , scores each rollout with the decomposed service head minus an uncertainty penalty, and executes the first action. Training (dashed) is offline over replayed sequences.
+
+ensemble disagreement, and executes the first action of the best sequence. Training is offline: sequences from a replay buffer of pre-collected transitions update the RSSM, the demand ensemble, the latent predictive objective, and the service head end to end. The same information set ( ot and internal states) is available to DSWM and to every baseline. 
+
+B. RSSM World Model with Latent Predictive Regularization 
+
+The world model is an RSSM [22], [24] with a deterministic GRU (gated recurrent unit) state ht and a diagonal-Gaussian stochastic state zt:
+
+ht = fθ (ht−1, z t−1, a t−1), (9) prior: pθ (zt | ht) = N  μθ (ht), σ 2 
+
+> θ
+
+(ht), (10) posterior: qϕ(zt | ht, o t) = N  μϕ(ht, e ψ (ot)) , (11) 
+
+σ2
+
+> ϕ
+
+(ht, e ψ (ot)) ,
+
+where eψ is the observation encoder. Imagination uses the prior; training uses the posterior. The Kullback–Leibler (KL) term uses free bits with the Dreamer-style balancing weights 
+
+0.8/0.2 [24]: 
+
+LKL = 0 .8 DKL 
+
+ sg[ qϕ] ∥ pθ
+
+ + 0 .2 DKL 
+
+ qϕ ∥ sg[ pθ ], (12) where each per-dimension KL is clipped from below by a free-bits floor and sg[ ·] stops gradients; the 0.8-weighted term trains the prior toward the stopped posterior, and the 0.2-weighted term trains the posterior toward the stopped prior. Free bits prevent posterior collapse, which we found to be the main stability risk during training scans. Two implementation choices: the demand ensemble operates in symlog space, symlog( x) = sign( x) ln(1 + |x|), because demand is heavy-tailed and a linear-scale loss would fit the mean and ignore hotspots; and a GRU deterministic path instead of a Transformer backbone, since the observation window is short ( w = 6 slots), the planning-relevant state is Markovian given ht, and recurrence keeps the imagination forward pass cheap for CEM. Reconstruction-free shaping follows the joint-embedding predictive (JEPA) view [25]. Instead of reconstructing the demand map (which forces the model to spend capacity on heavy-tailed magnitudes irrelevant to coverage), DSWM predicts in representation space. Let 
+
+ˆht+1 = gω (ht) be the one-step prediction of the recurrent latent; the target ¯ht+1 is produced by an exponential-moving-average (EMA) teacher, a delayed copy of the encoder–RSSM stack whose parameters ¯θ track the online parameters θ after every gradient step by 
+
+¯θ ← ν ¯θ + (1 − ν) θ, (13) and ¯ht+1 denotes the recurrent latent produced by this teacher. The latent prediction loss is 
+
+Lpred = gω (ht) − sg[ ¯ht+1 ] 22, (14) where gω is a latent predictor conditioned on the recurrent state and ν is the EMA coefficient. Thus (14) and the first term of (15) are the same loss, written once and reused, not two different objectives. A joint-embedding loss alone admits the collapsing solution fθ ≡ const , which makes (14) identically zero but destroys all information. We prevent collapse with a per-dimension variance margin in the style of VICReg [51], 
+
+LLPR = E ˆht+1 − sg[ ¯ht+1 ] 22
+
++λvar 
+
+X
+
+> j
+
+max  0, m var − Std j (h), (15) where the first term instantiates (14) on the recurrent latent (ˆht+1 = gω (ht), ¯ht+1 the EMA target), Std j is taken over the batch dimension for latent dimension j, and mvar is the variance margin. This objective replaced an earlier reconstruction term after an internal scan: it raised the weekday served ratio from 0.878 PREPRINT SUBMITTED TO IEEE, 2026 6
+
+to 0.888 and stabilized the OOD split. The total world-model loss is 
+
+LWM = Ldem + βKL LKL + λL LLPR + Lserve , (16) where Ldem is the demand-head loss and Lserve is the service-head loss defined next. 
+
+C. Decomposed Demand-Service Physics Head 
+
+Fig. 3 illustrates the service-physics chain that the head replays differentiably—association, probabilistic LoS channel, Shannon rate, and capped per-cell fulfillment. A demand ensemble of E heads predicts the next-slot demand map in symlog space, ˆx(e) 
+
+> t+1
+
+= symlog −1 De(ht+1 , z t+1 ), and their mean ˆxt+1 is the demand estimate. The head then replays the service physics of Section III as a differentiable simulator: given imagined UAV positions decoded from the action sequence, it computes association by nearest available UAV, evaluates (1)–(3) for each link, caps per-cell fulfillment, and aggregates: 
+
+cSR t+1 =
+
+P 
+
+> g
+
+ˆxgt+1 min  1, ˆRg,k ∗(g)/(ˆ xgt+1 r0)P 
+
+> g
+
+ˆxgt+1 
+
+. (17) Because every step of (17) is differentiable, gradients flow through the coverage mechanism back into the world model; the model is therefore trained on the quantity the operator cares about, not on a proxy. The service loss is Lserve =
+
+E ( cSR t+1 − SR t+1 )2 on replayed transitions. Removing this decomposition and regressing SR t directly from latent state costs 0.120 of served ratio (Section V-F), which confirms that the physics, not the latent capacity, carries the coverage signal. Ensemble disagreement defines the uncertainty of an imag-ined step: 
+
+ut+1 = Std e
+
+ ˆx(e)
+
+> t+1
+
+ aggregated over cells , (18) and the planner subtracts λuuτ from imagined rewards ( λu =1.0 in production), following the pessimism principle of offline model-based RL [50]. Removing this term changes the score by only +0 .004 (Section V-F): the uncertainty penalty acts as insurance against rare overconfident branches, not as a gain source. 
+
+D. Observation-Anchored CEM Decision-Time Planning 
+
+Fig. 4 illustrates the mechanism behind the planner: open-loop imagination accumulates error along the horizon, while re-anchoring each rollout to the current observation keeps the estimate grounded. At slot t, the planner samples Ncem 
+
+action sequences at:t+H−1 from a diagonal Gaussian, rolls each through the prior (9)–(10), and scores the rollout as 
+
+J at:t+H−1
+
+ =
+
+> t+H
+
+X 
+
+> τ=t+1
+
+γτ −t   cSR τ − λuuτ
+
+, (19) where H = 15 slots (2.5 h) and γ is the planner discount. The top Nelite sequences refit the sampling distribution, and after a fixed number of iterations the first action of the best sequence is executed. The key mechanism is observation anchoring. With mix-ing coefficient ρ, the imagined demand at each rollout step 
+
+Algorithm 1 Per-Slot Observation-Anchored CEM Planning                                                                          
+
+> Require: observation ot; latent state (ht−1, z t−1); horizon H; an-chor ρ= 0 .95 ; samples Ncem ; elites Nelite ; iterations I
+> 1: Encode otand update posterior: ht, z t←(9),(11)
+> 2: Initialize sampling mean m←0, std Σ←σ20Iover at:t+H−1
+> 3: for i= 1 to Ido
+> 4: Sample Ncem sequences {a(n)
+> t:t+H−1} ∼ N (m, Σ)
+> 5: for each sequence ndo
+> 6: Roll out (hτ, z τ)for Hsteps via (9),(10)
+> 7: Predict ˆx(e)
+> τ, anchor by (20) with ρ= 0 .95
+> 8: Evaluate cSR τby (17) and uτby (18)
+> 9: Score J(n)by (19)
+> 10: end for
+> 11: Select Nelite top sequences; refit m, Σto elites
+> 12: end for
+> 13: return first action a∗
+> tof the best-scoring sequence
+
+is blended with the current observed demand map (persist anchoring): 
+
+ˆxτ ← ρ x t + (1 − ρ) ˆ xτ . (20) Equation (20) is a deterministic convex interpolation; we use 
+
+ρ = 0 .95 , so the estimate leans on the current observation with a small forecast weight. Even so, the score J still reflects multi-slot consequences that no myopic rule can see— fleet positions, battery depletion, forced returns, and charging occupancy propagated through the service simulator—while compounding demand error along the horizon is removed. In a preliminary smaller-scale setting (K=4 , without the battery model), this choice improved both splits by +0 .018 
+
+over the non-anchored variant at no cost (replicated from two checkpoints), and demand-forecasting enhancements were net negative; the interpretation is that the current observation already carries most of the actionable signal, so the model evaluates consequences of motions under it rather than out-forecasting the environment. Algorithm 1 gives the per-slot procedure; an actor/critic direct mode exists as a fallback but is not used in the reported results. 
+
+E. Training Procedure 
+
+Algorithm 2 summarizes offline training. A heuristic pre-collection phase gathers 60,000 transitions on training days only; the replay buffer never sees test-period data. Training then runs 30,000 gradient steps (learning rate 10 −3), which an internal scan showed is well past the plateau (curves flatten near 20k steps). Each step samples sequences, encodes them, unrolls the RSSM, and applies the four loss terms of (16): demand MSE in symlog space, free-bits KL (12), latent predictive regularization (15), and the service loss, plus an uncertainty calibration term for the ensemble. The EMA teacher updates after each gradient step. The production configuration is identical across all evaluated datasets, with no per-dataset tuning. 
+
+F. Complexity Analysis 
+
+At decision time, DSWM performs Ncem ×I imagined roll-outs of H steps each ( Ncem candidates, I elite-refit iterations, initial std σ0; production values are hard-coded in the released 
+
+experiment.py configuration). Every imagined step costs one GRU update, E demand-head evaluations, and one pass PREPRINT SUBMITTED TO IEEE, 2026 7(a)  Association:    
+
+> each cell served by its nearest
+> available UAV-BS
+> link
+> (b) Air-to-ground channel:
+> LoS probability vs. link distance
+> (c) Shannon rate under
+> LoS/NLoS path loss (d) Per-cell fulfillment min(1,supply/demand):
+> green = fully served, red = deficit
+> LoS probability
+> link rate  (Mbps)
+> ground distance (km) ground distance (km)
+> aggregate over cells -> served ratio SRt fulfillment
+
+Fig. 3. Decomposed demand-service physics head. An E-head ensemble predicts the next demand map in symlog space; a differentiable service simulator replays association → probabilistic LoS (1) → Shannon rate (3) → capped per-cell fulfillment → aggregate cSR (17). Ensemble disagreement defines the uncertainty ut.slot (10 min) 
+
+> true demand (unseen at test time)
+> imagined rollout from t
+
+(a) Open-loop imagination: errors compound with horizon  
+
+> observation window (w=6) compounding drift
+> slot (10 min)
+> true demand (unseen at test time)
+> Re-anchored rollout
+> Anchor on
+
+(b) Observation anchoring ( =1): re-plan every slot 
+
+Fig. 4. Observation-anchored CEM planning. Candidate action sequences are imagined for H = 15 slots through the RSSM prior; at each imagined step the demand estimate is anchored on the current observation with mixing coefficient ρ = 0 .95 (20); rollouts are scored by J in (19); elites refit the sampling distribution and the first action is executed. 
+
+of the differentiable service simulator, all of which are dense tensor operations that batch across the Ncem samples. Per-slot planning cost is therefore O(Ncem IH ) imagination for-wards with a small constant, and it does not grow with the nonconvexity of the problem. In contrast, the BCD baseline JTORATC [6] invokes an SCA solver per decision window; measured solve times exceeded 8 s per slot in our K = 16 
+
+setting, which forced the documented degradation rule (one solve per 6 slots with reduced SCA iterations). DSWM’s 
+
+Algorithm 2 DSWM Offline Training 
+
+Require: training-days environment; collect steps = 60 ,000 ; gradi-ent steps = 30 ,000 ; lr = 10 −3
+
+1: Pre-collect 60,000 transitions into replay (training days only) 
+
+2: for step = 1 to 30 ,000 do 
+
+3: Sample a batch of sequences from replay 
+
+4: Encode observations; unroll RSSM via (9)–(11) 
+
+5: Demand ensemble: symlog MSE loss Ldem (E heads, mean) 
+
+6: Free-bits KL loss LKL by (12) (weights 0.8/0.2) 
+
+7: Latent predictive regularization LLPR by (15) (EMA teacher 
+
++ variance margin) 
+
+8: Decomposed service loss Lserve via (17); uncertainty calibra-tion via (18) 
+
+9: Update parameters with ∇LWM (16); EMA-update teacher 
+
+10: end for 
+
+planning cost is fixed per slot and independent of solver convergence, which suits online repositioning. V. E XPERIMENTS 
+
+A. Datasets and Preprocessing 
+
+We evaluate on three real datasets with one unified pipeline; Fig. 5 visualizes the demand statistics, and the splits are declared per dataset below. 
+
+Milan (main dataset). The Telecom Italia CDR dataset [52] (2013, internet modality), cropped to 20 × 20 cells of c =235 m. Training: Nov. 1–10 (10 days); testing: Dec. 21–Jan. 1 (12 days), containing the Christmas–New Year OOD week. Demand is normalized by the training-segment 99th percentile. Milan demand is extremely dispersed: the top 5% cells carry only 13% of demand, with a clear commute bimodal pattern. 
+
+Shanghai Telecom. A public cellular dataset (2014-06– 2014-11; 6.95M raw records, cleaned to 6.15M). Demand is the number of Internet session starts per cell per slot. Sparsity-adaptive preprocessing coarsens cells to c = 470 mwith a 3-slot sliding-window density estimate (zero-value rate 85.3%, i.e., genuinely sparse sessions). Training: June– October (153 days, including the merged validation segment); testing: November (30 days). Weekends form the holiday (OOD) split. 
+
+YJMob100K. The YJMob100K dataset [53] (Zenodo 10142719, 2023), 111.5M rows. We declare the semantics PREPRINT SUBMITTED TO IEEE, 2026 80 5 10 15 20     
+
+> Hour of day (h)
+> 40000 60000 80000 100000 120000 140000 160000
+> Total demand (Mbps) Daily cycle
+> Weekday Weekend 0510 15 20
+> Day index (Nov 1 = 0) subset: Nov 1–10, Dec 21–Jan 1
+> 0.75 1.00 1.25 1.50 1.75 2.00 2.25
+> Daily total (Mbps·slots)
+> 1e7
+> train|test Christmas New Year
+> Daily total drift
+
+Fig. 5. Exploratory data analysis. Left: daily demand cycle (weekday vs. weekend; Milan shows a commute bimodal pattern). Right: daily total drift across the observation period, with the temporal train/test split and the Christmas–New Year OOD week marked. The spatial demand map is shown in Fig. 1. Milan demand is the most dispersed (top 5% cells carry 13% of demand, vs. 22% for YJMob100K), and we show in Section V-I that this dispersion is what makes dynamic repositioning most valuable here. −0.10 −0.05 0.00 0.05 
+
+> Degradation (wd − hol)
+> EMORL HRL MADDPG GA-MATR SAC PPO TD-MPC w/o dec. DSWM Static Greedy w/o unc. INS-WOA JTORATC -0.137 -0.101 -0.090 -0.084 -0.075 -0.068 -0.036 -0.018 -0.014 -0.012 -0.011 -0.008 -0.008 +0.088
+> (a) OOD degradation
+> w/o unc. DSWM Greedy GA-MATR w/o dec. TD-MPC INS-WOA Static PPO SAC MADDPG EMORL JTORATC HRL
+> 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+> Served ratio (daily)
+> (b) Per-day scatter
+> Weekday (ID) Holiday (OOD)
+
+Fig. 6. OOD analysis over the test period. (a) per-method OOD degradation (weekday minus holiday); (b) per-day served-ratio scatter, including the holiday OOD week. DSWM is the most stable method and scores higher on holidays (0.903) than weekdays (0.889). GA-MATR attains the highest holiday score among learning baselines (0.854) and, together with TD-MPC, is one of only two learning baselines whose holiday score surpasses Greedy; JTORATC suffers OOD backfire (0.495 vs. 0.583). Degradation values are computed from unrounded per-day series. 
+
+explicitly: demand is the number of distinct user IDs present per cell per slot—an approximately 5% sampled mobility proxy, not traffic bytes. Native 30-min slots are conservatively de-aggregated into 10-min slots (uniform within-cell division by 3, no information injected), and the densest 9 × 9 cells at c = 500 m are cropped ( 4.5 × 4.5 km, Milan-matched scale). Training: days 0–55; testing: days 56–74 (19 days). Week structure is recovered from autocorrelation (peak lag 7); pseudo-weekend labels (21 days) are inferred and declared as such. Intensity is aligned across datasets by scaling factors (κ = 3 .81 for Shanghai, κ = 1 .749 for YJMob100K). 
+
+B. Setup and Evaluation Protocol 
+
+Table II lists the scenario parameters with their justi-fication. All learning methods receive the identical obser-vation set (past w = 6 demand maps, current demand, fleet position/battery/charge, time phase), and all actions are 
+
+(∆ x, ∆y, bw logit) ∈ [−1, 1] K×3.The evaluation protocol is designed for credibility: tem-poral train/test splits (random splits forbidden); fixed evalu-ation days, weekday (in-distribution, ID) {0, 1, 2} and holiday (OOD) {3, 4, 10 , 11 } (for Milan, Dec. 21–23 and Dec. 24– 25/31/Jan. 1); 5 seeds on Milan and 3 per dataset. We report 
+
+±std where the spread changes adjacent-ranking interpretation (DSWM, GA-MATR, JTORATC); per-day variability appears in Fig. 6(b). Two engineering details support reproducibility: environ-ment outputs drift by order 10 −4 across days (BLAS/CPU variation), so all regression comparisons use frozen same-day references; and checkpoints are written only by the Milan full run (cross-dataset runs persist metrics only), so all reported numbers come from persisted per-seed result files, never from logs or probe curves. 
+
+C. Baseline Lineup 
+
+Fourteen methods are compared. Seven are learning-based: PPO, SAC, MADDPG, TD-MPC [23], and three state-of-the-art baselines re-implemented from recent works—GA-MATR [13] (graph-attention MARL with fairness regularizer), HRL-TPRA [16] (hierarchical trajectory planning with per-UAV resource actors), and EMORL-TCTO [14] (evolutionary multi-objective RL). Four are optimization-based or classi-cal: JTORATC [6] (weighted BCD with KKT bisection and SCA, re-implemented), INS-WOA [7] (K-means/Voronoi pre-deployment with whale optimization, re-implemented), Static (K-means placement), and Greedy (per-slot BCD). Together with GA-MATR, HRL-TPRA, and EMORL-TCTO above, five IEEE baselines (2023–2026) are reproduced from their papers. PREPRINT SUBMITTED TO IEEE, 2026 9w/o unc. DSWM Greedy GA-MATR w/o dec. TD-MPC INS-WOA Static PPO SAC MADDPG EMORL JTORATC HRL 
+
+> 0.5 0.6 0.7 0.8 0.9 1.0
+> Served ratio
+> Weekday (ID) Holiday (OOD)
+> w/o unc. DSWM Greedy GA-MATR w/o dec. TD-MPC INS-WOA Static PPO SAC MADDPG EMORL JTORATC HRL
+> 1200 1210 1220 1230 1240 1250 1260 1270 1280
+> Energy per slot (kJ)
+> ↓ lower is better
+> w/o unc. DSWM Greedy GA-MATR w/o dec. TD-MPC INS-WOA Static PPO SAC MADDPG EMORL JTORATC HRL
+> 0.006 0.008 0.010 0.012 0.014
+> Energy eff. (Mbit/J)
+
+Fig. 7. Milan main results for all 14 methods: (a) served ratio (weekday ID / holiday OOD), (b) energy per slot, (c) energy efficiency. Served ratio is the only strongly discriminative metric; energy differs by at most ∼3%. Fairness is reported in the text. TABLE II SCENARIO PARAMETERS AND JUSTIFICATION 
+
+TABLE III MILAN MAIN RESULTS : S ERVED RATIO (W EEKDAY ID / HOLIDAY OOD), 5 S EEDS 
+
+Parameter Value Basis Fleet size K 16 city-wide; {2, 8} scaling Altitude hfly / speed Vmax 100 m / 25 m/s low-altitude [5] Move limit Dmax / slot 1500 m / 10 min per-slot motion limit Carrier fc / bandwidth B 2 GHz / 20 MHz sub-6GHz access Power / noise N0 0.5 W / 10 −20 .4 W/Hz small-cell Rate demand r0 / threshold Upeak 0.5 Mbps / 0.8 per-user Battery Ebatt 548 Wh DJI M300-class Reserve / recharge 0.15 / 6 slots forced return; 1 h charge Charging stations 4 one per quadrant Reward weights α, β 1.0, 1.0 equal coverage/energy Obs. window w / horizon H 6 / 15 slots 1 h hist. / 2.5 h ahead Anchor ρ / uncertainty λu 0.95 / 1.0 dual-ckpt; abl. Section V-F Learning rate 10 −3 fixed across datasets Gradient steps 30,000 20k-step plateau observed Method Class Weekday Holiday 
+
+DSWM (ours) world model 0.889 ±0.005 0.903 
+
+w/o unc ablation 0.894 0.902 w/o dec ablation 0.769 0.787 Greedy (BCD) model-free 0.780 0.792 GA-MATR [13] MARL 0.770 ±0.025 0.854 TD-MPC [23] model-based 0.769 0.805 INS-WOA [7] optimization 0.744 0.752 Static (K-means) deployment 0.736 0.748 PPO model-free RL 0.723 0.791 SAC model-free RL 0.682 0.757 MADDPG MARL 0.648 0.737 EMORL-TCTO [14] multi-obj. RL 0.614 0.751 JTORATC [6] BCD optim. 0.583 ±0.110 0.495 HRL-TPRA [16] hier. RL 0.485 0.586 
+
+DSWM and two internal ablations (w/o unc, w/o dec) complete the lineup. 
+
+D. Main Results 
+
+Table III and Fig. 7 report the Milan results. Two findings stand out. First, DSWM ranks first among non-ablated configura-tions (the w/o-uncertainty variant is analyzed in Section V-F) with 0.889 ± 0.005 on weekdays and 0.903 on holidays, 0.109 above the strongest external baseline (Greedy, 0.780). Second, energy (1210–1247 kJ, ∼3% spread) and fairness discriminate weakly. All methods attain Jain’s index no lower than 0.93 on weekdays and 0.88 on holidays; the geometry-based methods (Static, Greedy, INS-WOA) reach 0.999– 1.000, since the per-UAV demand-proportional bandwidth split guarantees fairness structurally, and only the more stochastic RL methods incur measurable loss (JTORATC 0.930/0.888, EMORL-TCTO 0.946/0.978, HRL-TPRA 0.956/0.968, MAD-DPG 0.978/0.990, weekday/holiday). Hover power dominates the Zeng model (4) and the battery state machine homogenizes flight patterns, so served ratio is the metric that separates policies; we report it as primary. Greedy, GA-MATR, and TD-MPC cluster between 0.769 and 0.780 on weekdays: per-slot re-optimization and short-horizon forecasts capture most of the attainable service under regular commute demand. INS-WOA (0.744) sits between Static (0.736) and Greedy, consistent with its Voronoi pre-deployment inheriting K-means’ sensitivity to demand shape. The hierarchical and multi-objective RL methods (EMORL-TCTO 0.614, HRL-TPRA 0.485) trail the table; Section V-J reports the diagnostic chain behind these negative results. 
+
+E. OOD Analysis 
+
+Fig. 6 shows per-day served ratios across the Christmas– New Year OOD week. DSWM is the most stable method under shift: its holiday score (0.903) exceeds its weekday score. GA-MATR attains the highest holiday score among learning baselines (0.854, up from 0.770) and, together with TD-MPC (0.769 →0.805), is one of only two learning baselines surpassing Greedy (0.792) on holidays—graph attention with a fairness regularizer has genuine value under shift; even so, it trails DSWM by 0.119 on weekdays. JTORATC shows the reverse failure mode (holiday 0.495 below weekday 0.583), an OOD backfire consistent with BCD re-solves locking onto stale demand snapshots. Model-free RL baselines (PPO, SAC, MADDPG) also gain 0.07–0.09 on holidays, but from weekday scores 0.17–0.24 below DSWM’s; DSWM improves by 0.014 from the highest base. 
+
+F. Ablation 
+
+Fig. 8 reports the two structural ablations and a coun-terfactual demand-scaling intervention do( s). Removing the decomposed service head and regressing SR t directly from the latent state ( w/o dec ) drops the weekday score from 0.889 to 0.769 ( −0.120 ), returning the method to Greedy’s level: the PREPRINT SUBMITTED TO IEEE, 2026 10 DSWM w/o dec. w/o unc. 0.00 0.25 0.50 0.75 1.00 
+
+> Served ratio
+
+(a) Ablations  
+
+> Δ -0.120 Δ +0.004 Weekday Holiday demand × s=0.5 demand × s=2
+> 0.0 0.2 0.4 0.6 0.8
+> Served ratio (weekday)
+
+(b) Counterfactual do( s)
+
+> DSWM do( s)w/o dec. finetuned w/o dec. zero-shot DSWM zero-shot DSWM full ( s=1) w/o dec. full
+
+Fig. 8. Ablation and counterfactual analysis on Milan. Left: removing the decomposed service head costs 0.120 of served ratio (0.769 vs. 0.889), while removing the uncertainty penalty gains 0.004 (insurance, not a gain source). Right: counterfactual demand-scaling do( s) intervention (imagined demand scaled by s; dashed/dotted references at s=1 ). 10 5          
+
+> 0.6 0.7 0.8 0.9
+> Served ratio (probe)
+> 80% of best final
+> Environment steps (log) (a) Sample efficiency
+> s0 s1 s2 s3 s4 −30 −20 −10 0
+> Imagined return  unc./|imag.| ≤ 5e-07
+> (b) Imagination is confident
+> 02468
+> Uncertainty penalty (×10 −6 )
+> DSWM (ours) w/o decomposition w/o unc. penalty PPO SAC value est. imag. return unc. penalty
+
+Fig. 9. Sample efficiency on Milan. Curves are probe-based and diagnostic only (fixed test-day probe; no early stopping or model selection). DSWM’s probe flattens near 20k gradient steps; the production budget is 30k steps. 2 8 16 
+
+Number of UAV-BS ( K)
+
+> 0.75 0.80 0.85 0.90
+> Served ratio (weekday)
+
+(a) Served ratio   
+
+> DSWM (ours) Greedy Static
+> 2816
+
+Number of UAV-BS ( K)
+
+> 0.02 0.04 0.06 0.08
+> Energy eff. (Mbit/J)
+
+(b) Energy efficiency   
+
+> 0.5 1.0 2.0
+
+Demand scale (×) 
+
+> 0.75 0.80 0.85 0.90
+> Served ratio (weekday)
+
+(c) Demand intensity 
+
+Fig. 10. Scalability in fleet size K ∈ { 2, 8, 16 } and demand intensity on Milan. DSWM’s advantage grows with fleet size, where coordination is hardest for myopic baselines. 
+
+coverage gain comes from the differentiable service physics, not latent capacity. Removing the uncertainty penalty ( w/o unc ) raises the weekday score by 0.004 (0.894 vs. 0.889), with the holiday score essentially unchanged (0.902 vs. 0.903): in our setting the term is insurance against overconfident imagined branches, not a gain source, consistent with offline model-based RL [50] where pessimism matters most near the data boundary. The counterfactual do( s) probe in Fig. 8(b) scales the imagined demand by s ∈ { 0.5, 2} at planning time: DSWM stays near its s=1 reference under both scalings and degrades less than the w/o-dec variant, which again points to the differentiable service physics—not latent capacity—as the robustness source. 
+
+G. Sample Efficiency and Scalability 
+
+Fig. 9 plots served ratio against environment steps (log scale) under an explicitly stated probe protocol: probe-based and diagnostic only (fixed test-day probe; fixed budget with no early stopping or model selection; probe numbers never enter Tables III or IV). The x-axis counts environment interaction, including the 60,000 pre-collected transitions. DSWM’s probe curve flattens early, which motivated the 30k-step gradient budget. Fig. 10 varies the fleet size K ∈ { 2, 8, 16 } and demand intensity: DSWM’s margin over Greedy grows with K, since coordinating a 16-UAV fleet is exactly where myopic methods lose most. Fig. 11 shows the training diagnostics (world-model loss, demand MSE, KL, and latent-prediction similarity terms); these use the same test-day probe protocol and are diagnostic PREPRINT SUBMITTED TO IEEE, 2026 11 LWM     
+
+> (n=25)
+> Ldem
+> (n=25)
+> 10 −3
+> 10 −2
+> 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Loss (log)
+> (a) World-model fit
+> Ldem ≈ 7e-03
+> 3e+01 7e-03
+> KL (n=25) var. margin (n=20)
+> 0.2 0.4 0.6 0.8 1.0
+> Regularizer value
+> (b) Regularization balance KL ≈ 1.00, var. margin ≈ 0.19
+> 1.00 0.19
+> latent pred. sim. (n=20)
+> 0200 400 600 800 1000
+> Teacher–student similarity
+> (c) Representation health median sim ≈ 54 (≫ 0, no collapse)
+> 54.05
+> 0100 200 300
+> Imagined return
+> 0100 200 300
+> Value estimate
+> (d) Value bootstrapping mean |gap| = 1.14, r = 1.000 (n=25) DSWM training diagnostics
+
+Fig. 11. Training diagnostics of DSWM: world-model loss, demand MSE, free-bits KL, and latent-prediction similarity terms. Probe curves use the test-day diagnostic protocol (probe-based, diagnostic only). 5 10 15 20    
+
+> Rollout step (slot)
+> 0.120 0.122 0.124 0.126 0.128
+> Demand RMSE (Mbps)
+> (a) Demand RMSE
+> DSWM
+> 010 20
+> Seed index
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Imag. vs real return  rs
+> (b) Spearman rs
+> DSWM
+
+Fig. 12. World-model quality on the Milan test period. (a) Demand RMSE vs. imagination rollout step. (b) Spearman correlation rs between imagined and realized returns; each point is one seed–evaluation-day pair. 
+
+only. 
+
+H. World Model Quality 
+
+Fig. 12 evaluates the learned model along two axes: demand RMSE over the imagination horizon, and per-seed Spearman rank correlation rs between imagined and realized returns. Demand RMSE stays flat (0.128 Mbps at one step, 0.119 Mbps at 24 slots), and the imagined-return ranking correlates mod-erately with the realized one ( rs = 0 .520 ± 0.087 ; each point in Fig. 12(b) is one seed–evaluation-day pair): the model preserves where demand concentrates far better than exact magnitudes—the quantity anchored planning consumes. 
+
+TABLE IV CROSS -D ATASET RESULTS : W EEKDAY / H OLIDAY SERVED RATIO (MEAN ;5 SEEDS FOR MILAN , 3 SEEDS FOR SHANGHAI AND YJM OB ; COLUMNS :MILAN (2013, CDR), S HANGHAI (2014, SESSIONS ), YJM OB (2023, 4.5 KM )). P ER -SEED STD WHERE IT AFFECTS ADJACENT RANKINGS :DSWM ±0.006 (S HANGHAI ), ±0.002 (YJM OB ); GA-MATR ±0.058 (S HANGHAI ), ±0.039 (YJM OB ). Method Milan Shanghai YJMob 
+
+DSWM (ours) 0.889/0.903 0.908/0.862 0.898/0.891 
+
+TD-MPC 0.769/0.805 0.875/0.839 0.818/0.831 PPO 0.723/0.791 0.810/0.748 0.879/0.870 GA-MATR 0.770/0.854 0.745/0.708 0.820/0.790 Greedy 0.780/0.792 0.746/0.741 0.762/0.760 INS-WOA 0.744/0.752 0.816/0.788 0.753/0.756 Static 0.736/0.748 0.437/0.420 0.654/0.622 
+
+I. Cross-Dataset Generalization 
+
+Table IV and Fig. 13 extend the comparison to Shanghai and YJMob (2023, 4.5km) 1 under the identical production configuration with no per-dataset tuning. DSWM ranks first among non-ablated configurations on all three datasets: 0.908 on Shanghai (+0.033 over TD-MPC), 0.898 on YJMob100K (+0.019 over PPO), and 0.889 on Milan (+0.109 over Greedy). The margin ordering is informative: Milan’s demand is the most dispersed (top 5% cells: 13%) at a 4.7-km scale, where dynamic repositioning is most valuable and DSWM’s margin largest; YJMob100K demand is more concentrated (22%) and Shanghai’s extremely sparse (85.3% zero cells), where static or myopic coverage already captures much of the achievable service and margins shrink. Spatial scale and dispersion thus moderate the value of dynamic repositioning. Two failure cases support the same reading from the negative side: on Shanghai, Static collapses to 0.437 because K-means placement fails on 85%-sparse demand; on YJMob100K, learning methods regain their normal ordering once slot physics and geographic scale match Milan’s. 
+
+J. Discussion: Lessons Learned 
+
+The development process produced findings that we report as lessons, including negative results. 1) Per-agent embedding checks are mandatory for MARL baselines. Our first GA-MATR re-implementation col-lapsed: two global graph-attention layers flattened per-UAV embeddings (cross-agent std = 0 ), degenerating multi-agent learning into a single-agent policy; only a variance check and symmetry-breaking fixes recovered 0.770. 2) Hierarchical complexity can be a liability. HRL-TPRA was kernel-launch bound (serial pointer decoding plus 16 per-UAV actor updates per macro-slot); even after a 5.7 × speedup it ranked last among learning baselines (0.485). 3) Environment drift requires frozen same-day references. 
+
+Identical code rerun on a different day deviates by 
+
+∼10 −4 (BLAS/CPU variation). 
+
+> 1
+
+The YJMob main version de-aggregates the native 30-min counts uni-formly into 10-min slots within each cell (no information injected) and crops the densest 9 × 9 cells ( 4.5 × 4.5 km at 500 m) to align the geographic scale and slot physics with Milan. PREPRINT SUBMITTED TO IEEE, 2026 12 DSWM GA-MATR TD-MPC PPO Greedy INS-WOA Static   
+
+> 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+> Served ratio
+> Weekday (ID)
+> DSWM GA-MATR TD-MPC PPO Greedy INS-WOA Static
+> Holiday / OOD
+> Cross-dataset generalization
+> Milan (2013, CDR) Shanghai (2014, sessions) YJMob (2023, 4.5km)
+
+Fig. 13. Cross-dataset comparison (Milan (2013, CDR), Shanghai (2014, sessions), YJMob (2023, 4.5km); 7 methods; 5 seeds for Milan, 3 for Shanghai/YJMob). DSWM ranks first among non-ablated configurations on all three datasets under one configuration with no per-dataset tuning. 
+
+4) Model-free methods are not always safe. Static (K-means) collapses to 0.437 on 85%-sparse Shanghai demand. 5) OOD strength exists outside world models. GA-MATR’s graph attention with a fairness term yields real robust-ness under shift (Section V-E). 6) Pre-deployment inherits clustering bias. INS-WOA’s Voronoi stage inherits K-means’ sensitivity to demand shape, landing mid-table on all three datasets. 
+
+K. Qualitative Visualization 
+
+Figs. 14–16 give qualitative evidence. Fig. 14 compares the world model’s predicted demand map against ground truth over the full Milan city grid, together with the error map: predictions track the commute-driven hotspot migration, and errors concentrate at cell boundaries during peak transitions. Figs. 15 and 16 show full-region demand, ground truth, and weekday/weekend contrasts for Shanghai and YJMob100K; the weekday–weekend shift that defines each dataset’s OOD split is visible as a spatial redistribution rather than a uniform intensity change, which is the regime where anchored planning helps most. 
+
+L. Limitations 
+
+Two limitations qualify our claims. First, YJMob100K demand is a distinct-user presence proxy (5% sampling), not traffic bytes, so cross-dataset conclusions about absolute served ratios should be read with the declared semantics. Second, energy and fairness discriminate weakly under hover-dominated power and battery constraints ( ∼3% energy spread, Jain 0.888–1.000), so our claims rest on served ratio. VI. C ONCLUSION 
+
+We formulated demand-driven UAV-BS fleet repositioning as a decision-time planning problem in a learned latent space and proposed DSWM, a world model of the demand-service dynamics built around three mutually reinforcing designs. The decomposed demand-service physics head makes the coverage mechanism differentiable inside the model, so the model is trained on the quantity the operator actually cares about rather than a latent proxy. The latent predictive regularization objective keeps the learned dynamics stable and collapse-free without reconstructing heavy-tailed demand maps. And observation-anchored CEM planning grounds every imagined rollout in the current observation instead of an open-loop forecast, which proves to be the decisive choice: across three real-world datasets, a broad lineup of learning, optimization, and classical baselines, and both in-distribution and holiday out-of-distribution weeks, DSWM consistently delivered the best demand coverage, including under demand regimes much sparser or more concentrated than the training distribution. The evidence supports the paper’s central thesis: for this class of problems, the binding constraint on coverage is not how accurately demand is forecast, but how the current observation is exploited at decision time. The same design guideline carries over to other partially observed network control problems where the physical service model is known but the exogenous demand process is not, and more broadly to agentic network controllers that must perceive, remember, reason, and coor-dinate under uncertainty. Future work includes byte-accurate demand semantics on mobility datasets, heterogeneous fleets, and energy-aware altitude control. REFERENCES [1] M. Mozaffari, W. Saad, M. Bennis, Y.-H. Nam, and M. Debbah, “A tutorial on UAVs for wireless networks: Applications, challenges, and open problems,” IEEE Communications Surveys & Tutorials , vol. 21, no. 3, pp. 2334–2360, 2019. [2] Z. Ning, T. Li, Y. Wu, X. Wang, Q. Wu, F. R. Yu, and S. Guo, “6G communication new paradigm: The integration of autonomous aerial vehicles and intelligent reflecting surfaces,” IEEE Communications Surveys & Tutorials , vol. 27, no. 6, pp. 3382–3416, 2025. [3] F. Khoramnejad and E. Hossain, “Generative AI for the optimization of next-generation wireless networks: Basics, state-of-the-art, and open challenges,” IEEE Communications Surveys & Tutorials , vol. 27, no. 6, pp. 3483–3525, 2025. [4] Y. Zeng and R. Zhang, “Energy-efficient UAV communication with tra-jectory optimization,” IEEE Transactions on Wireless Communications ,vol. 16, no. 6, pp. 3747–3760, 2017. [5] A. Al-Hourani, S. Kandeepan, and S. Lardner, “Optimal LAP altitude for maximum coverage,” IEEE Wireless Communications Letters , vol. 3, no. 6, pp. 569–572, 2014. PREPRINT SUBMITTED TO IEEE, 2026 13 Full city 100×100 (truth)     
+
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3Study area truth (20×20)
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3DSWM prediction (calibrated)
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3|error| (Pearson r = 0.698)
+> 100 200 300 400 500
+
+Fig. 14. World-model prediction visualization on Milan. From left to right: full-city context, ground-truth demand map, predicted demand map, and per-cell error. Predictions track the commute-driven hotspot migration; errors concentrate at cell boundaries during peak transitions. Shanghai full region (truth)        
+
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 10 4Shanghai study area truth (20×20, test avg)
+> 10 2
+> 10 1
+> 10 0Shanghai weekday mean (test)
+> 10 2
+> 10 1
+> 10 0Shanghai weekend mean (test)
+> 10 2
+> 10 1
+> 10 0
+
+Fig. 15. Shanghai dataset visualization. From left to right: full-region demand, ground truth, weekday profile, and weekend (OOD) profile. The weekday– weekend shift is a spatial redistribution of sparse sessions (85.3% zero cells), not a uniform intensity change. YJMob100K full region (truth)  
+
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 10 4
+> 10 5YJMob100K study area truth (20×20, test avg)
+> 10 0
+> 10 1
+> 10 2YJMob100K weekday mean (test)
+> 10 0
+> 10 1
+> 10 2YJMob100K weekend mean (test)
+> 10 0
+> 10 1
+> 10 2
+
+Fig. 16. YJMob100K dataset visualization. From left to right: full-region demand, ground truth, weekday profile, and pseudo-weekend (OOD) profile. Demand semantics are distinct-user presence counts (a 5% sampled mobility proxy), as declared in Section V-A; weekend labels are inferred from the autocorrelation-recovered week structure. [6] G. Sun, Y. Wang, Z. Sun, Q. Wu, J. Kang, D. Niyato, and V. C. Leung, “Multi-objective optimization for multi-UAV-assisted mobile edge computing,” IEEE Transactions on Mobile Computing , vol. 23, no. 12, pp. 14 803–14 820, 2024. [7] Z. Jia, J. He, L. He, M. Sheng, J. Liu, Q. Wu, and Z. Han, “Dynamic trajectory optimization and power control for hierarchical UAV swarms in 6G aerial access network,” IEEE Transactions on Wireless Commu-nications , 2025. [8] J. Cui, Y. Liu, and A. Nallanathan, “Multi-agent reinforcement learning-based resource allocation for UAV networks,” IEEE Transactions on Wireless Communications , vol. 19, no. 2, pp. 729–743, 2019. [9] Z. Qin, Z. Liu, G. Han, C. Lin, L. Guo, and L. Xie, “Distributed UAV-BSs trajectory optimization for user-level fair communication service with multi-agent deep reinforcement learning,” IEEE Transactions on Vehicular Technology , vol. 70, no. 12, pp. 12 290–12 301, 2021. [10] L. Wang, K. Wang, C. Pan, W. Xu, N. Aslam, and A. Nallanathan, “Deep reinforcement learning based dynamic trajectory control for UAV-assisted mobile edge computing,” IEEE Transactions on Mobile Computing , vol. 21, no. 10, pp. 3536–3550, 2021. [11] N. Zhao, Z. Ye, Y. Pei, Y.-C. Liang, and D. Niyato, “Multi-agent deep reinforcement learning for task offloading in UAV-assisted mobile edge computing,” IEEE Transactions on Wireless Communications , vol. 21, no. 9, pp. 6949–6960, 2022. [12] Z. Ning, Y. Yang, X. Wang, Q. Song, L. Guo, and A. Jamalipour, “Multi-agent deep reinforcement learning based UAV trajectory optimization for differentiated services,” IEEE Transactions on Mobile Computing ,vol. 23, no. 5, pp. 5818–5834, 2023. [13] Z. Feng, D. Wu, M. Huang, and C. Yuen, “Graph-attention-based reinforcement learning for trajectory design and resource assignment in multi-UAV-assisted communication,” IEEE Internet of Things Journal ,vol. 11, no. 16, pp. 27 421–27 434, 2024. [14] F. Song, H. Xing, X. Wang, S. Luo, P. Dai, Z. Xiao, and B. Zhao, “Evolutionary multi-objective reinforcement learning based trajectory control and task offloading in UAV-assisted mobile edge computing,” 
+
+IEEE Transactions on Mobile Computing , vol. 22, no. 12, pp. 7387– 7405, 2022. [15] Y. Wang, Y. Wan, W. Zuo, S. Wang, Y.-C. Wu, C. Xu, and H. Arslan, “LAGS: Low-altitude gaussian splatting with groupwise heterogeneous graph learning,” IEEE Transactions on Vehicular Technology , 2026. [16] W. Yuan, S. Chen, H. He, Y. Hou, S. Chen, X. Tan, and J. Yang, “Hierarchical reinforcement learning based joint trajectory planning and resource allocation in UAV-assisted IoT-sensor networks,” IEEE Transactions on Communications , 2025. [17] Y. Yao, B. Gu, Z. Su, and M. Guizani, “MVSTGN: A multi-view spatial-temporal graph network for cellular traffic prediction,” IEEE Transactions on Mobile Computing , vol. 22, no. 5, pp. 2837–2849, 2021. [18] B. Gu, J. Zhan, S. Gong, W. Liu, Z. Su, and M. Guizani, “A spatial-temporal transformer network for city-level cellular traffic analysis and prediction,” IEEE Transactions on Wireless Communications , vol. 22, no. 12, pp. 9412–9423, 2023. [19] Q. Wang, S. Wang, D. Zhuang, H. Koutsopoulos, and J. Zhao, “Uncer-tainty quantification of spatiotemporal travel demand with probabilistic graph neural networks,” IEEE Transactions on Intelligent Transportation Systems , vol. 25, no. 8, pp. 8770–8781, 2024. [20] C. Liu, K. H. Hettige, Q. Xu, C. Long, S. Xiang, G. Cong, Z. Li, and R. Zhao, “ST-LLM+: Graph enhanced spatio-temporal large language models for traffic prediction,” IEEE Transactions on Knowledge and Data Engineering , vol. 37, no. 8, pp. 4846–4859, 2025. PREPRINT SUBMITTED TO IEEE, 2026 14 
+
+[21] C. Zhang, Y. Zhang, Q. Shao, B. Li, Y. Lv, X. Piao, and B. Yin, “ChatTraffic: Text-to-traffic generation via diffusion model,” IEEE Transactions on Intelligent Transportation Systems , vol. 26, no. 2, pp. 2656–2668, 2024. [22] D. Hafner, T. Lillicrap, I. Fischer, R. Villegas, D. Ha, H. Lee, and J. Davidson, “Learning latent dynamics for planning from pixels,” in 
+
+International Conference on Machine Learning . PMLR, 2019, pp. 2555–2565. [23] N. Hansen, X. Wang, and H. Su, “Temporal difference learning for model predictive control,” arXiv preprint arXiv:2203.04955 , 2022. [24] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse control tasks through world models,” Nature , vol. 640, no. 8059, pp. 647–653, 2025. [25] M. Assran, A. Bardes, D. Fan, Q. Garrido, R. Howes, M. Muckley, A. Rizvi, C. Roberts, K. Sinha, A. Zholus et al. , “V-JEPA 2: Self-supervised video models enable understanding, prediction and planning,” 
+
+arXiv preprint arXiv:2506.09985 , 2025. [26] Z. Jia, C. Cui, C. Dong, Q. Wu, Z. Ling, D. Niyato, and Z. Han, “Dis-tributionally robust optimization for aerial multi-access edge computing via cooperation of UAVs and HAPs,” IEEE Transactions on Mobile Computing , vol. 24, no. 10, pp. 10 853–10 867, 2025. [27] Z. Ning, H. Ji, X. Wang, E. C. Ngai, L. Guo, and J. Liu, “Joint optimization of data acquisition and trajectory planning for UAV-assisted wireless powered Internet of Things,” IEEE Transactions on Mobile Computing , vol. 24, no. 2, pp. 1016–1030, 2024. [28] Z. Sun, G. Sun, Q. Wu, L. He, S. Liang, H. Pan, D. Niyato, C. Yuen, and V. C. Leung, “TJCCT: A two-timescale approach for UAV-assisted mobile edge computing,” IEEE Transactions on Mobile Computing ,vol. 24, no. 4, pp. 3130–3147, 2024. [29] S. Peng, B. Li, L. Liu, Z. Fei, and D. Niyato, “Trajectory design and resource allocation for multi-UAV-assisted sensing, communication, and edge computing integration,” IEEE Transactions on Communications ,vol. 73, no. 4, pp. 2847–2861, 2024. [30] D. Deng, W. Zhou, X. Li, D. B. da Costa, D. W. K. Ng, and A. Nallanathan, “Joint beamforming and UAV trajectory optimization for covert communications in ISAC networks,” IEEE Transactions on Wireless Communications , vol. 24, no. 2, pp. 1016–1030, 2024. [31] G. Cheng, X. Song, Z. Lyu, and J. Xu, “Networked ISAC for low-altitude economy: Coordinated transmit beamforming and UAV trajec-tory design,” IEEE Transactions on Communications , vol. 73, no. 8, pp. 5832–5847, 2025. [32] X. Li, W. Mao, X. Xu, Y. Liu, H. Zhang, W. Huangfu, and K. Long, “Self-adjusting network slicing for dynamic heterogeneous task offload-ing in UAV-enabled mobile edge computing,” IEEE Transactions on Cognitive Communications and Networking , vol. 12, pp. 673–687, 2025. [33] Y. Bai, B. Xie, Y. Liu, Z. Chang, and R. J¨ antti, “Dynamic UAV deployment in multi-UAV wireless networks: A multimodal-feature-based deep reinforcement learning approach,” IEEE Internet of Things Journal , vol. 12, no. 12, pp. 18 765–18 778, 2025. [34] L. T. Hoang, C. T. Nguyen, H. D. Le, and A. T. Pham, “Adaptive 3D placement of multiple UAV-mounted base stations in 6G airborne small cells with deep reinforcement learning,” IEEE Transactions on Networking , vol. 33, no. 4, pp. 1989–2004, 2025. [35] C. Liu, Y. Zhong, R. Wu, S. Ren, S. Du, and B. Guo, “Deep reinforce-ment learning based 3D-trajectory design and task offloading in UAV-enabled MEC system,” IEEE Transactions on Vehicular Technology ,vol. 74, no. 2, pp. 3185–3195, 2024. [36] Z. Liu, J. Zhang, Y. Zeng, and B. Ai, “Energy-efficient multi-agent reinforcement learning for UAV trajectory optimization in cell-free mas-sive MIMO networks,” IEEE Transactions on Wireless Communications ,vol. 24, no. 7, pp. 5917–5930, 2025. [37] G. Chen, G. Zhao, C. Xu, Z. Han, and S. Yu, “Spatiotemporal-aware deep reinforcement learning for multi-UAV cooperative coverage in emergency deterministic communications,” IEEE Transactions on Vehicular Technology , 2025. [38] I. A. Meer, K.-L. Besser, M. Ozger, D. Schupke, H. V. Poor, and C. Cavdar, “Hierarchical multi-agent DRL based dynamic cluster re-configuration for UAV mobility management,” IEEE Transactions on Cognitive Communications and Networking , 2025. [39] H. Peng and X. Shen, “Multi-agent reinforcement learning based re-source management in MEC-and UAV-assisted vehicular networks,” 
+
+IEEE Journal on Selected Areas in Communications , vol. 39, no. 1, pp. 131–141, 2020. [40] J. Chen, X. Cao, P. Yang, M. Xiao, S. Ren, Z. Zhao, and D. O. Wu, “Deep reinforcement learning based resource allocation in multi-UAV-aided MEC networks,” IEEE Transactions on Communications , vol. 71, no. 1, pp. 296–309, 2022. [41] J. Ji, W. Zhang, J. Wang, and C. Huang, “Seeing the unseen: Learning basis confounder representations for robust traffic prediction,” in Pro-ceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining V. 1 , 2025, pp. 577–588. [42] D. Ha and J. Schmidhuber, “World models,” arXiv preprint arXiv:1803.10122 , 2018. [43] D. Hafner, T. Lillicrap, M. Norouzi, and J. Ba, “Mastering Atari with discrete world models,” arXiv preprint arXiv:2010.02193 , 2020. [44] D. Hafner, W. Yan, and T. Lillicrap, “Training agents inside of scalable world models,” arXiv preprint arXiv:2509.24527 , 2025. [45] R. Balestriero and Y. LeCun, “LeJEPA: Provable and scalable self-supervised learning without the heuristics,” arXiv preprint arXiv:2511.08544 , 2025. [46] G. Zhou, H. Pan, Y. LeCun, and L. Pinto, “Dino-WM: World models on pre-trained visual features enable zero-shot planning,” arXiv preprint arXiv:2411.04983 , 2024. [47] J. Richens, D. Abel, A. Bellot, and T. Everitt, “General agents contain world models,” arXiv preprint arXiv:2506.01622 , 2025. [48] H. Chai, Y. Yuan, and Y. Li, “MobiWorld: World models for mobile wireless network,” arXiv preprint arXiv:2507.09462 , 2025. [49] R. Ding, F. Zhou, Q. Wu, and D. W. K. Ng, “From external interaction to internal inference: An intelligent learning framework for spectrum shar-ing and UAV trajectory optimization,” IEEE Transactions on Wireless Communications , vol. 23, no. 9, pp. 12 099–12 114, 2024. [50] T. Yu, G. Thomas, L. Yu, S. Ermon, J. Y. Zou, S. Levine, C. Finn, and T. Ma, “MOPO: Model-based offline policy optimization,” Advances in Neural Information Processing Systems , vol. 33, pp. 14 129–14 142, 2020. [51] Y. Chen, A. Bardes, Z. Li, and Y. LeCun, “Intra-instance vi-creg: Bag of self-supervised image patch embedding,” arXiv preprint arXiv:2206.08954 , vol. 2, 2022. [52] G. Barlacchi, M. De Nadai, R. Larcher, A. Casella, C. Chitic, G. Torrisi, F. Antonelli, A. Vespignani, A. Pentland, and B. Lepri, “A multi-source dataset of urban life in the city of Milan and the Province of Trentino,” 
+
+Scientific Data , vol. 2, no. 1, p. 150055, 2015. [53] T. Yabe, K. Tsubouchi, T. Shimizu, Y. Sekimoto, K. Sezaki, E. Moro, and A. Pentland, “YJMob100K: City-scale and longitudinal dataset of anonymized human mobility trajectories,” Scientific Data , vol. 11, no. 1, p. 397, 2024.

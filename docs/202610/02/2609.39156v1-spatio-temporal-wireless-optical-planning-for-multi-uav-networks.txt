@@ -1,0 +1,174 @@
+Title: Spatio-Temporal Wireless-Optical Planning for Multi-UAV Networks
+
+URL Source: https://arxiv.org/pdf/2609.39156v1
+
+Published Time: Thu, 01 Oct 2026 01:06:41 GMT
+
+Number of Pages: 5
+
+Markdown Content:
+# Spatio-Temporal Wireless-Optical Planning for Multi-UAV Networks 
+
+Binglei Wang 1,2 , Huiru Ao 2, Fan Yang 1,2 , Zhenjie Zhou 1,2 , Zhonghua Peng 2, Jialong Li 2,* 
+
+> 1
+
+Southern University of Science and Technology 
+
+> 2
+
+Faculty of Computer Science and Artificial Intelligence, Shenzhen University of Advanced Technology 
+
+Abstract —Multi-unmanned aerial vehicle (UAV) networks in urban low-altitude environments couple UAV mobility, wireless access, and optical backhaul resources. Existing path-planning methods optimize flight distance or wireless signal quality, but can still concentrate traffic on shared optical backhaul links. We present Spatio-Temporal Wireless-Optical (STWO) planner, a backhaul-aware path-planning algorithm that jointly considers flight distance, wireless link quality, and time-varying optical-link offered-load ratio. STWO updates backhaul occupancy during sequential multi-UAV planning, allowing later UAVs to avoid congested optical paths while maintaining wireless connectivity. Experiments show that STWO reduces peak optical-link offered-load ratio by up to 56.4% and congestion ratio by up to 72.6% under dense UAV deployment, demonstrating the importance of wireless-optical awareness for reliable multi-UAV transmission. 
+
+Index Terms —Multi-UAV path planning; Optical backhaul; Low-altitude communication. 
+
+I. I NTRODUCTION 
+
+With the development of the low-altitude economy, smart-city construction, and 5G/6G wireless networks, multiple un-manned aerial vehicles (UAVs) are increasingly used in urban inspection, security monitoring, emergency communications, traffic surveillance, and other mission-oriented scenarios [1], [2]. In these applications, UAVs are no longer isolated plat-forms, but aerial user equipment and cooperative sensing nodes that continuously interact with ground cellular networks [3]. Recent work shows that uplink congestion affects low latency mobile uploading [4]. Their mobility determines not only flight distance and obstacle avoidance, but also serving base-station selection and end-to-end transmission performance. As UAVs continuously upload video, images, and sensing data during flight, path planning must account for communication reliability beyond the air-to-ground wireless link. Existing communication-aware path planning methods focus mainly on wireless coverage quality, link reliability, trajectory optimization, and handover reduction [5]–[7]. Radio-map-based trajectory planning and learning-based path optimization have been shown to improve the communication quality of cellular-connected UAVs [5], [8]. However, these methods largely optimize the access link while overlooking the optical backhaul after UAV traffic enters base stations. In urban low-altitude environments, high-rise blockage may weaken wireless signals, while multiple UAVs may also be attracted to strong-signal base stations. This can concentrate traffic on shared aggregation node–core network (AGG–Core) optical backhaul links, creating transport-side bottlenecks even when the wireless access links appear reliable. Recent studies on metro-access convergence, optical time-slice switching, and multidimensional resource allocation indicate that transport-side resources can become bottlenecks under dynamic traffic demand [9]–[13]. Optical access and x-haul studies further show that access, aggregation, and core transport resources should be jointly considered in 5G/6G networks [14], [15]. These observations call for path planning that jointly balances flight distance, wireless quality, and optical-backhaul load. To address this issue, we present Spatio-Temporal Wireless-Optical (STWO) planner, a backhaul-aware path-planning al-gorithm for multi-UAV networks. STWO incorporates flight distance, wireless link quality, and time-varying optical-link offered-load ratio into a unified path-search cost. During plan-ning, STWO evaluates candidate serving base stations using a joint wireless-optical cost and maps UAV traffic to the cor-responding base station–aggregation node–core network (BS– AGG–Core) optical backhaul path. For multi-UAV scenarios, STWO adopts a sequential planning mechanism: after each UAV path is planned, the optical-link occupancy is updated over time, allowing subsequent UAVs to perceive existing backhaul load and avoid congested optical paths. Compared with Vanilla A* and Signal-Aware A*, STWO reduces peak optical-link offered-load ratio by up to 56.4% and congestion ratio by up to 72.6% under dense UAV deployment, showing the benefit of joint wireless-optical awareness for reliable multi-UAV transmission. The rest of this paper is organized as follows. Section II models the coupling among UAV paths, wireless access, and optical backhaul resources. Section III presents the STWO algorithm and its path-search formulation. Section IV evaluates STWO under varying UAV densities, traffic rates, and back-haul capacities. Section V concludes the paper and discusses future directions. II. C OUPLED WIRELESS -O PTICAL MODEL 
+
+As shown in Fig. 1, we consider an urban low-altitude multi-UAV path-planning scenario under cellular coverage. A UAV path affects not only flight distance and blockage conditions, but also the sequence of serving base stations along the route [5], [6]. Once UAV traffic enters the cellular network, the selected base station further determines the corresponding BS–AGG–Core network optical backhaul path. Therefore, UAV mobility, wireless access, and optical backhaul load are inherently coupled. The BS–AGG–Core abstraction in Fig. 1 arXiv:2609.39156v1 [cs.NI] 30 Sep 2026 BS 2 BS 2 BS 1 BS 1  BS 3 BS 3  BS 4 BS 4  BS 5 BS 5  BS 6 BS 6           
+
+> BS 3
+> BS 4
+> BS 5
+> BS 6
+> UAV 1
+> UAV 2 UAV 3
+> UAV 4
+> BS 1
+> BS 2
+> AGG Node 1
+> Congested
+> AGG Node 2
+> Medium congestion
+> AGG Node 3
+> Congested
+> Optical offered -load ratio :
+> Optimal path Optimal path Shortest path Shortest path Signal -blocked path Signal -blocked path Backhaul -congested path Backhaul -congested path
+> Edge
+> Cloud
+> Edge
+> Cloud
+> High load High load Medium load Medium load Low load Low load Fig. 1. Wireless-optical coupled model for urban low-altitude multi-UAV path planning. UAV paths determine serving base-station selection, which further maps traffic onto AGG–Core optical backhaul links.
+
+captures this mapping between UAV access decisions and transport-network resource usage, which is consistent with 5G/6G transport and optical x-haul network design where access, aggregation, and core resources are jointly constrained by capacity and latency requirements [9], [14], [15]. This coupling creates different outcomes for different path-planning objectives. If path planning considers only flight distance, UAVs may traverse areas blocked by high-rise build-ings, causing wireless signal attenuation and link reliability degradation [5], [7]. If it considers only wireless signal quality, multiple UAVs may be attracted to a small number of strongly covered base stations, concentrating traffic on shared optical backhaul links. For example, in Fig. 1, traffic accessing BS 6 is aggregated to the already congested AGG Node 3, whereas accessing BS 5 can map the traffic to a less loaded backhaul path. Existing studies on metro-access convergence, optical transport slicing, and backhaul-aware association also indicate that transport-side capacity constraints may become bottlenecks even when the wireless access link remains ac-ceptable [9], [16], [17]. These observations show that urban low-altitude multi-UAV path planning is a cross-layer planning problem across flight paths, wireless access, and optical backhaul resources. Adesirable planner should avoid wireless-blocked regions while also preventing multiple UAVs from overloading the same AGG–Core optical links. This motivates a wireless-optical planning that jointly accounts for flight distance, wireless connection quality, and time-varying optical backhaul offered-load ratio. III. STWO A LGORITHM DESIGN 
+
+This section presents the Spatio-Temporal Wireless-Optical (STWO) planner, a heuristic path-search algorithm for multi-UAV networks. STWO searches over space-time states and jointly accounts for UAV position, arrival time, wireless link quality, serving base-station selection, and optical-link offered-load ratio. Unlike Vanilla A ∗, which minimizes flight distance, and Signal-Aware A ∗, which mainly follows wireless quality, STWO incorporates time-varying optical-link offered-load ra-tio into the path-search process. STWO extends the conventional two-dimensional spatial node into a space-time state: 
+
+s = ( x, y, t ), (1) where (x, y ) denotes the grid position of the UAV, and t
+
+denotes the time step at which the UAV reaches that position. Let U denote the UAV set, B the base-station set, and L the optical backhaul link set. For each base station b, we use 
+
+Pb ⊆ L to denote its BS–AGG–Core optical backhaul path. When a UAV accesses b, its traffic is carried by the links in 
+
+Pb.The optical-link offered-load ratio of link l at time t is defined as 
+
+Ul(t) = Load l(t)Capacity l
+
+, (2) where Load l(t) and Capacity l denote the offered traffic load and capacity of link l, respectively. Here, Ul(t) represents the traffic demand normalized by the link capacity. A value larger than 1 indicates demand oversubscription, rather than physical link utilization above 100%. The received signal strength from base station b at position 
+
+p is modeled as [5], [18], [19] 
+
+RSRP( p, b ) = P0 − 20 log 10 d(p, b ) − Lblock , (3) where P0 is a calibrated reference-power offset, d(p, b ) is the distance between position p and base station b, and Lblock is the blockage loss. This simplified model provides a calibrated dBm-scale RSRP value for comparing wireless link quality across different UAV paths, rather than a site-specific field-measured received power. For each candidate base station, STWO defines wireless and optical penalties. The wireless penalty measures the RSRP deficit and is defined as [20] 
+
+Csig (p, b ) = max (0 , RSRP tar − RSRP( p, b )) , (4) where RSRP tar is the target signal level. The maximum optical-link offered-load ratio on the backhaul path of b is 
+
+Umax (b, t ) = max 
+
+> l∈P b
+
+Ul(t). (5) The optical load penalty is defined as 
+
+Copt (b, t ) = Umax (b, t ) + k max (0 , U max (b, t ) − θ)2 , (6) where θ is the congestion-warning threshold and k controls the penalty for exceeding the threshold. Algorithm 1 STWO planner                                                                         
+
+> Require: UAV set U, base-station set B, optical links L, backhaul paths
+> {P b}, UAV traffic rates {ru}
+> Ensure: UAV paths {πu}and serving base-station sequences {bu(t)}
+> 1: Initialize Load l(t)←0for all l∈ L and time step t
+> 2: for each UAV u∈ U do
+> 3: Initialize the open set with the source state of UAV u
+> 4: while the open set is not empty do
+> 5: Select the state n= ( p, t )with the minimum f(n)
+> 6: if nreaches the destination then
+> 7: Recover πuand bu(t);break
+> 8: end if
+> 9: for each feasible next state (p′, t + 1) do
+> 10: Select b∗(p′, t + 1) by Eq. (7) 11: Compute transition cost by Eq. (8) 12: Update g(·),f(·), and parent state 13: end for
+> 14: end while
+> 15: Update Load l(t)along Pbu(t)using rate rufor all states on πu
+> 16: end for
+> 17: return {πu}and {bu(t)}
+
+At each space-time state, STWO selects the serving base station by balancing wireless quality and optical offered-load ratio: 
+
+b∗(p, t ) = arg min  
+
+> b∈B
+
+(βC sig (p, b ) + γC opt (b, t )) . (7) The transition cost is then defined as 
+
+C = αC dist + βC sig (p, b ∗(p, t )) + γC opt (b∗(p, t ), t ), (8) where Cdist is the flight-distance cost, and α, β, and γ are the weights for distance, wireless quality, and optical offered-load ratio, respectively. STWO follows the A ∗ evaluation function 
+
+f (n) = g(n) + h(n), (9) where g(n) is the accumulated path cost from the source to node n, and h(n) is the heuristic distance estimate from node 
+
+n to the destination. As shown in Alg. 1, STWO plans UAV paths sequentially. For each candidate space-time state, STWO selects the serving base station using the wireless-optical cost in Eq. (7) and evaluates the transition cost by Eq. (8). After one UAV path is obtained, STWO updates the time-indexed optical-link load along the selected backhaul paths. Subsequent UAVs therefore perceive existing backhaul occupancy and avoid congestion conflicts within the same time period. As a result, STWO guides UAVs away from high-load optical paths while main-taining wireless connectivity, thereby balancing flight distance, wireless access, and optical backhaul offered load. IV. E XPERIMENTAL RESULTS AND ANALYSIS 
+
+This section evaluates STWO under varying UAV densities, traffic rates, and backhaul capacities. We compare it with distance-based and signal-aware baselines to examine whether STWO reduces optical-link congestion while preserving wire-less connectivity and moderate path length.                                      
+
+> TABLE I KEY SIMULATION PARAMETERS
+> Parameter Setting
+> Map size 1000 m ×1000 m
+> Grid resolution 10 m ,100 ×100 cells UAV altitude 100 m
+> Destination (900 ,900)
+> Buildings / BSs / AGGs 3 / 5 / 3 Default UAV number 120 UAV number sweep 40, 80, 120, 160, 200 Default per-UAV rate 1000 Mbps
+> BS–AGG capacity 50 Gbps
+> Default AGG–Core capacity 100 Gbps
+> Traffic-rate sweep 500, 750, 1000, 1250, 1500 Mbps AGG–Core capacity sweep 50, 60, 70, 80, 90, 100 Gbps Calibrated P0−35 dBm
+> Lblock 25 dB RSRP tar −76 dBm
+> Cost weights (α, β, γ )(1 .0,2.5,1800 .0)
+> Optical penalty (θ, k )(0 .8,16 .0)
+> Offered-load ratio Ul(t) = Load l(t)/Capacity l
+> Congestion threshold Ul(t)>1.0
+
+A. Experimental Setup 
+
+We evaluate STWO in a grid-based urban low-altitude scenario. The simulated area is 1000 m × 1000 m and is discretized into 100 × 100 grid cells with a grid resolution of 10 m . UAVs fly at an altitude of 100 m and share the same destination at (900 , 900) . The scenario contains three buildings, five base stations, and three aggregation nodes. Each base station is mapped to one AGG–Core optical backhaul path. Unless otherwise specified, the BS–AGG link capacity is 50 Gbps , the AGG–Core link capacity is 100 Gbps , the number of UAVs is 120, and the per-UAV traffic rate is 
+
+1000 Mbps . The background load is set to zero, so the optical-link load is generated only by UAV traffic. Table I summarizes the key simulation parameters. We include the parameters that directly affect wireless quality, optical backhaul load, and STWO path-search cost. We compare STWO with Vanilla A ∗, which minimizes flight distance, and Signal-Aware A ∗, which considers wireless signal quality but ignores optical backhaul load. Sequential Optical-only A ∗ is further used for ablation. The metrics in-clude PeakLoad, congestion ratio, hotspot ratio, average RSRP, and average path length. PeakLoad denotes the peak optical-link offered-load ratio, i.e., the maximum demand-to-capacity ratio. Values above 100% indicate demand oversubscription rather than physical utilization above 100%. Cong ( > 1.0) and Hotspot ( > 0.8) count optical-link samples whose offered-load ratios exceed 1.0 and 0.8, respectively. 
+
+B. Impact of UAV Density and Traffic Rate 
+
+Figs. 2(a) and (b) show the impact of UAV density. As the number of UAVs increases from 40 to 200, Vanilla A ∗ and Signal-Aware A ∗ show rapidly increasing congestion and peak optical-link offered-load ratio. Vanilla A ∗ ignores wireless and backhaul conditions, while Signal-Aware A ∗ may concentrate traffic on strongly covered base stations and shared backhaul (a)  (b)  (c)  (d) Fig. 2. Network performance under different UAV numbers and traffic rates: (a) congestion ratio versus UAV number; (b) peak optical-link offered-load ratio versus UAV number; (c) congestion ratio versus traffic rate; (d) peak optical-link offered-load ratio versus traffic rate. (a)  (b)  
+
+> Fig. 3. Network performance under different AGG–Core optical-backhaul capacities: (a) congestion ratio and (b) peak AGG-Core offered-load ratio.
+
+paths. In contrast, STWO considers time-varying optical back-haul load and keeps traffic more balanced. At N = 200 ,STWO reduces the peak offered-load ratio from 280.00% and 256.00% to 122.00%, corresponding to reductions of 56.4% and 52.3%, respectively. It also reduces the congestion ratio from 15.92% and 21.22% to 5.82%. Figs. 2(c) and (d) show the impact of traffic rate. As the per-UAV rate increases from 0.5 Gbps to 1.5 Gbps, Vanilla A ∗ and Signal-Aware A ∗ suffer from increasing congestion and peak offered-load ratio. STWO keeps the congestion ratio much lower across the tested rate range and limits the peak offered-load ratio to 117.00% at 1.5 Gbps. Compared with Vanilla A ∗
+
+and Signal-Aware A ∗, this reduces the peak offered-load ratio by 53.6% and 48.7%, respectively. These results show that STWO is more robust to bandwidth-intensive UAV traffic. 
+
+C. Impact of Backhaul Capacity 
+
+Figs. 3(a) and (b) analyze the impact of AGG–Core capacity. As the capacity increases from 50 Gbps to 100 Gbps, all methods experience lower congestion ratios and lower peak AGG–Core offered-load ratios. STWO consistently achieves the lowest peak AGG–Core offered-load ratio across the entire capacity range. At 50 Gbps, STWO reduces the peak AGG–Core offered-load ratio from 168.00% and 192.00% to 108.00%, corresponding to reductions of 35.7% and 43.8% compared with Vanilla A ∗ and Signal-Aware A ∗, respectively. It also reduces the congestion ratio from 11.18% and 16.67% to 1.14% under this setting. (a)  (b)  
+
+> Fig. 4. Hotspot ratio under different load conditions: (a) hotspot ratio versus UAV number and (b) hotspot ratio versus traffic rate.
+
+D. Hotspot Ratio and Ablation Study 
+
+Figs. 4(a) and (b) show the hotspot ratio, where the optical-link offered-load ratio exceeds the warning threshold 0.8. STWO consistently reduces the hotspot ratio compared with Vanilla A∗ and Signal-Aware A∗ across all settings. For example, at N = 200 , STWO maintains a lower hotspot ratio than both baselines. Under increasing traffic rates, STWO also keeps fewer optical links in near-capacity operation, while the baselines show higher hotspot ratios as traffic demand increases. This result complements the Hotspot ( > 0.8) metric in Table II. Hotspot ( > 0.8) measures near-capacity operation rather than true overload. In the largest-scale case, STWO reduces the Hotspot ( > 0.8) ratio from 20.26% and 23.83% to 16.78%, while also reducing the true congestion ratio from 15.92% and 21.22% to 5.82%. This indicates that STWO not only suppresses severe overload, but also reduces near-capacity hotspot operation. The ablation results in Table II show the trade-off between wireless quality and optical backhaul load. Signal-Aware A ∗
+
+achieves the best AvgRSRP but leads to higher PeakLoad, while Sequential Optical-only A∗ reduces optical load at the cost of degraded AvgRSRP. STWO achieves the same PeakLoad as Sequential Optical-only A ∗, improves AvgRSRP from −78 .92 dBm to −77 .26 dBm, and only slightly increases the congestion ratio. This demonstrates that STWO better balances wireless connectivity and optical backhaul load under the joint objective. TABLE II EXPERIMENTAL RESULTS UNDER DIFFERENT SETTINGS 
+
+Experiment Setting Method Congestion-related Metrics Communication/Path Metrics PeakLoad (%) Cong ( > 1.0) (%) Hotspot ( > 0.8) (%) AvgRSRP (dBm) AvgLen (m) 
+
+Scalability ( N = 200 )Vanilla A ∗ 280.00 15.92 20.26 -78.05 888.8 Signal-Aware A ∗ 256.00 21.22 23.83 -75.30 1042.7 STWO 122.00 5.82 16.78 -77.21 1128.2 Traffic rate ( 1500 Mbps) Vanilla A ∗ 252.00 13.68 18.95 -78.05 889.1 Signal-Aware A ∗ 228.00 19.53 22.53 -75.30 1042.9 STWO 117.00 2.41 13.28 -76.97 1100.1 Backhaul capacity ( 50 Gbps) Vanilla A ∗ 168.00 11.18 19.74 -78.05 889.1 Signal-Aware A ∗ 192.00 16.67 25.78 -75.30 1042.9 STWO 108.00 1.14 5.98 -76.78 1029.1 Ablation study Vanilla A ∗ 336.00 20.13 37.63 -78.05 889.1 Signal-Aware A ∗ 304.00 23.70 40.36 -75.30 1042.9 Sequential Optical-only A ∗ 140.00 14.37 21.06 -78.92 1161.6 STWO 140.00 15.29 20.79 -77.26 1154.8 
+
+V. C ONCLUSION 
+
+This paper presented STWO, a spatio-temporal wireless-optical planner for multi-UAV transmission in urban low-altitude networks. By jointly considering flight distance, wire-less signal quality, and time-varying optical-link utilization, STWO coordinates UAV path planning with access and back-haul conditions. Experiments show that STWO reduces the peak optical-link offered-load ratio and congestion ratio while maintaining competitive wireless quality and path length. These results highlight the importance of joint wireless and op-tical backhaul awareness for reliable multi-UAV transmission. Future work will extend STWO to handover-aware trajectory optimization and backhaul resource orchestration. REFERENCES [1] Z. Ullah, F. Al-Turjman, and L. Mostarda, “Cognition in uav-aided 5g and beyond communications: A survey,” IEEE Transactions on Cognitive Communications and Networking , vol. 6, no. 3, pp. 872–891, 2020. [2] G. Geraci et al. , “What will the future of uav cellular communications be? a flight from 5g to 6g,” IEEE communications surveys & tutorials ,vol. 24, no. 3, pp. 1304–1335, 2022. [3] M. K. Banafaa et al. , “A comprehensive survey on 5g-and-beyond networks with uavs: Applications, emerging technologies, regulatory aspects, research trends and challenges,” IEEE access , vol. 12, pp. 7786– 7826, 2024. [4] H. Xu, L. Li, L. Wang, and F. Song, “Congestion control as a service: Towards low latency mobile uploading,” in 2024 IEEE/ACM 32nd International Symposium on Quality of Service (IWQoS) . IEEE, 2024, pp. 1–10. [5] S. Zhang and R. Zhang, “Radio map-based 3d path planning for cellular-connected uav,” IEEE Transactions on Wireless Communica-tions , vol. 20, no. 3, pp. 1975–1989, 2020. [6] Y. Guo, C. You, C. Yin, and R. Zhang, “Uav trajectory and commu-nication co-design: Flexible path discretization and path compression,” 
+
+IEEE Journal on Selected Areas in Communications , vol. 39, no. 11, pp. 3506–3523, 2021. [7] X. Du, S. Zhang, and F. C.-M. Lau, “Handover-aware trajectory op-timization for cellular-connected uav,” IEEE Wireless Communications Letters , 2025. [8] Y. Li, A. H. Aghvami, and D. Dong, “Path planning for cellular-connected uav: A drl solution with quantum-inspired experience replay,” 
+
+IEEE Transactions on Wireless Communications , vol. 21, no. 10, pp. 7897–7912, 2022. [9] J. Li, N. Hua, Z. Zhong, Y. Yu, X. Zheng, and B. Zhou, “Flexible low-latency metro-access converged network architecture based on optical time slice switching,” Journal of optical communications and network-ing , vol. 11, no. 12, pp. 624–635, 2019. [10] J. Li, Z. Zhong, N. Hua, X. Zheng, and B. Zhou, “Balancing energy efficiency and device lifetime in twdm-pon under traffic fluctuations,” 
+
+IEEE Communications Letters , vol. 21, no. 9, pp. 1981–1984, 2017. [11] J. Li, N. Hua, K. Zhu, C. Zhao, G. Pan, Y. Li, X. Zheng, and B. Zhou, “Leveraging joint allocation of multidimensional resources for distributed task assignment,” Journal of Optical Communications and Networking , vol. 14, no. 5, pp. 351–364, 2022. [12] J. Li, N. Hua, Y. Yu, Z. Zhong, X. Zheng, and B. Zhou, “A flexible low-latency metro-access converged network approach based on time-synchronized twdm-pon,” in Optical Fiber Communication Conference .Optica Publishing Group, 2018, pp. Th2A–50. [13] J. Li, N. Hua, C. Zhao, Y. Li, X. Zheng, and B. Zhou, “Towards low-latency distributed tasks collaboration by joint optimization of transmission, computation and storage resources allocation in edge computing,” in Asia Communications and Photonics Conference . Optica Publishing Group, 2020, pp. M4A–210. [14] C. Ranaweera, J. Kua, I. Dias, E. Wong, C. Lim, and A. Nirmalathas, “4g to 6g: Disruptions and drivers for optical access,” Journal of Optical Communications and Networking , vol. 14, no. 2, pp. A143–A153, 2022. [15] C. Ranaweera, C. Lim, Y. Tao, S. Edirisinghe, T. Song, L. Wosinska, and A. Nirmalathas, “Design and deployment of optical x-haul for 5g, 6g, and beyond: progress and challenges,” Journal of Optical Communications and Networking , vol. 15, no. 9, pp. D56–D66, 2023. [16] Y. Li, J. Li, Y. Zhao, and J. Zhang, “End-to-end urllc slicing based on packet duplication in 5g optical transport networks,” Journal of Optical Communications and Networking , vol. 12, no. 7, pp. 192–199, 2020. [17] M. Nafees, S. Huang, J. Thompson, and M. Safari, “Backhaul-aware user association and throughput maximization in uav-aided hybrid fso/rf network,” Drones , vol. 7, no. 2, p. 74, 2023. [18] Y. Chen, D. Yang, L. Xiao, F. Wu, and Y. Xu, “Optimal trajectory design for unmanned aerial vehicle cargo pickup and delivery system based on radio map,” IEEE Transactions on Vehicular Technology , vol. 73, no. 8, pp. 11 706–11 718, 2024. [19] Y. Li, X. Wang, Z. Zheng, J. Guo, and Z. Fei, “Joint trajectory and transmit power design for cellular-connected uavs via differentiable channel knowledge map,” IEEE Transactions on Vehicular Technology ,2025. [20] Y. Gao, L. Xiao, F. Wu, D. Yang, and Z. Sun, “Cellular-connected uav trajectory design with connectivity constraint: A deep reinforcement learning approach,” IEEE Transactions on Green Communications and Networking , vol. 5, no. 3, pp. 1369–1380, 2021.
