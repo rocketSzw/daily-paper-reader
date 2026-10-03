@@ -1,0 +1,428 @@
+Title: Towards Agile Vision-Based Multi-UAV Flight: Revisiting State Estimation
+
+URL Source: https://arxiv.org/pdf/2609.39611v1
+
+Published Time: Thu, 01 Oct 2026 01:39:00 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+IEEE/RSJ IROS 2026. PREPRINT VERSION. ACCEPTED JUNE, 2026 1
+
+# Towards Agile Vision-Based Multi-UAV Flight: Revisiting State Estimation 
+
+Michal Pliska, Matouˇ s Vrba, Ondˇ rej V´ ıta, Martin Jirouˇ sek, Viktor Walter and Martin Saska 
+
+Abstract —Agile multi-UAV flight requires accurate and low-latency onboard estimation of the kinematic states of neighboring UAVs for collision avoidance, motion coordination, etc. Most vision-based approaches rely on position-only measurements, inferring velocity and acceleration indirectly from displacement. We show that this introduces a fixed structural delay in the estimation of higher-order states, which limits the achievable agility. To address this, we propose to integrate tilt measurements, provided by a state-of-the-art visual detector, which inform about the thrust direction of co-planar multirotor UAVs. We benchmark four position-only and five pose-aware estimators, including a novel formulation of a linear thrust-constraining Kalman Filter, on two real-world and one high-fidelity photorealistic simulated dataset over different levels of agility (3–21 m s −2 ). In our setup, pose-aware estimation consistently reduces the average velocity and acceleration estimation errors by 40 % and 57 % across the three datasets with the proposed KF formulation outperforming the other estimators. Position-only filters exhibit a constant ∼300 ms delay in acceleration step response independent of agility, whereas the tilt-constrained estimators operate near the physical response limit given by the camera frame-rate by observing the change in thrust direction before the displacement accumulates. In a closed-loop leader– follower simulated experiment with NMPC control, position-only estimation of the leader’s state fails to facilitate stable hovering of the follower, while the proposed estimator enables tracking of lateral maneuvers exceeding 2 g of acceleration. 
+
+Index Terms —Aerial Systems: Perception and Autonomy, Sen-sor Fusion, Multi-Robot Systems 
+
+SUPPLEMENTARY MATERIAL 
+
+Video, code & data: https://mrs.fel.cvut.cz/agile-uav-estimation 
+
+I. I NTRODUCTION 
+
+Recent advancements in multirotor Unmanned Aerial Ve-hicle (UAV) control have pushed the agility of individual autonomous UAVs to the edge of the platforms’ capabilities, surpassing even expert human pilots [1]–[3]. However, state-of-the-art multi-robot UAV systems lag significantly behind these advances in agility. This is especially true for multi-UAV systems that rely on onboard relative localization to remove the requirement of intra-robot communication, which introduces non-negligible measurement noise [4], [5]. While the problem has been extensively studied [6]–[8], the reported experiments are typically conducted at velocities and accelerations that remain well below the agility routinely achieved in single-UAV scenarios with full state knowledge. In this work, we present the building blocks necessary to fill this research gap. 
+
+Authors are with the Multi-robot Systems Group, Faculty of Electri-cal Engineering, Czech Technical University in Prague, Czech Republic (name.surname@fel.cvut.cz ). This work was funded by the Czech Science Foundation (GA ˇ CR) under projects no. 26-22419S and 23-06162M. t1
+
+> t2
+> t3
+> t4
+> t5
+> t6
+
+Fig. 1. Onboard view from a follower UAV during closed-loop tracking at accelerations above 2 g. Red boxes show raw YOLOv5-6D detections. The first frame ( t1) is the current image, the remaining frames ( t2–t6) are a time-lapse during an aggressive lateral maneuver. The times t1–t6 correspond to the markers in Fig. 5. 
+
+When considering multirotor UAV dynamics, direction of the thrust vector provides useful information about an ob-served target’s state and is often directly measurable, whether through the vehicle’s attitude, propeller orientation, or other visual cues. For a typical multirotor platform with co-planar propellers, the thrust vector is aligned with the direction of the propellers. There are several works that propose methods to exploit this feature of multirotor dynamics using visual detection of the full 6D pose to measure the UAV’s position and attitude [9]–[11]. Despite this growing recognition, it remains unknown to what extent including the thrust direction measurement improves state estimation over position-only methods. In particular, no systematic comparison across agility regimes with consistent tuning procedures and explicit finite-time latency analysis exists. This paper addresses this gap and presents the first sys-tematic comparison of pose-aware and position-only multi-rotor UAV state estimation, conducted over a full monoc-ular perception-to-estimation pipeline across real-world and simulated datasets spanning multiple agility levels. The best position-only and pose-aware methods are also compared in an agile leader-follower scenario running the whole pipeline from UAV control, onboard visual detection and state estimation of the leader, to the formation control (see Fig. 1). These experiments demonstrate that the pose-aware relative state es-timation is a necessary element for realizing truly agile multi-UAV motion coordination approaching the dynamic limits of individual UAVs. arXiv:2609.39611v1 [cs.RO] 30 Sep 2026 2 IEEE/RSJ IROS 2026. PREPRINT VERSION. ACCEPTED JUNE, 2026 
+
+II. R ELATED WORK 
+
+A. Onboard UAV detection 
+
+Classical approaches of onboard detection of other UAVs rely on various kinds of markers, such as LEDs placed onto the targets to be detected and localized [5], which enables reliably extracting their full poses without relying on domain-specific training. A distinct subset of UAV detection methods relies on sensors such as stereo cameras or LiDARs to detect flying UAVs using the spatial information provided by these sensors [12], [13]. This approach inherently yields the relative 3D position of the target, but requires equipping the observer UAV with specialized, potentially heavy, and expensive sen-sors. Recently, deep learning-based methods became sufficiently robust, accurate, and computationally efficient for deployment onboard UAVs with limited payload [14], [15]. Modern deep-learning detectors can extract additional information about the target in addition to its relative 3D position, such as the full 6D pose, using cheap and lightweight monocular RGB cameras and without relying on markers [9]–[11]. At the propeller level, ˇSpetl´ ık et al. [16] proposed a method for real-time roll and pitch estimation from event-camera streams. Although similar event-based approaches have so far only been demonstrated in controlled laboratory conditions, they have the potential to offer a complementary sensing modality to RGB-based pose estimation. In this work, we utilize the YOLOv5-6D deep learning architecture [17] that relies on visual keypoint detection, and Perspective-n-Point (PnP) to obtain full 6D poses of the detected objects assuming their known dimensions. 
+
+B. UAV tracking and state estimation 
+
+State estimation of aerial targets is most often formulated through position-based Kalman Filters (KFs) using simple kinematic models, most commonly Constant Velocity (CV) or Constant Acceleration (CA) [13]–[15], [18]. These models assume smooth motion and compensate for any unmodeled dynamics with process noise, which is typically tuned em-pirically. While sufficient for moderately maneuvering targets (max. acceleration reported in [13]–[15], [18] was 4.5 m s −2 ), this approach introduces a fundamental trade-off: low process noise yields estimation lag, whereas high noise produces jitter and instability [19]. Crucially, since these approaches rely exclusively on position measurements, uncertainty propagates and amplifies into higher-order state estimates. Several recent works have begun to incorporate attitude information into UAV state estimation. The authors of [9] proposed a custom convolutional neural network for extracting salient keypoints of a co-planar UAV combined with the standard PnP algorithm for full pose estimation, and a CA-KF relying on an assumption of zero vertical acceleration of the observed target. A very similar approach was described in [10], but with a more general Pseudo-Linear Kalman Filter (PLKF)-based estimator. [10] also publishes a dataset for UAV pose detection obtained in laboratory conditions with motion capture ground truth, which we utilize in this work for baseline comparison. A complementary approach is presented in [11], removing the assumption of known physical dimensions of the tracked target, and providing an observability analysis of the problem. However, all these works evaluate their methods on scenar-ios with limited dynamic excitation of the target and negligible vertical motion, which does not sufficiently cover the intended application of agile multi-robot motion. These works also do not report the method used for tuning the estimation parameters. 
+
+C. Contributions 
+
+The presented paper provides a systematic comparison of position-only and pose-aware vision-based state estimation of co-planar multirotor UAVs. We compare performance across different agility levels using identical automated tuning for all estimators to ensure fairness. To facilitate this, we re-lease a new UAV dataset created in high-fidelity simulations containing diverse maneuvers of varying agility. Furthermore, we propose the Degenerate Kalman Filter (DKF) framework for formulating a linear KF with general dynamic affine subspace measurements of the state vector, which is a common problem in robotics [10], [11], [20]. Using this framework, we derive the Z-axis measurement Kalman Filter (Z-KF) – an efficient linear KF variant for the task of pose-aware UAV state estimation, which outperforms other state-of-the-art methods. Finally, we demonstrate a simulated experiment running the full pipeline, including UAV control, onboard perception, state estimation, and trajectory prediction of the target in a leader-follower scenario with high agility (leader reaching velocities of 14 m s −1 and accelerations of 20 m s −2 ). We believe that our work will serve as a springboard for other researchers aiming to push their multi-UAV systems from idealized simulations and laboratories to challenging real-world conditions. In the context of the state of the art, we summarize our contributions as follows: 1) The first systematic comparison of pose-aware and position-only state estimation for vision-based UAV tracking is provided, evaluated through a full monocular perception-to-estimation pipeline over different levels of agility w.r.t. the target’s acceleration. 2) A novel linear KF formulation that incorporates pose as a directional acceleration constraint for improved UAV state estimation is formally derived using the Degenerate Kalman Filter (DKF) framework. 3) A benchmark dataset with photorealistic rendering and exact ground truth across seven agility levels is released, enabling reproducible comparison of estimators for agile full-pose vision-based UAV state estimation. 4) The impact of the state estimation on communication-free UAV motion coordination is evaluated in a simu-lated closed-loop leader-follower scenario, demonstrat-ing that the proposed pose-aware estimation enables reaching unprecedented agile levels of multi-UAV flight. PLISKA et al. : TOWARDS AGILE VISION-BASED MULTI-UAV FLIGHT: REVISITING STATE ESTIMATION 3W  
+
+> ˆe2
+> ˆe1
+> ˆe3ag
+> ˆb2
+> ˆb1
+> ˆb3
+> B
+> aT
+> ad
+> p,R
+
+Fig. 2. Relation of the world frame W and the UAV’s body frame B
+
+through the position vector p and orientation matrix R. Basis vectors of these frames and the relevant acceleration components of the total UAV acceleration a = aT + ad + ag are also denoted. 
+
+III. S TATE ESTIMATION 
+
+We model the full UAV dynamics using a set of non-linear differential equations 
+
+¨p = 1
+
+m (fT Rˆ e3 + fd) − gˆe3, (1) 
+
+˙R = RΩ , (2) where p ∈ R3 is the position of the UAV, m is its mass, 
+
+fT is its collective thrust force, R ∈ SO (3) represents its orientation, Ω ∈ R3×3 is an angular velocity tensor expressing the angular velocity of the UAV, ˆe3 = 0 0 1⊺ is the third canonical basis vector, fd is an external disturbance force, and 
+
+g is the gravitational acceleration constant. Furthermore, we denote the UAV’s body z-axis vector as 
+
+ˆb3, its velocity vector as v ∈ R3, its acceleration vector as 
+
+a ∈ R3, its jerk vector as j ∈ R3, the acceleration component corresponding to the thrust as aT = 1 
+
+> m
+
+fT Rˆ e3, to the external disturbance as ad = 1 
+
+> m
+
+fd, and to the gravity as ag = −gˆe3
+
+(see Fig. 2). Where relevant, we denote a time-varying variable at the k-th time step with a lower index (·)[k]. Unless otherwise noted, all variables are expressed in the inertial world frame 
+
+W. The state estimators described in this section are all based on this model with varying degrees of simplification. 
+
+A. Point Mass-Model Kalman Filter 
+
+As a baseline solution, we use a KF with only position measurements and a point mass model. This is a widely used approximation of the UAV dynamics when only position measurements are available and represents most of the SotA approaches [13]–[15], [18]. We follow a common formulation of a stochastic dynamic system within the KF framework 
+
+x[k+1] = Ax[k] + ξ[k], ξ[k] ∼ N (0, Ξ), (3) 
+
+z[k] = Hx[k] + ζ[k], ζ[k] ∼ N (0, Z). (4) Here, x ∈ Rnx is the state vector, ξ ∈ Rnx is the process noise with a covariance Ξ, A ∈ Rnx×nx is the state transition matrix, z ∈ Rnz is the measurement vector, ζ ∈ Rnz is the measurement noise with a covariance Z, H ∈ Rnz ×nx is the measurement matrix, 0 is a 3-dimensional zero vector, and nx,
+
+nz are dimensions of the state-space and measurement-space. We consider the Constant Velocity (CV) and Constant Acceleration (CA) variants of the point mass-model KF with the corresponding definitions of x and A. In both cases, the position measurement is modeled as 
+
+z[k] = zp[k] = p[k] + ζp[k], ζp[k] ∼ N  0, σ 2 
+
+> p
+
+I, (5) where zp[k] is the position measurement, σp is its per-axis standard deviation, and I is a 3 × 3 identity matrix. For both variants of the model, two sub-variants are considered: one with an analytical covariance matrix of the process noise, and the second with a block-diagonal covariance matrix of the process noise (abbreviated BDC). 
+
+1) Analytical covariance of the process noise: For the first sub-variant of the point mass-based KFs, the process noise has a physical interpretation as the unknown input of the system, which is assumed to follow a Gaussian distribution: 
+
+ξ[k] = Bu[k], Ξ = Ξana. = BΞ uB⊺, (6) where the input u corresponds to acceleration for the CV variant or to jerk for the CA variant, and Ξu ≡ σ2
+
+> u
+
+I.
+
+2) Block-diagonal covariance of the process noise: The second sub-variant assumes possible cross-correlation of the position, velocity and acceleration states, but no cross-correlation between their elements. This formulation is more general and can partially mitigate model approximations and unmodeled dynamics, but it is defined by more parameters and is more prone to divergence during tuning. We define the BDC matrix for the CA variant as 
+
+Ξ = ΞBDC =
+
+" σ2      
+
+> pσ2
+> pv σ2
+> pa
+> σ2
+> pv σ2
+> vσ2
+> va
+> σ2
+> pa σ2
+> va σ2
+> a
+
+#
+
+⊗ I, (7) and accordingly for the CV variant. Here, σ(·) are parameters of this matrix, and ⊗ denotes the Kronecker product. In other words, the BDC matrix is symmetrical and consists of 3 × 3
+
+diagonal sub-matrix blocks. 
+
+B. Z-Axis Measurement Kalman Filter (Z-KF) 
+
+In this section, we derive a linear estimator based on the CA-KF described in the previous section adapted for fusing the measured tilt of the target UAV. This is achieved by representing the tilt measurement as the z-axis vector ˆb3
+
+of the UAV’s body frame B (i.e. the upward-pointing axis), which constrains the direction of the thrust acceleration aT .By substituting for accelerations in eq. (1), the total UAV’s acceleration is expressed as 
+
+a[k] = aT [k] + ag + ad[k] = fT [k]
+
+m ˆb3[ k] + ag + ad[k], (8) where ˆb3[ k] = R[k] ˆe3 is the z-axis of the UAV expressed in the world frame. It is worth noting that we ignore the heading of the UAV (and thus the vectors ˆb1 and ˆb2) since it does not contribute to the UAV’s acceleration. The modified measurement model is then 
+
+z[k] =
+
+hz⊺ 
+
+> p[k]
+
+z⊺
+
+> ˆb3[k]
+
+i⊺
+
+, (9) 
+
+zˆb3[k] = ˆb3[ k] + ζˆb3[k], ζˆb3[k] ∼ N 
+
+
+
+0, σ 2ˆb3
+
+I
+
+
+
+, (10) 4 IEEE/RSJ IROS 2026. PREPRINT VERSION. ACCEPTED JUNE, 2026 
+
+where zˆb3[k] is the tilt measurement, and σˆb3 is the correspond-ing standard deviation. The position measurement is expressed trivially within the KF framework, but the z-axis vector is more involved. Since the acceleration magnitude fT [k] 
+
+> m
+
+as defined in eq. (8) is unknown, the actual acceleration a[k] lies within the acceleration space R3 on a line with direction ˆb3[ k] and offset by ag[k] + ad[k] from the origin. Such line is an affine subspace of the acceleration space, which is different for every measurement. To fuse this type of measurements, we introduce the DKF framework. 
+
+1) Degenerate Kalman Filter (DKF): The DKF framework defines a projection of the state vector similar to a KF with state equality constraints [21]. It may be considered a general step-by-step recipe to formulate a Pseudo-Linear Kalman Filter (PLKF) for a system with “degenerate” measurements that represent affine subspaces of the state space. For brevity, we will omit the time indices in this subsection. First, let us define a matrix M ∈ Rnd×nx that maps the full state space Rnx to a subspace of the observed states 
+
+Rnd (i.e. the position and acceleration in the case discussed above). Next, let the matrix W ∈ Rnd×na be the basis of the measurement affine subspace of dimension na, with an unknown scaling vector λ ∈ Rna , and o ∈ Rnd is its offset vector. The affine subspace measurement is then defined as 
+
+Mx = Wλ + o + ζ′, ζ′ ∼ N (0, Z′), (11) where ζ′ ∈ Rnd is measurement noise with a covariance ma-trix Z′. However, such measurement cannot be directly fused using the conventional KF framework. The DKF provides a method of converting this measurement model to a form that is compatible with a standard linear KF. Let N be a matrix such that 
+
+N⊺W = 0. (12) In other words, N ∈ Rnd×nz is the null-space matrix of W,where nz = nd − na. By multiplying eq. (11) from the left by N⊺, the following relation is obtained: 
+
+N⊺Mx = N⊺o + N⊺ζ′. (13) It may be observed that after a substitution 
+
+z = N⊺o, H = N⊺M, ζ = −N⊺ζ′, Z = N⊺Z′N (14) the measurement is obtained in the standard form for a KF de-fined in eq. (4). In this manner, affine subspace measurements of a linear subspace of the state space may be fused using the standard linear KF framework. Note that this process is repeated with each correction step of the KF as the variables 
+
+W and o, which define the DKF measurement, change. 
+
+2) Applying the DKF to the Z-Axis Measurement: In the case of the position and acceleration measurement of the CA-KF previously defined in this section, the DKF measurement model from eq. (11) corresponds to 
+
+ I O OO O I
+
+
+
+pva
+
+ =
+
+" zp − ζpfT
+
+> m
+
+
+
+zˆb3 − ζˆb3
+
+
+
++ ag + ad
+
+#
+
+, (15) i.e. 
+
+M =
+
+ I O OO O I
+
+
+
+, W =
+
+ 0
+
+zˆb3
+
+
+
+, λ =  fT
+
+> m
+
+, (16) 
+
+o =
+
+zp
+
+ag
+
+
+
+, ζ′ =
+
+ −ζp
+
+− fT 
+
+> m
+
+ζˆb3 + ad
+
+
+
+, (17) 
+
+nx = 9 , nz = 5 , nd = 6 , na = 1 , (18) where O is a 3 × 3 zero matrix. For simplicity, we define a substitution 
+
+ζa ≡ − fT
+
+m ζˆb3 + ad, ζa ∼ N  0, σ 2
+
+> a
+
+I, (19) where ζa ∈ R3 is the collective unknown noise affecting the acceleration direction measurement, and σa is the corre-sponding standard deviation. This measurement model is then applied using the DKF framework, resulting in the estimator that we refer to as the Z-KF. Although the update law is algebraically equivalent to the formulation in [11], with the DKF, we provide a general framework not limited to this specific application. Similarly to the position-only KFs in sec. III-A, we also evaluate both the analytical and block-diagonal process noise matrix for the Z-KF. IV. D ATASET 
+
+As the research stream explored in this paper is relatively fresh, the number of publicly available benchmarking datasets is low. To the best of our knowledge, the only relevant dataset was published in [10], which contains RGB images of a flying UAV captured by a stationary camera in laboratory conditions with ground truth poses from motion capture. We split this dataset based on the model of the observed UAV (Phantom 4 and Mavic 2), and use it for baseline evaluation. However, this dataset does not provide higher-order states, which must therefore be derived retrospectively, introducing potential inaccuracies, and the motion range and agility of the target are limited (especially in the vertical direction). To address this, we release a new dataset created using the Unreal Engine-based simulator FlightForge [22], which offers photorealistic rendering and high physical fidelity with full UAV dynamics. The dataset consists of images from a moving camera observing a target UAV following trajectories generated using the method proposed in [19] with varying levels of agility in all axes (3–21 m s −2 ) and at different ranges (1.5–8 m). This allows us to evaluate the compared methods w.r.t. different flight modes and agility levels of the target. To achieve maximal fidelity of the observed states, a full UAV control pipeline from [23] is used to track these trajectories. Exact ground-truth 3D bounding boxes for detector training, full 6D pose, velocity, and acceleration are available directly from the simulator, eliminating the need for numerical differ-entiation of higher-order states. Table I summarizes the key characteristics of the datasets used in this work. V. R ESULTS 
+
+A. Detection and Pose Estimation 
+
+To train the YOLOv5-6D detector [17] without overfitting, we fine-tune it on a small random subset of the real-world PLISKA et al. : TOWARDS AGILE VISION-BASED MULTI-UAV FLIGHT: REVISITING STATE ESTIMATION 5
+
+TABLE I. Comparison of the benchmarking datasets.                                           
+
+> Dataset Unreal (ours) Phantom 4 [10] Mavic 2 [10] Number of sequences 140 68 61 Total duration 1333 s 667 s 668 s Number of frames 33460 16734 16755 Sampling period 40 ms 40 ms 40 ms Camera motion Flying Static Static Camera range ∗1.5–8.0 m 1.9–5.1 m 1.9–5.1 m Ground truth source Simulator MoCap MoCap UAV dimensions 46 × 46 × 38 cm 34 × 34 × 34 cm 28 × 33 × 12 cm Velocity Q2 †2.77 m s −1 0.83 m s −1 0.85 m s −1
+> Velocity p98 †8.45 m s −1 2.37 m s −1 2.76 m s −1
+> Acceleration Q2 †4.88 m s −2 1.87 m s −2 1.99 m s −2
+> Acceleration p98 †15.80 m s −2 4.71 m s −2 4.67 m s −2
+> ∗Range of the 2–98 % percentile.
+> †Q2, p98 denote the 50 % and 98 % percentiles.
+
+datasets (2 % for the Phantom 4 , 5 % for the Mavic 2 dataset). For the Unreal dataset, we generate an independent training set of approx. 13 thousand images. Only the batch size is tuned as a hyperparameter, with all other settings left at their defaults. The network is trained with heavy augmentations, including random crop, blur, and HSV shifts. The resulting median corner reprojection error is 2.73 px on the Unreal 
+
+dataset, 9.65 px on Phantom 4 , and 5.36 px on Mavic 2 .The next step after the 3D bounding box detection is solving the PnP problem based on known dimensions of the target to obtain the 6D pose of the detected object. With the above-mentioned detector, the median position error is 49 mm on the Unreal dataset, 106 mm on Phantom 4 , and 43 mm on 
+
+Mavic 2 . The median orientation error is 1.6°, 3.3°, and 1.7°, respectively. These poses comprise the position and orientation measurements used by the evaluated estimators. 
+
+B. Compared Methods 
+
+We compare the proposed Z-KF estimator with the baseline CV and CA KFs described in sec. III-A, and with relevant state-of-the-art approaches. Specifically, we include the Pose-KF estimator proposed in [10], which uses a CV model and incorporates the tilt measurements through the process noise covariance matrix, and the Multiplicative Extended Kalman Filter (MEKF), which is a widely adopted method for UAV ego-state estimation. For the MEKF, we modify the standard formulation (see e.g. [24]) to correspond to the problem considered in this paper. Specifically, we use a nominal state vector x = p⊺ v⊺ q⊺⊺, where q is a quaternion representing the UAV’s orientation, and a measurement vector 
+
+z = p⊺ q⊺⊺ + ζpq , where ζpq is the measurement noise. We consider both the analytical and BDC formulations of the process noise covariance matrix of the MEKF, as described in sec. III-A. Because the Pose-KF utilizes this matrix for fusion of the tilt measurement, it cannot easily be modified in the same manner, so we follow the original formulation. 
+
+C. Tuning and Evaluation Protocol 
+
+All individual estimator parameters are tuned using the CMA-ES [25] on a dedicated tuning subset for each dataset. All reported results are computed on a disjoint held-out set of equal size, containing no samples used in the YOLOv5-6D training or validation. For the optimization and reporting of results, we define the Mean Error Norm (MEN): MEN = 1
+
+PMj=1 NjMX
+
+> j=1
+
+X
+
+> k∈K j
+
+∥sj,k − ˆsj,k ∥2, (20) where M is the number of test sequences, Kj is the set of indices of valid samples in sequence j, Nj = |K j |, sj,k ∈ Rd
+
+denotes the ground-truth state vector at timestep k of sequence 
+
+j, and ˆsj,k is the corresponding estimate. For estimators with explicit acceleration states, s and ˆs include the position, velocity, and acceleration (i.e. d = 9). For the remaining estimators, s and ˆs only include the position and velocity (i.e. d = 6 ). We apply a logarithmic transformation to the parameter vector during optimization θ = log 10 θnat , where 
+
+θnat is a vector of parameters used by the optimized filter, and θ is the vector of parameters optimized by the CMA-ES algorithm. The optimization objective also includes an addi-tive regularization term λp∥θ∥2, penalizing large deviations from the origin of the space of transformed parameters. We empirically chose the value of the weight λ = 0 .001 . These techniques proved important to stabilize convergence of the optimization by better representing parameter values spanning orders of magnitude and mitigating numerical problems. Each estimator was independently tuned ten times. All reported results correspond to the median run. It is worth noting that the final loss was extremely consistent between runs for each filter (within 1 % between the worst and best results), except for the BDC variants, where the difference in the loss was up to 175 %, which we attribute to the increased number of optimized parameters. Table II summarizes the median-run MEN across all estimators and datasets. To verify that using a different optimization metric does not bias the results, we also tried tuning all estimators with the same metric, using only position and velocity ( d = 6 ). The relative ranking of the estimators was preserved, and the comparable metrics changed only negligibly ( < 1 %). However, including the acceleration in the loss function for filters that support it significantly improves the acceleration estimation, and thus also the prediction, which is crucial for multi-robot interaction. 
+
+D. Estimation Accuracy 
+
+Table II reports position, velocity, and acceleration MEN across all estimators and datasets. Position MEN is approxi-mately constant across all methods ( ∼0.10 m), showing that position accuracy is primarily determined by the accuracy of the detector and PnP solver, not the filter structure. The CV-KF exhibits the highest velocity error across all datasets, confirming that a sufficient order of the model is a prerequisite for tracking maneuvering targets. Its BDC variant reduces the velocity error by 53 % on average, exceeding even the raw CA-KF, which demonstrates that an expressive process-noise model can effectively compensate model mis-match. For the CA-KF, the improvement of using BDC over analytical process noise is less dramatic (12 % on average), indicating that once model order is adequate, the primary 6 IEEE/RSJ IROS 2026. PREPRINT VERSION. ACCEPTED JUNE, 2026 
+
+TABLE II. MEN values for position, velocity, and acceleration across datasets and estimators.                                                                                                         
+
+> Unreal (simulated) Phantom 4 (real-world) Mavic 2 (real-world)
+> Estimator Pos. (m) Vel. (m s −1 )Acc. (m s −2 )Pos. (m) Vel. (m s −1 )Acc. (m s −2 )Pos. (m) Vel. (m s −1 )Acc. (m s −2 )
+> Position-only
+> CV-KF 0.100 2.300 –0.131 0.755 –0.070 0.793 –CV-KF+BDC 0.112 0.739 –0.131 0.415 –0.071 0.426 –CA-KF 0.104 0.791 4.899 0.131 0.487 2.337 0.093 0.609 2.440 CA-KF+BDC 0.099 0.787 4.989 0.131 0.415 2.039 0.078 0.488 2.102
+> Pose-aware
+> Pose-KF [10] 0.101 0.529 –0.132 0.251 –0.072 0.248 –MEKF [24] 0.101 0.486 –0.131 0.278 –0.073 0.266 –MEKF+BDC 0.096 0.462 –0.130 0.269 –0.068 0.264 –Z-KF 0.103 0.431 2.073 0.131 0.270 0.953 0.073 0.254 0.876 Z-KF+BDC 0.097 0.425 2.062 0.130 0.264 0.874 0.067 0.271 0.833
+> Relative improvement (best pose-aware vs. position-only)
+> 3 % 42 % 58 % 1 % 40 % 57 % 4 % 42 % 60 % Evaluated on held-out test sequences using median-representative parameters from 10 independent tuning runs. Acceleration is reported only for estimators with explicit acceleration states. Bold : best in category. Underline: best overall.
+
+TABLE III. Agility levels in the Unreal (simulated) dataset.                                          
+
+> Agility group Low Mid High Reference max. (m s −2 )3.0 6.0 9.0 12.0 15.0 18.0 21.0 Flown acc. Q2 †(m s −2 )1.6 3.0 4.0 5.7 7.0 7.9 10.0 Flown acc. p98 †(m s −2 )2.8 5.7 7.9 11.1 14.0 15.9 19.1 Flown tilt p98 †(°) 15 32 45 62 71 86 95 Num. of sequences 20 20 20 20 20 20 20
+> †Q2, p98 denote the 50 % and 98 % percentiles.
+
+bottleneck is the absence of thrust-direction information rather than process-noise modeling. Pose-KF [10] achieves the lowest velocity MEN on both real-world datasets, outperforming Z-KF+BDC by 5 % on 
+
+Phantom 4 and 8 % on Mavic 2 . However, it does not estimate acceleration, and its process model assumes constant thrust magnitude, biasing the filter to favor less agile maneuvers constrained to one horizontal plane. On the challenging Unreal 
+
+dataset, which includes agile motion spanning all three axes equally, Z-KF+BDC outperforms Pose-KF by 20 % in velocity. MEKF [24] falls between Pose-KF and Z-KF, confirming that thrust-direction information improves estimation regard-less of the specific filter formulation. Z-KF+BDC achieves the overall lowest velocity and acceleration errors on the Unreal 
+
+dataset, reducing MEN by 42 % and 58 % relative to the best position-only variant. The difference between Z-KF and Z-KF+BDC is marginal ( ∼1 %), showing the same pattern as CA-KF: once the dominant information source is present, process-noise refinement yields diminishing returns. 
+
+E. Performance over Agility 
+
+Our Unreal dataset is divided into seven agility levels based on the maximal acceleration of the generated reference trajec-tory (see Tab. III). Figure 3 shows velocity and acceleration MEN for each estimator across these levels. Pose-aware filters outperform position-only variants at every agility level with a consistently smaller estimation error and error variance. Both groups exhibit an increasing error with agility, but position-only errors grow faster, widening the absolute gap. Z-KF achieves the lowest error and variance throughout. The accel-eration plot shows an even clearer separation: Z-KF maintains 0.00.20.40.60.81.01.21.4Velocity MEN (ms −1)      
+
+> 36912 15 18 21 Maximal acceleration of the reference trajectory (ms −2)0246810 Acceleration MEN (ms −2)
+> Position only CV-KF + BDC CA-KF CA-KF + BDC Pose aware Pose-KF MEKF MEKF + BDC Z-KF Z-KF + BDC
+
+Fig. 3. Velocity and acceleration MEN for the different agility levels in the Unreal dataset. CV-KF is omitted due to a significantly higher error at all levels (see Table II). Dots denote mean over 10 trajectories, lines indicate standard deviation. 
+
+a low error with remarkably tight variance at all agility levels, while CA-KF error and variance both grow rapidly. This indicates that thrust-direction information improves estimation not only during agile flight, but in all operating conditions. To understand the source of the improvement, Table IV decomposes MEN into horizontal ( xy ) and vertical ( z) compo-nents. The improvement in velocity estimation of Z-KF+BDC over CA-KF+BDC is significantly higher in the horizontal direction than in the vertical. This asymmetry confirms that thrust-direction sensing primarily encodes lateral acceleration. PLISKA et al. : TOWARDS AGILE VISION-BASED MULTI-UAV FLIGHT: REVISITING STATE ESTIMATION 7
+
+TABLE IV. Per-axis MEN values on the Unreal dataset across the different agility groups.                                                              
+
+> Low (3–9) Mid (12–15) High (18–21)
+> Estimator xy zxy zxy z
+> Velocity MEN (m s −1 )
+> CA-KF+BDC 0.376 0.248 0.393 0.306 0.553 0.404 Pose-KF [10] 0.194 0.220 0.219 0.332 0.312 0.444 Z-KF+BDC 0.136 0.207 0.192 0.260 0.259 0.330
+> Relative improvement of Z-KF+BDC over CA-KF+BDC
+> 64 % 17 % 51 % 15 % 53 % 18 %
+> Acceleration MEN (m s −2 )
+> CA-KF+BDC 1.646 1.105 2.793 1.889 4.385 2.885 Z-KF+BDC 0.314 1.054 0.768 1.548 1.382 2.135
+> Relative improvement of Z-KF+BDC over CA-KF+BDC
+> 81 % 5 % 73 % 18 % 68 % 26 % 0.00.51.01.52.02.53.03.5Time (s)
+> −2.50.02.55.07.510 .0
+> a (ms −2)
+> aref
+> Ground truth CA-KF + BDC Z-KF + BDC
+> τ= 0 .48 s τ= 0 .25 s
+> τ= 0 .16 s
+> 63.2%
+
+Fig. 4. Acceleration step response at 9 m s −2 magnitude. Shaded regions indicate variance across five runs. Crosses represent camera frames. 
+
+However, the consistent 15–18 % vertical improvement is also non-negligible. For acceleration, the contrast is sharper (especially at low agility), indicating that the large reduction in acceleration error originates specifically from thrust-direction observation of lateral motion. Pose-KF z-axis velocity error exceeds even CA-KF+BDC at mid and high agility levels, highlighting how its constant thrust-magnitude assumption degrades vertical estimation under aggressive tilt. 
+
+F. Estimation Latency 
+
+Beyond estimation accuracy, agile multi-UAV flight de-mands low-latency state estimates. For example, in a leader-follower scenario, the estimation delay directly determines the ability to keep the leader within the camera’s field of view. To quantify this, we design a dedicated experiment in which the observed UAV executes acceleration step commands in an arbitrary horizontal direction at each of the seven agility levels. Five camera trajectories are applied to each recording to enable a fair comparison across viewpoints. We compare the best-performing position-only (CA-KF+BDC) and pose-aware (Z-KF+BDC) estimators. Figure 4 shows a representative step response at 9 m s −2 . The reaction time of the CA-KF+BDC w.r.t. the system’s response is visibly delayed, while the Z-KF+BDC responds near-instantly, as the thrust-direction 
+
+TABLE V. Step response delay over reference magnitude.                                                      
+
+> aref τgt τCA-KF+BDC τZ-KF+BDC
+> (m s −2 )ms frames ms frames ms frames 3152.0 3.8 456.4 11.4 156.0 3.9 6159.2 4.0 482.9 12.1 208.4 5.2 9164.4 4.1 477.6 11.9 247.3 6.2 12 172.1 4.3 474.8 11.9 292.1 7.3 15 180.6 4.5 476.1 11.9 327.0 8.2 18 187.9 4.7 482.8 12.1 344.6 8.6 21 170.2 4.3 460.7 11.5 336.6 8.4 Response delays of the physical system ( τgt ) and of the best position-only and pose-aware estimators. The delays are reported as the 63.2 % rise time. Values are averaged over five samples (std. dev. <34 ms for all conditions).
+
+measurement captures the acceleration onset before significant displacement accumulates. Table V quantifies this across all agility levels using the classical 63.2 % rise time. We compare the ground-truth rise time τgt , determined by the UAV’s dynamics, with the rise time of the estimated acceleration. CA-KF+BDC introduces an approximately constant overhead of ∼300 ms (corresponding to ∼7–8 frames) above the physical onset, independent of agility level, which may be counterintuitive. A higher accelera-tion produces proportionally larger inter-frame displacements, yet the detection delay does not decrease. This points to a structural bottleneck in position-based estimation, where a fixed number of displacement samples is required to infer ac-celeration regardless of its magnitude. In contrast, Z-KF+BDC operates near the physical detection limit at low agility. At higher agility, its delay gradually increases, but remains below the CA-KF+BDC at every level. 
+
+G. Closed-Loop Validation 
+
+To demonstrate the system-level impact of estimation qual-ity, a leader-follower scenario is evaluated in a closed-loop experiment using a high-fidelity photorealistic simulator [22]. The leader UAV flies along the y-axis between increasingly distant waypoints, reaching accelerations above 20 m s −2 . The follower, offset by 4 m in x, observes the leader through a 110° FOV camera using the full perception pipeline (YOLOv5-6D, PnP, state estimator). The estimated state is propagated over a 1.4 s horizon, matching the NMPC control horizon [1]. The estimator parameters are re-tuned on MEN error over the predicted trajectory, aligning the objective with the control task. We compare the Z-KF and CA-KF. When the CA-KF is employed, the follower becomes unstable already during hovering, losing the leader within approximately 5 s. Estimation errors compound over the 1.4 s prediction horizon, causing progressively larger control cor-rections until the leader exits the camera field of view. Both variants (CA-KF, CA-KF+BDC) exhibit the same failure. With Z-KF, the follower maintains stable hovering and subsequently tracks the leader through lateral maneuvers above 2 g (up to 60° tilt, 14 m s −1 ) over a 20 s sequence (see Fig. 5). The follower itself reaches accelerations above 25 m s −2 due to corrective control. The experiment ends when the leader exits the camera’s field of view at the most aggressive waypoint, not due to a failure of the estimator. 8 IEEE/RSJ IROS 2026. PREPRINT VERSION. ACCEPTED JUNE, 2026 Leader Follower (Z-KF + NMPC) Z-KF estimate        
+
+> −15 15
+> py (m)  (a)
+> Loss of Sight t1t5t6
+> −20 020
+> vy (ms −1) (b)
+> Loss of Sight
+> 0510 15 20
+> t(s)
+> −25 025
+> ay (ms −2) (c)
+> Loss of Sight
+
+Fig. 5. Closed-loop leader-follower tracking with Z-KF and NMPC. Note that with a position-only estimator, the follower is not even capable of stable hovering (not shown). Markers t1–t6 reference Fig. 1. (a) Position. (b) Velocity. (c) Acceleration. 
+
+VI. D ISCUSSION & C ONCLUSION 
+
+This work provided a detailed analysis of the influence of including thrust-direction information in vision-based state estimation of multirotor UAVs over using only position mea-surements. The main limitation of position-only estimation is structural: higher-order states must be inferred from ac-cumulated displacement. This problem manifests already at low agility levels, substantially affecting estimation accuracy. Moreover, it introduces an inherent estimation lag, bound-ing the achievable agility when used in closed-loop control. Incorporating the thrust direction significantly reduces the estimation error and delay. Although we used real-world datasets and high-fidelity sim-ulation to ensure robust evaluation, several limitations remain. Our PnP-based pose extraction assumes known dimensions of the target, which may be limiting in some scenarios, but this can be solved e.g. by utilizing a stereo camera for distance measurement. The closed-loop experiments were conducted only in simulation, with real-world validation remaining an open problem, which we plan to address in future work. Overall, the presented results demonstrate that to achieve truly agile communication-free multi-UAV flight, conventional state estimation approaches based on relative localization are insufficient. We provide a complete methodology to remove this limitation that we believe will be fundamental in further research in agile multi-UAV flight. REFERENCES [1] P. M. Gupta, O. Proch´ azka, J. Hˇ rebec, M. Novosad, R. Pˇ eniˇ cka, and M. Saska, “LoL-NMPC: Low-Level Dynamics Integration in Nonlinear Model Predictive Control for Unmanned Aerial Vehicles,” in IROS , Oct. 2025, pp. 1186–1193. [2] Y. Song, A. Romero, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Reach-ing the limit in autonomous racing: Optimal control versus reinforcement learning,” Science Robotics , vol. 8, no. 82, p. eadg1462, 2023. [3] R. Ferede, T. Blaha, E. Lucassen, C. De Wagter, and G. C. de Croon, “One Net to Rule Them All: Domain Randomization in Quadcopter Racing Across Different Platforms,” in ICRA , May 2025, pp. 6357– 6363. [4] R. Opromolla, G. Fasano, and D. Accardo, “A Vision-Based Approach to UAV Detection and Tracking in Cooperative Applications,” Sensors ,vol. 18, no. 10, p. 3391, Oct. 2018. [5] V. Walter, N. Staub, A. Franchi, and M. Saska, “UVDAR System for Visual Relative Localization With Application to Leader–Follower Formations of Multirotor UAVs,” RA-L , vol. 4, no. 3, pp. 2637–2644, Jul. 2019. [6] F. Schilling, F. Schiano, and D. Floreano, “Vision-Based Drone Flocking in Outdoor Environments,” RA-L , vol. 6, no. 2, pp. 2954–2961, Apr. 2021. [7] Y. Tang, Y. Hu, J. Cui, F. Liao, M. Lao, F. Lin, and R. S. H. Teo, “Vision-Aided Multi-UAV Autonomous Flocking in GPS-Denied Environment,” 
+
+IEEE Transactions on Industrial Electronics , vol. 66, no. 1, pp. 616–626, Jan. 2019. [8] P. Zhang, G. Chen, Y. Li, and W. Dong, “Agile Formation Control of Drone Flocking Enhanced With Active Vision-Based Relative Localiza-tion,” RA-L , vol. 7, no. 3, pp. 6359–6366, Jul. 2022. [9] R. Jin, J. Jiang, Y. Qi, D. Lin, and T. Song, “Drone Detection and Pose Estimation Using Relational Graph Networks,” Sensors , vol. 19, no. 6, p. 1479, Jan. 2019. [10] Y. Zheng, C. Zheng, J. Shen, P. Liu, and S. Zhao, “Keypoint-Guided Efficient Pose Estimation and Domain Adaptation for Micro Aerial Vehicles,” T-RO , vol. 40, pp. 2967–2983, 2024. [11] Y. Zhang, Z. Ning, and S. Zhao, “Observability-enhanced target mo-tion estimation via bearing-box: Theory and MAV applications,” IEEE Transactions on Robotics , vol. 42, pp. 1213–1232, 2026. [12] A. Carrio, J. Tordesillas, S. Vemprala, S. Saripalli, P. Campoy, and J. P. How, “Onboard Detection and Localization of Drones Using Depth Maps,” IEEE Access , vol. 8, pp. 30 480–30 490, 2020. [13] M. Vrba, V. Walter, V. Pritzl, M. Pliska, T. B´ aˇ ca, V. Spurn´ y, D. Heˇ rt, and M. Saska, “On Onboard LiDAR-Based Flying Object Detection,” 
+
+T-RO , vol. 41, pp. 593–611, 2025. [14] M. Vrba and M. Saska, “Marker-Less Micro Aerial Vehicle Detection and Localization Using Convolutional Neural Networks,” RA-L , vol. 5, no. 2, pp. 2459–2466, Apr. 2020. [15] A. Bariˇ si´ c, F. Petric, and S. Bogdan, “Brain over Brawn: Using a Stereo Camera to Detect, Track, and Intercept a Faster UAV by Reconstructing the Intruder’s Trajectory,” FR , vol. 2, no. 1, pp. 222–240, Mar. 2022. [16] R. ˇ Spetl´ ık, M. Pliska, V. Vrba, and J. Matas, “HelixTrack: Event-based tracking and RPM estimation of propeller-like objects,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recogni-tion (CVPR) Findings , June 2026, pp. 3200–3208. [17] C. G. A. Viviers, L. Filatova, M. Termeer, P. H. N. de With, and F. van der Sommen, “Advancing 6-DoF Instrument Pose Estimation in Variable X-Ray Imaging Geometries,” IEEE Transactions on Image Processing ,vol. 33, pp. 2462–2476, 2024. [18] S. Dogru and L. Marques, “Drone Detection Using Sparse Lidar Measurements,” RA-L , vol. 7, no. 2, pp. 3062–3069, Apr. 2022. [19] M. Pliska, M. Vrba, T. B´ aˇ ca, and M. Saska, “Towards Safe Mid-Air Drone Interception: Strategies for Tracking & Capture,” RA-L , vol. 9, no. 10, pp. 8810–8817, Oct. 2024. [20] A. I. Mourikis and S. I. Roumeliotis, “A multi-state constraint Kalman filter for vision-aided inertial navigation,” in Proceedings 2007 IEEE international conference on robotics and automation . IEEE, 2007, pp. 3565–3572. [21] D. Simon, Optimal state estimation: Kalman, H infinity, and nonlinear approaches . John Wiley & Sons, 2006. [22] D. ˇCapek, J. Hrnˇ c´ ıˇ r, T. B´ aˇ ca, J. Jirkal, V. Von´ asek, R. Pˇ eniˇ cka, and M. Saska, “FlightForge: Advancing UAV Research with Procedural Generation of High-Fidelity Simulation and Integrated Autonomy,” in 
+
+ICRA , May 2025, pp. 1611–1617. [23] T. Baca, M. Petrlik, M. Vrba, V. Spurny, R. Penicka, D. Hert, and M. Saska, “The MRS UAV System: Pushing the Frontiers of Repro-ducible Research, Real-world Deployment, and Education with Au-tonomous Unmanned Aerial Vehicles,” JIRS , vol. 102, no. 1, p. 26, Apr. 2021. [24] R. C. Leishman and T. W. McLain, “Multiplicative extended Kalman fil-ter for relative rotorcraft navigation,” Journal of Aerospace Information Systems , vol. 12, no. 12, pp. 728–744, 2015. [25] N. Hansen, S. D. M¨ uller, and P. Koumoutsakos, “Reducing the time complexity of the derandomized evolution strategy with covariance matrix adaptation (CMA-ES),” Evolutionary Computation , vol. 11, no. 1, pp. 1–18, 2003.

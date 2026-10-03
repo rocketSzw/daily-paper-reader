@@ -1,0 +1,402 @@
+Title: RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation
+
+URL Source: https://arxiv.org/pdf/2609.32595v1
+
+Published Time: Tue, 29 Sep 2026 01:26:57 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation 
+
+Incheol Cho 1,3∗, Jintae Park 2∗, Jinkyu Kim 1,4, Jungbeom Lee 1, Jaegul Choo 2†, Seokha Moon 1†
+
+1Korea University 2KAIST AI 3Hanwha Aerospace 4Kakao Mobility VLM  Semantic Recasting 
+
++ VFM  Spatial Grounding                      
+
+> Robot’s Front -view
+> “Go behind the traffic
+> cones without colliding
+> anything. Also, never
+> enter the grass yielding
+> for pedestrians”
+> From what I see and
+> what I'm told , let me
+> pull out only what
+> the robot needs to
+> navigate safely :
+> Language Instruction
+> Terrain traversability
+> ①
+> ②③⑤
+> ⑥
+> Action on the Cost Map
+> ④Heading preference
+> Collision risk
+> Passable gap
+> Z1 0 Z2 1 Z3 3 Z4 1 Z5 9 Z6 0 Z7 0
+> Non -Traversable Traversable
+
+Fig. 1. Overview of RECAST. From the robot’s front view and the user’s instruction, a Vision-Language Model (VLM) judges terrain traversability, collision risk, heading preference, and passable gaps. Grounded in the image with Vision Foundation Models (VFMs), these judgments are recast into the Actionable Cost map. Candidate trajectories (gray) are scored on this map, and the best one (green) is executed. Below, the quadruped yields to the pedestrian, passes behind the traffic cones, and stays off the grass, as instructed. 
+
+Abstract — Safe and robust robot navigation across diverse environments requires a high-level understanding of complex scenes and the ability to carry it into stable motion. Recent works tackle this with learning-based models trained at scale and with approaches built on vision-language models (VLMs). However, learning-based models break down outside their training distribution, while VLM-based approaches bring that understanding but rarely ground it in the scene or align the action with it. To address these limitations, we present RECAST, a robot navigation framework that combines the reasoning of a VLM with the spatial grounding of vision foundation models to build an Actionable Cost map. Given the robot’s front view and the user’s instruction, we first decompose the scene with the VLM, judging which surfaces are traversable, which objects pose a risk, which heading to prefer, and which gaps are passable. Vision foundation models then ground these surfaces and objects in the image, and all four judgments are spatially recast into one compact cost map. This map both conditions the trajectory decoders and scores their proposals to select the one to execute. As the VLM’s answers trail the live scene, both steps draw on cost maps from two points in time: the pivot frame the VLM judged, which carries all four judgments, and the current frame, whose terrain and collision costs are rebuilt from the current image. RECAST improves success over the strongest prior method by 13.3 points in simulation and 31.4 points on a real quadruped, and reduces the collision 
+
+> ∗
+
+Equal contribution. 
+
+> †
+
+Co-corresponding authors. 
+
+rate relative to it by 9.6 and 14.3 points, reaching the lowest collision rate among all methods. The project page is available at https://recast-nav.github.io/ .
+
+I. I NTRODUCTION 
+
+Mobile robots are now part of everyday life, not only in indoor settings such as factories, retail stores, and hospitals, but also across diverse outdoor environments for last-mile delivery. To move safely and robustly across such diverse environments, a robot must build a high-level understand-ing of a complex scene it has never seen and carry that understanding through into stable motion. In Fig. 1, for example, the robot has to recognize a pedestrian to yield to, a gap behind the traffic cones to thread, and pavement rather than grass to stay on, and then move accordingly. And the scene keeps moving while the robot deliberates, so that understanding must stay current as well. These demands have driven a surge of research on robot navigation in two directions. Learning-based navigation foundation models [1–9] train on large-scale data to map observations directly to actions, and run at high control rates across embodiments and environments. Approaches built on vision-language models (VLMs) bring the high-level semantics those models lack, whether by decoding actions from the reasoning and instruction following of a language arXiv:2609.32595v1 [cs.RO] 26 Sep 2026 model [10–19] or by grounding the VLM’s answers with vision foundation models into a cost map or a trajectory choice [20–22]. However, neither direction turns the high-level semantics of a scene into accurate action. A policy trained on large-scale data often fails to cope with a scene its data never covered, as benchmarks with diverse scenes and moving pedestrians show [14]. Where a VLM is added, its answer reaches action without being grounded in the scene, inviting hallucination and reasoning-action misalignment [23]. Even the approaches that ground the instruction reduce the VLM’s answer to one fixed cue, a rule set [20] or a trajectory pick [21, 22], so the rest of what it reasons about the scene rarely shapes the action. What is missing is a representation that recasts the high-level semantics of a complex scene into a grounded, compact form that bears directly on the action, and keeps that form aligned with the scene as it moves. To address these limitations, we introduce RECAST , a robot navigation framework built around that missing rep-resentation (Fig. 1). From the robot’s egocentric view, the goal, and the user’s instruction, RECAST elicits from a VLM what in the scene matters for moving through it, decomposed into four judgments: (i) the traversability of terrain, (ii) the collision risk each object poses, (iii) the heading to prefer, and (iv) the passable gaps. Vision foundation models then ground these judgments to their corresponding regions, where they are laid out spatially and composed into a single map that bears directly on the action, the Actionable Cost map (AC map ). This map plays two roles: it conditions the trajectory decoders, and it ranks their trajectories to pick the one the robot follows, keeping the motion aligned with the reasoning. Since the scene keeps changing while the VLM reasons, both roles use the map on two frames: the pivot frame the VLM analyzed, holding all four judgments, and the current frame, with terrain and collision costs refreshed per observation, so the map stays aligned with the scene throughout the VLM’s reasoning. In summary, the contributions of our work are three-fold.  
+
+> •
+
+We propose RECAST, a robot navigation framework that recasts the high-level semantics of a VLM into the AC map, which both conditions its trajectory decoders and picks which of their trajectories to run.  
+
+> •
+
+We introduce a pivot–current design, which draws on the AC map of both the frame the VLM judged and the frame the robot currently sees, keeping both condition-ing and selection aligned with the live scene.  
+
+> •
+
+We achieve the highest success and the lowest collision rate among all methods on a simulation benchmark (DynaNav [14]) and on a real quadruped robot. II. R ELATED WORKS 
+
+A. Navigation Foundation Models 
+
+Visual navigation has been learned end to end via imitation [24–26] and reinforcement learning [27–29], and extended to language instructions [25, 30] and open-vocabulary goals [31, 32]. Datasets collected across diverse embodiments and sensors [33–37] have enabled navigation foundation models that generalize across embodiments and environments [1–9]. However, these policies carry only what their demonstrations showed, so no new constraint can be added at deploy-ment, and a scene outside that data ends in collisions, as benchmarks with moving pedestrians show [14]. In contrast, RECAST retains such learned decoders, but conditions them on the AC map and additionally has the map evaluate their proposals, ensuring what the VLM knows reaches motion without retraining. 
+
+B. VLM Reasoning for Navigation 
+
+To handle out-of-distribution navigation scenes, many works leverage VLM reasoning before predicting actions. Dual-system works pair a reasoning VLM with a low-level policy [10, 11, 14], single-system vision-language-action models (VLAs) decode actions directly from video streams [12, 13, 15–19, 38], and others query a VLM at every step to select trajectories or motion commands [39– 41]. Although remarkably powerful, these designs rarely ground the reasoning to where it applies in the scene, so hallucinated or misaligned reasoning [23] often leads to erroneous actions. BehAV [20] does build a grounded cost map, but it decomposes only the user’s instruction into behavioral rules, so the map covers the objects those rules name rather than what the scene itself demands, and the goal enters its planner separately. Moreover, VLM reasoning takes seconds, so even designs that pair it with a fast action decoder act on answers that lag behind the dynamic scene. RECAST instead leverages the VLM to reason over the complex scene itself and grounds each judgment, from terrain traversability to heading preference and passable gaps, into the AC map before it reaches motion. Furthermore, its pivot– current design keeps this map aligned with the scene despite the slow reasoning. III. M ETHODS 
+
+Preliminary. We consider instruction-guided point-goal nav-igation on a quadruped robot. At control time t the robot observes an egocentric RGB frame ot together with a history 
+
+Ht of past frames and the robot’s past poses Pt, both sam-pled at interval ∆. It is further given a language instruction ℓ
+
+and a point goal. The policy then outputs H future waypoints in the body frame, which a low-level controller converts to velocity commands (v, ω ). Throughout, subscripts pv and cur tie a quantity to the pivot frame opv = ot−N ∆, with an integer lag 1 ≤ N ≤ t/ ∆, on which the latest VLM queries were issued, or to the current frame ocur = ot, on which the robot acts. 
+
+A. The Actionable Cost Map (AC Map) 
+
+What a VLM infers from a complex scene and the given instruction steers the robot only once it is cast into a spatial form a policy can act on. The AC map builds that form from VLM queries on a single frame (Fig. 2). The VLM answers them in labels, scores, and object indices. Vision foundation models ground the surfaces and objects it names to the pixels Fast Current                                                            
+
+> Recasting
+> Z2 0 Z3 3 Z4 5 Z5 9 Z6 4 Z7 1
+> “ Pass through
+> the stones ”
+> From what I see and what I'm told ,let me pull out only what the robot
+> needs to navigate safely :
+> Terrain traversability
+> Collision risk
+> Heading preference
+> Passable gap
+> Reasoning about the ground, considering whether it is flat,
+> solid, or slippery…
+> {pavement :safe ,grass :unsafe }
+> Reasoning about obstacles, considering what is close, what
+> is ahead, and what is moving…
+> [left person ,left chair , …, middle stone ]
+> Reasoning about goal direction ,scoring 7zones left to right ,
+> 0to 10, by openness ,safety ,goal alignment …
+> { Z1: 0 ,Z2: 0 ,…, Z5: 9 ,Z6: 4 ,Z7: 1 ]
+> Reasoning about safe and efficient gaps ,considering the
+> robot's body width …
+> gap :middle stone right stone
+> Front-view & Instruction
+
+𝑰 𝒑𝒊𝒗𝒐𝒕 
+
+> 𝑰 𝒑𝒂𝒔𝒕𝒔
+
+𝑰 𝑪𝒖𝒓𝒓𝒆𝒏𝒕           
+
+> Slow
+> update
+> Fast
+> update
+> Z1 0
+> Slow Pivot
+> Recasting
+> Candidate
+> Trajectories
+> ①
+> ②
+> ③④⑤
+> ⑦
+> ⑥
+> ①
+> ②④⑤
+> ⑦
+> ⑥
+> ③
+> Pivot Map
+> Projection
+> ①
+> ④⑤
+> ⑦
+> Pivot Cost Map
+> Current Cost Map
+> From Cost Map Generation To Action Generation Real Robot Navigation
+> Non-Traversable Traversable
+> Non-Traversable Traversable
+> VLM Semantic Recasting
+> + VFM Spatial Grounding
+
+Fig. 2. RECAST pipeline. Given the front view and the instruction, a VLM makes four judgments on the pivot frame, terrain traversability, collision risk, heading preference, and passable gaps, which are grounded into four component cost maps and composed into the pivot AC map. Each current frame rebuilds only the terrain traversability and collision risk components into the current AC map, without a new VLM call. Conditioned on both maps, the decoder proposes candidate trajectories, each scored on the current map and, carried into the pivot frame, on the pivot map. The best one (green) is executed on the real robot (right), which passes through the gap between the stones as instructed. 
+
+where they hold, while the direction and gaps follow straight from its answers. The four stack as spatially registered cost maps on the image plane, composed into one map. Gaussian blurring keeps the map from splitting into discrete regions, so cost changes gradually across the scene rather than abruptly at object boundaries, and a path passing close to an obstacle is penalized more than one passing far. 
+
+Terrain traversability cost map ( M T ). The traversability query carries a prompt-side guide of the objects and terrain to watch for, together with the constraints the user states. The prompted VLM reasons over the whole scene, naming the objects and surfaces in view and judging how traversable each is, then hands the scored labels to a text-conditioned segmentation model [42], whose per-label probability maps label each pixel, and a Gaussian kernel smooths the cost map, 
+
+M T = Gσ ∗ sc⋆ , c⋆ = arg max 
+
+c Pc, (1) where Pc is the segmentation probability of label c and 
+
+sc ∈ [0 , 1] its traversability. Higher values mean preferred ground (e.g. sidewalk over gravel), lower values obstacles and hazards, and a constraint stated in language changes sc
+
+directly. 
+
+Collision risk cost map ( M C ). Every object the traversabil-ity query flags as an obstacle is located by an open-vocabulary detector [43] and punches a graded Gaussian hole in the map at the ground point of its box, with metric radius 
+
+R and depth one minus its traversability si, and overlapping holes keep the deepest value. An obstacle the instruction ℓ
+
+drove to zero is thus cut out entirely, which turns a constraint stated in language into geometry, and R can be enlarged at inference without retraining. 
+
+Heading preference cost map ( M H ). The heading query partitions the frame into seven vertical zones and scores each one given the instruction ℓ and the goal bearing, so a zone scores high only when it is both oriented toward the goal and traversable. The direction is thus the VLM’s own spatial judgment. The scores, given on a 0–10 scale and normalized to [0 , 1] , are interpolated across image columns into a horizontal preference field, and this is how the intent to reach the goal enters the map. 
+
+Passable gap cost map ( M P ). The passable gap query names object pairs whose gap is passable. Each passable pair opens a Gaussian corridor between the two footprints, a column centered on the gap whose width follows the gap. 
+
+M P equals one everywhere else and rises toward γ inside the corridor, so whereas the other three only attenuate, M P alone boosts, restoring narrow passages that M C would otherwise close. 
+
+Composition. The four components are composed into a single compact image-space map, 
+
+Min =  γ−1M T ⊙(1 −M C )⊙M H ⊙M P 10, (2) where M T , M C , and M H lie in [0 , 1] , M P in [1 , γ ], and [·]10
+
+clamps the composite to [0 , 1] after the gap boost. The policy consumes Min as a dense conditioning input. The composite is built on two frames (Fig. 2). All four components are baked on the pivot frame, the one where the VLM answers are available, giving Min ,pv . On every current frame it is rebuilt from M T and M C alone, reusing the labels and scores the VLM returned on the pivot frame and rerunning only the segmenter and the detector on the current frame, which gives Min ,cur without a new VLM call. What the current frame refreshes is therefore where things are, not what they mean. 
+
+B. AC Map-Conditioned Trajectory Decoders 
+
+The AC map is decoder-agnostic. We instantiate two trained decoders that consume it through the pivot–current conditioning described below. Following anchor-based multi-modal planners [26], both cluster the training trajectories with K-means into K anchors {a(k)}Kk=1 and predict one trajectory per anchor, so the multi-modality of feasible paths is preserved by construction. 
+
+Pivot–current conditioning. VLM judgment and generated action sit on different frames. The decoder therefore takes both instances of the map, Min ,pv and Min ,cur , as separate streams, and is told the lag N between them. Each anchor owns one trajectory query, and the K queries Q, built from the past poses Pt, pass through self-attention among themselves and cross-attention over four token streams, one from the past frames, two from the pivot frame, and one from the current frame. The history stream holds one token per frame of Ht. The pivot object stream Opv holds one token per object, and per passable pair, that the VLM returned on the pivot frame. The pivot semantic stream Spv fuses 
+
+opv with Min ,pv , and the current semantic stream Scur fuses 
+
+ocur with Min ,cur , each by concatenating, cell by cell, the features of a frozen image encoder ϕ [44] and of a small map encoder ψ, so every token carries both appearance and the map. The decoder maps the queries and the four streams to K trajectories and their scores, 
+
+{ˆτ (k), p (k)}Kk=1 = πθ
+
+ Q; Ht, O pv , S pv , S cur , e N
+
+, (3) where ˆτ (k) is the trajectory predicted for mode k and p(k)
+
+the confidence a classification head assigns to it. The lag N
+
+enters twice, as a one-hot token eN on the pivot semantic stream and as a marker on the pivot’s slot in the history stream, so the history slots between the pivot and the present are exactly what changed between reasoning and control. Sampling N uniformly during training lets one model span every delay. The decoders never receive the goal directly. It reaches them only through the AC map, where M H encodes it. 
+
+Training objective. Each sample supervises only the mode whose anchor is nearest to its ground-truth trajectory, kgt =arg min k ∥a(k) − τ gt ∥2. Let ˆW be the cumulative waypoints of the predicted trajectory ˆτ (kgt ) of that mode, W gt those of the ground truth, and J(·) the jerk of a waypoint sequence. The loss sums an L1 trajectory term, an L1 jerk term, and a cross-entropy term, 
+
+L = ˆW − W gt  
+
+> 1
+
++ λ J( ˆW ) − J(W gt ) 1
+
++ CE  p, k gt , (4) with λ weighting the jerk term and p the score of the clas-sification head. We add the jerk term because the trajectory term alone does not penalize a path that zig-zags between waypoints. 
+
+Decoder variants. The two trained decoders, each trained as its own model, differ in how Q is formed. The regression de-coder projects the embedding of Pt into K queries, evaluates 
+
+πθ once, and predicts a per-anchor residual, ˆτ (k) = a(k) +
+
+δ(k). The diffusion decoder uses truncated diffusion [26], forming each query from an anchor noised up to a truncation step plus the same embedding, and evaluating πθ once per DDIM step to denoise it back, so ˆτ (k) = ˆ x(k)0 .
+
+C. AC Map-Scored Mode Selection 
+
+The trained decoders emit K candidates and leave the choice to their classification head, which picks the mode with the highest confidence p(k). But that head only imitates which anchor the demonstration took. It never scores a path for progress toward a goal, for safety, or for whether the ground it crosses was judged traversable. No goal appears in its training data or in any of its inputs. And being trained, its judgment does not carry beyond that distribution. The AC map is exactly those judgments in spatial form, so RECAST hands the choice to the map, projecting each candidate onto it and scoring the ground the trajectory crosses. 
+
+Scoring map. The components are rasterized onto a metric bird’s-eye-view grid by ground-plane projection, 
+
+Mscore = BEV  M T ⊙M H ⊙M P ⊙(1 − BEV( M C )) , (5) with M C applied after rasterization so its holes stay metric. Like Min , it exists on both frames, Mscore ,pv from all four components and Mscore ,cur from M T and M C .
+
+Mode selection and safety veto. The mode that is executed is the one with the highest score, 
+
+k⋆ = arg max  
+
+> k
+
+s(k), (6) and its trajectory ˆτ (k⋆) is what the low-level controller tracks. The score carries the safety veto, which zeroes any candidate whose current-frame term falls below τ and stops the robot if no mode clears it, 
+
+s(k) =
+
+(
+
+0 (rcur < τ ),rcur rpv ralign (rcur ≥ τ ), (7) where every factor is evaluated on candidate k.
+
+Score terms. Let xh be waypoint h of candidate k in the current body frame and ˜xh the same waypoint carried into the pivot frame by the accumulated SE(2) odometry. A waypoint is trusted in a map when its ground cell lies inside that camera’s ground coverage. A candidate with no trusted waypoint scores zero, so unseen ground counts as unsafe. Writing Tcur for the waypoints trusted by Mscore ,cur inside a forward window and Tpv for those trusted by Mscore ,pv ,the three factors are 
+
+rcur = Pq
+
+ Mscore ,cur (xh) : h ∈ T cur ,rpv = P 
+
+> h∈T pv
+
+h M score ,pv (˜ xh)  P  
+
+> h∈T pv
+
+h, ralign = exp   − w |∆θ|/σ θ
+
+,
+
+(8) where Pq is the q-th percentile and ∆θ is the angle between the goal bearing and the heading of the candidate. rcur pools by a low percentile, so the veto rejects any candidate whose riskiest trusted samples are unsafe. rpv averages the pivot map along the candidate with weights that grow linearly toward the last waypoint, so it cares most about where the trajectory ends up. All three factors rank the candidates that pass, but only Mscore ,cur can reject one, so a stale pivot never admits an unsafe path. The AC map thus governs both what the decoders propose 
+
+(Eq. 2) and what the robot finally executes (Eq. 5 and 6). It is also actionable with no learned decoder at all. A metric-depth network [45] lifts the pivot and current maps into a world BEV cost grid, and a sampling-based MPC optimizes unicycle rollouts on it and returns one trajectory, with no trained component in the loop. IV. E XPERIMENTS 
+
+A. Experimental Setup 
+
+Datasets. Both decoders are trained on a mixture of SCAND [33], GND [34], and our teleoperated Vision60 dataset. Evaluation spans simulation and the real world. In simulation we follow the official 85-episode DynaNav protocol [14], 25 episodes each in a hospital, an office, and a warehouse, and 10 outdoors with moving pedestrians, replacing only its wheeled robot with a Spot quadruped for every method. In the real world we deploy on a Vision60 quadruped over seven campus scenes, three indoor and four outdoor, each run five times with goals 9 to 16 m away. 
+
+Implementation details. The VLM is Gemini 3.5 Flash-Lite, and its answers are grounded by CLIPSeg [42] for surfaces and YOLO-World [43] for objects. Each AC map component is rendered at 224 ×224 with γ=1 .3 and R=0 .25 m ( 0.4 mat deployment), and the BEV grid covers 12 ×10 m at 0.05 m per cell. Both decoders use K=10 anchors, H=10 waypoints at ∆=0 .5 s, and a frozen CLIP ViT-B/16 [44] as ϕ, and the diffusion decoder denoises in two DDIM steps from 
+
+Ttrunc =200 . They are trained for 20 epochs on one H200 GPU with AdamW (batch 1024, learning rate 2×10 −4,
+
+λ=0 .5), with N drawn from {2, . . . , 10 } (1–5 s) and clamped to {2, . . . , 6} (1–3 s) at deployment. Mode selection uses 
+
+τ =0 .35 and a 1–4 m window for rcur in simulation ( 0.15 
+
+and a 3 m window on the real robot), q=10 , and w=1 and 
+
+σθ =45 ◦ for ralign . Simulation runs on an RTX 3090 and the real robot on a laptop RTX 5080 over ROS2. 
+
+Evaluation metrics. We report the benchmark’s official met-rics [14], success rate (SR) within 1.5 m of the goal before timeout, navigation error (NE) in meters, success weighted by path length (SPL), and collision rate (CR), counting a sustained contact or a pass within 0.2 m of a person. In the real world the same success criterion is checked against UTM tracks outdoors and recorded video indoors. 
+
+B. Comparison with Prior Methods 
+
+Simulation. The three RECAST variants in Table I share the same AC map and differ only in what acts on it, a training-free MPC, a regression decoder, or a diffusion decoder, and all three achieve a higher SR than every prior method. With the MPC alone, RECAST reaches 71.8% SR, surpassing the strongest prior method, NavDP † (66.7%), which receives the same point goal, so the map is enough to guide the robot even without a learned decoder. Plugging in the trained decoders raises SR further, to 77.6% with regression and 80.0% with                                                                                     
+
+> TABLE I RESULTS ON THE DYNA NAV BENCHMARK [14]. N AV DP †RECEIVES THE POINT GOAL , N AV DP DOES NOT . B OLD WITH UNDERLINE MARKS THE BEST IN EACH COLUMN .
+> Method SR(%) ↑NE(m) ↓SPL(%) ↑CR(%) ↓
+> ViNT [2] 10.6 21.2 9.7 64.1 NoMaD [3] 30.0 15.2 24.9 35.3 NaVIDA [38] 22.4 18.3 19.1 30.0 TIC-VLA [14] 35.9 12.6 32.6 31.2 NavDP [8] 21.8 21.3 19.9 24.7 NavDP †[8] 66.7 5.80 64.0 32.0 RECAST (MPC) 71.8 5.84 66.8 30.6
+> RECAST (regression) 77.6 4.07 68.6 22.4 RECAST (diffusion) 80.0 4.73 70.0 24.7 TABLE II REAL -WORLD RESULTS ON THE VISION 60 QUADRUPED ,SEVEN CAMPUS SCENES WITH FIVE RUNS EACH . B OLD WITH UNDERLINE MARKS THE BEST IN EACH COLUMN .
+> Method SR(%) ↑NE(m) ↓SPL(%) ↑CR(%) ↓
+> ViNT [2] 22.9 8.07 19.3 54.3 NoMaD [3] 45.7 3.90 33.6 42.9 NavDP [8] 31.4 7.45 22.8 54.3 NaVIDA [38] 5.7 11.12 4.6 37.1 TIC-VLA [14] 22.9 8.29 18.9 45.7
+> RECAST 77.1 1.94 60.2 28.6
+
+diffusion, and each favors different metrics. The regression decoder achieves the lowest NE (4.07 m) and CR (22.4%) of all methods, while the diffusion decoder attains the highest SPL (70.0%) along with its top SR. The decoder can thus be swapped to favor safety or success while the map stays unchanged. 
+
+Real world. Table II compares all methods on the real Vision60 quadruped. Running its regression decoder, RE-CAST leads on every metric, with 77.1% SR, 1.94 m NE, 60.2% SPL, and the lowest CR of 28.6%. The strongest prior method, NoMaD, reaches 45.7% SR but collides in 42.9% of runs, as a policy learned from demonstrations alone does not reflect what the scene or the instruction demands. The VLM-based prior methods, TIC-VLA and NaVIDA, take the instruction yet reach only 22.9% and 5.7% SR, which we attribute to reasoning that is not grounded in the scene. RECAST grounds each judgment in the AC map before it reaches motion, and it ends closer to the goal on average, with an NE less than half that of NoMaD. 
+
+C. Ablations 
+
+Effect of the AC map components. Table III stacks the components of the AC map one by one. Model A keeps only the terrain traversability cost map M T , which is what scene-decomposition approaches such as BehAV [20] act on, one instruction-conditioned cost map, and it reaches 58.8% SR with 35.3% CR. BehAV itself plans on 3D LiDAR, so Model A stands in as its camera-only counterpart. Decomposing the vision-language semantics further pays at every step. The collision risk map M C (Model B) adds 10.6 points Additional Instruction A  Additional Instruction B 
+
+Front-view 
+
+& Basic Instruction                                       
+
+> Low High Low High
+> “ Keep going down this side street ”
+> “ Stay on the wide -open roadway ” “ Stay on the sidewalk rather than the roadway”
+> Z1 7
+> Z1 8
+> Z1 9
+> Z1 7
+> Z1 3
+> Z1 0
+> Z1 0Z1 2
+> Z1 2
+> Z1 3
+> Z1 4
+> Z1 8
+> Z1 9
+> Z1 9
+> “ Keep walking
+> straight ahead ”
+> “ Stay on the paved sidewalk ” “Stay far from the construction fence, step onto gravel if needed”
+> Z1 1 Z1 3 Z1 8 Z1 9 Z1 1 Z1 0 Z1 0 Z1 0 Z1 0 Z1 0 Z1 4 Z1 8 Z1 8 Z1 7
+> “ Follow the sidewalk
+> without colliding with
+> anything ”
+> “ Never step onto the bumpy grass ” “ Step onto the grass if the sidewalk is blocked ”
+> Z1 0 Z1 0 Z1 1 Z1 1 Z1 0 Z1 0 Z1 0 Z1 8 Z1 8 Z1 7 Z1 5 Z1 0 Z1 0 Z1 0 No passable gap
+> Insufficient
+> actionable space
+> Stop
+> Non-Traversable Traversable Non-Traversable Traversable
+> Non-Traversable Traversable Non-Traversable Traversable
+
+Fig. 3. The AC map and how an added instruction reshapes it. Two real scenes, each under a basic instruction (left) and two additional instructions, A and B. Each panel shows the four components as insets and the composed AC map overlaid on the frame, with the K candidate trajectories in gray and the selected one in green. A panel marked Stop is a safety veto, with every candidate rejected. All runs use the regression decoder. TABLE III ABLATION OF THE AC MAP COMPONENTS AND THE PIVOT –CURRENT DESIGN WITH THE REGRESSION DECODER . PV : PIVOT COST MAP , CUR :
+
+CURRENT COST MAP .
+
+Map components Frames DynaNav Variant M T M C M H M P pv cur SR ↑ NE ↓ SPL ↑ CR ↓
+
+RECAST (ours) ✓ ✓ ✓ ✓ ✓ ✓ 77.6 4.07 68.6 22.4 
+
+Model A ✓ ✓ ✓ 58.8 7.59 53.8 35.3 Model B ✓ ✓ ✓ ✓ 69.4 5.70 64.0 34.1 Model C ✓ ✓ ✓ ✓ ✓ 74.1 4.97 68.0 22.4 
+
+Model D ✓ ✓ ✓ ✓ ✓ 65.9 5.91 59.5 32.9 TABLE IV ABLATION OF THE ROLES THE AC MAP SERVES WITH THE REGRESSION DECODER .
+
+Map role Final choice DynaNav Variant input scoring selector SR ↑ NE ↓ SPL ↑ CR ↓
+
+RECAST (ours) full full map 77.6 4.07 68.6 22.4 
+
+Model A M T full map 64.7 6.34 59.6 31.8 Model B full M T map 64.7 6.49 59.0 28.2 Model C full full head 14.1 18.25 12.7 29.4 
+
+of success, the heading preference M H (Model C) adds another 4.7 while cutting collisions from 34.1% to 22.4%, and the passable gap map M P adds a final 3.5 by reopening the narrow passages M C closes. The full map improves on Model A by 18.8 points of success and 12.9 points of collision rate, every metric moving in the same direction. Each component carries a judgment the previous ones cannot express, so the gain comes from decomposing further, not from sharpening one map. 
+
+Pivot–current design. Model D in Table III is a single-frame variant, retrained to assume pivot equals current, removing the current semantic stream and the lag token from the decoder and moving the veto onto the pivot map. Every metric degrades, success falls from 77.6% to 65.9%, NE grows from 4.07 m to 5.91 m, SPL drops from 68.6% to 59.5%, and CR rises from 22.4% to 32.9%. The variant still navigates, so the delayed judgments alone keep the system viable, but planning and vetoing on a scene that is seconds old costs accuracy, path quality, and safety at once. The current frame’s refresh of where things are is what buys them back. 
+
+AC map-scored mode selection. The map serves two roles, the decoders’ input and the scoring space (Table IV). Models A and B replace the full map with M T in the input or the scoring alone, which drops success from 77.6% to 64.7% and raises collisions from 22.4% to 31.8% and 28.2%, so each role needs the full map and neither compensates for the other. Model C hands the final choice to the classification head instead, with the same candidates and the same veto, which collapses success to 14.1%, since the confidence p
+
+only imitates the demonstrations and carries no notion of goal, safety, or traversability (Sec. III-C). Conditioning the decoder on the map is thus not enough. The map must also make the final choice. 
+
+D. Qualitative Analysis 
+
+Effect of the instruction on the AC map. Fig. 3 shows how one added sentence changes the map. Two real scenes are each run under a basic instruction and two additional ones. At the construction fence, “stay on the paved sidewalk” keeps the sidewalk bright and the straight candidate wins, whereas “stay far from the construction fence, step onto gravel if needed” widens the hole around the fence and the turn onto ViNT  NoMaD  TIC-VLA  NavDP RECAST (Ours)  NaVIDA                          
+
+> ViNT
+> NoMaD
+> TIC-VLA
+> NavDP
+> RECAST (Ours)
+> NaVIDA “Go straight past the aisle ahead. Turn right at the end and proceed forward to approach the fire extinguisher on the last rack. ”
+> Already :
+> Frame 𝒕 Frame 𝒕 + 𝜟𝒕
+> “Pass between the stones, avoiding the chairs and cones. ”
+> Already : ViNT, NoMaD, NaVIDA
+> Frame 𝒕 Frame 𝒕 + 𝜟𝒕
+> Frame 𝒕 Frame 𝒕 + 𝜟𝒕
+> Already : ViNT, NaVIDA
+> “Move forward toward the staircase, then turn left to enter the hallway. Continue straight ahead and stop in front of the blue hospital bed on the right side of the hallway. ”
+> Frame 𝒕 Frame 𝒕 + 𝜟𝒕
+> Already : NaVIDA, NavDP
+> “Turn left and pass between the tables to reach the red chair, avoiding obstacles. ”
+
+Fig. 4. Qualitative results. Two DynaNav episodes (top), a hospital hallway and a warehouse aisle, and two real-world runs on the Vision60 (bottom), passing between curb stones among chairs and cones, and between tables toward a named chair. Each is shown at a frame t and a later frame t+∆ t
+
+with the trajectories of all six methods overlaid on the robot’s view and the instruction below. Methods that have already failed by t+∆ t are listed in the panel. RECAST runs its regression decoder. 
+
+the gravel wins. On the night sidewalk, “step onto the grass if the sidewalk is blocked” lights the grass and a left turn across it is selected, whereas “never step onto the bumpy grass” darkens the grass, so with the pavement blocked by the person every candidate crosses the grass or the hole around the person, the safety veto rejects them all, and the robot stops. The constraint changed only the map, and the map changed the path, or stopped the robot. 
+
+Simulation. The top two rows of Fig. 4 follow all six methods through a hospital and a warehouse episode. In the hospital, pedestrians walk toward the robot once it turns into the hallway, and the current-frame veto drops every mode that would meet them. RECAST bends between them and comes out clear on the other side, while ViNT and NaVIDA have already failed by t+∆ t. In the warehouse, workers crowd the end of an aisle lined with stacked racks, which a quadruped cannot bump without risking a fall. RECAST threads the gap between the workers into the right turn without touching a rack, whereas the prior methods cut through the crowd or swing wide. 
+
+Real world. The bottom two rows of Fig. 4 show two campus runs. Outdoors at night, at the curb stones, RECAST steers clear of the chairs and cones and passes between the stones as instructed. Indoors, it turns left, skirts a dark, oddly shaped chair in its path, passes between the tables, and stops at the red chair. By t+∆ t, three prior methods have already failed in the outdoor run and two in the indoor run, and the rest, which either cannot take the instruction or do not follow it, wander off across the open floor. V. C ONCLUSION 
+
+We presented RECAST, a robot navigation framework that recasts the scene judgments of a VLM, grounded by vision foundation models, into the AC map. The map both conditions the trajectory decoders and selects which of their proposals to execute, and, built on both the pivot and current frames, stays aligned with the live scene while the VLM reasons. It achieves the highest success and lowest collision rate in simulation and the real world, and a new instruction reshapes the path through the map alone. Its main limitation lies in the grounding models, since whatever they miss never enters the map. Future work will predict obstacle motion to bridge the gap between the pivot and current frames. REFERENCES 
+
+[1] D. Shah, A. Sridhar, A. Bhorkar, N. Hirose, and S. Levine, “GNM: A general navigation model to drive any robot,” in Proc. IEEE ICRA , 2023. [2] D. Shah et al. , “ViNT: A foundation model for visual navigation,” in Proc. CoRL , 2023. [3] A. Sridhar, D. Shah, C. Glossop, and S. Levine, “No-MaD: Goal masked diffusion policies for navigation and exploration,” in Proc. IEEE ICRA , 2024. [4] N. Hirose, D. Shah, A. Sridhar, and S. Levine, “ExAug: Robot-conditioned navigation policies via geometric experience augmentation,” in Proc. IEEE ICRA , 2023. [5] J. Yang et al. , “Pushing the limits of cross-embodiment learning for manipulation and navigation,” in Proc. RSS ,2024. [6] N. Curtis, O. Azulay, and A. Sintov, “Embodiment-agnostic navigation policy trained with visual demon-strations, 2024. [7] A. Eftekhar et al. , “The One RING: A robotic indoor navigation generalist, 2024. [8] W. Cai et al. , “NavDP: Learning sim-to-real navigation diffusion policy with privileged information guidance,” arXiv:2505.08712, 2025. [9] H. He, Y. Ma, B. Squicciarini, W. Wu, and B. Zhou, “From seeing to experiencing: Scaling naviga-tion foundation models with reinforcement learning,” arXiv:2507.22028, 2025. [10] A.-C. Cheng et al. , “NaVILA: Legged robot vision-language-action model for navigation,” in Proc. RSS ,2025. [11] M. Wei et al. , “Ground slow, move fast: A dual-system foundation model for generalizable vision-and-language navigation,” arXiv:2512.08186, 2025. [12] S. Wang et al. , “TrackVLA: Embodied visual tracking in the wild,” in Proc. CoRL , 2025. [13] J. Zhang et al. , “Embodied navigation foundation model,” arXiv:2509.12129, 2025. [14] Z. Huang, Y. Zhang, J. Liu, R. Song, C. Tang, and J. Ma, “TIC-VLA: A think-in-control vision-language-action model for robot navigation in dynamic environ-ments,” in Proc. ICML , 2026. [15] P. Ding et al. , “QUAR-VLA: Vision-language-action model for quadruped robots,” in Proc. ECCV , 2024. [16] X. Tong et al. , “QUART-Online: Latency-free large multimodal language model for quadruped robot learn-ing,” in Proc. IEEE ICRA , 2025. [17] J. Zhang et al. , “NaVid: Video-based VLM plans the next step for vision-and-language navigation,” in Proc. RSS , 2024. [18] J. Zhang et al. , “Uni-NaVid: A video-based vision-language-action model for unifying embodied naviga-tion tasks,” in Proc. RSS , 2025. [19] M. Wei et al. , “StreamVLN: Streaming vision-and-language navigation via SlowFast context modeling,” in Proc. IEEE ICRA , 2026. [20] K. Weerakoon et al. , “BehAV: Behavioral rule guided autonomy using VLMs for robot navigation in outdoor scenes,” in Proc. IEEE ICRA , 2025. [21] A. J. Sathyamoorthy et al. , “CoNVOI: Context-aware navigation using vision language models in outdoor and indoor environments,” in Proc. IEEE/RSJ IROS , 2024. [22] D. Song, J. Liang, X. Xiao, and D. Manocha, “VL-TGS: Trajectory generation and selection using vision language models in mapless outdoor environments,” 
+
+IEEE Robot. Autom. Lett. , 2025. [23] Y. Wu, A. Li, T. Hermans, F. Ramos, A. Bajcsy, and C. P´ erez-D’Arpino, “Do what you say: Steering vision-language-action models via runtime reasoning-action alignment verification,” arXiv:2510.16281, 2025. [24] F. Codevilla, M. M¨ uller, A. L´ opez, V. Koltun, and A. Dosovitskiy, “End-to-end driving via conditional imitation learning,” in Proc. IEEE ICRA , 2018. [25] D. S. Chaplot, K. M. Sathyendra, R. K. Pasumarthi, D. Rajagopal, and R. Salakhutdinov, “Gated-attention architectures for task-oriented language grounding,” in 
+
+Proc. AAAI , 2018. [26] B. Liao et al. , “DiffusionDrive: Truncated diffusion model for end-to-end autonomous driving,” in Proc. IEEE/CVF CVPR , 2025. [27] T. P. Lillicrap et al. , “Continuous control with deep reinforcement learning,” in Proc. ICLR , 2016. [28] W. Song et al. , “GeRM: A generalist robotic model with mixture-of-experts for quadruped robot,” in Proc. IEEE/RSJ IROS , 2024. [29] J. Zou et al. , “DiffusionDriveV2: Reinforcement learning-constrained truncated diffusion modeling in end-to-end autonomous driving,” arXiv:2512.07745, 2025. [30] X. E. Wang et al. , “Environment-agnostic multitask learning for natural language grounded navigation,” in 
+
+Proc. ECCV , 2020. [31] T. Gervet, S. Chintala, D. Batra, J. Malik, and D. S. Chaplot, “Navigating to objects in the real world,” 
+
+Science Robotics , 2023. [32] N. Hirose, C. Glossop, A. Sridhar, O. Mees, and S. Levine, “LeLaN: Learning a language-conditioned nav-igation policy from in-the-wild video,” in Proc. CoRL ,2024. [33] H. Karnan et al. , “Socially compliant navigation dataset (SCAND): A large-scale dataset of demonstrations for social navigation,” IEEE Robot. Autom. Lett. , 2022. [34] J. Liang et al. , “GND: Global navigation dataset with multi-modal perception and multi-category traversabil-ity in outdoor campus environments,” in Proc. IEEE ICRA , 2025. [35] D. M. Nguyen, M. Nazeri, A. Payandeh, A. Datar, and X. Xiao, “Toward human-like social robot navigation: A large-scale, multi-modal, social human navigation dataset,” in Proc. IEEE/RSJ IROS , 2023. [36] N. Hirose, D. Shah, A. Sridhar, and S. Levine, “SAC-SoN: Scalable autonomous control for social naviga-tion,” IEEE Robot. Autom. Lett. , 2024. [37] X. Liu et al. , “CityWalker: Learning embodied ur-ban navigation from web videos,” in Proc. IEEE/CVF CVPR , 2025. [38] W. Zhu et al. , “NaVIDA: Vision-language navigation with inverse dynamics augmentation,” arXiv:2601.18188, 2026. [39] J. Mao, Y. Qian, J. Ye, H. Zhao, and Y. Wang, “GPT-Driver: Learning to drive with GPT,” arXiv:2310.01415, 2023. [40] Z. Peng, H. He, Q. Li, Y. Ma, and B. Zhou, “Slow brain, fast planner: Latency-resilient VLM-augmented urban navigation,” arXiv:2606.20458, 2026. [41] D. Song, J. Liang, A. Payandeh, A. H. Raj, X. Xiao, and D. Manocha, “VLM-Social-Nav: Socially aware robot navigation through scoring using vision-language models,” IEEE Robot. Autom. Lett. , vol. 10, no. 1, pp. 508–515, 2025. [42] T. L¨ uddecke and A. S. Ecker, “Image segmentation using text and image prompts,” in Proc. IEEE/CVF CVPR , 2022. [43] T. Cheng et al. , “YOLO-World: Real-time open-vocabulary object detection,” in Proc. IEEE/CVF CVPR , 2024. [44] A. Radford et al. , “Learning transferable visual models from natural language supervision,” in Proc. ICML ,2021.. [45] L. Yang et al. , “Depth Anything V2,” in Proc. NeurIPS ,2024.

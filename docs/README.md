@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-02</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-03</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>7</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-02 22:58:09 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-03 22:02:57 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-02 日报精选19篇无人机与机器人控制研究，其中7篇精读、12篇速读。最值得关注的是两项9.0分工作：面向激进四旋翼飞行的电池感知强化学习，以及用于敏捷无人机控制的L1自适应模型预测路径积分。普通读者可优先从这两篇切入，了解续航约束与自适应控制如何共同提升无人机机动能力。</p>
+<p>今日精读1篇、速读7篇，聚焦机器人学习在训练数据变化下的记忆、适应与忽略机制。最值得看的是精读8.0分的《Memorize, Adapt, Ignore》对机器人学习机制的系统诊断，以及速读中7.0分的“校准风险路由”用于受控世界模型适应。普通读者可先读精读了解机器人何时该记、该变、该忽略，再按需跟进世界模型适应与视觉语言导航两条应用线。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Battery-Aware Reinforcement Learning for Aggressive Quadrotor Flight">Battery-Aware Reinforcement Learning for Aggressive Quadrotor Flight</span></li><li><span class="dpr-home-dashboard-paper-title" title="L1-MPPI: L1 Adaptive Model Predictive Path Integral for Agile UAV Control">L1-MPPI: L1 Adaptive Model Predictive Path Integral for Agile UAV Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="DiffWAM: A Fast and Efficient Navigation World Action Model">DiffWAM: A Fast and Efficient Navigation World Action Model</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Memorize, Adapt, Ignore: Diagnosing Robot Learning Mechanisms under Training Data Variation">Memorize, Adapt, Ignore: Diagnosing Robot Learning Mechanisms under Training Data Variation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>4</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Residual Wrench Certification and Margin-Aware Control Synthesis for Aerial Physical Interaction">Residual Wrench Certification and Margin-Aware Control Synthesis for Aerial Physical Interaction</span></li><li><span class="dpr-home-dashboard-paper-title" title="Beyond the Remembered World: Predictive 4D Belief for Persistent Navigation in Evolving Worlds">Beyond the Remembered World: Predictive 4D Belief for Persistent Navigation in Evolving Worlds</span></li><li><span class="dpr-home-dashboard-paper-title" title="Beyond Policy Alignment: Closing the Planning-Learning Loop for Robot Control with Learned World Models">Beyond Policy Alignment: Closing the Planning-Learning Loop for Robot Control with Learned World Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Calibration-risk routing for controlled world-model adaptation">Calibration-risk routing for controlled world-model adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation">RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Query, Align, and Distill: Navigation-Aware Cross-Modal Interaction for Efficient Vision-and-Language Navigation">Query, Align, and Distill: Navigation-Aware Cross-Modal Interaction for Efficient Vision-and-Language Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
 </section>
 </div>
 

@@ -1,0 +1,397 @@
+Title: AFD-CAMLs: Agile Force-Distribution-Aware Planning and Control for Cable-Suspended Aerial Multi-Lifting Systems
+
+URL Source: https://arxiv.org/pdf/2610.01185v1
+
+Published Time: Fri, 02 Oct 2026 01:36:54 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# AFD-CAMLs: Agile Force-Distribution-Aware Planning and Control for Cable-Suspended Aerial Multi-Lifting Systems 
+
+Antreas Kourris, Sihao Sun ∗
+
+Abstract — Multiple UAVs can cooperatively transport heavy payloads while controlling their position and orientation. Trajectory-based methods offer high agility while satisfying system constraints, but can produce uneven force distributions when the tension-to-wrench allocation is redundant or ill-conditioned, particularly under geometric mismatch and low-level tracking errors. We propose a hybrid planning-and-control framework to address this problem. A global planner generates payload trajectories and cable-force references by exploring the allocation null space under a prescribed internal-force setting. These references augment the cost of a centralized local planner, promoting feasible force distributions while generating trajectories for all UAVs. An admittance filter then compares the planned forces with onboard cable-tension estimates and adjusts the kinematic references to improve force tracking in degenerate or near-degenerate configurations. Simulations and experiments involving four to ten UAVs demonstrate more balanced tension distributions during both hovering and demanding agile maneuvers, without compromising agility or payload-tracking performance. 
+
+I. INTRODUCTION Teams of unmanned aerial vehicles (UAVs) can cooper-atively transport payloads beyond the capacity of a single vehicle [1], [2]. Adding UAVs increases lifting capacity but can make the cable-force distribution non-unique. Accurate payload-pose tracking therefore does not ensure that the load is shared safely and evenly among the vehicles. This distinction is especially important for cable-suspended sys-tems: the net force and moment on the payload determine its motion, whereas internal-force components can change the individual cable tensions without changing that net wrench. Excessive tension can saturate or destabilize a vehicle, while insufficient tension can cause cable slackness and invalidate the assumed system dynamics. Existing methods can broadly be divided into position- and force-based approaches. Quasi-static position-based methods determine UAV configurations from payload poses, cable geometry, and static equilibrium [1], [3]. These methods are effective for slow motion but neglect dynamic coupling and do not guarantee feasible cable tensions. Force-based meth-ods compute the required payload wrench from a dynamic model and allocate it among the cables [4], [5], [6], allow-ing secondary objectives such as tension or internal-force regulation [7]. Most retain a cascaded wrench-allocation and inner-loop structure whose time-scale separation limits agile operation. Their force commands also depend on nominal payload and cable parameters. The resulting distribution is  
+
+> The authors are with the Faculty of Mechanical Engineering, Delft University of Technology.
+> *Corresponding author:
+
+s.sun-2@tudelft.nl 
+
+Fig. 1: Snapshot of four UAVs manipulating a cable-suspended payload containing an additional unknown load using the proposed AFD-CAMLs framework. therefore sensitive to uncertainty in payload mass and inertia, attachment locations, and cable lengths [5], [8]. Recent work introduced a trajectory-based approach that replaces the conventional cascaded force controller with a centralized whole-body nonlinear model predictive control (NMPC) planner and onboard trajectory-tracking controllers [9], [8]. The planner predicts the coupled load-cable dy-namics and generates dynamically feasible trajectories for all UAVs while enforcing thrust, cable-tautness, collision-avoidance, and obstacle-avoidance constraints. Agility is improved because the onboard controllers track complete kinematic references rather than realizing instantaneous force commands through separate control layers. This formulation also allows the planner to anticipate coupled payload and cable motion over a finite horizon instead of allocating a wrench independently at each instant. For four or more UAVs, however, multiple cable-force distributions can produce the same payload wrench. The planner generates kinematic trajectories from a nominal geometric model, and the low-level controllers do not di-rectly enforce the corresponding tensions. Attachment-point and cable-length errors, combined with trajectory-tracking errors, can therefore shift the physical system toward a different force equilibrium. The payload may still track accurately while some UAVs become overloaded and other cables approach slackness. Improving payload-pose tracking alone cannot correct this internal-force component because it does not affect the resultant payload wrench. The problem becomes most pronounced when the tension-to-wrench al-location matrix is degenerate or nearly degenerate, because small geometric or tracking errors can then produce large changes in the individual tensions. A practical solution must therefore select a feasible distribution during planning and arXiv:2610.01185v1 [cs.RO] 1 Oct 2026 regulate its realization without sacrificing the agility of the trajectory-based architecture. This work extends the trajectory-based framework [8] with explicit planning and feedback regulation of the cable-force distribution. An internal-force-aware global planner explores the null space of the payload wrench-allocation matrix to generate feasible cable-force and direction references. These references are incorporated into the centralized NMPC cost so that the locally planned trajectories account for the desired force distribution. Because the cable forces are still realized indirectly through vehicle motion, an admittance filter com-pares each planned tension with an onboard estimate and converts the error into position, velocity, and acceleration corrections. The resulting hybrid motion–force architecture combines predictive whole-body planning with local force feedback. The three main contributions are: 1) an internal-force-aware global planner that preserves the required payload wrench while generating tension-feasible cable-force and direction references through null-space optimization; 2) a force-reference-aware NMPC formulation and an admittance filter that uses onboard tension estimates to regulate the realized force distribution through local kinematic corrections; and 3) simulation studies with four to ten UAVs and real-world experiments with four UAVs (Figure 1) that demonstrate improved force distribution under geomet-ric and inertial-model mismatch while preserving agile payload tracking. II. P RELIMINARIES 
+
+A. Notation 
+
+Bold lowercase letters denote vectors, bold uppercase letters denote matrices, and non-bold symbols denote scalars. The inertial frame is denoted by I, the payload-fixed frame by L, and the body-fixed frame of UAV i by Bi. Unless indicated otherwise, vectors are expressed in I. The rotation matrices R, Ri ∈ SO (3) map coordinates from L and Bi,respectively, to I. For a ∈ R3, [a]× is the skew-symmetric matrix satisfying [a]×b = a × b. The Moore–Penrose pseudoinverse and Euclidean norm are denoted by (·)† and 
+
+∥ · ∥ , respectively, and ∥a∥2 
+
+> Q
+
+= aTQa. The superscript g
+
+denotes a global-planner reference, whereas the subscripts 
+
+cmd , ref , and obs denote commanded, controller-reference, and observed quantities, respectively. 
+
+B. Multi-lifting system model 
+
+We consider n > 3 unidirectional-thrust UAVs transport-ing a rigid payload through massless, inextensible cables, following the load–cable model in [9], [8]. The payload has mass mL, inertia matrix JL, position p, velocity v,orientation R, and body-frame angular velocity ω. The ith cable has length li and a payload attachment point ρi,expressed in L. We define si ∈ S2 as the direction from this attachment point to UAV i. Thus, when the cable is taut, 
+
+pi = p + Rρi + lisi, fi = Tisi, Ti > 0, (1) where pi is the UAV position and fi is the cable force acting on the payload. The equal and opposite force −fi acts on the UAV. Under this convention, the payload dynamics are 
+
+˙p = v, mL ˙v = mLg +
+
+> n
+
+X
+
+> i=1
+
+fi,
+
+˙R = R[ω]×, JL ˙ω + [ ω]×JLω =
+
+> n
+
+X
+
+> i=1
+
+[ρi]×RTfi,
+
+(2) where g is the gravity vector. UAV i, with mass mi,collective thrust ui, and body thrust axis e3 = [0 , 0, 1] ⊤,satisfies 
+
+˙pi = vi, mi ˙vi = mig + uiRie3 − fi. (3) Stacking the cable forces as f = [ f ⊤ 
+
+> 1
+
+, . . . , f ⊤ 
+
+> n
+
+]⊤, the force and moment required by the payload dynamics can be written as 
+
+P(R)f = w, P(R) = 
+
+ I3 · · · I3
+
+[Rρ1]× · · · [Rρn]×
+
+
+
+,
+
+(4) where 
+
+w =
+
+ mL( ˙ v − g)
+
+R(JL ˙ω + [ ω]×JLω)
+
+
+
+, (5) is the cable-generated payload wrench. 
+
+C. Redundancy analysis 
+
+For a prescribed payload trajectory, the nominal model determines the required wrench w through (5). The cable forces fi = Tisi must reproduce this wrench through (4), while satisfying the tension, actuation, collision-avoidance, cable-interference, and kinematic constraints. To analyze tension-distribution redundancy, the cable di-rections are held fixed and only their magnitudes are treated as unknown. Substituting fi = Tisi into the complete force-and-moment balance in (4) gives 
+
+AT = w, A =
+
+ s1 · · · sn
+
+[Rρ1]×s1 · · · [Rρn]×sn
+
+
+
+, (6) where T = [ T1, . . . , T n]T. The tension solution is unique when A has full column rank. To quantify the proximity to rank deficiency, we define 
+
+k(A) = 
+
+s
+
+λmin (ATA)
+
+λmax (ATA) = κ−12 (A) ∈ [0 , 1] . (7) The inverse condition number k provides a normalized measure of the health of the tension-allocation matrix. A value close to one indicates a well-conditioned matrix, whereas k approaches zero as the columns become linearly dependent. It is exactly zero when rank( A) < n , indicating tension redundancy. A small positive value identifies a near-degenerate configuration in which small wrench or geometric errors can cause large changes in the allocated tensions. A representative degenerate configuration has attachment points distributed symmetrically about the payload center of mass and cables with the same inclination. For example, with 
+
+R = I3, define the ith attachment point and cable direction as 
+
+ρi = r cos θi sin θi 0T ,
+
+si = sin α cos θi sin α sin θi cos αT . (8) Then [ρi]×si = r cos α[sin θi, − cos θi, 0] T, so every column of A is a linear combination of terms in 1, cos θi, and sin θi.Consequently, rank( A) ≤ 3, and any such configuration with n ≥ 4 has a nontrivial tension null space and k(A) = 0 .Small departures from perfect symmetry generally produce a small positive inverse condition number, so the force distri-bution remains highly sensitive. In contrast, for three UAVs, full column rank and an inverse condition number bounded away from zero are obtained generically by choosing non-collinear attachment points, so degeneracy is straightforward to avoid. In the degenerate four-or-more-UAV configurations con-sidered here, model mismatch and low-level tracking errors can shift the realized tensions along a null-space direction while preserving the payload wrench; in near-degenerate configurations, the same errors are amplified as the inverse condition number approaches zero. The problem is therefore to track the commanded payload pose, select and realize a feasible tension distribution, and preserve the agility of the existing trajectory-based approach. III. M ETHODOLOGY 
+
+The proposed framework augments the trajectory-based architecture of [8] with explicit force-distribution planning and local force feedback. As summarized in Fig. 2, an internal-force-aware global planner first generates a reference trajectory for the payload and cables. A centralized NMPC local planner then converts these references into dynamically feasible, constraint-satisfying trajectories for the complete multi-lifting system. Relative to [8], the system model, constraints, solver, and trajectory decoder are retained, while the NMPC objective is augmented with the cable-force and cable-direction references supplied by the global planner. Finally, an admittance filter uses the discrepancy between the planned and observed cable tensions to modify the kinematic reference of each quadrotor. This hybrid motion–force struc-ture preserves the agility of trajectory-based control while regulating the force distribution that can otherwise become indeterminate for systems with four or more quadrotors. 
+
+A. Internal-force-aware global planner 
+
+Given the current and target payload poses and a user-specified internal-force level, the global planner constructs the payload and cable reference 
+
+T g = pg , Rg , vg , ωg , {sgi , T gi }ni=1 . (9) The payload position is generated using a minimum-snap polynomial [10], while its orientation is interpolated using SLERP [11]. Their derivatives provide vg and ωg , and the nominal payload model gives the required wrench wg .Following [4], [7], let Zg be an orthonormal null-space basis of P(Rg ). Wrench-preserving force allocations are parameterized by 
+
+f g 
+
+> min
+
+= [ P(Rg )] † wg ,
+
+f g (λ) = f g 
+
+> min
+
++ Zg λ, P(Rg )Zg = 0. (10) The coefficient λ is chosen to maintain cable taut-ness and impose a user-specified outward preload. For 
+
+ρi = [xi, y i, z i]T, define the outward direction rgi =
+
+Rg [xi, y i, 0] T/px2 
+
+> i
+
++ y2 
+
+> i
+
+. The stacked preload target is 
+
+f g 
+
+> rad
+
+= Fint [( rg 
+
+> 1
+
+)T, . . . , (rgn)T]T, with null-space projec-tion λg 
+
+> rad
+
+= ( Zg )Tf g
+
+> rad
+
+. Let f gi (λ) denote the ith three-dimensional block of (10). The allocation is obtained from 
+
+min  
+
+> λ
+
+Jg (λ) = kr
+
+2 ∥λ − λg
+
+> rad
+
+∥2
+
++ kf
+
+2
+
+> n
+
+X
+
+> i=1
+
+[max(0 , T min − ∥ f gi (λ)∥)] 2
+
++ kn
+
+2
+
+> n
+
+X
+
+> i=1
+
+max  0, F int ,min − F gr,i (λ) 2 ,
+
+(11) where F gr,i = ( rgi )Tf gi (λ), kr , k f , k n > 0, and Fint ,min is the minimum outward force component. The optimized forces are converted into T gi = ∥f gi ∥ and sgi = f gi /T gi , completing (9) while preserving the required payload wrench. 
+
+B. Force-reference-aware NMPC local planner 
+
+The local planner follows the receding-horizon NMPC formulation introduced in our previous work [8]. We briefly state the formulation to clarify the modification made in this work. At each planning update, the estimated load–cable state initializes a finite-horizon optimal control problem. Defining the decision matrices X = [ x0, . . . , xN ] and U =[u0, . . . , uN −1], the problem is 
+
+min  
+
+> X,U
+
+JN = 
+
+> N−1
+
+X
+
+> k=0
+
+ℓk(xk, uk) + ℓN (xN ),
+
+s.t. x0 = ˆ x, xk+1 = F(xk, uk),
+
+h(xk, uk) ≤ 0, k = 0 , . . . , N − 1,
+
+(12) where F is the discrete-time state-transition model obtained from the coupled cable–load model: the cable kinematics in (1) and the payload dynamics in (2). Thus, the NMPC prediction uses the same physical model introduced in the preliminaries. The vector h collects the path constraints, including cable tautness, actuation limits, and collision-avoidance constraints. The state contains the payload pose and twist together with the cable directions, tensions, and their required derivatives. As in [8], a decoder maps the Fig. 2: Information flow of the proposed framework. The centralized global planner provides payload and cable references to the NMPC. Using the load estimator’s feedback the NMPC computes dynamically feasible system trajectories, which are then mapped to individual quadrotor trajectory references. These references are adjusted by the admittance filter using the estimated cable tensions before being tracked by the distributed onboard trajectory controllers. optimized load–cable trajectory to position, velocity, ac-celeration, attitude, and feedforward references for every quadrotor. Here, JN is the finite-horizon objective, ℓk and ℓN are the stage and terminal costs, and N is the prediction-horizon length. The base planner promotes payload tracking and smooth control but does not explicitly select the redundant force distribution generated by the global planner. In this work, its stage cost is augmented as 
+
+ℓk = ℓbase  
+
+> k
+
++
+
+> n
+
+X
+
+> i=1
+
+si,k − sgi,k 
+
+> 2
+> Qs
+
++
+
+> n
+
+X
+
+> i=1
+
+Ti,k si,k − f gi,k 
+
+> 2
+> Qf
+
+(13) with analogous terminal penalties. Here, ℓbase  
+
+> k
+
+denotes the payload-state and control-effort costs, that minimizes the pose and twist tracking errors, while Qs and Qf weight cable-direction and cable-force tracking, respectively. Thus, the global planner chooses a desired force allocation, whereas the NMPC reconciles that allocation with the cou-pled dynamics and constraints over the prediction horizon. Penalizing force error in the NMPC improves the planned distribution, but the optimized force is still realized through kinematic quadrotor trajectories and is not a directly actuated output. The NMPC therefore cannot by itself reject the difference between the nominal force allocation and the tension distribution realized by the physical system. This motivates the force-feedback layer below. 
+
+C. Admittance filter for hybrid cable-tension and trajectory tracking 
+
+The admittance filter specifically addresses degradation of the tension allocation characterized by (7). When k(A)
+
+approaches zero, small attachment-geometry, cable-length, or trajectory-tracking errors can produce large tension redistri-butions while causing little change in the resultant payload wrench. The filter closes this otherwise unregulated internal-force channel by using the observed tension error to correct each quadrotor’s kinematic reference. For each quadrotor, the local planner provides a com-manded tension Ti, cmd , a cable direction si, cmd , and akinematic trajectory (pi, cmd , vi, cmd , ai, cmd ). The onboard wrench observer provides an external force estimate fi, ext .The force estimate is obtained as such: 
+
+fi,ext = md LP F (aBIM U − ba) − f Bdrag −
+
+
+
+00
+
+T
+
+ , (14) where md is the quadrotor mass, LP F (·) denotes a low-pass filter, aBIM U is the acceleration measured by the IMU expressed in the body frame B, ba is the accelerometer bias, 
+
+f Bdrag is the modeled aerodynamic drag force expressed in the body frame, and T is the total thrust generated by the quadrotor. Using the implemented sign convention, the observed tension is obtained by projection onto the commanded cable direction, 
+
+Ti, obs = −f T
+
+> i, ext
+
+si, cmd . (15) The tension error is converted into an equivalent correction force aligned with the cable, 
+
+eT,i = Ti, cmd − Ti, obs , fa,i = eT,i si, cmd . (16) This force drives a virtual mass–spring–damper system, 
+
+Ma,i ˙va,i + Da,i va,i + Ka,i pa,i = fa,i , ˙pa,i = va,i ,
+
+(17) where Ma,i , Da,i , and Ka,i are the virtual inertia, damping, and stiffness. The resulting corrections modify the NMPC-generated kinematic reference, 
+
+pi, ref = pi, cmd + pa,i , vi, ref = vi, cmd + va,i ,
+
+ai, ref = ai, cmd + ˙ va,i . (18) Consequently, the NMPC remains responsible for co-ordinated whole-body motion and constraint satisfaction, while the admittance filter adds a local compliant motion that reduces the discrepancy between predicted and realized cable tension. The filter does not alter the global payload command; it only adjusts the individual quadrotor refer-ences before they are tracked by the onboard controller. Section IV-B.2 demonstrates the resulting improvement from the admittance filter when the tension-allocation matrix is degenerate or nearly degenerate, corresponding to k(A) = 0 
+
+or k(A) ≈ 0, respectively. 
+
+D. Onboard trajectory tracking 
+
+The corrected references are tracked by the same flatness-based PD and INDI controller used in [8]. The flatness mapping generates the required attitude and feedforward quantities, while INDI rejects unmodeled force and torque disturbances using onboard inertial measurements [12], [13]. This component is unchanged in the present work; its role is to execute the admittance-corrected local trajectory and generate the rotor commands. IV. R ESULTS 
+
+We evaluated the proposed approach in simulation and real-world experiments. The evaluation addresses the follow-ing questions:  
+
+> •
+
+Can the proposed null-space optimization generate cable-tension references that satisfy the required tension constraints?  
+
+> •
+
+Can the admittance filter improve cable-tension tracking and produce a more uniform load distribution among the quadrotors?  
+
+> •
+
+How do the proposed modifications affect payload tra-jectory tracking and robustness to model mismatch? 
+
+A. Experimental setup 
+
+Simulations were conducted in RotorS [14], and real-world experiments were performed in a Vicon-equipped indoor arena. The centralized planner ran at 10 Hz on an external computer. Each quadrotor ran the Agilicious flight stack [15] with onboard control at 300 Hz. Vicon measurements were provided at 100 Hz and fused with onboard sensors using an extended Kalman filter. Unless stated otherwise, the ex-periments used four quadrotors and 1 m cables; larger teams were used to assess scalability. The parameters in Table I were used throughout. Hovering experiments were compared with the geometric controller in [4] and the trajectory-based framework in [8]; trajectory-tracking experiments used the latter as the baseline. TABLE I: System Parameters                                                           
+
+> Parameter Value Parameter Value
+> mL(4 UAVs) 1.4 kg mL(10 UAVs) 4 kg
+> mi(4 UAVs) 0.65 kg mi(10 UAVs) 0.6 kg
+> l1 m Ka60 N/m
+> Da50 Ns/m Ma10 kg
+> kr1kf2.5
+> kn7Qt1.0
+> Qs[100 ,100 ,100]
+> |ρi|, 4 UAVs 0.24 0.22 0.16 Tmi= 1 , . . . , 4
+> |ρi|, 10 UAVs 20.50.1Tmi= 1 ,5,6,10
+> 10.50.1Tmi= 2 ,4,7,9
+> 00.50.1Tmi= 3 ,8
+
+Fig. 3: Effect of the radial preload magnitude Fint ,min on the quadrotor formation. 
+
+B. Simulation results 1) Null-space optimization validation: Figure 3 illustrates how the radial preload changes the resulting formation. A four-quadrotor hover with a payload pitch of 30 ◦ was then used to evaluate the force-allocation strategy. Without null-space optimization, the global planner generated refer-ences below the local planner’s minimum tension of 3 N . As shown in Fig. 4, enforcing the tension constraints through null-space optimization substantially reduces the tracking error by providing the local planner with feasible references. 
+
+Fig. 4: Tension tracking without and with null-space opti-mization. 
+
+2) Cable-tension redundancy: We investigated the force-allocation characteristics of four- and ten-UAV configura-tions. The UAVs were distributed symmetrically around the payload, so particular payload orientations produced nearly degenerate allocation matrices. The payload hovered in level and inclined orientations, with and without the admittance filter. For each case, A was computed from the payload ori-entation R and cable directions si. Changing the payload inclination therefore changed the conditioning of A. For four UAVs, the inverse condition number k(A) was computed using (7). For ten UAVs, A had more columns than rows and therefore admitted infinitely many tension solutions. Fig. 5: Effect of the allocation-matrix conditioning on cable-tension tracking for the four- and ten-drone configurations, with and without the admittance filter. Figure 5 presents the mean absolute tension-tracking error. For the level four-UAV configuration, k(A) = 0.0012 ,indicating a poorly conditioned allocation. The resulting redundancy increased the tension error when the filter was disabled, whereas activating the filter substantially reduced it. In the inclined configuration, k(A) = 0 .1916 , and the tension error remained low even without the filter. For ten UAVs, A lacked full column rank for every cable geometry. Consequently, the mean tension error grew in both level and inclined configurations when the admittance filter was disabled. 
+
+3) Effect of the admittance filter: Stationary hover was first used to evaluate tension regulation under nominal conditions because the symmetric geometry yielded small 
+
+k(A). Figure 6 compares performance with and without the admittance filter for four- and ten-quadrotor configurations. Without the filter, noticeable tension imbalance remains despite the absence of model mismatch. With the filter enabled, the measured tensions converge closer to their references and the spread among cables is reduced. The same decentralized correction law remained effective for ten quadrotors, demonstrating scalability to larger teams. The filter also reduced the payload position and orientation errors. Figure 7 shows the ten-UAV simulation. 
+
+4) Sensitivity to inertial model uncertainties: Because the force references depend on the payload model, we varied the payload mass and inertia assumed by the planner while hold-ing the simulated system fixed. The proposed framework, with and without the admittance filter, was compared with the geometric controller in [4]. Figure 8 shows that payload-mass mismatch affects the geometric controller more strongly than inertia mismatch because the controller uses the payload model to compute the commanded wrench and directly issues force commands to the UAVs. Both NMPC configurations varied less over the tested range because the UAVs primarily tracked kinematic 
+
+> (a) Four-UAV configuration.
+> (b) Ten-UAV configuration.
+
+Fig. 6: Tension- and payload-tracking performance with and without the admittance filter. references from the local planner. Notably, adding the admit-tance filter did not noticeably reduce robustness to inertial-model uncertainty. 
+
+5) Agile trajectory tracking: We next evaluated dynamic performance using a figure-eight trajectory with a maximum velocity of 5 m s −1, acceleration of 8 m s −2, and jerk of 
+
+16 m s −3. The trajectory spanned 5 m along the x-axis and 
+
+4 m along the y-axis at a constant altitude of 1 m .We also evaluated robustness to cable-length mismatch by introducing a −1 cm error in the modeled length of cable 1. As shown in Table II, the two configurations achieved comparable tracking without mismatch because k(A) was generally larger during agile motion than during hovering. With the mismatch, the admittance filter reduced the three-dimensional mean absolute error from 0.221 m to 0.199 m .TABLE II: Payload Trajectory Tracking With and Without Cable-Length Mismatch                     
+
+> Mean Absolute Error (m) XYZ3D
+> No mismatch, without admittance filter 0.0864 0.1099 0.0439 0.1608
+> No mismatch, with admittance filter 0.0827 0.1207 0.0455 0.1674 1 cm mismatch, without admittance filter 0.092 0.090 0.132 0.221 1 cm mismatch, with admittance filter 0.086 0.069 0.129 0.199
+
+Fig. 7: Ten UAVs lifting a payload in the simulated level configuration. 
+
+Fig. 8: Sensitivity of the geometric controller and the NMPC-based framework to payload mass and inertia mismatch during stationary hovering. The corresponding cable-tension errors and allocation con-ditioning are shown in Fig. 9. The cable-length mismatch produces a more pronounced discrepancy between the planned and observed cable tensions in the baseline configuration. With the admittance filter enabled, the individual quadrotor trajectories are adapted in response to these tension errors, reducing the discrepancy between the reference and observed forces. The correspond-ing reduction in payload tracking error indicates that, for this case, improving the force distribution also improves the overall trajectory-tracking performance. 
+
+C. Real-world experiments 1) Hovering: Geometric mismatch made the force im-balance more pronounced in the real-world experiments. Figure 10 shows the cable tensions during hovering. The system initially operated without the admittance filter, which was activated after approximately 15 s .Before activation, UAVs 2 and 4, located on diagonally opposite sides of the payload, carried a larger share of its weight, while the remaining cable tensions approached zero. 
+
+Fig. 9: Cable-tension errors and allocation conditioning dur-ing agile trajectory tracking, with and without cable-length mismatch and admittance filtering. 
+
+Fig. 10: Tension tracking with and without the admittance filter during hovering. After activation, the measured tensions converged toward their references, producing a more balanced distribution. Fig. 11: Cable-tension errors during agile maneuvering. A residual steady-state offset of approximately 2 N re-mained after activation, compared with approximately 0.5 N 
+
+in simulation (Fig. 6a). This offset may result from unmod-eled aerodynamic effects, particularly rotor downwash on the payload, which are not captured by the observer in (14). Direct tension measurements could help distinguish observer bias from aerodynamic loading. TABLE III: Payload Trajectory Tracking Performance Dur-ing Agile Flight        
+
+> Mean Absolute Error (m) XYZ3D
+> Baseline [8] 0.0713 0.1339 0.0506 0.1787 Ours 0.0711 0.1106 0.0429 0.1525
+> Ours (with unknown load) 0.0860 0.1339 0.0628 0.1974
+
+2) Tracking agile trajectories: We further perform exper-iments tracking agile trajectories with the proposed frame-work, in comparison with the original trajectory-based ap-proach proposed in [8]. These experiments used the same trajectory as the simulations. As shown in Table III, the proposed framework achieved accurate tracking during agile motion. We also introduced an unmodeled sloshing load by placing a basketball (0.6kg) inside the payload, thereby applying additional force and torque disturbances (Fig. 1). Figure 11 compares the tension-tracking errors of the three configurations. The proposed framework without the unknown load had the lowest mean absolute error for all four cables. With the unknown load, it still outperformed the baseline on cables 1, 3, and 4, although the error increased on cable 2. Across all four cables, enabling the admittance filter reduced the aggregate tension-tracking RMSE from 3.51 N 
+
+to 2.09 N .V. C ONCLUSIONS 
+
+This paper presented a hybrid planning-and-control frame-work for improving cable-force distribution in trajectory-based aerial multi-lifting systems with four or more UAVs. An internal-force-aware global planner exploits the null space of the payload wrench-allocation matrix to gener-ate feasible cable-force and direction references, which are incorporated into the cost of a centralized NMPC local planner. Because the resulting forces are realized indirectly through kinematic UAV trajectories, an admittance filter further adjusts the position, velocity, and acceleration ref-erences using onboard cable-tension estimates. Simulation studies with teams of up to ten UAVs and experiments with four UAVs demonstrate that the proposed approach reduces tension imbalance and improves robustness to geometric model mismatch while preserving accurate payload tracking during both hovering and agile flight. Future work will use the inverse condition number k(A) to tune the admittance parameters online, enabling stronger tension correction near degenerate configurations and less intervention when the allocation matrix is well conditioned. We will also study how the admittance correction can preserve the constraints imposed by the local planner. REFERENCES [1] N. Michael, J. Fink, and V. Kumar, “Cooperative manipulation and transportation with aerial robots,” Autonomous Robots , vol. 30, no. 1, pp. 73–86, 2011. [2] K. Sreenath and V. Kumar, “Dynamics, control and planning for coop-erative manipulation of payloads suspended by cables from multiple quadrotor robots,” in Robotics: Science and Systems IX , 2013. [3] M. Manubens, D. Devaurs, L. Ros, and J. Cort´ es, “Motion planning for 6-D manipulation with aerial towed-cable systems,” in Robotics: Science and Systems IX , 2013. [4] T. Lee, “Geometric control of multiple quadrotor UAVs transporting a cable-suspended rigid body,” IEEE Transactions on Control Systems Technology , vol. 26, no. 1, pp. 255–264, 2018. [5] D. Sanalitro, H. J. Savino, M. Tognon, J. Cort´ es, and A. Franchi, “Full-pose manipulation control of a cable-suspended load with multiple UAVs under uncertainties,” IEEE Robotics and Automation Letters ,vol. 5, no. 2, pp. 2185–2191, 2020. [6] G. Li and G. Loianno, “Nonlinear model predictive control for coop-erative transportation and manipulation of cable suspended payloads with multiple quadrotors,” in IEEE/RSJ International Conference on Intelligent Robots and Systems , 2023, pp. 5034–5041. [7] J. Geng, P. Singla, and J. W. Langelaan, “Load-distribution-based trajectory planning and control for a multilift system,” Journal of Aerospace Information Systems , vol. 19, no. 5, pp. 366–381, 2022. [8] S. Sun, X. Wang, D. Sanalitro, A. Franchi, M. Tognon, and J. Alonso-Mora, “Agile and cooperative aerial manipulation of a cable-suspended load,” Science Robotics , vol. 10, no. 107, p. eadu8015, 2025. [9] S. Sun and A. Franchi, “Nonlinear MPC for full-pose manipulation of a cable-suspended load using multiple UAVs,” arXiv preprint arXiv:2301.08545 , 2023. [10] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in 2011 IEEE International Conference on Robotics and Automation , 2011, pp. 2520–2525. [11] K. Shoemake, “Animating rotation with quaternion curves,” ACM SIGGRAPH Computer Graphics , vol. 19, no. 3, pp. 245–254, 1985. [12] E. Tal and S. Karaman, “Accurate Tracking of Aggressive Quadrotor Trajectories Using Incremental Nonlinear Dynamic Inversion and Differential Flatness,” IEEE Transactions on Control Systems Technology , vol. 29, no. 3, pp. 1203–1218, May 2021. [Online]. Available: https://ieeexplore.ieee.org/abstract/document/9121690 [13] E. Smeur, G. De Croon, and Q. Chu, “Cascaded incremental nonlinear dynamic inversion for MAV disturbance rejection,” Control Engi-neering Practice , vol. 73, pp. 79–90, Apr. 2018. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S0967066118300030 [14] F. Furrer, M. Burri, M. Achtelik, and R. Siegwart, Robot Operating System (ROS): The Complete Reference (Volume 1) . Cham: Springer International Publishing, 2016, ch. RotorS—A Modular Gazebo MAV Simulator Framework, pp. 595–625. [Online]. Available: http://dx.doi.org/10.1007/978-3-319-26054-9 23 [15] P. Foehn, E. Kaufmann, A. Romero, R. Penicka, S. Sun, L. Bauersfeld, T. Laengle, G. Cioffi, Y. Song, A. Loquercio et al. , “Agilicious: Open-source and open-hardware agile quadrotor for vision-based flight,” 
+
+Science robotics , vol. 7, no. 67, p. eabl6259, 2022.
