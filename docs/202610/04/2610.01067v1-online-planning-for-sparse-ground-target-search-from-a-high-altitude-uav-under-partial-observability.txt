@@ -1,0 +1,312 @@
+Title: Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability
+
+URL Source: https://arxiv.org/pdf/2610.01067v1
+
+Published Time: Fri, 02 Oct 2026 01:24:32 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability 
+
+Ashik E Rasul 
+
+Department of Mechanical and Nuclear Engineering Tennessee Technological University 
+
+Cookeville, USA ashik.rasul@outlook.com 
+
+Hyung-Jin Yoon 
+
+Department of Mechanical and Nuclear Engineering Tennessee Technological University 
+
+Cookeville, USA hyoon@tntech.edu 
+
+Abstract —Unmanned aerial vehicles (UAVs) searching for ground targets from a high altitude face a unique challenge, particularly when the target is already within the field of view but effectively unobservable because of its small apparent scale. Standard object detectors often underperform in such scenarios because of resolution downscaling and limited context. In con-trast, active object search frameworks address this challenge by directing the agent to a suitable pose to gather richer visual information. However, flight regulations in urban airspace often restrict such physical movements for UAVs. As an alternative active sensing approach, the UAV can leverage the pan-tilt-zoom (PTZ) mechanism of the onboard camera to dynamically adjust its field of view and sequentially gather enhanced visual information from specific regions of interest. Once the candidate locations of the target are identified, it can deploy more expensive object detection schemes, such as an ensemble of multiple models, to get better reasoning at a fixed scale. In this work, we formulate the sequential exploration with PTZ operation as a partially observable Markov decision process (POMDP), in which the agent maintains a belief state over the target’s true location. To solve the POMDP, we deploy partially observable Monte Carlo planning (POMCP), where we condition the sensing reliability on target object scale and deploy selective ensemble detection as an additional reasoning step. We validate our methodology with experiments in a photo-realistic simulator under different environmental conditions and vehicle states, showing detection of ground targets at variable scales with significantly fewer steps and minimal dependence on sensor resolution compared to baseline methods 
+
+Index Terms —Planning under Uncertainty, Object Detection, Segmentation and Categorization, Aerial Systems: Perception and Autonomy 
+
+I. I NTRODUCTION 
+
+Humans are particularly good at searching for relevant infor-mation in a cluttered environment through a spatial attention mechanism [1], [2]. This capability allows us to detect small objects at a distance, even if they occupy a tiny area within our field of view (FOV). Emulating such adaptive perception capability is crucial for efficient object search and has been extensively studied in the computer vision community as human eye movement models [3], [4]. However, these models assume that the object of interest is always present in the input image, that the image already contains sufficient features Helipad 0.83 
+
+UAV with PTZ camera 
+
+Target object 
+
+> Helipad 0.38
+
+Enhanced view Resolution downscaling 
+
+A B
+
+Fig. 1. (Top) UAV search scenario for a sparse target from the cruise altitude; (bottom) (a) incoming image downscaling effect. The existing image fails to reveal distinct features for detection after slicing; (b) input image enhancement with camera PTZ operation. 
+
+of the target object, and that the sensor has a high detection probability with negligible noise in the operating range. In a real-world object search scenario, most images col-lected by a mobile robot may not contain the target object, the target object may be occluded or may not reveal sufficient features, and the detector itself may be noisy. There has been significant advancement in object search in indoor environ-ments by the robotics community, where these challenges are handled by physically moving the agent to a suitable pose to gather enhanced visual information [5], [6]. These works arXiv:2610.01067v1 [cs.RO] 1 Oct 2026 ⇝             
+
+> h
+> o
+> rollout
+> POMCP search
+> A
+> Active sensing (PTZ)
+> TP FP
+> TN
+> Aerial scene
+> Belief concentration Updated belief
+> H
+> helipad
+> Declaration
+> Belief > 𝜏
+> Current belief
+> ⇝
+> a
+> ↶ PTZ
+> Ensemble
+> Observation model
+> BCDE
+> FGHIJ
+> DNN inference
+> Single m odel Multiple models Fig. 2. POMCP-PTZ methodology: (a) Aerial search scenario from high altitudes, markers showing TP (True positive), TN(True negative), FP(False positive) detections, (b) Observation model with prior assignment, (C-G) POMCP planning for proposing best PTZ actions at current belief and updating the belief as unweighted particle representation, (H) Prediction with ensemble for increased accuracy, (I-J) Declaration of target while belief crossing the threshold. (H,I,J,B) Observation model formulation and selective ensemble as an extension to regular POMCP.
+
+assume the observation uncertainty mostly arises from object occlusion or hidden features for the object’s relative pose, as the target object scale variation within the FOV is often negli-gible in indoor settings. For unmanned aerial vehicles (UAVs), searching for a sparse ground target from high altitude, such physical movement is not feasible due to flight regulations in urban airspace. Moreover, even if the target is visible within the FOV, it may be tiny, and the input image resolution may not be enough to reveal sufficient features. In this scenario, standard object detectors often struggle to produce reliable detections. Computer vision methods for tiny object detection also suffer in this case, as a higher-resolution version of the input image may not be available, and approaches such as slicing [7], that attempts to enhance the size of the target by exhaustive slicing of the whole image with overlaps, or coarse-to-fine [8] detection, that runs a coarse detector to find the candidate regions and runs a fine detector on the candidate regions for finding the target, leads to significant resolution downscaling that produces uncalibrated confidence scores and a number of false positive detections. Though the detection accuracy can be further enhanced with more expensive ensemble methods [9], which run inference with multiple models trained on a subset of data (bagging [10]) or with random initialization [11], they can still struggle under scale and resolution variation of the target image. The UAV can leverage the pan-tilt-zoom (PTZ) mechanism before capturing the images to selectively enhance the size, clarity, and position of the object of interest, while maintaining a fixed input resolution, as illustrated in Figure 1. However, such selective enhancement can be expensive, and any exhaus-tive exploration may be limited by on-board computational resources and time-sensitive mission objectives. Conventional autonomous PTZ camera control follows a preloaded policy, often learned offline, that assumes complete environmental observability and focuses primarily on target tracking rather than ensuring detection reliability [12], [13]. For the sparse target search scenario, these assumptions do not hold, as the UAV cannot access the full information about the environment simultaneously and can only receive noisy observations with variable uncertainty conditioned on the PTZ settings, envi-ronmental conditions, and the target’s relative pose. In other words, the environment is partially observable, and the UAV must maintain a belief state, which is an internal estimate of its surroundings, to effectively choose the next sequence of actions. At every time step, the UAV has to trade off between wide-scan exploration for quick area coverage to receive noisy observations and precise-scan exploration for slower area coverage to receive more reliable observations. In this work, we formulate the sparse target search problem from a high altitude using camera PTZ functionality as a partially observable Markov decision process (POMDP) [14]. In this setting, the control policy operates directly on the belief space to sequentially actuate the PTZ operation of the camera to optimize the long-term objective of finding the target with minimum steps. The belief gets updated as the UAV receives new observations. Unlike conventional approaches that assume complete knowledge of the environment (i.e., complete observ-ability of the environment), assuming near-perfect sensors or fixed uncertainty across actions, we explicitly model the obser-vation uncertainty conditioned on different object appearances within the FOV. To solve the POMDP, we deploy Partially Observable Monte Carlo Planning (POMCP) [15]. To address the variation of the observation model in different deployment environments and UAV states, we formulate the detection reli-ability with a Beta-Bernoulli conjugate model that allows us to incorporate prior knowledge about the observation uncertainty as well as update the model iteratively as we gather more experiences from the deployment scenarios. Additionally, we selectively deploy an ensemble of DNNs at a fixed scale, conditioned on belief concentration, to improve prediction and enable successful target search. Our proposed methodology is illustrated in Figure 2. To evaluate our approach, we use a simulation environ-ment [16] built in Unreal Engine that models realistic aerial scenarios, including cluttered urban landscapes, varying alti-tudes, camera attributes (Field of view, focal length, and aper-ture control), and dynamic lighting. This environment enables thorough testing of the proposed framework, allowing us to study the effect of uncertainty, limited observability, and PTZ camera control against the baselines. Our key contributions are:  
+
+> •
+
+We formulate the PTZ camera operation, by a high-altitude UAV searching for a sparse ground target, as a POMDP.  
+
+> •
+
+We formulate the observation model uncertainty as a Beta-Bernoulli conjugate model, conditioned on the ob-ject appearance, with a prior assignment.  
+
+> •
+
+We deploy POMCP to solve the POMDP that sequentially selects the informative actions for environmental explo-ration. Within the POMCP implementation, we integrate our defined observation model and selectively deploy ensemble detection to enhance reasoning when belief concentration is already high.  
+
+> •
+
+Finally, we validate our method in a photo-realistic sim-ulation environment to show the confident discovery of the targets with significantly fewer steps, with minimal dependency on camera resolution, compared to traditional tiny-object detection methods. II. B ACKGROUND 
+
+POMDPs [14] provide a compact representation for se-quential decision making in real-world scenarios when the environment is not fully observable and provide a principled way to model sensor uncertainty. It is is defined by the tuple 
+
+⟨S , A, O, T, Z, R, γ ⟩. At any time step, the agent takes an action a ∈ A that causes the environment state to transition from s ∈ S to s′ ∈ S following the state transition model T .The agent receives an observation o ∈ O , with observation uncertainty modeled by Z, and receives reward r ∈ R. A history ht = (ao )1: t−1 captures all the past actions and observations. The agent maintains a distribution over states given the current history as belief, bt(s) = P r (s|ht). After taking an action and receiving an observation, the belief is updated by bt+1 (s′) = ηP r (o|s′, a ) P 
+
+> s
+
+P r (s′|s, a )bt(s).Where η is a normalizing constant. The ultimate objective of the agent is to find a policy π(bt) ∈ A which maximizes the expectation of future discounted cumulative reward: 
+
+V π (bt) = E
+
+" ∞X
+
+> k=0
+
+γkR(st+k, π (bt+k)|bt
+
+#
+
+Exact solutions for POMDPs are often intractable apart from some toy problems [17]. Among the approximate solvers, offline solution methods [18], [19] act increasingly slow for larger domains. Online POMDP solvers such as POMCP [15] leverage sparse belief sampling and Monte Carlo Tree Search to scale up for large POMDPs and maintain an unweighted particle filter [20] based belief to handle the curse of history. POMCP allows us to solve the POMDP without an explicit transition and observation model for discrete state, action, and observation spaces. It only needs a black-box simulator that returns the next state, observation, and reward given a state and action, (st+1 , o t+1 , r t+1 ) ∼ G(st, a t). In our specific application, we adopt the POMCP solution approach while explicitly modeling the observation likelihood Z(o | s, a, s ′)
+
+as a part of G.III. R ELATED WORKS 
+
+A rich body of literature is dedicated to explaining the spatial attention mechanism demonstrated by humans. The attention spotlight theory [1] suggested that attention can be focused on a specific area of the visual field to enhance the processing of information. The zoom lens model of atten-tion [2] later suggested that the size of the attentional focus and the processing efficiency within the focus area can vary. In the meantime, feature integration theory [21] highlighted that search time for an object increases linearly with the number of distractors (background objects possessing at least one feature with the object), which is explained by the sequential nature of attention deployment. This theory was further refined with the guided search model [22], [23], which suggested that the order of sequential attention deployment is determined by the saliency of the attention map and the search time is more influenced by the signal-to-noise ratio rather than the number of distractors. In addition to spatial attention, search time can be greatly improved by suppressing irrelevant information, which can be aided by negative cues [24] and active suppression [25]. These studies motivated leveraging the spatial attention mechanism to formulate computational models of eye move-ment for information maximization [26]. The I-POMDP framework [3] adopted a POMDP formulation for sequential eye movement modeling to maximize long-term information gathering. In another subsequent work [4], the I-POMDP framework was extended to computer vision tasks through the sequential fixation of a digital fovea, which retains resolution at the center of the fixation point while downscaling toward the periphery. Notably, these works focused on retaining resolution in already acquired images and did not consider further active enhancement before acquisition, as the retained resolution may still be insufficient for critical decision-making. Additionally, the sequential fixation of the digital fovea followed an offline-learned policy to generate actions from belief, which requires extensive training and lacks interpretability. Within the robotics community, a number of works focused on task-specific image acquisition and observation model formulation under partial observability. In [6], the authors used POMCP for object search in an indoor environment. They pro-posed a multi-object search framework from an object-oriented POMDP approach [27]. However, the work assumed a prop-erly functioning sensor and considered that the belief of the object should increase if the object is not occluded within the FOV. In a recent work [28], the authors considered a language-conditioned dynamic observation model and demonstrated improved object search performance compared to a fixed noise model in an indoor setting. However, they incorporated the detector’s confidence score (high/low bucket), for modulating the observation noise and subsequently updating POMDP belief, which may provide uncalibrated results in an outdoor environment due to huge scale and appearance variation of the target object. Another recent work focused on UAV target search in an outdoor environment in a search and rescue (SAR) setting leveraging the POMCP framework [29]. However, they considered a distance-based observability approach where, if the agent is outside the defined distance, the instance of false positive detection is deterministically ruled out. One common similarity in these works is that they considered physical movement of the agent to observe the object within a reliable range, which is often infeasible for a UAV operating in an urban airspace, as frequent movement is often restricted. Conventional computer vision methods for small object detection approach this problem with slicing [7], which en-hances the target object’s scale through overlapping slicing of the input image and running the inference on each slice to find the target, assuming a sufficiently high-resolution image is available, or coarse-to-fine methods [8], which detect candidate clusters with a coarse object detector and finally find the target with a fine pass of object detection. However, these methods still struggle due to resolution downscaling and can produce uncalibrated confidence scores with a number of false positives. Though there are more expensive methods to enhance prediction accuracy, such as running inference with multiple models commonly known as ensemble [9], which are trained on a subset of the dataset [10] or with random initialization [11], their application is limited by onboard com-putational resources, and they also require sufficient features and a specific scale to generate reliable results. In this work, we bridge this gap by considering the PTZ functionality as an alternative approach for ground target search from the cruise altitude that enables the UAV to acquire images with rich features while maintaining a fixed resolution and selectively apply model ensemble only when the belief is concentrated enough as a reasoning step between true and false positives. The existing works focusing on PTZ camera control [12], [13] often focus on object tracking rather than reliable detec-tion under sensing uncertainty. Moreover, the control policies are often learned offline assuming complete observability of the environment. These approaches are insufficient in the context of sparse ground target search from a high altitude, where variation in observation uncertainty is unavoidable based on different PTZ settings. This work further addresses these challenges by formulating camera PTZ control as a POMDP, solving it online with POMCP, and explicitly model-ing observation uncertainty conditioned on the target objects’ scale within the FOV. IV. P ROBLEM FORMULATION 
+
+We define the POMDP by discretizing the search space with m × m grids. Grids are parameterized by top-left corner coordinates (r, c ) and its side length l in grid units. We define a family of windows: 
+
+W(L) = (r, c, l ) : l ∈ L; 0 ≤ r, c ≤ m − l ,
+
+|W (L)| = X
+
+> l∈L
+
+(m − l + 1) 2
+
+where, L ⊆ { 1, . . . , m }, and the constraint 0 ≤ r, c ≤ m − l
+
+ensures each window lies fully within the grid. State (S),action (A) and observation (O) spaces are the instantiations of W, with observation space additionally includes a null 
+
+(∅) observation. We use the subscript a for action windows 
+
+(ra, c a, l a) and o for observations (ro, c o, l o), and no subscript refers to the state. As the target is assumed static, the transition model reduces to the identity, T (s′ | s, a ) = 1[ s′ = s ] for all 
+
+s, s ′ ∈ S , a ∈ A .The observation model Z(o | s, a ) specifies the probability of receiving observation o given true target state s and a scan action a. We define the scale ratio ρ as a key variable governing the detector’s reliability, where: 
+
+ρ = la
+
+l (1) The object presence indicator bp ∈ { 0, 1} is defined as: 
+
+bp = ra ≤ r ≤ ra + la − l ∧ ca ≤ c ≤ ca + la − l (2) Here, bp = 1 if the target lies fully within the scan window 
+
+[ra, r a + la) × [ca, c a + la), otherwise bp = 0 . We assume, the detection reliability depends on both the presence indicator of the target (bp) and its apparent scale (ρ). For each discretized scale bin ρk, we maintain Beta-Bernoulli priors for true detections and false alarms: 
+
+θ+(ρk) ∼ Beta (αhit ,k , β hit ,k ), θ−(ρk) ∼ Beta (αbg ,k , β bg ,k ).
+
+The hyperparameters αhit ,k and βhit ,k respectively encode the prior pseudo-counts of true and missed detections at scale bin 
+
+ρk, while αbg ,k and βbg ,k encode the corresponding pseudo-counts of false alarms and correctly rejected background observations. Through the prior assignment we can embed domain knowledge about the environment and the observation model being used. We decompose Z by the helipad presence indicator (bp):when bp = 1 :
+
+Z(o | s, a ) = 
+
+
+
+θ+(ρ) · N 
+
+
+
+ro
+
+co
+
+so
+
+ ;
+
+
+
+rcl
+
+ , Σ
+
+ o̸ = ∅
+
+1 − θ+(ρ) o = ∅
+
+(3) when bp = 0 :Z(o | s, a ) = 
+
+
+
+θ−(ρ)
+
+Nfp 
+
+o̸ = ∅
+
+1 − θ−(ρ) o = ∅
+
+(4) Here, Σ = diag( σ2 
+
+> r
+
+, σ 2 
+
+> c
+
+, σ 2 
+
+> s
+
+) denotes the bounding box noise covariance and Nfp = Pla
+
+> lo=1
+
+(la − lo + 1) 2 is the number of valid false-positive bounding box configurations inside the scan window. We decompose the reward into in-tree step rewards and a terminal declaration reward, which is applied outside the POMCP tree when the belief-level termination policy triggers a declaration. The in-tree rewards are defined as: 
+
+R(s, a ) = 
+
+(
+
+Rstep + Rdet − Rfp o̸ = ∅
+
+Rstep o = ∅ (5) where Rstep < 0 is the per-step cost encouraging minimization of detector inferences. Rdet , R fp > R step are the detection bonus and the false positive penalty respectively, that encour-ages the planner to take actions that are more likely to generate true positive detections. We define the terminal reward outside the POMCP tree as: 
+
+RT(ˆ st) = 
+
+(
+
+R+ ˆst = s∗
+
+R− ˆst̸ = s∗ (6) Here, R+ ≫ R− determines the terminal reward, s∗ denotes the true target state, and ˆst denotes the declared state. Both 
+
+R(s, a ) and RT(ˆ st) are discounted with γtree and γτ , which encourage early detection-generating actions inside the tree and reward target declaration in fewer steps. V. M ETHODOLOGY 
+
+Following the POMCP methodology [15], we approximate the belief (bt) as an unweighted particle set of K hypotheses and update the belief as we receive new observations, as shown in Algorithm 1. We compute the MAP (Maximum A Posteriori) estimate (ˆ st) and associated confidence (conf t)
+
+directly from the particle histogram. Instead of running the PO-UCT [15] on unifrom belief, we seed the simulation with a coarse confidence full area scan (a0), and subsequent belief update, that serves the purpose of a saliency prior for our search. Each step of POMCP-PLAN runs NSIM simulations from the current belief node, denoted as root node. Each simulation begins by sampling a state s ∼ B(h) from the root node, then traverses the tree using the PO-UCT [15] method until a fixed depth. At each internal node, the UCB action selec-tion criterion balances exploitation of high-value actions with exploration of under-visited ones: 
+
+a∗ = arg max 
+
+> a∈A
+
+"
+
+V (ha ) + c
+
+s
+
+ln N (h)
+
+N (ha )
+
+#
+
+(7) where V (ha ) is the current value estimate of history-action pair (h, a ), N (h) is the visit count of node h, N (ha ) is the 
+
+Algorithm 1: POMCP-PTZ: Main Loop 
+
+Input: Aerial image, detector 
+
+Output: Declared target state ˆs
+
+// Coarse-scan belief initialization 
+
+Bunif 0 ← { s(i) ∼ U (S)}Ki=1 ;
+
+o0 ← Detector(image , a 0);
+
+B0 ← BeliefUpdate( Bunif 0 , a 0, o 0);
+
+for t = 1 to MAX STEPS do if conf t ≥ τ then return ˆst
+
+at ← POMCP -PLAN( h, B t, N SIM );
+
+if conf t ≥ τe, a t = M AP then 
+
+at = aensemble 
+
+ot ← Detector(image , a t);
+
+Bt+1 ← BeliefUpdate( Bt, a t, o t, ˆst, conf t);
+
+h ← AdvanceTree( h, a t, o t);visit count of action a at node h, and c is the exploration constant. At leaf nodes, a rollout policy πrollout using uniform random scan selection provides a value estimate. After each simulation, Q-values are backed up via incremental averaging: 
+
+V (ha ) ← V (ha ) + R − V (ha )
+
+N (ha ) (8) After executing action at and receiving observation ot from the detector, the belief is updated via rejection sampling. The rejection sampling procedure samples a particle s from the current belief, passes it to the generative model G(s, a t) to produce a simulated observation o′ according to the observa-tion model Z, and accepts the resulting state s′ if the simulated observation matches observation ot. This process repeats until 
+
+K particles are collected, approximating the true Bayesian posterior for the belief. When the belief is concentrated beyond a threshold, τe, and POMCP-PLAN suggests a scan action covering the MAP with scale ratio ρ = 1, we swap the default scan for an ensemble scan involving five models trained on different subsets of the dataset. This selective deployment ensures the ensemble is applied at a fixed target scale and only aids the reasoning when the belief is already concentrated. If 
+
+m different models among the five models provide a detection, we pass this as a detection. Otherwise, Null observation is recorded. This step is followed by regular belief update as described above. Target declaration is handled as a belief-level termination policy applied after each belief update, external to the POMCP tree. The agent declares the MAP state ˆst when belief con-centration exceeds the rational threshold τ . Here, τ can be tuned as a design parameter. Separating declaration from the planning tree ensures that all Q-values and UCB statistics within the tree are computed exclusively over scan actions. We illustrate key steps of an episode in Figure 3. C 
+
+> A
+> BFig. 3. Evolution of belief during a full episode. The key points are marked. (A) Initial coarse scan of the area to obtain a saliency prior; this step provides true positives as well as false positive detections. The observations are snapped to the grid, and belief is updated with rejection sampling. (B) MAP concentrated on a false positive, but the ensemble returned no detection; as a result, confidence is collapsed. (C) The ensemble returned a detection at the true positive target, and belief is concentrated, resulting in target declaration.
+
+VI. E XPERIMENTS AND RESULTS 
+
+We train six different YOLO [30] models for the experimen-tal setup. Five models are trained on different subsets of the HelipadCat dataset [31] with default scale augmentation (0 .5) ,which are used for the ensemble detection. The sixth model is trianed with an optimized scale augmentation enabling the model to detect target within (0 –100 m) altitude range following the Bayesian optimization methodology described in our previous work [32]. We first evaluate our methods within this altitude range, for which the YOLO model is already fine-tuned. Then we include higher altitudes (200 –350 m) at a 100 m increment. We keep the camera resolution fixed at 
+
+640 × 640 . We run ten trials for each method, repeat across three different seeds, and use three photorealistic environments in CARLA: Town 10, Town 05, and Town 07, as shown in Figure 4. We consider four different search methods as baselines. Fixed Scan method performs a single scan at full FOV and declares the object with the highest confidence score if it crosses the threshold of 0.4. Exhaustive-Crop [7] uses the slicing method at three different scales with 25% overlap. A detection that is detected by most scale levels is declared as the target; in case of a tie, we declare the object with the highest mean confidence score from YOLO, with 0.4
+
+as the threshold value. Coarse-to-fine (C2F) methods run a coarse scan at full FOV with a low confidence threshold (0.05 ), and based on the initial detection, they enlarge the areas containing the bounding boxes to twice the initial size to produce object clusters. The clusters are then snapped to an image mosaic. Then a fine detection pass is done with 
+
+0.4 confidence threshold and the highest confidence object is declared. We consider two different variants of C2F. The first variant, denoted as C2F-Crop, considers camera PTZ instead of slicing. The second variant, denoted as C2F-PTZ-Ensemble, considers ensemble detection at the fine pass step. We denote our method as POMCP-PTZ. We run each episode with NSIM = 50 k simulations with K = 11 .5k
+
+particles. Each rollout step runs till a depth of 5, and 
+
+M AX ST EP S is set to 50 . We set αf = 5% as a fixed par-ticle reinvigoration rate. Our experiment results are presented in Figure 4. At 100 m altitude, the baseline methods perform either sig-nificantly better or as well as our method. Fixed-Scan method performs consistently, as it falls within the known altitude range within which the DNN has been fine-tuned, and it can detect the target in a single step. POMCP-based methods show comparable performance, indicating faster convergence driven by initial belief concentration from the detection received at the full-width scan. Exhaustive Crop accumulates a lower reward, discounted by the fixed high number of steps (≈ 35) 
+
+taken. As we increase the UAV altitude, baseline methods are no longer significantly better than POMCP-based methods, penalized by non-detection and wrong detection. At 300 m
+
+altitude, POMCP-PTZ outperforms all other methods in Town 05 and Town 07 experiments, and provides comparable perfor-mance to c2f-PTZ-Ensemble. From this altitude, the helipad occupies only 64 ×64 pixels within the FOV. Therefore, Fixed Scan and Exhaustive Crop show negative reward in 2 out of 3 scenarios, penalized by repeated no-detection and wrong detection. At 350 m altitude, the POMCP-PTZ significantly outperforms all other methods in all simulation scenarios. All other methods fail with non-detection and wrong detection as resolution is severely degraded. The C2F-Crop and C2F-PTZ-Ensemble methods, despite being allowed to access the PTZ enhancement, struggle, as even the 0.05 confidence fails to produce an initial detection cluster due to severe resolu-tion downscaling. On the other hand, POMCP-PTZ method chooses intermediate scans to generate initial saliency, and applies ensemble actions with tighter scans to find the target in subsequent steps. We also consider each trial as a Bernoulli trial (i.e., if the object is found correctly, we assign 100%, and if it is not found or times out, we assign 0%), and see the correct rate for all the methods. We observe that our method shows significantly better performance in finding the correct target in 2 out of 3 scenarios. Though our method finds the target in fewer steps, we compare the YOLO calls to see if selective model ensemble with other methods has any severe inference overhead. Every Target object    
+
+> Target object
+> Target object
+> CARLA: Town 10 CARLA: Town 05 CARLA: Town 07 Fig. 4. CARLA simulation environment and corresponding experiment results.
+
+time an ensemble action is called, we count is as 5 YOLO calls. The Fixed Scan method requires only one DNN call per episode. The Exhaustive Crop method requires 35 calls due to its fixed tiling strategy (not shown in the plot). C2F-Crop finds the target in 2 YOLO calls and C2F-PTZ-Ensemble uses 6 Yolo calls. POMCP-PTZ, though, takes significantly more YOLO calls than Fixed Scan and C2F methods; it does not take significantly more calls than the exhaustive-crop. As slicing-based methods struggle at high altitude due to resolution downscaling, we run the next experiment to see if their performance recovers as we increase the camera resolu-tion. The results are shown in the second row of Figure 4. We observe a steady increase in the performance of Exhaustive Crop as the resolution goes up. At higher resolution, the downscaling effect after slicing is less severe, and the DNN can detect the helipad more reliably. However, POMCP-PTZ shows only marginal improvement as it is not affected by the resolution downscaling. At higher resolution, POMCP-PTZ performance is slightly degraded (while still performing significantly better than the baselines) due to training and testing resolution mismatch. Our experiment shows that Fixed Scan, Exhaustive Crop, and Coarse-to-Fine ensemble can be a reliable method in a known environment and altitude range. As the environ-ment and vehicle state change, POMCP-based helipad search methods perform more reliably. Despite the fewer steps, the POMCP-based methods still have to perform simulation steps before each scan, where POMCP-PTZ has to actively pan, tilt, and zoom the camera lens. This can be undesirable if the search time is more critical than accuracy. Therefore, the choice of the search method should be made based on the specific mission requirements and the operational environment. VII. C ONCLUSION 
+
+In this work, we developed a belief-space planning al-gorithm for sparse target search from high altitude that in-corporates observation uncertainty in the perception system with a POMDP problem formulation. Our proposed methods outperformed single-scan, traditional slicing-aided methods and coarse-to-fine methods at higher altitudes beyond the fine-tuning range and across camera resolutions. Our proposed helipad search method is built on discretiza-tion of the state, action, and observation space, whereas in reality the state, action, and observations are continuous. This method should be further extended to POMDP solution methods, such as POMCPOW [33], that handle continuous state, action, and observation spaces requiring a higher number of simulations. The observation model considered in this work is conditioned on the object scale within the scan window, which is assumed to be conservative domain knowledge. The model itself should adapt online as it receives more feedback from the search performance. The POMCP planning method should be further optimized for speed and efficiency by incorporating different particle and simulation numbers. Physical actuation of the camera lens with PTZ operation can be a time-consuming task; therefore, both crop and PTZ can be considered within the action space for a more efficient search. The search method presented in this work is developed with a single helipad in mind. In future work, this should be extended to a multiple-helipad scenario, either by spawning multiple agents to search a single helipad each or formulating the search problem as an object-oriented POMDP [27]. Finally, our method is developed and tested within the simulator environment only. This should be validated with real-world prototype building and testing. REFERENCES [1] M. I. Posner, C. R. R. Snyder, and B. J. Davidson, “Attention and the Detection of Signals,” Journal of Experimental Psychology: General ,vol. 109, no. 2, pp. 160–174, 1980. [2] C. W. Eriksen and J. D. St. James, “Visual attention within and around the field of focal attention: A zoom lens model,” Perception & Psychophysics , vol. 40, no. 4, 1986. [3] N. J. Butko and J. R. Movellan, “I-POMDP: An infomax model of eye movement,” in 2008 7th IEEE International Conference on Development and Learning (ICDL) , pp. 139–144, IEEE, 2008. [4] N. J. Butko and J. R. Movellan, “Optimal scanning for faster object detection.,” in CVPR , pp. 2751–2758, 2009. [5] Y. Xiao, S. Katt, A. ten Pas, S. Chen, and C. Amato, “Online planning for target object search in clutter under partial observability,” in 2019 In-ternational Conference on Robotics and Automation (ICRA) , pp. 8241– 8247, IEEE, 2019. [6] K. Zheng, Y. Sung, G. Konidaris, and S. Tellex, “Multi-resolution pomdp planning for multi-object search in 3d,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 2022–2029, IEEE, 2021. [7] F. C. Akyon, S. O. Altinuc, and A. Temizel, “Slicing aided hyper inference and fine-tuning for small object detection,” in 2022 IEEE international conference on image processing (ICIP) , pp. 966–970, IEEE, 2022. [8] Y. Huang, J. Chen, and D. Huang, “Ufpmp-det: Toward accurate and efficient object detection on drone imagery,” in Proceedings of the AAAI conference on artificial intelligence , vol. 36, pp. 1026–1033, 2022. [9] R. Solovyev, W. Wang, and T. Gabruseva, “Weighted boxes fusion: En-sembling boxes from different object detection models,” arXiv preprint arXiv:1910.13302 , 2019. [10] L. Breiman, “Bagging predictors,” Machine learning , vol. 24, no. 2, pp. 123–140, 1996. [11] B. Lakshminarayanan, A. Pritzel, and C. Blundell, “Simple and scalable predictive uncertainty estimation using deep ensembles,” Advances in neural information processing systems , vol. 30, 2017. [12] S. S. Sandha, B. Balaji, L. Garcia, and M. Srivastava, “Eagle: End-to-end deep reinforcement learning based autonomous control of ptz cameras,” in Proceedings of the 8th ACM/IEEE Conference on Internet of Things Design and Implementation , pp. 144–157, 2023. [13] H. Fang, H. Liu, J. Wen, Z. Yang, J. Li, and Q. Han, “Automatic visual enhancement of ptz camera based on reinforcement learning,” 
+
+Neurocomputing , vol. 626, p. 129531, 2025. [14] L. P. Kaelbling, M. L. Littman, and A. R. Cassandra, “Planning and acting in partially observable stochastic domains,” Artificial Intelligence ,vol. 101, pp. 99–134, May 1998. [15] D. Silver and J. Veness, “Monte-carlo planning in large pomdps,” 
+
+Advances in neural information processing systems , vol. 23, 2010. [16] A. Bansal, M. Yeghiazaryan, H.-J. Yoon, D. Wang, A. E. Rasul, C. Tao, Y. Zhao, T. Zhu, O. So, C. Fan, et al. , “Airtaxisim: A simulator for autonomous air taxis,” in AIAA AVIATION FORUM AND ASCEND 2025 , p. 3349, 2025. [17] R. D. Smallwood and E. J. Sondik, “The Optimal Control of Partially Observable Markov Processes Over a Finite Horizon,” Operations Re-search , vol. 21, no. 5, pp. 1071–1088, 1973. [18] J. Pineau, G. Gordon, and S. Thrun, “Point-based value iteration: An anytime algorithm for POMDPs,” in Ijcai , vol. 3, pp. 1025–1032, 2003. [19] H. Kurniawati, D. Hsu, and W. S. Lee, “SARSOP: Efficient Point-Based POMDP Planning by Approximating Optimally Reachable Belief Spaces,” in Robotics: Science and Systems , 2008. [20] S. Thrun, “Probabilistic robotics,” Communications of the ACM , vol. 45, pp. 52–57, Mar. 2002. [21] A. M. Treisman and G. Gelade, “A feature-integration theory of atten-tion,” Cognitive psychology , vol. 12, no. 1, pp. 97–136, 1980. [22] J. M. Wolfe, “Guided Search 2.0 A revised model of visual search,” 
+
+Psychonomic Bulletin & Review , vol. 1, no. 2, pp. 202–238, 1994. [23] J. M. Wolfe and W. Gray, “Guided search 4.0,” Integrated models of cognitive systems , pp. 99–119, 2007. [24] J. T. Arita, N. B. Carlisle, and G. F. Woodman, “Templates for rejection: configuring attention to ignore task-irrelevant features.,” Journal of experimental psychology: human perception and performance , vol. 38, no. 3, p. 580, 2012. [25] N. Gaspelin, C. J. Leonard, and S. J. Luck, “Direct evidence for ac-tive suppression of salient-but-irrelevant sensory inputs,” Psychological science , vol. 26, no. 11, pp. 1740–1750, 2015. [26] J. Najemnik and W. S. Geisler, “Optimal eye movement strategies in visual search,” Nature , vol. 434, no. 7031, pp. 387–391, 2005. [27] A. Wandzel, Y. Oh, M. Fishman, N. Kumar, L. L. Wong, and S. Tellex, “Multi-Object Search using Object-Oriented POMDPs,” in 2019 Interna-tional Conference on Robotics and Automation (ICRA) , pp. 7194–7200, May 2019. [28] T. Nguyen, V. Hrosinkov, E. Rosen, and S. Tellex, “Language-Conditioned Observation Models for Visual Object Search,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2023. [29] H. M. Ray, Z. Laouar, Z. Sunberg, and N. Ahmed, “Human-Centered Autonomy for UAS Target Search,” in 2024 IEEE International Confer-ence on Robotics and Automation (ICRA) , pp. 9563–9570, May 2024. [30] J. Redmon, S. Divvala, R. Girshick, and A. Farhadi, “You only look once: Unified, real-time object detection,” in Proceedings of the IEEE conference on computer vision and pattern recognition , pp. 779–788, 2016. [31] J. Bitoun and S. Winkler, “Helipadcat: Categorised helipad image dataset and detection method,” in Proceedings of the IEEE Region 10 Conference (TENCON) , pp. 685–689, IEEE, 2020. [32] A. Rasul, H. Tasnim, H.-J. Yoon, A. Bansal, D. Wang, N. Hovakimyan, L. Sha, and P. Voulgaris, “Bayesian data augmentation and training for perception dnn in autonomous aerial vehicles,” in AIAA SciTech 2025 Forum , p. 0933, 2025. [33] Z. Sunberg and M. Kochenderfer, “Online Algorithms for POMDPs with Continuous State, Action, and Observation Spaces,” Proceedings of the International Conference on Automated Planning and Scheduling ,vol. 28, pp. 259–263, June 2018.

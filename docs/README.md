@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-03</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-04</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-03 22:02:57 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-04 22:31:51 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读1篇、速读7篇，聚焦机器人学习在训练数据变化下的记忆、适应与忽略机制。最值得看的是精读8.0分的《Memorize, Adapt, Ignore》对机器人学习机制的系统诊断，以及速读中7.0分的“校准风险路由”用于受控世界模型适应。普通读者可先读精读了解机器人何时该记、该变、该忽略，再按需跟进世界模型适应与视觉语言导航两条应用线。</p>
+<p>今日速读3篇无人机与离线强化学习论文，均获6.0分，无精读入选。最值得关注的是多旋翼下洗流操控（Drone Soccer）与离线强化学习的分布内想象两个方向。普通读者可先从无人机目标搜索那篇入手，理解部分可观测下的在线规划思路。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">1 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Memorize, Adapt, Ignore: Diagnosing Robot Learning Mechanisms under Training Data Variation">Memorize, Adapt, Ignore: Diagnosing Robot Learning Mechanisms under Training Data Variation</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Calibration-risk routing for controlled world-model adaptation">Calibration-risk routing for controlled world-model adaptation</span></li><li><span class="dpr-home-dashboard-paper-title" title="RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation">RECAST: Recasting Vision-Language Semantics into an Actionable Cost Map for Robot Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Query, Align, and Distill: Navigation-Aware Cross-Modal Interaction for Efficient Vision-and-Language Navigation">Query, Align, and Distill: Navigation-Aware Cross-Modal Interaction for Efficient Vision-and-Language Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Drone Soccer: Learning to Manipulate with Multicopter Downwash">Drone Soccer: Learning to Manipulate with Multicopter Downwash</span></li><li><span class="dpr-home-dashboard-paper-title" title="In-Distribution Imagination for Model-Based Offline Reinforcement Learning">In-Distribution Imagination for Model-Based Offline Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability">Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 </div>
 
