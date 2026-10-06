@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-04</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-06</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 6 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-04 22:31:51 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-06 00:37:28 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读3篇无人机与离线强化学习论文，均获6.0分，无精读入选。最值得关注的是多旋翼下洗流操控（Drone Soccer）与离线强化学习的分布内想象两个方向。普通读者可先从无人机目标搜索那篇入手，理解部分可观测下的在线规划思路。</p>
+<p>2026-10-06 日报精选6篇，精读1篇、速读5篇。最值得看的是8.0分精读《DR-IPC》——用抗扰动的一体化规划与控制，让基于LiDAR的四旋翼导航更稳更可靠；速读中《Estimate, Don&#x27;t Imitate》和《AD-E2E-JEPA》分别探索可复用状态策略做视觉运动控制、以及端到端自动驾驶的联合嵌入预测架构。普通读者可优先从《DR-IPC》入手，感受机器人导航如何应对真实环境干扰，再按兴趣跟进自动驾驶与世界模型方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation">DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Drone Soccer: Learning to Manipulate with Multicopter Downwash">Drone Soccer: Learning to Manipulate with Multicopter Downwash</span></li><li><span class="dpr-home-dashboard-paper-title" title="In-Distribution Imagination for Model-Based Offline Reinforcement Learning">In-Distribution Imagination for Model-Based Offline Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability">Online Planning for Sparse Ground Target Search from a High-Altitude UAV under Partial Observability</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Estimate, Don&#x27;t Imitate: Reusing Differentiable State-Based Policies for Visuomotor Control">Estimate, Don&#x27;t Imitate: Reusing Differentiable State-Based Policies for Visuomotor Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="AD-E2E-JEPA: A Joint-Embedding Predictive Architecture For End-to-End Autonomous Driving">AD-E2E-JEPA: A Joint-Embedding Predictive Architecture For End-to-End Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="WorldGraph: Graph-Native World Modeling">WorldGraph: Graph-Native World Modeling</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
 </section>
 </div>
 

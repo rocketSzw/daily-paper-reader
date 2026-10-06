@@ -1,0 +1,1323 @@
+DR-IPC: Disturbance-Resilient Integrated Planning
+and Control for LiDAR-Based Quadrotor Navigation
+Peng Liu1, Jingyan Wang1, Qipeng Ye2, Wen Li1, Jinya Su1, Senior Member, IEEE,
+Zuo Wang1, Member, IEEE, Shihua Li1, Fellow, IEEE, Yunda Yan3, Senior Member, IEEE
+Abstract—LiDAR-based quadrotor navigation in cluttered
+environments
+remains
+challenging
+under
+external
+distur-
+bances, particularly when obstacle-aware motion generation and
+disturbance-rejection control are handled in separate layers. This
+article presents disturbance-resilient integrated planning and
+control (DR-IPC), which combines lightweight path guidance
+with nonlinear model predictive control (NMPC) to directly
+generate angular velocity and thrust. An interconnected extended
+Kalman filter and nonlinear disturbance observer jointly provide
+filtered state estimates and reconstructed disturbances for NMPC
+prediction. The resulting formulation unifies nonlinear quadrotor
+dynamics, actuator constraints, local motion generation, and pe-
+nalized safe-flight-corridor residuals without requiring a separate
+trajectory-optimization stage. Gazebo and MARSIM simulations,
+together with indoor and outdoor experiments, validate DR-IPC
+under wind, suspended payloads, narrow passages, ball impacts
+and reactive avoidance of a dynamic obstacle. In multi-goal
+navigation with disturbances, DR-IPC increases the number of
+completed missions from 1/10 to 9/10 in Gazebo and reduces the
+altitude RMSE from 0.34 to 0.01 m in experiments. The complete
+system operates onboard at 100 Hz. Supplementary videos are
+available on the project page https://drpp316.github.io/DR-IPC
+-Page/, and the source code will be released.
+Index Terms—Integrated planning and control, nonlinear
+model predictive control, disturbance-aware navigation, intercon-
+nected observer, LiDAR-based quadrotor
+I. INTRODUCTION
+P
+ROVIDING
+onboard
+3-D
+mapping
+and
+odometry,
+LiDAR-based quadrotors have become an important plat-
+form for autonomous navigation in cluttered and partially
+unknown environments [1], including inspection [2], [3],
+search and rescue [4], precision agriculture [5], and aerial
+transportation [6]. However, LiDAR maps contain only geo-
+metric information and do not capture wind, payload-induced
+forces, or modeling errors. Odometry noise further degrades
+the state measurements used for feedback [7]. Consequently,
+these disturbances and uncertainties can drive the LiDAR-
+based vehicle away from the nominally collision-free path.
+Most LiDAR-based quadrotor systems use a hierarchical
+planning and control (HPC) architecture [1], [8], where a
+Corresponding author: Jinya Su
+1School of Automation, Key Laboratory of Measurement and Con-
+trol
+of
+CSE,
+Ministry
+of
+Education,
+Institute
+of
+Intelligent
+Un-
+manned
+Systems,
+Southeast
+University,
+Nanjing
+210096,
+China.
+(e-
+mail: drlp@seu.edu.cn, jingyan.wang@seu.edu.cn, lwen@seu.edu.cn, su-
+cas@seu.edu.cn, z.wang@seu.edu.cn, lsh@seu.edu.cn)
+2School of Electrical Engineering and Automation, Xiamen University of
+Technology, Xiamen 361024, China. (e-mail: iceteen@stu.xmut.edu.cn)
+3 Department of Computer Science, University College London, London,
+WC1E 6BT, UK. (e-mail: yunda.yan@ucl.ac.uk)
+Fig. 1: Real-world validation of the proposed disturbance-
+resilient navigation in cluttered environments. (a)–(d) flight routes
+and snapshots in the outdoor wooded scene during daytime and nighttime;
+(e)–(h) flight routes and snapshots in two real-life factory scenarios.
+planner generates collision-free motion from the LiDAR map
+and a downstream controller handles tracking separately [9].
+This separation makes it difficult to adjust collision-avoidance
+motion and control actions together when disturbances cause
+path deviations. Integrated planning and control (IPC) re-
+duces this gap by jointly optimizing local motion and control
+commands within a predictive backend [10]–[12]. However,
+existing LiDAR-based IPC methods provide only partial inte-
+gration and limited (i.e., passive instead of active) robustness
+to external disturbances and noisy state measurements.
+To this end, on top of the classical IPC [11], this paper
+presents DR-IPC, a Disturbance-Resilient Integrated Planning
+and Control algorithm for LiDAR-based quadrotor navigation.
+Unlike the original IPC, DR-IPC uses the reconstructed distur-
+bance not only for feedback compensation but also within the
+NMPC prediction to jointly modify collision-avoidance motion
+and control inputs. The pipeline is shown in Fig. 2. The main
+contributions are:
+(1) DR-IPC Algorithm: A DR-IPC algorithm is developed
+arXiv:2610.03530v1  [cs.RO]  2 Oct 2026
+
+
+  Perception and 
+Localization  
+DR-IPC
+Disturbance-Resilient Integrated Planning and Control
+Frontend
+Backend (100 Hz)
+Local Map
+Construction
+Reference Path 
+Search (A*)
+SFC
+Generation
+NMPC-based
+DR-IPC
+Sensor (Mid-360S)
+Localization
+IMU
+LiDAR- 
+Inertial
+Odometry
+(FAST-LIO2)
+LiDAR 
+PX4
+Angular 
+Velocity 
+and 
+Thrust
+(100 Hz)
+Odometry
+(200 Hz)
+IMU data
+(200 Hz)
+Raw Point 
+Cloud
+(50 Hz)
+Hardware Platform
+Angular Velocity 
+Loop
+Interconnected Observer  (100 Hz)
+NDO
+Filtered Odometry
+Disturbance Estimate
+EKF
+Z-1
+Fig. 2: Pipeline of the proposed DR-IPC. The frontend provides collision-free geometric guidance, the EKF+NDO supplies filtered states and
+reconstructed disturbances, and the NMPC backend jointly optimizes local motion and angular-velocity/thrust commands with SFC penalties and input
+constraints. The main contributions are highlighted in red.
+for LiDAR-based quadrotor navigation in cluttered, noisy,
+and disturbance-rich environments. The A* path refer-
+ences, soft SFC penalties, nonlinear quadrotor dynam-
+ics, input constraints, and reconstructed disturbances are
+jointly handled in a unified NMPC backend.
+(2) Nonlinear Interconnected Observer: A nonlinear inter-
+connected EKF+NDO is designed for simultaneous state
+filtering and disturbance reconstruction in the presence
+of noise, providing noise-attenuated state estimates and
+smoother disturbance estimates for NMPC.
+(3) Comparative Multi-Scenario Validation: DR-IPC is
+validated in Gazebo and MARSIM, together with indoor
+and outdoor experiments covering wind disturbances,
+suspended-payload transportation, narrow-passage navi-
+gation, impacts from a throwing ball, reactive avoidance
+of a dynamic obstacle, wooded and factory flights.
+Notations: Rn and Rn×m denote the n-dimensional Eu-
+clidean space and the set of n×m real matrices, respectively. I
+and 0 denote identity and zero matrices of appropriate dimen-
+sions, respectively. The unit-quaternion set is S3 := {q ∈R4 |
+∥q∥= 1}. N(µ, Σ) denotes the Gaussian distribution with
+mean µ and covariance Σ. For a symmetric matrix M ⪰0,
+∥z∥2
+M := z⊤Mz, while ∥z∥denotes the Euclidean norm. For
+a nonnegative integer n, In := {0, . . . , n}. Vector inequalities
+are interpreted element-wise.
+II. RELATED WORK
+A. Obstacle-Aware Motion Generation and Predictive Control
+1) Hierarchical
+Planning
+and
+Control:
+Conventional
+quadrotor navigation separates path planning, trajectory op-
+timization, and tracking control. A front-end planner typically
+uses a geometric or simplified point-mass model, while a
+back-end optimizer converts the path into a smooth nominal
+trajectory. Representative methods include SFC-based polyno-
+mial optimization [13], minimum-snap generation [14], EGO-
+Planner [9], and hierarchical two-layer MPC [15]. A lower-
+level feedback controller then tracks the optimized trajectory.
+In this architecture, obstacle avoidance is handled only
+by the planner, typically using a simplified model without
+disturbance effects. The resulting path may be geometrically
+collision-free but not dynamically feasible under disturbances.
+At the control level, as illustrated in Fig. 3(a), the tracking
+controller does not have obstacle information and continues
+to reduce the tracking error after the vehicle deviates from the
+reference. It may drive vehicles toward nearby obstacles with-
+out timely replanning. Consequently, the performance of HPC
+may degrade in cluttered environments under disturbances.
+2) Integrated Planning and Control: Integrated schemes
+have attracted increasing attention [1], [8]. It acts as a local
+predictive planner-controller that uses global guidance and
+obstacle information [11]. At each receding-horizon update,
+it jointly optimizes collision-aware local motion and control
+inputs, rather than merely tracking a prescribed trajectory
+without accounting for obstacles [25]. As shown in Fig. 3(b),
+when wind drives the vehicle away from the reference, the
+integrated schemes can adjust both the local motion around
+the obstacle and the corresponding control action.
+Existing integrated methods couple motion generation and
+control in different ways. Obstacle-aware NMPC [16] imposes
+a prescribed UAV–obstacle distance as a hard constraint. CBF-
+based MPC [17] embeds forward-invariant safety conditions
+Fig. 3: Planning and control under disturbances. (a) in the
+HPC, the planner uses obstacle information, whereas the controller does not;
+disturbance-induced deviations therefore may result in collision; (b) IPC uses
+obstacle information to jointly adjust local motion and control actions (the
+dashed and solid curves represent two feasible collision-avoidance routes).
+
+
+Fig. 4: Ball-impact hover experiment. (a) experimental setup; (b)–(i) IPC and DR-IPC transient responses at t = 3, 4, 5, 8 s, respectively.
+TABLE I: Capability comparison of representative quadrotor methods. (✓: yes; ×: no; –: not applicable or not reported.)
+Method
+Function
+Architecture
+Obstacle-aware
+planning
+Estimated disturbance
+in prediction
+Nonlinear
+MPC model
+Cluttered
+real-world flight
+Onboard
+perception
+Minimum-snap [14]
+Planning and control
+Hierarchical
+×
+×
+–
+✓
+×
+EGO-Planner [9]
+Planning
+Hierarchical
+✓
+×
+–
+✓
+Camera
+Obstacle-aware NMPC [16]
+Planning and control
+Integrated
+✓
+×
+✓
+×
+×
+CBF-MPC [17]
+Planning and control
+Integrated
+✓
+×
+×
+×
+×
+MPCC [18]
+Planning and control
+Integrated
+×
+×
+✓
+×
+×
+IPC [11]
+Planning and control
+Integrated
+✓
+×
+×
+✓
+LiDAR
+Robust visual-servo NMPC [19]
+Tracking
+–
+×
+×
+✓
+–
+Camera
+Efficient tracking NMPC [20]
+Tracking
+–
+×
+×
+✓
+–
+×
+Embedded HMPC [15]
+Planning and control
+Hierarchical
+✓
+×
+✓
+✓
+×
+DA-MPC [21]
+Tracking
+–
+×
+✓
+✓
+×
+×
+DR-MPC [22]
+Tracking
+–
+×
+✓
+✓
+–
+Camera
+DOB-based tracking/landing [23], [24]
+Tracking
+–
+×
+✓
+–
+–
+×
+DR-IPC (ours)
+Planning and control
+Integrated
+✓
+✓
+✓
+✓
+LiDAR
+into MPC for collision avoidance. MPCC [18] jointly opti-
+mizes path progress and control for racing but omits obstacle
+avoidance. IPC [11] combines A* with SFC-constrained linear
+MPC, with subsequent extensions to challenging terrain and
+dynamic environments [10], [12]. However, its linear triple-
+integrator model derives angular velocity and thrust through
+differential flatness, while integral thrust adaptation provides
+only limited disturbance compensation. IPC [11] therefore re-
+mains partially integrated and offers limited active disturbance-
+rejection capability. Moreover, its hard SFC constraint may
+make online optimization infeasible or induce aggressive
+corrective motion after disturbance-induced deviations [20].
+Overall, these representative methods rely mainly on nominal
+prediction and do not incorporate reconstructed disturbances
+into obstacle-aware motion optimization.
+B. Robust and Disturbance-aware MPC
+1) Robust MPC: Robust MPC handles bounded distur-
+bances and uncertainties without explicitly reconstructing
+them. Robust visual-servo NMPC [19] maintains target vis-
+ibility through constraint tightening. Efficient NMPC [20]
+converts inequality constraints into cost penalties and imposes
+a contraction constraint for real-time stable tracking.
+2) Disturbance-aware MPC: Disturbance observer (DOB)-
+based
+quadrotor
+controllers
+have
+been
+developed
+for
+disturbance-rejection tracking and landing [23], [24], fol-
+lowing the general disturbance-estimation and compensation
+framework [26], [27]. Observer-based MPC further incor-
+porates disturbance estimates into prediction. DA-MPC [21]
+injects an NDO estimate into the prediction model. DR-MPC
+[22] combines a generalized extended-state observer with
+predictive visual servoing for UAV pipeline inspection.
+Both branches employ MPC for prescribed trajectory or
+visual-target tracking. Robust MPC does not reconstruct the
+disturbance, whereas disturbance-aware MPC incorporates its
+estimate into prediction. However, neither couples disturbance
+rejection with obstacle-aware local motion generation.
+C. Positioning of DR-IPC
+As summarized in Table I, existing obstacle-aware meth-
+ods generally omit online disturbance reconstruction, whereas
+disturbance-aware MPC methods, which mainly serve as low-
+level control strategies, do not include obstacle information in
+prediction. The proposed DR-IPC bridges this gap by integrat-
+ing disturbance reconstruction with obstacle-aware predictive
+control. Building on our previous linear KF+DOB architecture
+[28], the interconnected observer is extended to nonlinear
+quaternion dynamics. The resulting EKF+NDO supplies fil-
+tered states and reconstructed disturbances to an obstacle-
+aware NMPC that jointly optimizes local motion, angular
+velocity and thrust. Without a separate trajectory-optimization
+stage, the onboard system supports LiDAR-based navigation
+and suspended-payload transportation in disturbance-rich, clut-
+tered outdoor and factory environments.
+
+
+Fig. 5: Indoor multi-waypoint navigation with disturbances. (a)–(e) DR-IPC transient responses at t = 4, 11, 15, 24, 28 s, respectively.
+Fig. 6: Quadrotor platform and coordinate frames.
+III. MODELING AND PROBLEM FORMULATION
+A. Dynamic Modeling
+As shown in Fig. 6, the quadrotor is described in the inertial
+frame FI and the body-fixed frame FB, which is attached to
+its center of mass. The position p ∈R3, velocity v ∈R3, and
+gravity g = [0, 0, g]⊤∈R3 are expressed in FI. The angular
+velocity w ∈R3 is expressed in FB. The unit quaternion
+q = [qw, qx, qy, qz]⊤∈S3 ⊂R4 represents the attitude, and
+the total thrust T ∈R acts along the body zB-axis.
+Define the state as x = [p⊤, q⊤, v⊤]⊤∈R10, the control
+input as u = [w⊤, T]⊤∈R4 and the UAV mass as m. The
+quadrotor dynamics are described by
+˙x = f(x, u) + Bd,
+(1)
+where d ∈R3 is the lumped acceleration disturbance in FI,
+accounting for external forces and unmodeled dynamics. The
+nonlinear dynamics f and disturbance input matrix B are
+f(x, u) =
+
+
+v
+1
+2Ω(q)w
+−g + Φ(q)
+m T
+
+, B =
+
+
+03×3
+04×3
+I3×3
+
+.
+(2)
+The thrust direction map and quaternion kinematics matrix are
+Φ(q) =
+
+
+2(qxqz + qwqy)
+2(qyqz −qwqx)
+1 −2(q2
+x + q2
+y)
+
+, Ω(q) =
+
+
+−qx
+−qy
+−qz
+qw
+−qz
+qy
+qz
+qw
+−qx
+−qy
+qx
+qw
+
+.
+Considering process noise, the discrete-time dynamics are
+xk+1 = F(xk, uk, dk) + ηk,
+F(xk, uk, dk) = xk + ∆t [f(xk, uk) + Bdk],
+(3)
+where ∆t is the sampling period and noise ηk ∼N(0, Q).
+The LiDAR-inertial odometry provides the measurement
+yk = Hxk + νk,
+(4)
+where H = I10 and νk ∼N(0, R) is the measurement noise.
+B. A* Guidance and Safe-Flight Corridor
+Using the local occupancy map, A* generates a collision-
+free geometric path and replans it when a newly detected
+obstacle blocks the path. The reference path at update k is
+Rk = {pr
+0|k, pr
+1|k, . . . , pr
+N|k},
+(5)
+where pr
+i|k ∈R3 is the position reference at step i. Since Rk
+is generated geometrically and guides the local motion, it is
+not required to satisfy the quadrotor dynamics. The SFC is
+constructed from an occupancy map after obstacle inflation
+and defines a local collision-free convex region
+Ck = {p ∈R3 | Akp ≤bk},
+(6)
+where Ak ∈Rns×3, bk ∈Rns, and ns is constraint number.
+C. Problem Statement
+At update k, DR-IPC receives the noisy odometry mea-
+surement yk, the A*-based geometric guidance Rk, and the
+local SFC Ck. Since the true state xk and lumped disturbance
+dk are unavailable, online state filtering and disturbance
+reconstruction are required for predictive control.
+Sudden disturbances or map updates may drive the motion
+outside the SFC. A hard SFC constraint may make the
+optimal control problem (OCP) infeasible or induce aggressive
+recovery and oscillatory flight. The challenge is therefore to
+use a soft penalty for SFC violations while maintaining OCP
+feasibility under disturbances [20].
+Accordingly, the objective is to jointly optimize dynamically
+feasible local motion and the angular velocity/thrust using the
+filtered state and reconstructed disturbance, while considering
+nonlinear dynamics, soft SFC penalties, and input constraints.
+
+
+IV. DR-IPC ALGORITHM
+A. Nonlinear Interconnected Observer
+To estimate the state and lumped disturbance from noisy
+odometry, the linear KF+DOB architecture in [28] is extended
+to the nonlinear quaternion model. The EKF uses the recon-
+structed disturbances in its state prediction, while the reduced-
+order NDO uses the posterior attitude and velocity from the
+EKF. This modular interconnection enables joint state filtering
+and disturbance reconstruction and allows either estimator to
+be upgraded or disabled. The EKF recursion is given by
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ˆx−
+k = F(ˆx+
+k−1, uk−1, ˆdk−1),
+P−
+k = Jk−1P+
+k−1J⊤
+k−1 + Q,
+Kk = P−
+k H⊤ HP−
+k H⊤+ R
+−1 ,
+˜x+
+k = ˆx−
+k + Kk
+ yk −Hˆx−
+k
+
+,
+ˆx+
+k =
+
+(˜p+
+k )⊤, (˜q+
+k )⊤
+∥˜q+
+k ∥, (˜v+
+k )⊤
+⊤
+,
+P+
+k = (I −KkH) P−
+k ,
+(7)
+where ˆx−
+k and ˆx+
+k are the prior and posterior state estimates,
+respectively. P−
+k and P+
+k are their error covariance matri-
+ces. Kk is the Kalman gain. The intermediate estimate ˜x+
+k
+is obtained before quaternion normalization, which ensures
+ˆq+
+k ∈S3 [29], [30]. Jk = ∂F/∂x|(ˆx+
+k ,uk,ˆdk) is the Jacobian
+matrix, and ˆdk is supplied by the NDO in (8).
+Following [26], the lumped acceleration disturbance is as-
+sumed to be constant or slowly varying. For generic distur-
+bances, please refer to [31] and the references therein. The
+discrete-time reduced-order NDO is
+
+
+
+
+
+zk = zk−1 −∆t Λ
+ 
+−g + Φ(ˆq+
+k−1)
+m
+Tk−1 + ˆdk−1
+!
+,
+ˆdk = zk + Λˆv+
+k ,
+(8)
+where zk ∈R3 is the internal observer state and Λ ∈R3×3
+is the observer gain. The ˆq+
+k and ˆv+
+k are extracted from ˆx+
+k
+in (7). As shown in Fig. 2, the disturbance estimate corrects
+the EKF prediction, while the filtered state drives the NDO
+update. The pair (ˆx+
+k , ˆdk) is then supplied to the NMPC.
+B. Disturbance- and Obstacle-Aware NMPC
+At update k, xi|k and ui|k denote the state and input
+predicted at step i. The NMPC optimizes the input sequence
+Uk = {u0|k, · · · , uN−1|k},
+ui|k = [w⊤
+i|k, Ti|k]⊤, i ∈IN−1.
+(9)
+The admissible input set is
+U =
+n
+[w⊤, T]⊤ |w| ⪯wmax, Tmin ≤T ≤Tmax
+o
+.
+(10)
+The reference is xr
+i|k = [(pr
+i|k)⊤, (qr
+i|k)⊤, (vr
+i|k)⊤]⊤, with
+ur
+i|k = [0⊤
+3 , mg]⊤. pr
+i|k is provided by A* in (5), vr
+i|k is
+computed by differences of pr
+i|k, and qr
+i|k is level with yaw
+aligned with the path. Under (6), the SFC violation residual is
+ϵi|k = [Akpi|k −bk]+,
+i ∈IN−1,
+(11)
+Algorithm 1 Online execution of DR-IPC
+Require: LiDAR cloud Pk, odometry yk, goal pg, and RC
+command Ek
+Ensure: Angular-velocity and thrust command uk
+1: Initialize the EKF, NDO, local map, A*, and NMPC.
+2: while autonomous flight is enabled by Ek do
+3:
+Update the local occupancy map Mk using Pk.
+4:
+Update the EKF using yk, uk−1, and ˆdk−1 to obtain
+ˆx+
+k .
+5:
+Update the NDO using ˆx+
+k and uk−1 to obtain ˆdk.
+6:
+if a new goal is received or the remaining A* path is
+obstructed then
+7:
+Replan the A* path from ˆp+
+k to pg on Mk.
+8:
+end if
+9:
+Generate the horizon reference Rk from the A* path.
+10:
+Construct the SFC Ck around Rk using Mk.
+11:
+Solve (12) using ˆx+
+k , ˆdk, Rk, and Ck.
+12:
+Apply the first optimal input uk = u⋆
+0|k.
+13: end while
+where [h]+ = max{0, h} is the element-wise positive part and
+[h]+ = 0 implies the SFC constraint is satisfied [16], [20],
+[32]. The stage cost, terminal cost, and finite-horizon cost are
+ℓi|k = ∥xi|k −xr
+i|k∥2
+Qw + ∥ui|k −ur
+i|k∥2
+Rw + ∥ϵi|k∥2
+Sw,
+Vf = ∥xN|k −xr
+N|k∥2
+Pw,
+Jk =
+N−1
+X
+i=0
+ℓi|k + Vf,
+where Qw, Pw ∈R10×10, Rw ∈R4×4, and Sw ∈Rns×ns are
+symmetric positive-definite weighting matrices.
+At each update, the NMPC backend solves [33], [34]
+U⋆
+k= arg min
+Uk Jk
+(12a)
+s.t.
+x0|k = ˆx+
+k ,
+(12b)
+di|k = ˆdk,
+i ∈IN−1,
+(12c)
+xi+1|k = F(xi|k, ui|k, di|k),
+i ∈IN−1,
+(12d)
+ϵi|k = [Akpi|k −bk]+,
+i ∈IN−1,
+(12e)
+ui|k ∈U,
+i ∈IN−1.
+(12f)
+After solving (12), the first optimal input is directly sent to
+the flight controller: uk = u⋆
+0|k. For clarity, the online DR-IPC
+procedure is summarized in Algorithm 1.
+Remark 1: The soft SFC penalty maintains OCP feasibil-
+ity when disturbances or map updates temporarily drive the
+predicted motion outside the SFC. Moreover, with obstacle
+inflation, a small SFC violation does not necessarily imply
+physical collision, while the soft penalty avoids the aggressive
+corrective motion.
+Remark 2: The disturbance estimate is held constant over
+the prediction horizon. If a disturbance model is available,
+this zero-order prediction can be replaced by an exosystem
+for disturbance preview and compensation [31], [35].
+V. COMPARATIVE SIMULATION
+All simulations are conducted on a PC equipped with an
+Intel i7-14700F CPU, an NVIDIA GeForce RTX 4060Ti GPU,
+
+
+TABLE II: Software implementation of DR-IPC.
+Module
+Implementation
+Operating system
+Ubuntu 20.04 and ROS1 Noetic
+Localization
+FAST-LIO2 [36]
+Point-cloud input
+Registered LiDAR cloud from FAST-LIO2
+Local mapping
+ROG-Map-style occupancy grid [37]
+Path search
+A* graph search [38]
+SFC construction
+Polyhedral SFC [13]
+NMPC solver
+ACADO [39], [40] with qpOASES [41]
+Simulation
+Gazebo 11 and MARSIM [42]
+Flight stack
+PX4 v1.13.0
+TABLE III: Interconnected-observer ablation under wind and
+a suspended payload. (↓: lower is better; pp: percentage points.)
+Metric
+NDO
+EKF+NDO Reduction
+Disturbance-vector RMSE (m/s2) ↓
+0.260
+0.036
+86.1%
+Disturbance-rate RMS (m/s3) ↓
+11.6
+6.1
+47.3%
+Angular velocity RMS (rad/s) ↓
+0.81
+0.45
+44.4%
+wy saturation ratio (%) ↓
+36.0%
+2.1%
+33.9 pp
+Attitude RMS (◦) ↓
+11.3
+8.6
+23.7%
+and 32 GB of RAM. The software configuration is summarized
+in Table II, and the main parameters are listed in Table IV.
+DR-IPC is compared with the state-of-the-art IPC method [11].
+A. Narrow-Passage Navigation under Constant Wind
+This simulation evaluates disturbance rejection in confined
+flight. The quadrotor traverses a narrow passage under constant
+wind along the positive y-axis. In Fig. 7(d), ˆdy captures the
+steady crosswind, while ˆdz mainly reflects vertical thrust-to-
+mass mismatch. The transient ˆdx captures model residuals
+during acceleration and deceleration. As shown in Figs. 7(a)
+and (b), IPC deviates from the A* reference and collides
+twice, whereas DR-IPC remains close to the reference and
+completes the passage without collision. The altitude histories
+in Fig. 7(c) show that IPC drops to 0.042 m, while DR-IPC
+remains above 0.850 m and reduces the altitude RMSE from
+0.484 to 0.075 m.
+Wind
+Wind
+Fig. 7: Narrow-passage navigation under constant wind.
+(a)
+IPC trajectory; (b) DR-IPC trajectory; (c) altitude responses with pr
+z = 1 m;
+(d) DR-IPC disturbance estimates.
+Fig. 8: Interconnected observer ablation. (a) top-view trajectories
+and local wind region; (b)–(d) disturbance estimates ˆdx, ˆdy, ˆdz and ground
+truths; (e) angular velocity command wy and its limits; (f) attitude excitation.
+B. Interconnected-Observer Ablation
+This simulation isolates the contribution of the intercon-
+nected EKF+NDO under a suspended payload and a local
+time-varying wind along the positive y-axis: Fw(t) = 2 +
+sin(0.8πt) N. The two configurations use identical flight
+settings. In the NDO baseline, the NDO and NMPC directly
+use raw odometry. In EKF+NDO, the EKF filters the states
+supplied to both NDO and NMPC, and the reconstructed
+disturbance is fed back into the EKF and NMPC prediction
+as described in Section IV-A.
+The quantitative results are summarized in Table III.
+The disturbance-vector RMSE measures 3-D disturbance es-
+timation accuracy relative to the ground truth, while the
+disturbance-rate RMS quantifies fluctuations in the recon-
+structed disturbance. The angular velocity RMS and wy sat-
+uration ratio characterize control-command activity and satu-
+ration, respectively. The attitude RMS quantifies the resulting
+roll–pitch fluctuations. The responses are shown in Fig. 8. The
+disturbance ground truth is independently reconstructed from
+the Gazebo ground-truth states.
+The similar trajectories in Fig.
+8(a) indicate that the
+main improvements lie in disturbance estimation, control-
+command smoothness, and attitude stability rather than path
+geometry. In Figs. 8(b)–(d), EKF+NDO follows the ground-
+truth trends with fewer high-frequency fluctuations, reducing
+the disturbance-vector RMSE from 0.260 to 0.036 m/s2 and
+the disturbance-rate RMS by 47.3%. Consequently, the angular
+velocity command RMS decreases from 0.81 to 0.45 rad/s, and
+the wy saturation ratio drops from 36.0% to 2.1% in Fig. 8(e).
+Fig. 8(f) further shows that the roll–pitch RMS decreases from
+11.3◦to 8.6◦. These results demonstrate that the intercon-
+nected observer preserves accurate disturbance reconstruction
+while suppressing noise, thereby reducing fluctuations in both
+the control commands and attitude response.
+
+
+TABLE IV: DR-IPC parameters used in simulations and experiments.
+Case
+N
+∆t (ms)
+wmax (rad/s)
+Tmax (N)
+Λ
+Q
+R
+Simulation
+20
+50
+(1.0, 1.0, 1.5)
+20.2
+2I3
+2I10
+I10
+Experiment
+20
+50
+(1.0, 1.0, 1.5)
+25.7
+I3
+I10
+5I10
+Case
+Qw
+Pw
+Rw
+Sw
+Simulation
+diag(45, 45, 100, 8, 5, 5, 8, 4, 4, 8)
+diag(30, 30, 100, 3, 1, 1, 3, 1, 1, 8)
+diag(12, 12, 12, 1.5)
+I8
+Experiment
+diag(45, 45, 80, 8, 5, 5, 8, 4, 4, 8)
+diag(30, 30, 80, 3, 1, 1, 3, 1, 1, 8)
+diag(12, 12, 12, 2)
+I8
+Fig. 9: Multi-goal Gazebo environment with disturbances.
+TABLE V: Multi-goal navigation over ten Gazebo trials.
+(events: collisions or falls; average events: events in completed missions
+divided by the completed missions; ↑/ ↓: higher/lower is better; bold: best.)
+Method
+Disturbance
+Completed
+missions ↑
+Reached
+goals ↑
+Average
+events ↓
+IPC
+×
+10/10
+40/40
+1
+IPC
+✓
+1/10
+9/40
+5
+DR-IPC
+✓
+9/10
+37/40
+0.1
+C. Multi-Goal Navigation
+Three configurations are evaluated in Gazebo: IPC without
+disturbance, IPC with disturbance, and DR-IPC with distur-
+bance. IPC without disturbances establishes nominal task fea-
+sibility, whereas IPC and DR-IPC are compared under identi-
+cal disturbed conditions to evaluate disturbance resilience. For
+the disturbed cases, the quadrotor is subjected to both constant
+wind and suspended-payload disturbances. Each configuration
+is evaluated over 10 trials in the environment shown in Fig. 9.
+Each trial requires the vehicle to reach 4 goals sequentially,
+yielding 4×10 prescribed goals for each configuration. A goal
+is counted as reached when its horizontal distance is below
+0.8 m, and a mission is completed after all four goals are
+reached. Minor collision and fall events are recorded and do
+not terminate a trial if the vehicle can continue the mission.
+As shown in Table V, IPC achieves full mission completion
+without disturbances but degrades markedly under wind and
+payload effects, completing only 1 of 10 missions and 9 of
+40 goals. In contrast, DR-IPC completes 9 of 10 missions
+and reaches 37 of 40 goals under the same disturbances,
+while reducing average collision/fall events from 5 to 0.1
+per completed mission. This comparison shows that DR-IPC
+maintains higher mission completion with fewer collision and
+fall events under combined wind and payload disturbances.
+Fig. 10: Navigation in the MARSIM forest environment. (a)
+overall navigation; (b) local view I; (c) local view II; (d) multi-waypoint
+autonomous navigation.
+TABLE VI: Hardware used in the experiments.
+Component
+Model
+Mass (kg)
+Onboard computer
+ASUS NUC 13 (i5-1340P)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1.705
+LiDAR
+Livox Mid-360S
+Flight controller
+CUAV V5 Nano
+Battery
+ACE Tattu 4S-2300 mAh
+Frame
+Totem Q250
+Radio receiver
+RadioLink R12DSE
+Motor
+Tmotor F60PRO KV2550
+ESC
+EMAX 45A
+Suspended payload
+Yellow ball
+0.225
+Radio transmitter
+RadioLink AT9S Pro
+-
+Industrial fan
+350-2 (14 inch, 750 W)
+-
+D. Navigation in an Unstructured MARSIM Environment
+The complete DR-IPC pipeline is further evaluated in the
+unstructured 3-D forest environment of MARSIM to assess
+system-level integration and cross-simulator applicability. As
+shown in Fig. 10, the A* reference, NMPC prediction, and
+executed trajectory are continuously updated during flight,
+demonstrating reliable online navigation in cluttered, unstruc-
+tured environments beyond Gazebo.
+VI. EXPERIMENTAL VALIDATION
+The experimental platform and hardware components are
+summarized in Table VI, while the corresponding control
+parameters are listed in Table IV. In the comparative exper-
+iments, DR-IPC is evaluated against the state-of-the-art IPC
+method [11] under comparable conditions.
+
+
+Fig. 11: Position responses and disturbance estimates. (a)
+position responses; (b) DR-IPC disturbance estimates.
+A. Ball-Impact Rejection in Hover
+This experiment evaluates the transient disturbance-rejection
+capability of DR-IPC by manually throwing the 0.225-kg
+yellow ball listed in Table VI into a suspended net beneath the
+hovering quadrotor. The net suspension length and ball-release
+position are fixed across all tests to provide approximately
+repeatable disturbances. Experimental snapshots are shown in
+Fig. 4, with the reference hover position pr = [0, 0, 1]⊤m.
+The corresponding position responses and disturbance esti-
+mates are shown in Fig. 11.
+As shown in Fig. 11(a), the impact induces a significant
+altitude drop in IPC, with a minimum value of 0.08 m. DR-IPC
+effectively mitigates the disturbance, maintaining a minimum
+altitude of 0.70 m and returning to the ±0.05 m altitude-error
+band within 2.30 s. Fig. 11(b) shows that the reconstructed
+disturbance responds rapidly to the impact at t = 4 s. The
+most pronounced variation occurs in ˆdz, consistent with the
+altitude deviation in Fig. 11(a). These results demonstrate
+that DR-IPC rapidly reconstructs and compensates for the
+disturbance, substantially reducing altitude loss and restoring
+the commanded hover.
+B. Suspended-Payload Transportation with Wind
+This experiment evaluates whether disturbance-aware pre-
+diction and the soft SFC penalty can maintain stable narrow-
+archway navigation under combined wind and suspended-
+payload disturbances. Experimental snapshots of DR-IPC are
+shown in Fig. 5, with pr
+z = 1 m. Fig. 12 compares the top-view
+trajectories, altitude responses, and SFC violations. Fig. 12(e)
+reports the SFC-violation depth dSFC, where dSFC
+> 0
+indicates the trajectory is out of the SFC. The red segments
+in Figs. 12(a)–(c) indicate entry into the inflated obstacle re-
+gion. Table VII summarizes the route completion and altitude
+performance.
+Without disturbances, IPC eventually completes the passage,
+but the hard SFC constraint produces repeated corrective
+motion after the vehicle leaves the corridor, resulting in
+pronounced altitude oscillations, with pmin
+z
+= 0.25 m and
+RMSEpz = 0.17 m. Under wind and payload disturbances,
+Fig. 12: Navigation through an archway. (a)–(c) top-view trajec-
+tories of IPC without disturbance, IPC with disturbance, and DR-IPC with
+disturbance, respectively, where red segments indicate penetration into the
+inflated obstacle regions; (d) altitude responses; (e) SFC-violation depth.
+TABLE VII: Archway-navigation results. (bold: best; pr
+z = 1 m.)
+Method Disturbance Passage pmin
+z
+(m)
+RMSE(pz)
+(m)
+Out-of-SFC time
+Tout (s)
+IPC
+×
+✓
+0.25
+0.17
+3.13
+IPC
+✓
+×
+0.27
+0.34
+18.77
+DR-IPC
+✓
+✓
+0.97
+0.01
+2.98
+the deviation becomes persistent. Although A* still provides a
+geometrically collision-free path, IPC cannot execute it while
+simultaneously satisfying the hard SFC, vehicle dynamics, and
+input constraints. Consequently, the out-of-SFC condition lasts
+Tout =18.77 s and the vehicle fails to traverse the archway.
+DR-IPC addresses both effects through disturbance-aware
+prediction and a soft SFC penalty. Disturbance compensa-
+tion reduces the motion deviation, while the penalized SFC
+residual permits a brief penetration into the inflated margin
+instead of treating it as a hard feasibility condition. DR-IPC
+therefore completes the passage with an out-of-SFC duration
+of Tout =2.98 s, pmin
+z
+= 0.97 m, and RMSEpz = 0.01 m,
+without pronounced altitude oscillations. This comparison
+shows that the soft penalty retains corridor guidance while
+avoiding the oscillatory corrective motion under disturbance.
+C. Suspended-Payload Transportation with Dynamic Obstacle
+This experiment evaluates the complete DR-IPC pipeline
+in a disturbed environment with a dynamic obstacle (Uni-
+tree Go2). The continuously moving Go2 robot imposes a
+heavy computational load, repeatedly triggering online map-
+ping, A*-based replanning, and SFC reconstruction, while the
+EKF+NDO and NMPC operate continuously. Representative
+flight snapshots, navigation and control responses, and compu-
+tation times are presented in Figs. 14, 15, and 16, respectively.
+As shown in Fig. 14, both IPC and DR-IPC complete the
+task. However, IPC experiences multiple collisions. Fig. 15(a)
+shows the executed trajectory and replanning of DR-IPC.
+Fig. 15(b) and Fig. 14 show that the trajectory briefly enters
+
+
+Fig. 13: LiDAR point-cloud maps and payload-delivery routes in the factory. (a) factory route 1; (b) factory route 2. Red curves denote
+the executed trajectories, green circles and orange stars mark the loading and delivery points, respectively, and inset images show representative obstacles.
+Fig. 14: Indoor multi-waypoint navigation with disturbances
+and a dynamic obstacle. (a) IPC; (b) DR-IPC.
+the 0.30 m inflated safety margin without collision. The soft
+SFC penalty allows this brief deviation without forcing an
+aggressive correction. Meanwhile, the angular velocity and
+thrust commands of DR-IPC remain within prescribed limits,
+as shown in Figs. 15(c) and (d).
+Fig. 16 shows that 4046 of 4201 control cycles (96.31%)
+meet the 10-ms deadline, with 95th-percentile, 99th-percentile,
+and maximum computation times of 9.13, 13.71, and 41.08 ms,
+respectively. Most overruns occur during map updates and
+A* replanning. Among the 155 deadline misses, 153 are
+isolated single-cycle overruns, while the remaining two occur
+in consecutive cycles. These results support soft real-time
+onboard execution at 100 Hz with occasional overruns.
+Fig. 15: DR-IPC under a dynamic obstacle. (a) trajectory and
+replanning; (b) nearest obstacle distance; (c) angular velocity; (d) thrust.
+(b)
+(a)
+Fig. 16: Computation time. (a) per-cycle computation time; (b) break-
+down of deadline-miss events.
+D. Outdoor Experiments
+Four field scenarios are considered: daytime and nighttime
+flights in the same wooded area, and suspended-payload
+delivery along two factory routes, as shown in Fig. 1. The
+
+
+wooded site contains dense vegetation, irregular branches, and
+narrow clearances, while nighttime operation provides limited
+visual cues. In the factory, machinery and stored materials
+restrict ground access and wheeled transport, motivating aerial
+delivery of lightweight payloads.
+Fig. 13 shows the LiDAR point-cloud maps and executed
+trajectories for the two factory routes. The quadrotor transports
+a suspended payload from the loading point to the delivery
+point while avoiding columns, equipment, and stored materi-
+als. Throughout the four routes, LiDAR-based odometry and
+mapping, A* planning, SFC construction, EKF+NDO estima-
+tion, and NMPC operate online. Despite ambient airflow and
+payload-induced disturbances, DR-IPC completes all routes
+without collision.
+VII. CONCLUSIONS
+This paper proposes DR-IPC for LiDAR-based quadrotor
+navigation. The nonlinear interconnected EKF+NDO sup-
+presses noise and improves the accuracy and smoothness of
+disturbance estimation, thereby reducing fluctuations in the
+control commands and attitude response. To accommodate
+disturbance-induced deviations, the soft SFC penalizes cor-
+ridor violations while avoiding excessive corrective responses.
+Together with an obstacle- and disturbance-aware NMPC
+backend that jointly optimizes local motion and angular-
+velocity/thrust commands, these components enable DR-IPC
+to operate in cluttered, noisy, and disturbance-rich environ-
+ments. Comparative simulations and experiments demonstrate
+improved navigation reliability and disturbance rejection over
+IPC, while wooded and factory flights verify onboard opera-
+tion in unstructured environments.
+REFERENCES
+[1] Y. Ren, Y. Cai, H. Li, N. Chen, F. Zhu, L. Yin, F. Kong, R. Li,
+and F. Zhang, “A survey on LiDAR-based autonomous aerial vehicles,”
+IEEE/ASME Trans. Mechatron., vol. 31, no. 1, pp. 1139–1155, 2026.
+[2] W. Liu, H. Wu, L. Shi, F. Zhu, Y. Zou, F. Kong, and F. Zhang,
+“LiDAR-based quadrotor autonomous inspection system in cluttered
+environments,” IEEE Trans. Field Robot., vol. 2, pp. 753–767, 2025.
+[3] B. J. Marshall, Y. Yan, J. Knowles, C. Yang, and C. Liu, “Redundant
+observer-based tracking control for object extraction using a cable
+connected UAV,” IEEE/ASME Trans. Mechatron., vol. 30, no. 6, pp.
+7638–7648, 2025.
+[4] J. Lim, M. Kim, H. Yoo, and J. Lee, “Autonomous multirotor UAV
+search and landing on safe spots based on combined semantic and depth
+information from an onboard camera and LiDAR,” IEEE/ASME Trans.
+Mechatron., vol. 29, no. 5, pp. 3960–3970, 2024.
+[5] J. Su, X. Zhu, S. Li, and W.-H. Chen, “AI meets UAVs: A survey
+on AI-empowered UAV perception systems for precision agriculture,”
+Neurocomputing, vol. 518, pp. 242–270, 2023.
+[6] S. Sun, X. Wang, D. Sanalitro, A. Franchi, M. Tognon, and J. Alonso-
+Mora, “Agile and cooperative aerial manipulation of a cable-suspended
+load,” Sci. Robot., vol. 10, no. 107, 2025, Art. no. eadu8015.
+[7] F. Tian and M. Voskuijl, “Mechatronic design and optimization using
+knowledge-based engineering applied to an inherently unstable and
+unmanned aerial vehicle,” IEEE/ASME Trans. Mechatron., vol. 21, no. 1,
+pp. 542–554, 2016.
+[8] J. A. Marshall, W. Sun, and A. L’Afflitto, “A survey of guidance, navi-
+gation, and control systems for autonomous multi-rotor small unmanned
+aerial systems,” Annu. Rev. Control, vol. 52, pp. 390–427, 2021.
+[9] X. Zhou, Z. Wang, H. Ye, C. Xu, and F. Gao, “EGO-Planner: An ESDF-
+free gradient-based local planner for quadrotors,” IEEE Robot. Autom.
+Lett., vol. 6, no. 2, pp. 478–485, 2021.
+[10] W. Liu, Y. Ren, R. Guo, V. W. Kong, A. S. Hung, F. Zhu, Y. Cai, H. Wu,
+Y. Zou, and F. Zhang, “Slope inspection under dense vegetation using
+LiDAR-based quadrotors,” Nat. Commun., vol. 16, 2025, Art. no. 7411.
+[11] W. Liu, Y. Ren, and F. Zhang, “Integrated planning and control for
+quadrotor navigation in presence of suddenly appearing objects and
+disturbances,” IEEE Robot. Autom. Lett., vol. 9, no. 1, pp. 899–906,
+2024.
+[12] H. Wu, W. Liu, Y. Ren, Z. Liu, H. Wei, F. Zhu, H. Li, and F. Zhang,
+“Flying through cluttered and dynamic environments with LiDAR,”
+arXiv preprint arXiv:2504.17569, 2025.
+[13] S. Liu, M. Watterson, K. Mohta, K. Sun, S. Bhattacharya, C. J. Taylor,
+and V. Kumar, “Planning dynamically feasible trajectories for quadrotors
+using safe flight corridors in 3-D complex environments,” IEEE Robot.
+Autom. Lett., vol. 2, no. 3, pp. 1688–1695, 2017.
+[14] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and
+control for quadrotors,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA),
+2011, pp. 2520–2525.
+[15] D. Benders, J. K¨ohler, T. Niesten, R. Babuˇska, J. Alonso-Mora, and
+L. Ferranti, “Embedded hierarchical MPC for autonomous navigation,”
+IEEE Trans. Robot., vol. 41, pp. 3556–3574, 2025.
+[16] B. Lindqvist, S. S. Mansouri, A.-a. Agha-mohammadi, and G. Niko-
+lakopoulos, “Nonlinear MPC for collision avoidance and control of
+UAVs with dynamic obstacles,” IEEE Robot. Autom. Lett., vol. 5, no. 4,
+pp. 6001–6008, 2020.
+[17] A. M. Ali, H. A. Hashim, and C. Shen, “MPC-based linear equivalence
+with control barrier functions for VTOL-UAVs,” in Proc. Amer. Control
+Conf., 2024, pp. 3172–3177.
+[18] A. Romero, S. Sun, P. Foehn, and D. Scaramuzza, “Model predictive
+contouring control for time-optimal quadrotor flight,” IEEE Trans.
+Robot., vol. 38, no. 6, pp. 3340–3356, 2022.
+[19] K. Zhang, Y. Shi, and H. Sheng, “Robust nonlinear model predictive
+control based visual servoing of quadrotor UAVs,” IEEE/ASME Trans.
+Mechatron., vol. 26, no. 2, pp. 700–708, 2021.
+[20] D. Wang, Q. Pan, Y. Shi, J. Hu, and C. Zhao, “Efficient nonlinear
+model predictive control for quadrotor trajectory tracking: Algorithms
+and experiment,” IEEE Trans. Cybern., vol. 51, no. 10, pp. 5057–5068,
+2021.
+[21] J. Kim and M. J. Kim, “Disturbance-aware model predictive control of
+underactuated robotics systems,” in Proc. IEEE/RSJ Int. Conf. Intell.
+Robots Syst. (IROS), 2024, pp. 11 985–11 992.
+[22] W. Li, J. Su, C. Liu, W.-H. Chen, and S. Li, “DR-MPC: Disturbance-
+resilient model predictive visual servoing control for quadrotor UAV
+pipeline inspect,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst.
+(IROS), 2025, pp. 20 738–20 745.
+[23] S. Shao, M. Chen, J. Hou, and Q. Zhao, “Event-triggered-based discrete-
+time neural control for a quadrotor UAV using disturbance observer,”
+IEEE/ASME Trans. Mechatron., vol. 26, no. 2, pp. 689–699, 2021.
+[24] Y. Zhang and Z. Wu, “Adaptive extended disturbance observer-based
+control for quadrotor landing on fast platform,” IEEE Trans. Ind.
+Electron., vol. 73, no. 4, pp. 6178–6188, 2026.
+[25] R. Reiter, C. Qin, L. Bauersfeld, and D. Scaramuzza, “Temporal
+cascading of planning and control for quadrotor MPC,” IEEE Trans.
+Robot., 2026, early access.
+[26] W.-H. Chen, “Disturbance observer based control for nonlinear systems,”
+IEEE/ASME Trans. Mechatron., vol. 9, no. 4, pp. 706–710, 2004.
+[27] W.-H. Chen, J. Yang, L. Guo, and S. Li, “Disturbance-observer-based
+control and related methods—an overview,” IEEE Trans. Ind. Electron.,
+vol. 63, no. 2, pp. 1083–1095, 2016.
+[28] P. Liu, Z. Wang, J. Su, J. Wang, and S. Li, “Interconnected observer-
+based SMC for DC–DC converters with disturbances and noises,” IEEE
+Trans. Ind. Electron., 2026, early access.
+[29] I. Y. Bar-Itzhack, J. Deutschmann, and F. L. Markley, “Quaternion
+normalization in additive EKF for spacecraft attitude determination,”
+in Proc. AIAA Guid., Navig., Control Conf., New Orleans, LA, USA,
+1991, AIAA Paper 91-2706.
+[30] D. Choukroun, I. Y. Bar-Itzhack, and Y. Oshman, “Novel quaternion
+Kalman filter,” IEEE Trans. Aerosp. Electron. Syst., vol. 42, no. 1, pp.
+174–190, 2006.
+[31] J. Su, W.-H. Chen, and J. Yang, “On relationship between time-domain
+and frequency-domain disturbance observers and its applications,” J.
+Dyn. Syst., Meas., Control, vol. 138, no. 9, 2016, Art. no. 091013.
+[32] X. Zhou, X. Wen, Z. Wang, Y. Gao, H. Li, Q. Wang, T. Yang, H. Lu,
+Y. Cao, C. Xu, and F. Gao, “Swarm of micro flying robots in the wild,”
+Sci. Robot., vol. 7, no. 66, 2022, Art. no. eabm5954.
+[33] D. Hanover, P. Foehn, S. Sun, E. Kaufmann, and D. Scaramuzza,
+“Performance, precision, and payloads: Adaptive nonlinear MPC for
+quadrotors,” IEEE Robot. Autom. Lett., vol. 7, no. 2, pp. 690–697, 2022.
+[34] B. E. Jackson, K. Tracy, and Z. Manchester, “Planning with attitude,”
+IEEE Robot. Autom. Lett., vol. 6, no. 3, pp. 5658–5664, 2021.
+
+
+[35] H. Zhang, J. Ge, J. Su, Y. Pan, J. Yang, W.-H. Chen, and S. Li, “PRED-
+MPPI: Disturbance-preview and efficient MPPI for robust quadrotor
+tracking with hardware validation,” in Proc. IEEE Int. Conf. Robot.
+Autom. (ICRA), 2026.
+[36] W. Xu, Y. Cai, D. He, J. Lin, and F. Zhang, “FAST-LIO2: Fast direct
+LiDAR-inertial odometry,” IEEE Trans. Robot., vol. 38, no. 4, pp. 2053–
+2073, 2022.
+[37] Y. Ren, Y. Cai, F. Zhu, S. Liang, and F. Zhang, “ROG-Map: An efficient
+robocentric occupancy grid map for large-scene and high-resolution
+LiDAR-based motion planning,” in Proc. IEEE/RSJ Int. Conf. Intell.
+Robots Syst. (IROS), 2024, pp. 8119–8125.
+[38] P. E. Hart, N. J. Nilsson, and B. Raphael, “A formal basis for the heuristic
+determination of minimum cost paths,” IEEE Trans. Syst. Sci. Cybern.,
+vol. 4, no. 2, pp. 100–107, 1968.
+[39] B. Houska, H. J. Ferreau, and M. Diehl, “An auto-generated real-
+time iteration algorithm for nonlinear MPC in the microsecond range,”
+Automatica, vol. 47, no. 10, pp. 2279–2285, 2011.
+[40] ——, “ACADO toolkit—an open-source framework for automatic con-
+trol and dynamic optimization,” Optim. Control Appl. Methods, vol. 32,
+no. 3, pp. 298–312, 2011.
+[41] H. J. Ferreau, C. Kirches, A. Potschka, H. G. Bock, and M. Diehl,
+“qpOASES: A parametric active-set algorithm for quadratic program-
+ming,” Math. Program. Comput., vol. 6, no. 4, pp. 327–363, 2014.
+[42] F. Kong, X. Liu, B. Tang, J. Lin, Y. Ren, Y. Cai, F. Zhu, N. Chen,
+and F. Zhang, “MARSIM: A light-weight point-realistic simulator for
+LiDAR-based UAVs,” IEEE Robot. Autom. Lett., vol. 8, no. 5, pp. 2954–
+2961, 2023.
