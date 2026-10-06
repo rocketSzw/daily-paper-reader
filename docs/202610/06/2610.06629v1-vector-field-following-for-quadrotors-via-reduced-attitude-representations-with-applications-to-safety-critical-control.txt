@@ -1,0 +1,1358 @@
+Title: Vector Field Following for Quadrotors via Reduced Attitude Representations with Applications to Safety-Critical Control
+
+URL Source: https://arxiv.org/pdf/2610.06629v1
+
+Published Time: Tue, 06 Oct 2026 03:21:56 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Vector Field Following for Quadrotors via Reduced Attitude Representations with Applications to Safety-Critical Control 
+
+Mohammad Mirtaba and Max H. Cohen 
+
+Abstract — Vector field tracking for quadrotors provides a systematic framework for specifying complex behaviors at the translational level and transferring them to the full vehicle dy-namics. Objectives such as safety, for example, can be encoded into a low-dimensional vector field, which is then embedded into the full dynamics through appropriate tracking conditions. The development of such tracking controllers for quadrotors can be facilitated by the fact that their translational dynamics depend only on the thrust direction and are independent of the vehicle’s heading. Thus, reduced-attitude representations, leveraging the geometry of the unit sphere, provide a natural framework for vector field tracking on quadrotors. In this work, we propose two vector field tracking controllers for quadrotors using reduced-attitude representations based on dynamic extension and geometric control, respectively. Next, we illustrate how safety can be encoded into the desired vector field using control barrier functions and enforced for the full system. The effectiveness of the proposed approaches is demonstrated via simulations and experimental flight tests. 
+
+I. I NTRODUCTION 
+
+Although commercially available quadrotors and flight controllers provide satisfactory flight stability and maneu-verability, ensuring safety during operation remains a sig-nificant challenge. Quadrotors are increasingly deployed in urban environments, often in cooperation with other robotic systems. Thus, imposing safety constraints is essential to pre-vent hazardous flight operations that could endanger nearby individuals, other robots, or surrounding infrastructure. Controllers leveraging attitude dynamics on SO(3) [1] require regulation of the entire orientation, including the heading direction (the rotation about the thrust vector), even though the heading does not directly influence the translational dynamics. Here, heading control authority is generated through differential rotor reaction torques, which are weaker than the moments used for tilting maneuvers [2]. Aggressive heading tracking may impose additional de-mands on actuators that could lead to saturation and degra-dation of translational stability. Since the thrust direction is the primary variable governing the translational dynamics, reduced-attitude approaches, leveraging the geometry of the unit sphere, have been developed to stabilize the thrust direction while leaving the heading unconstrained [3]. Although recent reduced-attitude control approaches de-couple translational dynamics from heading control, most existing designs rely on time-scale separation arguments, requiring significantly faster attitude tracking. This limita-tion, commonly encountered in cascaded controllers, has also been observed in full attitude control formulations on SO(3) ,  
+
+> Department of Electrical and Computer Engineering, North Carolina State University, Raleigh, NC, {mmirtab,mhcohen2 }@ncsu.edu .
+> Fig. 1. Safety-critical vector field following for quadrotors via reduced attitude representations. Video available at https://youtu.be/Fn9biWWtrd8.
+
+which has motivated recent research that explicitly considers the coupling between translational and rotational dynamics. Here, stability of the resulting cascade is often analyzed by treating the attitude tracking error as an input to the transla-tional subsystem, and requiring the translational dynamics to satisfy input-to-state stability (ISS) [4] or integral ISS (iISS) [5] properties. Although these properties are powerful for establishing stability of interconnected systems, they mainly offer qualitative guarantees in the sense that obtaining quanti-tative performance measures, such as convergence rates, can be challenging [6]. Moreover, enforcing such conditions may limit the selection of more aggressive position control laws and potentially affect transient performance. The literature on quadrotor control is now quite mature, but much research has focused on stabilization tasks. As noted earlier, however, recent advancements necessitate the consideration of safety specifications. Safety-critical control designs for quadrotors are facilitated by techniques such as reachability analysis [7] and model predictive control [8], which typically incur higher computational costs, and control barrier functions (CBFs) [9]. Examples of these aforemen-tioned approaches include trajectory optimization enforce-ment methods [10] that require high computational cost and neglect low level dynamics, model predictive path integral based method [11], CBFs designed for planar quadrotors [12], leveraging cascaded architectures for safety [13], and exploiting the equivalence between integrator chains and quadrotor dynamics via differential flatness [14]. Vector field tracking in robotic systems provides a means of specifying desired behaviors at a higher level and transfer-ring these behaviors to systems with complex dynamics [15]. This perspective is particularly relevant to safety-critical con-trol, where safety-preserving behaviors can be synthesized on simplified models and subsequently realized by the full-order arXiv:2610.06629v1 [eess.SY] 5 Oct 2026 system through rigorous tracking guarantees. For example, [16] synthesize CBFs on reduced-order models and then lift the resulting safety guarantees to the full nonlinear system by certifying convergence of the nonlinear dynamics to the reduced-order model (i.e., the vector field). In this paper, we leverage reduced-attitude representations to design quadrotor controllers that enforce exponential con-vergence of the translational dynamics to a desired vector field that carries safety properties. In particular, we 1) present two designs based on dynamic extension (DE) and geomet-ric control, respectively; 2) explicitly address translational– rotational coupling terms that arise in existing formulations, which present roadblocks to rigorous stability proofs; 3) ex-ploit the resulting exponential tracking guarantees to incorpo-rate safety constraints into the quadrotor control architecture. In addition to theoretical results, we deploy the proposed controllers on a Crazyflie in experimental flight tests. II. P RELIMINARIES AND PROBLEM FORMULATION 
+
+In this section, we review quadrotor dynamics, their reduced-attitude representations, and CBFs. Herein, SO(3) 
+
+denotes the special orthogonal group SO(3) := {R ∈ R3×3 |
+
+R⊤R = I, det( R) = 1 } and S2 := {x ∈ R3 | ∥ x∥ = 1 } is the unit sphere. The Lie algebra of SO(3) is so (3) := {A ∈
+
+R3×3 | A⊤ = −A}. The operator [·]× : R3 → so (3) maps a vector to a skew-symmetric matrix, satisfying [a]×b =
+
+a × b, ∀ a, b ∈ R3. We use ∥ · ∥ for the Euclidean norm. 
+
+A. Full Quadrotor Model 
+
+The states of a quadrotor are typically described by x =(p, v, R, ω), where p, v ∈ R3, R ∈ SO(3) , and ω ∈ so (3) 
+
+denote the position and velocity of the center of mass, the attitude, and angular velocity of the quadrotor in the body-fixed frame, which lies in the Lie algebra of SO(3) . The attitude is represented by a rotation matrix R ∈ SO(3) . A 
+
+3D vector can be associated with each element of the Lie algebra hence, we represent the body-fixed frame angular velocity as ω ∈ R3, and the inertial frame angular velocity as ωi := Rω ∈ R3. The control input u = ( T, M) consists of the total thrust T ∈ R, and the moments M ∈ R3 in the body-fixed frame. The dynamics of the quadrotor are then: 
+
+˙x =
+
+
+
+˙p
+
+˙v
+
+˙R
+
+˙ω
+
+ =
+
+
+
+v 
+
+> 1
+> m
+
+Rb 3T + gR[ω]×
+
+J−1(M − ω × Jω)
+
+ . (1) where b3 = (0 , 0, 1) ∈ R3 and g = −gb3 ∈ R3 is the gravitational acceleration vector, where g > 0 denotes the gravitational acceleration magnitude. Furthermore, m ∈ R>0
+
+is the vehicle mass, and J ∈ R3×3 is the positive-definite inertia matrix expressed in the body-fixed frame. 
+
+B. Reduced Attitude Representation 
+
+The translational dynamics ( ˙ p, ˙v) depend on the atti-tude only through the quantity Rb 3, which corresponds to the body-fixed thrust axis expressed in the inertial frame. Consequently, the translational motion is independent of rotations about the thrust axis, motivating a reduced-attitude representation in which the orientation is described solely by the thrust direction, potentially simplifying control design. The thrust directions belongs to the unit sphere S2, and represented as a unit vector in R3. Accordingly, we define: 
+
+R3 := Rb 3, (2) 
+
+˙R3 := R[ω]×b3 = R1ω2 − R2ω1, (3) where Ri is the i-th column of the rotation matrix and ωi is the i-th element of the angular velocity vector. The dynamics expressed in terms of the reduced attitude with the state x =(p, v, R3, ω) ∈ R3 × R3 × S2 × R3 are: 
+
+˙x =
+
+
+
+˙p
+
+˙v
+
+˙R
+
+˙ω
+
+ =
+
+
+
+v 
+
+> 1
+> m
+
+R3T + g
+
+−R2(t)ω1 + R1(t)ω2
+
+J−1(M − ω × Jω)
+
+ . (4) The vectors R1 and R2 satisfy the rotational kinematics of the full quadrotor model. Since the heading dynamics are decoupled from the reduced-order system and are assumed to be generated by an independent heading controller, R1
+
+and R2 are treated as known time-varying variables. In this paper, we treat the angular velocity ω, rather than the moment M, as a control input, yielding a system with state x = ( p, v, R3) ∈ R3 × R3 × S2 and dynamics: 
+
+˙x =
+
+
+
+˙p
+
+˙v
+
+˙R3
+
+ =
+
+
+
+v 
+
+> 1
+> m
+
+R3T + g
+
+−R2(t)ω1 + R1(t)ω2
+
+ , (5) with control input u = ( T, ω 1, ω 2).
+
+C. Control Barrier Functions 
+
+Consider a nonlinear time-varying control affine system: 
+
+˙x = f (x, t ) + G(x, t )u, (6) with state x ∈ Rn, control input u ∈ Rm, drift dynamics f :
+
+Rn × R → Rn, and control directions G : Rn × R → Rn×m.If these dynamics are locally Lipschitz in x uniformly in t,then any control k : Rn × R → Rm, locally Lipschitz in x
+
+uniformly in t, produces a closed-loop system: 
+
+˙x = fcl (x, t ) := f (x, t ) + G(x, t )k(x, t ), (7) that is also locally Lipschitz in x uniformly in t. Hence, for any initial condition x0 and time t0, there exists a maximal interval of existence I(x0) := [ t0, τ max ) such that t 7 → x(t)
+
+is the unique solution to (7) on I(x0); cf. [17, Ch. 3]. In the CBF methodology, safety is formally established through forward set invariance [9], [18]. A set C(t) is forward invariant for (7) if, for any initial condition x0 ∈ C (t0), the resulting trajectory satisfies x(t) ∈ C (t) for all t ∈ I(x0).When using CBFs, safe sets are defined as the zero superlevel set of a continuously differentiable function h : Rn ×R → R:
+
+C(t) := {x ∈ Rn | h(x, t ) ≥ 0}. (8) CBFs provide conditions for synthesizing feedback con-trollers that satisfy safety properties. Definition 1 ([18]) . A continuously differentiable function 
+
+h : Rn × R → R defining C as in (8) is said to be a CBF for (6) if there exists 1 α ∈ K e 
+
+> ∞
+
+such that: 
+
+sup 
+
+> u∈Rm
+
+˙h(x, u, t ) ≥ − α h(x, t ), ∀(x, t ) ∈ Rn × R, (9) where: 
+
+˙h(x, u, t ) = ∂h ∂t (x, t ) + ∂h ∂x (x, t ) [ f (x, t ) + G(x, t )u] .
+
+The main utility of CBFs is their ability to instantiate 
+
+safety filters , which minimally modify a nominal controller to enforce safety, typically via quadratic programming [9]. 
+
+D. Problem Formulation 
+
+The main objectives of this paper are twofold. First, given a smooth time-varying vector field vd : R3 × R → R3
+
+that encodes a desired behavior for a quadrotor’s center of mass ˙p = vd(p, t ), design a feedback controller u = k(x, t )
+
+such that along closed-loop trajectories, v(t) exponentially converges to vd(p(t), t ). Second, given a safety constraint on the quadrotor’s position, derive conditions on the vector field vd and feedback controller k such that completion of Objective 1 leads to safety of the closed-loop system. III. V ECTOR FIELD TRACKING 
+
+In this section, we present two approaches to driving the quadrotor’s center-of-mass velocity v exponentially to a desired vector field vd(p, t ). Our first approach leverages dynamic extension, and the second approach employs geo-metric properties of the reduced-attitude representation. 
+
+Remark 1. For brevity, our designs are carried out up to the angular velocity level. Generalizing our designs to the moment level (i.e., with M as the input) requires one additional backstepping step. 
+
+A. Dynamic Extension 
+
+Dynamic extension is a common technique in quadrotor control that allows for delaying the appearance of the transla-tional subsystem input (thrust), so that it enters the dynamics at the same level as the rotational subsystem. This endows the position with a uniform relative degree with respect to both the translational and rotation inputs. We dynamically extend (5) by appending the thrust T to the original state x,creating the dynamically extended state ξ := ( p, v, R3, T )
+
+and control input ν := ( Te, ω 1, ω 2), where Te := ˙T . Thus, the dynamically extended system is given by: 
+
+˙ξ =
+
+
+
+˙p
+
+˙v
+
+˙R3
+
+˙T
+
+ =
+
+
+
+v 
+
+> 1
+> m
+
+R3T + g
+
+−R2(t)ω1 + R1(t)ω2
+
+Te
+
+ , (10) which, as we demonstrate below, is in a form amenable to backstepping. To this end, define the error coordinates: 
+
+e1 := v − vd(p, t ), e2 := 1 
+
+> m
+
+R3T − ad(p, v, t ), (11)               
+
+> 1Here, α:R→Ris an extended class Ke
+> ∞function, i.e., αis continuous, strictly increasing, α(0) = 0 , and lim r→±∞ α(r) = ±∞ .
+
+where vd(p, t ) is a smooth desired vector field and: 
+
+ad(p, v, t ) := ˙ vd(p, t )−g− k1 
+
+> 2
+
+(v−vd(p, t )) , k 1 > 0, (12) is a desired acceleration profile. The error dynamics are: 
+
+ ˙e1
+
+˙e2
+
+
+
+=
+
+ 1 
+
+> m
+
+R3T + g − ˙vd(p, t )
+
+A(ξ, t )B(ξ)ν − ˙ad(p, v, t )
+
+
+
+, (13) where: 
+
+A(ξ, t ) := R3 −R2(t) R1(t) , (14) is an orthogonal matrix and: 
+
+B(ξ) := diag 
+
+ 1
+
+m , Tm , Tm
+
+
+
+. (15) Now, consider the controller: 
+
+ν = B(ξ)−1A(ξ, t )⊤h
+
+˙ad(ξ, t ) − σe1 − k2 
+
+> 2
+
+e2
+
+i
+
+, (16) where σ, k 2 > 0. Note that ν in (16) is well-defined if T > 0.To this end, define the set: 
+
+M := R3 × R3 × S2 × R>0, (17) as the state space of (10), noting that M is a smooth manifold since S2 is a smooth manifold and M is defined as a finite product of S2 with open sets in Euclidean space. The closed-loop dynamics, consisting of (10) with controller (16), are well-defined and smooth on M so long as vd is smooth. Thus, it follows from [19, Thm 9.12] that for each initial condition ξ0 ∈ M there exists a unique solution 
+
+ξ : I(ξ0) → M to the closed-loop system, defined on the maximal interval of existence I(ξ0) = [ t0, τ max ). The following theorem illustrates that (16) enforces exponential decay of the tracking errors (11) along trajectories. 
+
+Theorem 1. Consider system (10) with ξ ∈ M as in (17) 
+
+and let vd(p, t ) be smooth. Then, the controller (16) enforces exponential convergence of the error dynamics (13) along trajectories in that for any initial condition ξ0 ∈ M :
+
+∥e(t)∥ ≤ max 
+
+n√σ, 1√σ
+
+o
+
+∥e(t0)∥e−k(t−t0), (18) 
+
+for all t ∈ I(ξ0), where e := ( e1, e2) and k := min { k1 
+
+> 2
+
+, k2 
+
+> 2
+
+}.Proof. Define the Lyapunov function candidate: 
+
+V = 12 e⊤ 
+
+> 1
+
+e1 + 12σ e⊤ 
+
+> 2
+
+e2. (19) Differentiating (19) along the dynamics (13) yields: 
+
+˙V =e⊤ 
+
+> 1
+
+˙e1 + 1 
+
+> σ
+
+e⊤ 
+
+> 2
+
+˙e2 = e⊤ 
+
+> 1
+
+( 1 
+
+> m
+
+R3T + g − ˙vd(p, t )) + 1 
+
+> σ
+
+e⊤ 
+
+> 2
+
+(A(ξ, t )B(ξ)ν − ˙ad(p, v, t )) . (20) Substituting the control law (16) then results in: 
+
+˙V = e⊤ 
+
+> 1
+
+(− k1 
+
+> 2
+
+e1 + e2) + e⊤ 
+
+> 2
+
+(−e1 − k2 
+
+> 2σ
+
+e2), (21) which simplifies to: 
+
+˙V = − k1 
+
+> 2
+
+e⊤ 
+
+> 1
+
+e1 − k2 
+
+> 2σ
+
+e⊤ 
+
+> 2
+
+e2. (22) Using (19), the above can be bounded as: 
+
+˙V ≤ − 2k( 12 ∥e1∥2 + 12σ ∥e2∥2) ≤ − 2kV. (23) Finally, on the interval of existence I(ξ0) := [ t0, τ max ),applying the comparison lemma [17, Lem. 3.4] results in: 
+
+V (t) ≤ V (t0)e−2k(t−t0), (24) which can be rearranged using (19) to yield (18). The above theorem establishes exponential decay of the tracking errors (11) along trajectories of the closed-loop sys-tem (10), implying exponential convergence of v to vd(p, t )
+
+so long as solutions are defined. Theorem 1 makes no claims that solutions are complete (exist for all times), which would require further assumptions on vd and the behavior of T
+
+along trajectories. As the emphasis in this paper is on forward invariance, which does not require completeness of solutions [9], we omit such an analysis here in the interest of space. 
+
+B. Geometric Controller 
+
+In the previous subsection, we presented a controller based on dynamic extension for vector field tracking. Although dynamic extension is commonly used in practice, it can also introduce undesirable delays since one must integrate the designed controller to produce the physical inputs that are sent to the plant. In this section, instead of dynamically extending (5), we use the geometric properties of S2 to directly design a vector field tracking controller for (5). To this end, let vd(p, t ) be a desired smooth vector field and define the error coordinates: 
+
+e1 := v − vd(p, t ), e2 := R3 × R3d , (25) where R3d := ad(p, v, t )/∥ad(p, v, t )∥ ∈ S2, and ad is from (12). That is, R3d is the unit vector associated with the desired acceleration profile. The error dynamics are: 
+
+ ˙e1
+
+˙e2
+
+
+
+=
+
+ 1 
+
+> m
+
+R3T + g − ˙vd(p, t )˙R3 × R3d + R3 × ˙R3d 
+
+
+
+. (26) Now consider the controllers for (5): 
+
+T = m∥ad(p, v, t )∥,
+
+ωi = k2e2 + ωd + ∥ad∥
+
+σ
+
+ −[R3 + R3d ]×
+
+1 + R⊤ 
+
+> 3
+
+R3d 
+
+
+
+e1, (27) where ωd := R3d × ˙R3d , and k1, k 2, σ > 0. Note that the controllers are well-defined provided that ∥ad∥ > 0 and 
+
+R3̸ = −R3d . To this end, define the set: 
+
+Nρ(t) := x ∈ M | 12σ ∥e1(p, v, t )∥2 + 1 − R⊤ 
+
+> 3
+
+R3d < ρ ,
+
+(28) for ρ ∈ (0 , 2) and σ > 0, where M := R3 × R3 × S2. The existence of solutions for each initial condition in Nρ(t0)
+
+follows analogously to that in the previous subsection so long as ∥ad(p0, v0, t 0)∥ > 0. Under this assumption, for each initial condition x0 ∈ N ρ(t0) there exists a unique maximal solution x : I(x0) → M to the closed-loop system, defined on a maximal interval of existence I(x0) = [ t0, τ max ). The following lemma will help facilitate further analysis. 
+
+Lemma 1. Let a, b ∈ S2 and suppose that a̸ = −b. Then: 
+
+a − b = (a + b) × (a × b)1 + a⊤b , (29) 
+
+(a − b)⊤ = −(a × b)⊤[a + b]×
+
+1 + a⊤b . (30) 
+
+Proof. Consider the vector triple products: 
+
+a × (b × a) = b(a⊤a) − a(a⊤b) = b − (a⊤b)ab × (a × b) = a(b⊤b) − b(a⊤b) = a − (a⊤b)b,
+
+where the second equality in each line follows from the fact that a, b ∈ S2 and hence ∥a∥2 = ∥b∥2 = 1 . Subtracting the first line from the second line then yields: 
+
+b × (a × b) − a × (b × a) = a − b + ( a⊤b)( a − b)=(1 + a⊤b)( a − b).
+
+After noting that a × (b × a) = −a × (a × b), we have: 
+
+(a + b) × (a × b) = (1 + a⊤b)( a − b),
+
+which, after dividing through by 1 + a⊤b yields (29). Now, taking the transpose of (29) yields: 
+
+(a − b)⊤ = (a × b)⊤[a + b]⊤×
+
+1 + a⊤b = −(a × b)⊤[a + b]×
+
+1 + a⊤b ,
+
+where the second equality follows from the fact that [·]⊤× =
+
+−[·]×, thereby showing (30), as desired. The following theorem illustrates that (27) enforce expo-nential decay of the tracking errors (25) along trajectories. 
+
+Theorem 2. Let vd(p, t ) be a smooth vector field and consider system (5) with the controller in (27) . Provided that 
+
+x0 = ( p0, v0, R30 ) ∈ N ρ(t0) for ρ ∈ (0 , 2) , where Nρ is defined as in (28) , and ∥ad(p0, v0, t 0)∥ > 0, then along closed-loop trajectories, the error coordinates (25) satisfy: 
+
+∥e(t)∥ ≤ 
+
+q c2 
+
+> c1
+
+∥e(t0)∥e− k 
+
+> 2(t−t0)
+
+, ∀t ∈ I(x0), (31) 
+
+where e := ( e1, e2), k := min {k1, (2 − ρ)k2} > 0, c1 := min  12σ , 12 , and c2 := max 
+
+n 12σ , 12−ρ
+
+o
+
+.Proof. Consider the Lyapunov function candidate: 
+
+V (x, t ) = 12σ ∥e1(p, v, t )∥2
+
+| {z }
+
+> V1
+
++ 1 − R⊤ 
+
+> 3
+
+R3d 
+
+| {z }
+
+> V2
+
+. (32) Computing the time derivative of V1 yields: 
+
+˙V1 = 1 
+
+> σ
+
+e⊤ 
+
+> 1
+
+( 1 
+
+> m
+
+R3T + g − ˙vd)= 1 
+
+> σ
+
+e⊤ 
+
+> 1
+
+( 1 
+
+> m
+
+R3T + g − ˙vd ± ad)= − k1 
+
+> 2σ
+
+∥e1∥2 + 1 
+
+> σ
+
+e⊤ 
+
+> 1
+
+( 1 
+
+> m
+
+R3T − ad),
+
+(33) where the second equality follows from adding a zero and the third from (12). Now, substituting in T from (27) yields: 
+
+˙V1 = − k1 
+
+> 2σ
+
+∥e1∥2 + 1 
+
+> σ
+
+e⊤ 
+
+> 1
+
+(R3∥ad∥ − ad)= − k1 
+
+> 2σ
+
+∥e1∥2 + 1 
+
+> σ
+
+e⊤ 
+
+> 1
+
+(R3∥ad∥ − R3d ∥ad∥)= − k1 
+
+> 2σ
+
+∥e1∥2 + 1 
+
+> σ
+
+∥ad∥e⊤ 
+
+> 1
+
+(R3 − R3d )= − k1 
+
+> 2σ
+
+∥e1∥2 + ( R3 − R3d )⊤e1 ∥ad∥ 
+
+> σ
+
+,
+
+(34) where the second equality follows from the definition of R3d .Next, computing the time derivative of V2 yields: 
+
+˙V2 = − ˙R⊤ 
+
+> 3
+
+R3d − R⊤ 
+
+> 3
+
+˙R3d 
+
+= − (ωi × R3)⊤R3d − R⊤ 
+
+> 3
+
+(ωd × R3d )= − ωi⊤(R3 × R3d ) − ω⊤ 
+
+> d
+
+(R3d × R3)= − ωi⊤(R3 × R3d ) + ω⊤ 
+
+> d
+
+(R3 × R3d )=e⊤ 
+
+> 2
+
+(ωd − ωi).
+
+(35) where we used the fact that ˙R3 = ωi × R3. Therefore: 
+
+˙V = − k1 
+
+> 2σ
+
+∥e1∥2 + ( R3 − R3d )⊤e1 ∥ad∥ 
+
+> σ
+
++ e⊤ 
+
+> 2
+
+(ωd − ωi).
+
+It follows from Lemma 1 that: 
+
+(R3 − R3d )⊤ = −(R3×R3d )⊤[R3+R3d ]× 
+
+> 1+ R⊤
+> 3R3d
+
+=e⊤
+
+> 2
+
+h −[R3+R3d ]× 
+
+> 1+ R⊤
+> 3R3d
+
+i
+
+,
+
+which, substituting back into the derivative of V , gives: 
+
+˙V = − k1 
+
+> 2σ
+
+∥e1∥2 + ∥ad∥ 
+
+> σ
+
+e⊤
+
+> 2
+
+h −[R3+R3d ]× 
+
+> 1+ R⊤
+> 3R3d
+
+i
+
+e1
+
++ e⊤ 
+
+> 2
+
+(ωd − ωi)= − k1 
+
+> 2σ
+
+∥e1∥2
+
++ e⊤
+
+> 2
+
+
+
+ωd − ωi + ∥ad∥
+
+> σ
+
+h −[R3+R3d ]× 
+
+> 1+ R⊤
+> 3R3d
+
+i
+
+e1
+
+
+
+.
+
+Designing ωi as in (27) thus results in: 
+
+˙V = − k1 
+
+> 2σ
+
+∥e1∥2 − k2∥e2∥2. (36) Now, note that ∥e2∥2 = ∥R3 ×R3d ∥2 = sin 2 θ = 1 −cos 2 θ, 
+
+where θ ∈ S1 is the angle between R3 and R3d . Hence: 
+
+∥e2∥2 = 1 − cos 2 θ =(1 − cos θ)(1 + cos θ)=(1 − R⊤ 
+
+> 3
+
+R3d )(1 + R⊤ 
+
+> 3
+
+R3d )=V2(2 − V2),
+
+allowing ˙V to be expressed as: 
+
+˙V = −k1V1 − k2V2(2 − V2). (37) Now, if x ∈ N ρ(t), then V (x, t ) < ρ , which implies that 
+
+V2 < ρ . It then follows that 2 − V2 > 2 − ρ, and hence that: 
+
+˙V (x, t ) ≤ − k1V1 − (2 − ρ)k2V2 ≤ − kV (x, t ), (38) for all x ∈ N ρ(t), where k := min {k1, (2 − ρ)k2}. Now, let x0 ∈ N ρ(t0) and suppose that ∥ad(p0, v0, t 0)∥ > 0.Since ρ < 2, it follows from (28) that the closed-loop dynamics (5) with controller (27) are well-defined and locally Lipschitz in an open neighborhood of x0. Hence, there exists a unique maximal solution x : I(x0) → M to the closed-loop system defined on a maximal interval of existence I(x0). Along this solution, it follows from (38) and the comparison lemma [17, Lem. 3.4] and (38) that 
+
+V (x(t), t ) ≤ e−k(t−t0)V (x0, t 0) ≤ V (x0, t 0) for all t ∈
+
+I(x0). Since x0 ∈ N ρ(t0), we have V (x0, t 0) < ρ and that 
+
+V2(t) < V (x(t), t ) < ρ for all t ∈ I(x0), which implies that x(t) ∈ N ρ(t) and R3(t)̸ = −R3d (p(t), v(t), t ) for all 
+
+t ∈ I(x0). Since ∥e2∥2 = V2(2 − V2) with V2 ∈ [0 , 2] , we have ∥e2∥2 ≤ 2V2, while on Nρ the bound 2 − V2 > 2 − ρ
+
+gives ∥e2∥2 ≥ (2 − ρ)V2. Hence 12 ∥e2∥2 ≤ V2 ≤ 12−ρ ∥e2∥2,and since 12 ≤ 12−ρ for ρ ∈ (0 , 2) :
+
+> 12
+
+  1 
+
+> σ
+
+∥e1∥2 + ∥e2∥2 ≤ V ≤
+
+ 12σ ∥e1∥2 + 12−ρ ∥e2∥2
+
+.
+
+(39) Combining (39) with the bounds on V obtained via the comparison lemma yields (31), as desired. Similar remarks regarding completeness of solutions made after Theorem 1 also apply in the context of Theorem 2. IV. S AFETY -C RITICAL CONTROL 
+
+In the previous section, we designed controllers enforcing exponential convergence of v to vd(p, t ). In this section, we illustrate how these previous results may be used to enforce safety constraints on a quadrotor’s position. Here, we fix the 
+
+structure of the controllers developed in the previous section, and showcase how safety can be enforced through the design of the desired vector field. To this end, we consider: 
+
+C = {p ∈ R3 | h(p) ≥ 0}, (40) where h : R3 → R is smooth, as the constraint set. Our objective is to ensure that h(p(t)) ≥ 0 along closed-loop trajectories generated by the dynamic extension controller (16) or geometric controller (27) when tracking vd. To do so, we design vd to satisfy the robust CBF condition:  
+
+> ∂h ∂p
+
+(p)vd(p, t ) ≥ − αh (p) + 1 
+
+> ϵ
+
+∥ ∂h ∂p (p)∥2, (41) for each p ∈ R3, where α > 0 represents a linear extended class K∞ function, s 7 → αs , as in (9) and ϵ > 0 is a robustness parameter, inspired by the input-to-state-safety framework [20]. Note that a smooth vd satisfying (41) can be designed using the tools from [21]. The intuition behind (41) is that if v = vd(p, t ), then (41) implies that ˙h = ∂h ∂p v ≥−α(h), which implies that h satisfies the CBF condition (9). We will thus use the controllers from the previous section to drive v to vd while ensuring safety even during transients. 
+
+A. Safety with Dynamic Extension Controller 
+
+We begin by establishing safety properties for the dynamic extension vector field tracking controller from (16). To this end, consider the CBF candidate: 
+
+B(ξ, t ) := h(p) − 1 
+
+> μ
+
+V (ξ, t ), μ > 0, (42) for the dynamically extended system (10), where V is the Lyapunov function from (19), which induces a safe set: 
+
+S(t) := {ξ ∈ M | B(ξ, t ) ≥ 0}. (43) The following theorem provides conditions under which tracking vd in (41) using the dynamic extension controller (16) implies that ξ(t) ∈ S (t) for all t ∈ I(ξ0).
+
+Theorem 3. Let vd : R3 × R → R3 be any smooth desired vector field satisfying (41) and let the hypotheses of Theorem 1 hold. Provided that: 
+
+k1 ≥ max {ϵμ, 2α} , k2 ≥ α, (44) then S as in (43) is forward invariant for the closed-loop system (10) , and p(t) ∈ C for all t ∈ I(ξ0).Proof. Taking time derivative of B yields: 
+
+˙B(ξ, t ) = ∂h ∂p (p)v − 1 
+
+> μ
+
+˙V (ξ, t )= ∂h ∂p (p)vd + ∂h ∂p (p)e1 − 1 
+
+> μ
+
+˙V (ξ, t ),
+
+where the second equality follows from v = vd + e1, where 
+
+e1 is defined as in (11). Lower bounding the above yields: 
+
+˙B ≥ − αh + 1 
+
+> ϵ
+
+∥ ∂h ∂p ∥2 − ∥ ∂h ∂p ∥∥ e1∥ + k1 
+
+> 2μ
+
+∥e1∥2 + k2 
+
+> 2σμ
+
+∥e2∥2,
+
+where we used (41) and (22). Now, note that:  
+
+> 1
+> ϵ
+
+∥ ∂h ∂p ∥2 − ∥ ∂h ∂p ∥∥ e1∥ + k1 
+
+> 4μ
+
+∥e1∥2
+
+=
+
+h
+
+∥ ∂h ∂p ∥ ∥e1∥
+
+i  1 
+
+> ϵ
+
+− 12
+
+− 12
+
+> k1
+> 4μ
+
+  ∥ ∂h ∂p ∥∥e1∥
+
+
+
+.
+
+If k1 ≥ ϵμ , the above matrix is positive semi-definite, allowing ˙B to be further lower bounded as: 
+
+˙B ≥ − αh + k1 
+
+> 4μ
+
+∥e1∥2 + k2 
+
+> 2σμ
+
+∥e2∥2
+
+= − α[B + 1 
+
+> μ
+
+V ] + k1 
+
+> 4μ
+
+∥e1∥2 + k2 
+
+> 2σμ
+
+∥e2∥2
+
+= − αB + 12μ [ k1 
+
+> 2
+
+− α]∥e1∥2 + 12σμ [k2 − α]∥e2∥2,
+
+where the second line follows from (42) and the third from (19). If k1 ≥ 2α and k2 ≥ α, we may bound ˙B as ˙B(ξ, t ) ≥−αB (ξ, t ) for any ξ ∈ M and any t ∈ R. Now, for any ξ0 ∈S there exists a unique maximal solution ξ : I(ξ0) → M 
+
+defined on a maximal interval of existence I(ξ0). It then follows from the comparison lemma [17, Lem. 3.4] that: 
+
+B(ξ(t), t ) ≥ e−α(t−t0)B(ξ0, t 0) ≥ 0, ∀t ∈ I(ξ0),
+
+where the second inequality follows from the fact that 
+
+B(ξ0, t 0) ≥ 0. Hence, S is forward invariant. Further, it follows from (42) that for all t ∈ I(ξ0):
+
+B(ξ(t), t ) ≥ 0 = ⇒ h(p(t)) ≥ 1 
+
+> μ
+
+V (ξ(t), t ) ≥ 0,
+
+implying that p(t) ∈ C for all t ∈ I(ξ0), as desired. 
+
+B. Safety with Geometric Controller 
+
+We now shift to establishing safety of (5) when using the geometric controller (27) to track a smooth vector field satisfying (41). Here, we consider the CBF candidate: 
+
+B(x, t ) := h(p) − 1 
+
+> μ
+
+V (x, t ), μ > 0, (45) where h is from (40) and where V is the Lyapunov function from (32). This CBF candidate induces a safe set: 
+
+S(t) := {x ∈ N ρ | B(x, t ) ≥ 0}. (46) The following theorem provides conditions under which tracking vd in (41) using the geometric controllers (27) implies that x(t) ∈ S (t) for all t ∈ I(x0).
+
+Theorem 4. Let vd(p, t ) be a smooth desired vector field satisfying (41) and let the hypotheses of Theorem 2 hold for the dynamics (5) and controller (27) . Provided that: 
+
+k1 ≥ max {ϵσμ, 2α} , k2 ≥ α 
+
+> 2−ρ
+
+, (47) 
+
+x0 ∈ S , for S as in (46) , and x0 satisfies the conditions of Theorem 2, then along trajectories of the closed-loop system, we have p(t) ∈ C for all t ∈ I(x0).Proof. Taking time derivative of B yields: 
+
+˙B(x, t ) = ∂h ∂p (p)v − 1 
+
+> μ
+
+˙V (x, t )= ∂h ∂p (p)vd + ∂h ∂p (p)e1 − 1 
+
+> μ
+
+˙V (x, t ).
+
+Lower bounding the above yields: 
+
+˙B ≥− αh + 1 
+
+> ϵ
+
+∥ ∂h ∂p ∥2 − ∥ ∂h ∂p ∥∥ e1∥+ k1 
+
+> 2σμ
+
+∥e1∥2 + k2 
+
+> μ
+
+∥e2∥2,
+
+where we used (41) and (36). Now, note that:  
+
+> 1
+> ϵ
+
+∥ ∂h ∂p ∥2 − ∥ ∂h ∂p ∥∥ e1∥ + k1 
+
+> 4σμ
+
+∥e1∥2
+
+=
+
+h
+
+∥ ∂h ∂p ∥ ∥e1∥
+
+i  1 
+
+> ϵ
+
+− 12
+
+− 12
+
+> k1
+> 4σμ
+
+  ∥ ∂h ∂p ∥∥e1∥
+
+
+
+.
+
+If k1 ≥ ϵσμ , the above matrix is positive semi-definite, allowing ˙B to be further lower bounded as: 
+
+˙B ≥ − αh + k1 
+
+> 4σμ
+
+∥e1∥2 + k2 
+
+> μ
+
+∥e2∥2
+
+≥ − αB + 12σμ [ k1 
+
+> 2
+
+− α]∥e1∥2 − αμ V2 + k2 
+
+> μ
+
+∥e2∥2
+
+≥ − αB + 12σμ [ k1 
+
+> 2
+
+− α]∥e1∥2 + 1 
+
+> μ
+
+(k2 − α 
+
+> 2−ρ
+
+)∥e2∥2,
+
+where the third inequality follows from the conclusions of Theorem 2 and the fact that V2 ≤ 12−ρ ∥e2∥2 for x ∈ N ρ.Thus, if k1 ≥ 2α, and k2 ≥ α 
+
+> 2−ρ
+
+hold, we may bound ˙B as: 
+
+˙B(x, t ) ≥ − αB (x, t ), ∀(x, t ) ∈ N ρ(t) × R, (48) If x0 ∈ N ρ(t0) it follows from the proof of Thm. 2 that solutions exist on a maximal interval of existence and satisfy 
+
+x(t) ∈ N ρ(t) for t ∈ I(x0). Thus, (48) holds along solutions. The remainder of the proof follows that of Thm. 3. 
+
+Remark 2. The intuition behind the sufficient gain condi-tions in Theorems 3 and 4 is: 1) initialization within the safe set and where the dynamics are well-defined; 2) vector field tracking should be sufficiently fast relative to the variations in the safe vector field, captured by α.V. N UMERICAL SIMULATIONS 
+
+In this section, we demonstrate the effectiveness of our vector field tracking controllers via numerical simulations. 
+
+Trajectory Tracking. We begin by illustrating the ability of our controllers to track vector fields without any safety considerations. Here, the quadrotor mass is m = 1 kg and the initial condition is: 
+
+p0 = 0, v0 = 0, R0 =
+
+h 1 0 00 cos θ0 − sin θ0   
+
+> 0 sin θ0cos θ0
+
+i
+
+,
+
+and θ0 = 175 ◦, which represents a nearly inverted initial attitude. For the DE controller, the extended state initial condition is T0 = 10 . The desired vector field is vd(p, t ) = 
+
+−λ(p − pd(t)) + ˙ pd(t), λ = 1, encoding tracking of a reference trajectory pd(t) = [cos 2 t sin 2 t 1] ⊤m. The controller gains are k1 = k2 = 4 for the DE controller, and 
+
+k1 = 4 , k 2 = 2 for the geometric controller. Fig. 2 shows the DE controller, and Fig. 3 shows the geometric controller results. Simulation results show that the velocity errors exponentially converge to zero in accordance with Theorems 1 and 2, even when initialized with a large rotational error. Time [s] (a)                     
+
+> 0246810
+> p (m)
+> -2 -1 01
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> Time [s] (b)
+> 0246810
+> ev (m/s)
+> 01234
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0246810
+> T (m/s 2)
+> 0510 15
+> Time [s] (d)
+> 0246810
+> ! (rad/s)
+> -60 -40 -20 020
+> !1
+> !2
+> !3
+
+Fig. 2. DE controller Tracking. (a) shows quadrotor position p (solid), the desired position pd (dashed). (b) shows velocity errors, (c) shows the total thrust, and (d) shows input angular velocities ω.Time [s] (a)                     
+
+> 0246810
+> p (m)
+> -1 -0.5 00.5 1
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> Time [s] (b)
+> 0246810
+> ev (m/s)
+> -3 -2 -1 01
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0246810
+> T (m/s 2)
+> 10 12 14 16
+> Time [s] (d)
+> 0246810
+> ! (rad/s)
+> 020 40 60 80 100
+> !1
+> !2
+> !3
+
+Fig. 3. Geometric controller tracking. The plots have the same interpre-tation as those in Fig. 2. 
+
+Safety Enforcement. Next, the objective is to enforce the position constraints pm = ±0.8 m , namely |p1| ≤ pm, and 
+
+|p2| ≤ pm, ∀t ≥ t0, while tracking the desired reference tra-jectory pd. The position constraints are incorporated through the smooth combination [22]: 
+
+h(p) = − 1
+
+λh log  e−λh(p2m−p21) + e−λh(p2m−p22), (49) which defines the safe set C as in (40). A smooth safety filter [21], [23] is then applied to the nominal vd to generate a safe and differentiable velocity-field that satisfies (41). For these tests, the initial rotation error is set to θ0 = π
+
+2 .The controller gains are selected as k1 = k2 = 20 , while the safety-filter parameters are set to α = 7 .5, λh = 5 , ϵ = 2 , and 
+
+μ = 10 . Fig. 4 shows results for the the dynamic extension controller. For the geometric controller k1 = k2 = 20 , the safety-filter parameters are set to α = 5 , λh = 2 , ϵ = 2 ,and μ = 10 . Fig. 5 shows the results for the geometric controller. Simulations show that, by leveraging the proposed vector field tracking controllers, safety properties can be effectively encoded into the desired vector field using CBFs and subsequently transferred to the full quadrotor dynamics. VI. E XPERIMENTAL VALIDATION 
+
+In this section, we show the effectiveness of the proposed vector field tracking controllers and safety enforcement by Time [s] (a)                     
+
+> 0246810
+> p (m)
+> -1 -0.5 00.5 1
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> 'pm
+> Time [s] (b)
+> 0246810
+> ev (m/s)
+> 00.5 11.5 2
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0246810
+> T (m/s 2)
+> 510 15 20
+> Time [s] (d)
+> 0246810
+> ! (rad/s)
+> -80 -60 -40 -20 020
+> !1
+> !2
+> !3
+
+Fig. 4. DE controller safe tracking. (a) shows quadrotor position p (solid), the desired position pd (dashed), and the constraint lines ±pm (hlines). (b) shows velocity errors, (c) shows the total thrust, and (d) shows input angular velocities ω.Time [s] (a)                     
+
+> 0246810
+> p (m)
+> -1 -0.5 00.5 1
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> 'pm
+> Time [s] (b)
+> 0246810
+> ev (m/s)
+> -2 -1.5 -1 -0.5 0
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0246810
+> T (m/s 2)
+> 10 15 20 25 30
+> Time [s] (d)
+> 0246810
+> ! (rad/s)
+> -200 -100 0100
+> !1
+> !2
+> !3
+
+Fig. 5. Geometric controller safe tracking. The interpretation of the plots are the same as those in Fig. 4. 
+
+conducting indoor flight experiments with a Crazyflie 2.1. A video of our experiments can be viewed at [24]. 
+
+Trajectory Tracking. First, we perform flight tests to show the vector field tracking performance. The drone is initialized at rest on level ground at the origin. The reference trajectory is pd(t) = [ 12 cos βt 12 sin βt 0.25] ⊤, and β = 2π
+
+5 .Then the desired vector field is vd(p, t ) = ˙ pd − λ(p − pd),and λ = 2 .5. For the DE controller k1 = k2 = 20 , and for the geometric controller k1 = k2 = 10 . Fig. 6 shows the DE controller performance, and Fig. 7 shows the geometric controller results, which indicate that the vector field tracking controllers track the desired trajectory. Time [s] (a)                     
+
+> 0510 15 20 25
+> p (m)
+> -0.5 00.5
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> Time [s] (b)
+> 0510 15 20 25
+> ev (m/s)
+> -4 -2 024
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0510 15 20 25
+> T (m/s 2)
+> 810 12 14 16
+> Time [s] (d)
+> 0510 15 20 25
+> ! (rad/s)
+> -20 -10 010 20
+> !1
+> !2
+> !3
+
+Fig. 6. DE controller reference tracking experiment. (a) shows position 
+
+p (solid), the desired position pd (dashed). (b) shows velocity errors, (c) shows the total thrust, and (d) shows input angular velocities ω.
+
+Safety Enforcement. We now show that imposing CBF Time [s] (a)                     
+
+> 0510 15 20 25
+> p (m)
+> -0.5 00.5
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> Time [s] (b)
+> 0510 15 20 25
+> ev (m/s)
+> -2 -1 012
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0510 15 20 25
+> T (m/s 2)
+> 810 12 14 16 18
+> Time [s] (d)
+> 0510 15 20 25
+> ! (rad/s)
+> -40 -20 020
+> !1
+> !2
+> !3
+
+Fig. 7. Geometric controller reference tracking experiment. The interpre-tation of the plots are the same as in Fig. 6. 
+
+conditions on the desired vector fields leads to the satisfac-tion of position constraints. The objective is to enforce the position constraints pm = ±0.4 m , namely |p1| ≤ pm, and 
+
+|p2| ≤ pm, while tracking the desired reference trajectory 
+
+pd as above. The CBF parameters are λh = 10 , α = 5 ,
+
+ϵ = 1, and μ = 10 . Fig. 8 shows enforcing position constraints with the DE controller, and Fig. 9 shows the geometric controller results. Results show that the desired safety behavior is successfully encoded into the desired vector fields and accurately tracked by the controllers. Time [s] (a)                     
+
+> 0510 15 20 25
+> p (m)
+> -0.5 00.5
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> 'pm
+> Time [s] (b)
+> 0510 15 20 25
+> ev (m/s)
+> -0.5 00.5 1
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0510 15 20 25
+> T (m/s 2)
+> 99.5 10 10.5
+> Time [s] (d)
+> 0510 15 20 25
+> ! (rad/s)
+> -5 05
+> !1
+> !2
+> !3
+
+Fig. 8. DE controller safe reference tracking experiment. (a) shows position p (solid), the desired position pd (dashed), and the constraints 
+
+±pm (hlines). (b) shows velocity errors, (c) shows the total thrust, and (d) shows input angular velocities ω.Time [s] (a)                     
+
+> 0510 15 20 25
+> p (m)
+> -0.5 00.5
+> p1
+> p2
+> p3
+> p1d
+> p2d
+> p3d
+> 'pm
+> Time [s] (b)
+> 0510 15 20 25
+> ev (m/s)
+> -1 -0.5 00.5 1
+> ev1
+> ev2
+> ev3
+> Time [s] (c)
+> 0510 15 20 25
+> T (m/s 2)
+> 910 11 12
+> Time [s] (d)
+> 0510 15 20 25
+> ! (rad/s)
+> -10 -5 0510
+> !1
+> !2
+> !3
+
+Fig. 9. Geometric controller safe reference tracking experiment. The interpretation of the plots are the same as those in Fig. 8 
+
+VII. C ONCLUSION 
+
+In this work, we proposed two vector field tracking con-trollers for quadrotors based on reduced-attitude representa-tions. We established stability of the proposed dynamic ex-tension and geometric controllers, followed by a framework for encoding safety into the desired vector fields. Numerical simulations and indoor flight experiments demonstrated the effectiveness of the proposed approaches. 
+
+Acknowledgments. ChatGPT was used to assist in editing Fig. 1 and the experiment video [24]. We thank Massimiliano de Sa for the helpful discussions on CBFs on manifolds. REFERENCES [1] T. Lee, M. Leok, and N. H. McClamroch, “Geometric tracking control of a quadrotor uav on se (3),” in Proc. Conf. Decis. Control , 2010. [2] K. Gamagedara, M. Bisheban, E. Kaufman, and T. Lee, “Geometric controls of a quadrotor uav with decoupled yaw control,” in Proc. Amer. Control Conf. , pp. 3285–3290, 2019. [3] M. Leomanni, A. Dionigi, F. Ferrante, P. Valigi, and G. Costante, “Almost global trajectory tracking for quadrotors using thrust direction control on s 2,” in Proc. Conf. Decis. Control , 2024. [4] A. Roza and M. Maggiore, “A class of position controllers for underactuated vtol vehicles,” IEEE Trans. Autom. Control , 2014. [5] D. Invernizzi, M. Lovera, and L. Zaccarian, “Integral iss-based cascade stabilization for vectored-thrust uavs,” IEEE Contr. Syst. Lett. , vol. 4, no. 1, 2019. [6] E. D. Sontag, “Input to state stability: Basic concepts and results,” in Nonlinear and optimal control theory: lectures given at the CIME summer school, 2004 , pp. 163–220, Springer, 2008. [7] S. Kousik, P. Holmes, and R. Vasudevan, “Safe, aggressive quadrotor flight via reachability-based trajectory design,” in Dynamic Systems and Control Conference , 2019. [8] J. Borquez, L. Raus, Y. U. Ciftci, and S. Bansal, “Dualguard mppi: Safe and performant optimal control by combining sampling-based mpc and hamilton-jacobi reachability,” IEEE Robot. Aut. Lett. , vol. 10, no. 7, 2025. [9] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Trans. Autom. Control , vol. 62, no. 8, pp. 3861–3876, 2017. [10] B. Landry, R. Deits, P. R. Florence, and R. Tedrake, “Aggressive quadrotor flight through cluttered environments using mixed integer programming,” in Proc. Int. Conf. Robot. and Autom. , 2016. [11] T. Jin, J. Di, X. Wang, and H. Ji, “Safety barrier certificates for path integral control: Safety-critical control of quadrotors,” IEEE Robot. Aut. Lett. , vol. 8, no. 9, 2023. [12] G. Wu and K. Sreenath, “Safety-critical control of a planar quadrotor,” in Proc. Amer. Control Conf. , pp. 2252–2258, 2016. [13] M. Khan, M. Zafar, and A. Chatterjee, “Barrier functions in cascaded controller: Safe quadrotor control,” in Proc. Amer. Control Conf. , 2020. [14] L. Doeser, P. Nilsson, A. D. Ames, and R. M. Murray, “Invariant sets for integrators and quadrotor obstacle avoidance,” in Proc. Amer. Control Conf. , 2020. [15] D. Zhou and M. Schwager, “Vector field following for quadrotors using differential flatness,” in Proc. Int. Conf. Robot. and Autom. , 2014. [16] T. G. Molnar, R. K. Cosner, A. W. Singletary, W. Ubellacker, and A. D. Ames, “Model-free safety-critical control for robotic systems,” 
+
+IEEE Robot. Aut. Lett. , vol. 7, no. 2, pp. 944–951, 2022. [17] H. K. Khalil, Nonlinear Systems . Prentice Hall, 3 ed., 2002. [18] R. Konda, A. D. Ames, and S. Coogan, “Characterizing safety: Minimal control barrier functions from scalar comparison systems,” 
+
+IEEE Contr. Syst. Lett. , vol. 5, no. 2, pp. 523–528, 2021. [19] J. M. Lee, An Introduction to Smooth Manifolds . Springer, 2013. [20] S. Kolathaya and A. D. Ames, “Input-to-state safety with control barrier functions,” IEEE Contr. Syst. Lett. , vol. 3, no. 1, 2019. [21] M. H. Cohen, P. Ong, G. Bahati, and A. D. Ames, “Characterizing smooth safety filters via the implicit function theorem,” IEEE Contr. Syst. Lett. , vol. 7, pp. 3890–3895, 2023. [22] T. G. Molnar and A. D. Ames, “Composing control barrier functions for complex safety specifications,” IEEE Contr. Syst. Lett. , 2023. [23] M. H. Cohen, T. G. Molnar, and A. D. Ames, “Safety-critical control for autonomous systems: Control barrier functions via reduced order models,” Annual Reviews in Control , vol. 57, p. 100947, 2024. [24] “Vector field following for quadrotors with applications to safety-critical control.” YouTube, 2026. https://youtu.be/Fn9biWWtrd8.

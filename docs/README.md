@@ -44,14 +44,14 @@
       <span class="dpr-home-dashboard-kicker">2026-10-06</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 6 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-06 00:37:28 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-06 23:44:35 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-06 日报精选6篇，精读1篇、速读5篇。最值得看的是8.0分精读《DR-IPC》——用抗扰动的一体化规划与控制，让基于LiDAR的四旋翼导航更稳更可靠；速读中《Estimate, Don&#x27;t Imitate》和《AD-E2E-JEPA》分别探索可复用状态策略做视觉运动控制、以及端到端自动驾驶的联合嵌入预测架构。普通读者可优先从《DR-IPC》入手，感受机器人导航如何应对真实环境干扰，再按兴趣跟进自动驾驶与世界模型方向。</p>
+<p>今日共生成 18 篇推荐（精读 4 篇，速读 14 篇）</p>
+<p>精读：《DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation》（8.0/10）, 《LightVLN: Efficient Aerial Vision-and-Language Navigation with Compact Memory and History-Guided Local Aggregation》（8.0/10）</p>
+<p>速读：《Barrier-Shaped Recurrent Reinforcement Learning for Autonomous Landing on a Heaving Ship Deck》（7.0/10）, 《Emergent Underactuation in Fully Actuated Multirotors by Minimizing a Homogeneous Allocation Cost》（7.0/10）, 《Dual Variational Autoencoders for Efficient Sim-to-Real Transfer in Low-Cost Robotic Navigation》（7.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +74,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">1 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation">DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation">DR-IPC: Disturbance-Resilient Integrated Planning and Control for LiDAR-Based Quadrotor Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="LightVLN: Efficient Aerial Vision-and-Language Navigation with Compact Memory and History-Guided Local Aggregation">LightVLN: Efficient Aerial Vision-and-Language Navigation with Compact Memory and History-Guided Local Aggregation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Neural Barriers: An Online Certifiable Learning-enhanced Adaptive High Order Safety Critical Control">Neural Barriers: An Online Certifiable Learning-enhanced Adaptive High Order Safety Critical Control</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>3</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +87,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">14 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Estimate, Don&#x27;t Imitate: Reusing Differentiable State-Based Policies for Visuomotor Control">Estimate, Don&#x27;t Imitate: Reusing Differentiable State-Based Policies for Visuomotor Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="AD-E2E-JEPA: A Joint-Embedding Predictive Architecture For End-to-End Autonomous Driving">AD-E2E-JEPA: A Joint-Embedding Predictive Architecture For End-to-End Autonomous Driving</span></li><li><span class="dpr-home-dashboard-paper-title" title="WorldGraph: Graph-Native World Modeling">WorldGraph: Graph-Native World Modeling</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Barrier-Shaped Recurrent Reinforcement Learning for Autonomous Landing on a Heaving Ship Deck">Barrier-Shaped Recurrent Reinforcement Learning for Autonomous Landing on a Heaving Ship Deck</span></li><li><span class="dpr-home-dashboard-paper-title" title="Emergent Underactuation in Fully Actuated Multirotors by Minimizing a Homogeneous Allocation Cost">Emergent Underactuation in Fully Actuated Multirotors by Minimizing a Homogeneous Allocation Cost</span></li><li><span class="dpr-home-dashboard-paper-title" title="Dual Variational Autoencoders for Efficient Sim-to-Real Transfer in Low-Cost Robotic Navigation">Dual Variational Autoencoders for Efficient Sim-to-Real Transfer in Low-Cost Robotic Navigation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>4</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>7</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>7</strong></span></div>
 </section>
 </div>
 
