@@ -1,0 +1,75 @@
+Title: UWB Meets Crazyflow: Simulating Degraded Feedback at Scale for Aerial Robotics
+
+URL Source: https://arxiv.org/pdf/2610.08225v1
+
+Published Time: Wed, 07 Oct 2026 01:23:46 GMT
+
+Number of Pages: 3
+
+Markdown Content:
+# UWB Meets Crazyflow : Simulating Degraded Feedback at Scale for Aerial Robotics 
+
+Martin Schuck ∗, Marcel P. Rath ∗, Yufei Hua, Abhishek Goudar, SiQi Zhou, Angela P. Schoellig 
+
+Abstract — In this work, we introduce Crazyflow , an accu-rate, differentiable simulator built on JAX. By leveraging just-in-time (JIT) compilation via XLA, Crazyflow unifies physics and control into a single differentiable computation graph, en-abling massive parallelization on accelerated hardware without sacrificing modeling accuracy. This architecture achieves order-of-magnitude speedups over existing baselines, capable of train-ing deployable reinforcement learning agents in seconds. To highlight its highly modular design, we demonstrate how easily 
+
+Crazyflow can be extended by integrating a complete, high-fidelity Ultra-Wideband (UWB) and Inertial Measurement Unit (IMU) simulation pipeline coupled with a full-state Extended Kalman Filter (EKF). This capability allows for massive parallel controller evaluation under realistic, degraded state feedback with minimal impact on GPU throughput. By combining speed, accuracy, and extensibility, Crazyflow serves as a founda-tional tool for the next generation of aerial robotics research. 
+
+I. I NTRODUCTION 
+
+Owing to their high agility, mechanical simplicity, and cost-effective design, quadrotors have emerged as a canonical platform across a broad spectrum of robotics applications, from infrastructure inspection and safety-critical tasks [1], [2] to recreational domains such as racing and shows [3], [4]. Advancing capabilities in either pushing individual robots toward their physical limits or scaling up multi-agent systems necessitates high-performance, efficient simulation tools that enable rapid algorithmic iteration and task optimization. Widely used simulators such as RotorS [5], CrazyS [6], and swarm-oriented frameworks like Crazyswarm [7] and 
+
+CrazySim [8] are built on top of modular frameworks and provide accurate models suitable for controller development. However, evaluating controllers under imperfect, noisy state feedback—such as realistic UWB or vision pipelines—across thousands of parallel rollouts remains a significant scaling bottleneck, as these tools are generally not designed for massively parallel GPU execution. To address the computational demands of large-scale learning, frameworks like PRL4AirSim [9], 
+
+gym-pybullet-drones [10], and Aerial Gym [11] leverage distributed or tensorized physics to achieve high throughput. While highly scalable, they typically do not expose analytical gradients of the underlying dynamics,                
+
+> *Equal contribution. The authors, Martin Schuck, Marcel Rath, Yufei Hua, and Angela P. Schoellig, are with the Learning Systems and Robotics Lab, Technical University of Munich, Germany. Abhishek Goudar is with the University of Toronto, Canada. SiQi Zhou is with Simon Fraser University, Canada. This work was supported by the Robotics Institute Germany under BMBF grant 16ME0997K and by the Humboldt Professorship for Robotics and Artificial Intelligence.
+> Fig. 1. An overview of the Crazyflow simulator. Built on JAX,
+> Crazyflow leverages just-in-time compilation via XLA to unify physics, sensing, estimation, and controllers into a single differentiable computation graph. Website: https://learnsyslab.github.io/crazyflow/ .
+
+which are required by a range of advanced learning- and optimization-oriented methods. Emerging differentiable frameworks attempt to bridge this gap [12], [13], but often compromise on model fidelity or lack demonstrated sim-to-real capabilities outside of simplified settings. In this work, we introduce Crazyflow (Fig. 1), a high-fidelity, highly extensible, differentiable simulator built on JAX. Crazyflow unifies physics, modular sensor pipelines, and controllers into a single computation graph. To demon-strate this robust capability, we seamlessly integrate a UWB and IMU sensing pipeline with an Extended Kalman Filter (EKF). This allows for realistic controller evaluation under imperfect state estimation at massive scale without sacrificing the core tenets of the simulator: high-speed, direct sim-to-real transfer, and full differentiability. II. T HE CRAZYFLOW DESIGN 
+
+Crazyflow leverages JAX to deliver JIT compilation, massively parallel hardware acceleration, and full differentia-bility. We dynamically compose the simulation pipeline using only the functions required for the current configuration. By focusing on unconstrained free-flight, we omit the compu-tationally expensive solver step found in general-purpose simulators, simplifying gradient tracing and significantly enhancing performance. 
+
+A. Core Dynamics and Sim-to-Real 
+
+Modeled natively after the Crazyflie quadrotor family, 
+
+Crazyflow provides two highly accurate dynamics mod-els: a detailed first-principles model [14], [15] capturing non-linear motor dynamics, and an abstracted attitude dynamics model designed for standard mid-level control interfaces. Be-yond direct compatibility with Crazyflies, Crazyflow in-corporates a streamlined system identification pipeline. This allows users to effortlessly adapt the simulation framework arXiv:2610.08225v1 [cs.RO] 6 Oct 2026 to extract and match the physical parameters of entirely new drone platforms, guaranteeing reliable sim-to-real transfer regardless of the hardware. 
+
+B. Extensibility: Sensing and Estimation 
+
+Because Crazyflow is built on a foundation of stateless, pure functions, the architecture permits extensive customiza-tion. To highlight this modularity, we integrated a complete sensing and state-estimation pipeline directly into the simu-lator step execution ahead of the controller. The sensor models feature an IMU and a UWB network. The IMU simulates body-frame specific force and angular velocity, corrupted by additive white noise and slowly vary-ing bias random walks [16]. The UWB model simulates one tag on the drone interacting with eight fixed anchors located at x, y ∈ {− 2.5, 2.5} m and z ∈ { 0, 3} m. It outputs the true Euclidean distance corrupted by Gaussian noise with a fixed standard deviation σ and a mean μi. Assuming line-of-sight (LoS) conditions throughout the flight, this mean is uniformly sampled at initialization per anchor i and held constant per episode to reflect realistic hardware offsets [17]. These measurements are fused via a full-state EKF that tracks 19 states: position, quaternion attitude, linear ve-locity, angular velocity, and the respective accelerometer and gyroscope biases. The prediction step propagates the mean through a nonlinear IMU-driven dynamics model and propagates covariance using first-order linearization via Jaco-bians. The correction step uses the UWB range measurement model and its linearization with respect to position. This allows users to seamlessly switch the controller input source between perfect ground-truth state and realistic estimated feedback. III. E VALUATION RESULTS 
+
+First, we evaluate the computational throughput of 
+
+Crazyflow with and without the integrated state estima-tion pipeline. Benchmarks were conducted on a workstation equipped with an NVIDIA RTX 5090 GPU and an Intel Core Ultra 9 285K CPU. As shown in Fig. 2, integrating the complex matrix inversions and linearizations of the 19-state EKF introduces some computational overhead. While this impact is quite noticeable on the CPU backend, the GPU simulation handles the load exceptionally well. The GPU experiences only a roughly 20% throughput reduction across all parallel world counts, maintaining a peak performance of 
+
+∼8 × 10 6 steps per second, compared to slightly over 10 7
+
+for the baseline. This demonstrates that degraded feedback simulation can be run without breaking scalability. Second, we evaluate closed-loop trajectory tracking under varying sensor configurations. A geometric controller [18] tracks a figure-8 reference trajectory with a 10 s cycle time. We compare three distinct conditions: perfect ground-truth state feedback, a high-quality UWB+IMU configuration (μi ∼ U ([0 , 0.02 m]) , σ = 0 .01 m ), and a low-quality con-figuration ( μi ∼ U ([0 , 0.15 m]) , σ = 0 .10 m ). As depicted in Fig. 3, degrading the sensor quality directly degrades the 20 22 24 26 28 210 212 214 216            
+
+> Number of Worlds
+> 10 4
+> 10 5
+> 10 6
+> 10 7
+> Steps Per Second
+> Baseline CPU Baseline GPU With UWB/IMU/EKF CPU With UWB/IMU/EKF GPU
+> Fig. 2. Steps per second for a single-drone simulation in Crazyflow
+> with and without a full state estimation pipeline integrated. GPU accelerated results are depicted in lighter shades. 010 20 30 40 50 60
+> Time [s]
+> 0.00 0.02 0.04 0.06 0.08 0.10 0.12
+> Error [m]
+> Perfect knowledge tracking Perfect knowledge estimate UWB+IMU high quality tracking UWB+IMU high quality estimate UWB+IMU low quality tracking UWB+IMU low quality estimate
+> Fig. 3. Simulated tracking of a figure-8 reference with a 10 s cycle time using a geometric controller [18]. With lower sensor quality, the position estimate and the tracking quality degrade.
+
+EKF’s position estimate, which correspondingly deteriorates the overall closed-loop tracking performance. Crucially, despite the addition of realistic sensor noise, bias sampling, and EKF linearizations, the entire pipeline remains completely differentiable. This preserves 
+
+Crazyflow ’s most powerful feature: using analytical gra-dients via backpropagation through time (BPTT), reinforce-ment learning (RL) agents can still be trained in seconds and successfully deployed directly on physical hardware without relying on complex domain randomization. Users can now design, train, and robustify advanced policies against imper-fect state feedback directly within the learning loop. IV. C ONCLUSION 
+
+We introduced Crazyflow , an accurate, JAX-based sim-ulation environment designed to bridge the gap between execution speed, full differentiability, and physical realism. 
+
+Crazyflow allows researchers to adapt any drone platform via an integrated system identification pipeline and enables the training of deployable RL agents in seconds, supporting reliable, direct sim-to-real transfer. By effortlessly integrating a full UWB/IMU and EKF pipeline into the step execution with minimal GPU overhead, we demonstrated the simu-lator’s capability to evaluate robust control under realistic, imperfect state feedback at scale. Combining fast execution with high-fidelity sensory realism, Crazyflow establishes itself as a foundational tool to push the boundaries of next-generation aerial robotics research. REFERENCES [1] M. Lyu, Y. Zhao, C. Huang, and H. Huang, “Unmanned aerial vehicles for search and rescue: A survey,” Remote Sensing , vol. 15, no. 13, pp. 3266:1–35, 2023. [2] S. Guan, Z. Zhu, and G. Wang, “A review on UAV-based remote sensing technologies for construction and civil applications,” Drones ,vol. 6, no. 5, p. 117, 2022. [3] D. Hanover, A. Loquercio, L. Bauersfeld, A. Romero, R. Penicka, Y. Song, G. Cioffi, E. Kaufmann, and D. Scaramuzza, “Autonomous drone racing: A survey,” IEEE Transactions on Robotics , vol. 40, pp. 3044–3067, 2024. [4] A. P. Schoellig, H. Siegel, F. Augugliaro, and R. D’Andrea, “So you think you can dance? Rhythmic flight performances with quadro-copters,” in Controls and Art: Inquiries at the Intersection of the Subjective and the Objective . Springer, 2014, pp. 73–105. [5] F. Furrer, M. Burri, M. Achtelik, and R. Siegwart, “RotorS—a modular Gazebo MAV simulator framework,” in Robot Operating System (ROS): The Complete Reference . Springer, 2016, vol. 1, pp. 595– 625. [6] G. Silano, E. Aucone, and L. Iannelli, “CrazyS: A software-in-the-loop platform for the Crazyflie 2.0 nano-quadcopter,” in Proc. of the Mediterranean Conference on Control and Automation (MED) , 2018, pp. 352–357. [7] J. A. Preiss, W. H¨ onig, G. S. Sukhatme, and N. Ayanian, “Crazyswarm: A large nano-quadcopter swarm,” in Proc. of the IEEE International Conference on Robotics and Automation (ICRA) , 2017, pp. 3299– 3304. [8] C. Llanes, Z. Kakish, K. Williams, and S. Coogan, “CrazySim: A software-in-the-loop simulator for the Crazyflie nano quadrotor,” in Proc. of the IEEE International Conference on Robotics and Automation (ICRA) , 2024, pp. 12 248–12 254. [9] J. Saunders, S. Saeedi, and W. Li, “Parallel reinforcement learning simulation for visual quadrotor navigation,” in Proc. of the IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 1357–1363. [10] J. Panerati, H. Zheng, S. Zhou, J. Xu, A. Prorok, and A. P. Schoellig, “Learning to fly—a Gym environment with PyBullet physics for reinforcement learning of multi-agent quadcopter control,” in Proc. of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2021, pp. 7512–7519. [11] M. Kulkarni, W. Rehberg, and K. Alexis, “Aerial Gym Simulator: A framework for highly parallelized simulation of aerial robots,” IEEE Robotics and Automation Letters (RA-L) , vol. 10, no. 4, pp. 4093– 4100, 2025. [12] Y. Zhang, Y. Hu, Y. Song, D. Zou, and W. Lin, “Learning vision-based agile flight via differentiable physics,” Nature Machine Intelligence ,vol. 7, pp. 954–966, 2025. [13] X. Zhang, R. Wang, Y. Ren, J. Sun, H. Fang, J. Chen, and G. Wang, “DiffAero: A GPU-accelerated differentiable simulation framework for efficient quadrotor policy learning,” arXiv preprint arXiv:2509.10247 ,2025. [14] J. F¨ orster, “System identification of the Crazyflie 2.0 nano quadro-copter,” ETH Zurich, Bachelor Thesis, Aug. 2015. [15] C. Luis and J. Le Ny, “Design of a trajectory tracking controller for a nanoquadcopter,” arXiv preprint arXiv:1608.05786 , 2016. [16] N. Trawny and S. I. Roumeliotis, “Indirect Kalman filter for 3D attitude estimation,” Dept. of Computer Science & Engineering, Uni-versity of Minnesota, Tech. Rep. 2005-002, 3 2005. [17] A. Ledergerber, M. Hamer, and R. D’Andrea, “A robot self-localization system using one-way ultra-wideband communication,” in 
+
+Proc. of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2015, pp. 3131–3137. [18] D. Mellinger and V. Kumar, “Minimum snap trajectory generation and control for quadrotors,” in Proc. of the IEEE International Conference on Robotics and Automation (ICRA) , 2011, pp. 2520–2525.

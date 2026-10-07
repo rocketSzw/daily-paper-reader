@@ -1,0 +1,867 @@
+Title: triangulax: Differentiable Simulations with Triangular Meshes across Soft Matter Physics
+
+URL Source: https://arxiv.org/pdf/2610.02566v1
+
+Published Time: Mon, 05 Oct 2026 00:22:03 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# triangulax : Differentiable Simulations with Triangular Meshes across Soft Matter Physics 
+
+Samuel Silliman 
+
+Joseph Henry Laboratories of Physics, Princeton University, Princeton, New Jersey 08544, USA 
+
+Qiwei Yu 
+
+Lewis-Sigler Institute for Integrative Genomics, Princeton University, Princeton, NJ 08544 and Leinweber Institute for Theoretical Physics, Stanford University, Stanford, CA 94305 
+
+Nikolas Claussen ∗
+
+Joseph Henry Laboratories of Physics, Princeton University, Princeton, New Jersey 08544, USA and Princeton Center for Theoretical Science, Princeton University, Princeton, New Jersey 08544, USA 
+
+Many physical and biological systems –foams, membranes, elastic shells, or tissue sheets– can be mathematically described as 2D surfaces. These surfaces can host complex dynamics, like reaction-diffusion systems, and undergo drastic deformations. Here, we present triangulax , an open-source Python library for simulations and geometry processing that discretizes surfaces using triangular meshes. It combines two features. First, discrete differential geometry provides coordinate-free discretization, which allows simulating strongly deforming surfaces. Second, the library is built on the machine-learning framework JAX , so mesh-based energies and entire simulations can be differ-entiated automatically (including simulations with stochastic forces or topological modifications). This simplifies multi-physics simulations by computing forces automatically and allows fitting model parameters to experimental data or design objectives. We implement an algorithm to preserve mesh quality in strongly deforming surfaces and apply it to a model of membrane mechanics coupled to an on-membrane concentration field. We validate our approach against exact solutions and existing software, and demonstrate triangulax across a range of problems, including membrane mechanics, vertex models, and inverse design of a shape-morphing elastomer sheet. 
+
+INTRODUCTION 
+
+In soft matter and biological physics, many important systems are described by deformable two-dimensional (2d) surfaces, embedded in three-dimensional space. Ex-amples include foam bubbles [1], membranes [2], thin elastic shells [3], and reaction-diffusion systems on curved surfaces [4]. Triangular meshes are the most common way to represent 2d surfaces numerically and are ubiqui-tous in computer graphics and scientific computing. In addition to the discretization of continuum models, tri-angular meshes also arise in inherently discrete models, for example, of cell tilings [5, 6]. In these settings, sur-faces can undergo drastic shape changes. Their dynam-ics are governed by complex, potentially non-equilibrium, “multi-physics” models. A reusable and efficient sim-ulation framework for triangular meshes that can han-dle large deformations is therefore highly desirable. In addition, surface-based models are becoming increas-ingly complex, notably to accurately describe biological phenomena. For example, realistic models for pattern-formation on curved membranes easily require dozens of parameters [7]. New computational tools are required to fit such models to experimental data, and more broadly explore possible behaviors across high-dimensional pa-rameter space. Methods from machine learning have shown promise in this task [8].  
+
+> ∗nc1333@princeton.edu
+
+Here, we present triangulax , a Python library for ge-ometry processing and physical simulations with triangu-lar meshes. It is designed for modularity and reusability across simulation contexts. The library has two main fea-tures. First, triangulax implements high-quality com-putational geometry tools developed in the field of dis-crete differential geometry (DDG) [9]. DDG builds on classical differential geometry to derive algorithms for geometry and mechanics on discrete meshes which are simple to implement and stable through large deforma-tions. Second, triangulax is built using JAX [10], a numerical framework from the machine-learning com-munity. This makes triangulax compatible with just-in-time (JIT) compilation and automatic differentiation 
+
+(autodiff). JIT compilation delivers numerical perfor-mance in high-level Python, including by running code on GPUs. Autodiff computes the gradient of any mesh-based function in an efficient and automated manner. For example, autodiff can compute forces from arbitrary en-ergies without tedious manual derivations, which makes 
+
+triangulax well-suited for multiphysics simulations like protein patterns on a deforming membrane [11]. Autodiff is more general and can evaluate the gradient of the outputs of complex simulations with respect to ini-tial conditions or parameters like reaction rates or elas-tic moduli—the entire simulation is differentiable. This ability is a powerful tool for inverse problems , where the parameters are optimized so the simulation output fits experimental data or fulfills a design objective. Differ-entiable models have been used to design self-assembling arXiv:2610.02566v1 [cond-mat.soft] 1 Oct 2026 2colloids [12], and to explore self-organization in simple models of pattern formation [13]. There is growing inter-est in using autodiff to reverse-engineer principles of mor-phogenesis (biological shape-generation) [14–16]. With 
+
+triangulax , we aim to bring this approach to simu-lations of tissue sheets [5], membranes [2], and elastic shells [3], all of which can be described as curved, 2d surfaces. 
+
+> Related work
+
+The venerable Surface Evolver [17] (last updated in 2008) allows users to minimize energies of surfaces de-scribed as triangular meshes by gradient descent. The 
+
+Surface Evolver has proven highly useful to researchers in several disciplines. This success calls for a modern version with extended capabilities (like non-equilibrium dynamics). Recently, differentiable simulators have been intro-duced to several areas of computational physics (e.g., molecular dynamics [18] or finite elements [19]) and 3D graphics [20], allowing researchers to harness tools from machine learning for physical simulations. Several high-quality modern geometry libraries exist (e.g., CGAL [21] or libigl [22]), but do not feature autodiff (C++ code-bases with limited Python bindings also impede rapid prototyping). This means gradients of energies or fitting loss functions must be derived and implemented by hand. Furthermore, these libraries are not designed for physical simulations. The Mem3DG software [23] is based on DDG, but also does not use autodiff. This makes it harder to extend it to free energy models. Further, Mem3DG is specialized to membrane mechanics and does not cover elasticity or vertex models. We benchmark triangulax 
+
+against Mem3DG below and find improvements in speed and stability. Purpose-built libraries, like the C++ soft-matter li-brary SAMoS [24, 25], can be challenging to adapt to new use cases due to their custom infrastructure, and do not use autodiff. The recent VertAX library does leverage autodiff [16], but is specialized to equilibrium shapes of two-dimensional vertex models only.  
+
+> METHODS 1. A primer on discrete differential geometry
+
+Curved surfaces are traditionally studied as infinitely smooth manifolds, embedded by a map r into 2d or 3d Euclidean space. Processing surfaces computationally, however, requires discretization. In physics, using trian-gulations to represent geometry in a coordinate-free way goes back to Regge’s work on general relativity [26]. Fur-ther, many physical systems feature discrete geometries (granular packings or cell tilings). A discrete surface is a polygonal mesh. The mesh combinatorics are defined by                  
+
+> Symbol Description
+> i,ij ,ijk vertices, edges, faces
+> rivertex positions
+> eij =rj−riedge vectors
+> ni,nijk unit normals
+> ai, a ijk vertex, face area
+> αij , β ij , γ itriangle angles
+> φij dihedral angles TABLE I. Notation for triangulations.
+
+a set of vertices i, j , edges ij , and triangular 1 faces ijk 
+
+(Fig. 1a,c), while the mesh geometry is defined by a set of vertex positions ri (see Table I for notation details). DDG translates the mathematics of differential geom-etry into the setting of discrete surfaces. Developed with an eye to applications in computer graphics and video games [9], DDG provides discrete versions of differential-geometric objects (vector fields, metric tensors, or exte-rior forms) and operators (gradient, Laplacian, or shape operator). These can serve as building blocks for ge-ometry processing and physical simulations, like discrete elastic energies [27]. DDG also has deep connections to the physics of granular materials and cell tilings [6]. Importantly, DDG is an intrinsic framework that does not require a 2d coordinate chart. By contrast, simula-tions on curved surfaces commonly choose a particular coordinate system (for example, the Monge parameter-ization uses a height function over the xy plane), and discretize the resulting set of partial differential equa-tions (PDEs) in the 2d coordinate plane using the finite-element method (e.g., Refs. [28, 29]). This approach has two drawbacks: strongly deforming surfaces can run into coordinate singularities (for example, overhangs in the case of a height function), complex topologies require multiple coordinate patches, and coordinate-based for-mulations can obscure the underlying geometry. DDG overcomes these challenges by using intrinsic discretiza-tions. For example, a covector field α is discretized by its dot products with triangle edge vectors, α·eij , instead of its components α1, α 2 in a coordinate chart. DDG pro-vides fast and stable discrete versions of quantities like the Gaussian curvature, which, in coordinates, require second-order derivatives. SI Sect. S1 lists the most im-portant DDG discretizations. SI Sect. S2 and SI Fig. S1 show their convergence under mesh refinement.  
+
+> 2. Inverse problems using automatic differentiation
+
+Automatic differentiation is based on the chain rule for computing derivatives, ( g ◦ f )′ = ( g′ ◦ f ) · f ′ [30]. An autodiff framework like JAX decomposes a piece of com-puter code into a sequence of elementary operations (e.g.,  
+
+> 1Larger polygonal faces can always be divided into triangles.
+
+3                   
+
+> FIG. 1. triangulax overview. (a) Simulations of reaction-diffusion systems on surfaces, vertex models for tissue dynamics, and membrane mechanics all rely on triangular meshes. triangulax provides a common simulation toolset for all of them. (b)
+> JAX allows automatic differentiation of any function defined by computer code( jax.grad ). This replaces manual calculation of the gradients of mesh-based energies, such as the force density arising from a free energy ( f i is the force density at vertex i
+> with area A i ). Autodiff can also compute the gradients of entire simulations w.r.t. simulation parameters. This allows treating physical simulations like neural networks and optimizing their parameters to fit experimental data or fulfill design objectives. (c) DDG translates differential geometry from the smooth to triangulated surfaces, and provides elegant, discrete versions of the smooth differential operators (e.g., Laplacian, gradient) and energies. To implement the DDG toolset, triangulax represents surfaces as half-edge meshes with vertices i, j and oriented edges ij .The twin η(ij ) and next ρ(ij ) operators specify how half-edges are connected.
+
+addition of two variables, application of a trigonomet-ric function), for each of which the derivative is imple-mented. The individual derivatives are then composed (using what is called “forward-” or “reverse-mode” au-todiff) to compute the gradient of complex programs efficiently. Autodiff can thus evaluate the gradient of the outputs of complex simulations with respect to ini-tial conditions or parameters, like reaction rates or elas-tic moduli—the entire simulation is differentiable. This ability is a powerful tool for inverse problems , where the parameters are optimized so the simulation output fits experimental data or fulfills a design objective. Given a physical “forward” model with variables x and parameters θ, inverse problems ask to recover a set of parameters θ that optimize an objective L [31]. The objective can be fitting experimental data or a design target, for instance, generating a surface with a specific shape. More specifically, the forward model computes a simulation output x∗(θ). For example, relaxing an en-ergy E with parameters such as elastic moduli leads to 
+
+x∗(θ) = arg min x E(x; θ). The inverse problem mini-mizes L[x∗(θ)] with respect to θ.Autodiff allows writing differentiable simulators in which the parameter gradient of the simulation output 
+
+∂x∗(θ)/∂ θ can be computed automatically as the for-ward problem is solved [32]. This enables gradient-based methods to find an optimal set of parameters, 
+
+θ∗ = arg min θ L[x∗(θ)]. Effectively, the forward sim-ulation can be treated like a “neural network” which maps initial conditions to simulation results: parame-ters (like elastic moduli or reaction rates) are trainable like neural network “weights” [33]. As we show below, autodiff also works for simulations that appear “non-differentiable” at first sight, including topological modi-fications and stochastic dynamics.    
+
+> 3. The triangulax library
+
+In triangulax , the geometry (vertex positions) and connectivity (vertex adjacency) of triangular meshes are represented by separate GeoMesh and HeMesh classes. The HeMesh class represents mesh adjacency using the 
+
+half-edge data structure. In brief, a half-edge mesh stores a list of vertices, oriented edges, and faces. A set of tables encodes how the mesh elements are connected and allows navigation around the mesh (operators next and twin 
+
+in Fig. 1c). Mesh connectivity can be modified through edge flips (T1 transitions), deletion, or splitting of ver-tices. These modifications can be used to remesh strongly deforming surfaces to improve numerical performance or implement events like cell rearrangement in discrete sys-tems. Adjacency-based operators enable neighborhood queries, like summing over all faces adjacent to a vertex. Combining adjacency information with mesh geometry allows computing geometric quantities like normal vec-4tors, edge lengths, Voronoi areas, and Gaussian curva-ture, which underlie DDG. triangulax thus implements discrete versions of classic differential operators like the exterior derivative, Laplace operator, or the area inte-gral (the mass matrix). These operators can be applied to fields defined on mesh elements (for example, at each vertex). Our implementation follows [34]. Where possi-ble, triangulax uses intrinsic formulations that require only edge lengths eij . This approach makes triangulax 
+
+extensible; one can simulate dynamics in 2d (e.g., vertex models), 3d (e.g., membrane mechanics), or in periodic geometries all within the same framework (one only needs to specify a suitable distance function). The entire triangulax library is written for compati-bility with the machine learning library JAX . This is en-sured by using JAX -native control flow and a functional programming paradigm. Additionally, triangulax 
+
+meshes are stored as JAX pytree objects 2. We provide efficient, vectorized implementations of geometric and differential qualities on triangular meshes. For exam-ple, neighborhood queries are carried out using a gather-scatter approach (see example in SI Fig. S2). This allows working with unstructured meshes in JAX arrays without resorting to workarounds like padding. triangulax is compatible with both forward and reverse mode autodiff in JAX , as well as with JIT-compilation. It can automat-ically and efficiently compute the gradients of any mesh-based energy (like the “premade” energies provided in the elastic module). triangulax seamlessly integrates with many JAX -based Python libraries. For example, we use the optimistix library [35] for static simulations (energy minimization) and the diffrax library [33] for dynamic ones (deterministic and stochastic differential equations). Both libraries implement automatic deriva-tives for their solvers, for example using the efficient ad-joint method [31]. This makes triangulax simulations end-to-end differentiable. 
+
+triangulax is hosted on GitHub and available as a PyPI package. Documentation and tutorials can be found on GitHub Pages. Table S.I lists the modules available in triangulax , and SI Fig. S2 shows a code example.  
+
+> 4. Benchmarking
+
+We benchmarked triangulax against Mem3DG , a pack-age for solving mechanochemical dynamics of membranes using triangulated meshes [23]. Using both packages to find the minimum-energy shape of deflated membrane vesicles (see Results Sect. 3), we find that triangulax 
+
+achieves faster convergence to equilibrium shapes as the mesh resolution is increased, while maintaining similar   
+
+> 2JAX pytree objects are a general class of nested, container-like objects like lists of arrays.
+
+or better mesh quality (SI Fig. S5 and SI Sect. S4). Autodiff-based functionality was not compared since it is not provided by Mem3DG .
+
+> RESULTS
+
+We now present case studies that apply triangulax to systems across soft matter and biophysics. These tasks revolve around mesh-based energies, implemented using DDG. triangulax automatically computes the gradi-ents, making it easy to optimize or to compute forces. Tutorials on membrane mechanics, vertex models, and gradient-based inverse design are available as Jupyter notebook tutorials online, where details on the simulated models and numerics can be found.  
+
+> 1. Vertex models
+
+Vertex models are a class of biophysical models in which cells are represented as polygons or polyhedra, and thus parametrized by a set of vertices [5]. Vertex mod-els are often applied to cells constrained to epithelial cell sheets, modeled as 2d polygonal tilings (Fig. 2a). These tilings can be represented by their dual graphs in which cells form nodes, and adjacent cells are linked by edges. This adjacency graph forms a triangulation (see Fig. 2a) 3.We used triangulax to simulate the popular self-propelled Voronoi (SPV) vertex model [36]. In the SPV, the cell tessellation is the Voronoi dual to a triangula-tion with vertices ri. The ri are the cell centers. The Voronoi cell corners are the triangle circumcenters, which makes cell and triangle edges orthogonal (Fig. 2b). As we will see below, the duality between triangulations and Voronoi tessellations plays an important role in the DDG framework. The dynamics of the ri comprises two terms, self-propulsion and relaxation of an elastic energy: 
+
+∂tri = −∇ ri ESPV + v0 ˆvi. (1) For each cell i, ˆ vi is a unit vector (represented by an angle θi) that determines the direction of motion. The elastic energy depends on each cell’s Voronoi area ai and perimeter pi:
+
+ESPV = X
+
+> i
+
+ka(ai − a0)2 + kp(pi − p0)2, (2) where ka, k p are elastic constants, and a0, p 0 are the tar-get area and perimeter. The orientation θi of each cell undergoes rotational diffusion, dθ i = DdW t,i . Here dW t,i 
+
+is Brownian motion, independent for each cell i, and D
+
+is a diffusion constant. In the SPV, cells can rearrange if  
+
+> 3Higher-order faces can be triangulated by adding “fictitious” edges.
+
+5the interface between two cells shrinks to length 0, lead-ing to an edge flip in the triangulation (Fig. 2d). To simulate Eq. (1), we implemented the elastic energy Eq. (2) using the geometry module, and used autodiff to compute its gradient. To integrate the stochastic dif-ferential equation Eq. (1), we used the diffrax library. After each time step, we used the topology module to carry out edge flips. The entire simulation can thus be accelerated using JAX ’s JIT-compilation. A snapshot of 8 cells from one such simulation is provided in Fig. 2c.  
+
+> 1. Differentiating simulations with stochastic forces and topological changes
+
+Since all triangulax operations are differentiable, one can differentiate the output of entire simulations with respect to model parameters. This allows optimizing pa-rameters to fit experimental data or to achieve a design objective (make the model carry out a desired behavior). Autodiff works even in simulations that involve stochas-tic forces and topological modifications (e.g., T1 transi-tions in vertex models). Intuitively, T1 transitions seem non-differentiable: they are discrete changes of the mesh connectivity. However, the Voronoi model evolves contin-uously through a T1 transition, because the cell edge has zero length at the moment of the flip. Stochastic forces pose no problem for autodiff, either: the noise does not depend on simulation parameters and drops out from the gradient. 
+
+JAX computes the gradient in which the stochastic forces and the sequence of T1 transitions are kept fixed. Although this gradient is technically not the exact deriva-tive of the simulation output, it suffices for many practi-cal purposes. For example, the autodiff gradient agrees with finite differences and is effective for optimizing model parameters. This is demonstrated in Fig. S6 with a toy example, in which we optimize the SPV parameters to achieve target tissue and cell shapes. Autodiff reli-ably computes the gradient for simulations with ≥ 1, 000 T1 transitions. However, the accuracy of gradients de-creases for long simulation runs if the cell dynamics are chaotic, a well-known issue in (reinforcement) machine learning [37].  
+
+> 2. Partial differential equations on surfaces
+
+To simulate PDEs on curved and potentially dynamic surfaces, one can use triangulax ’s discrete differential operators, like the Laplace operator. The DDG dis-cretization combines aspects of linear finite-element and finite-volume methods, with modifications to improve stability on irregular meshes [34]. Continuous fields u(x)are approximated by their values ui at vertices, and the discrete Laplace operator is a sparse matrix, referred to as the cotan-Laplacian: (∆ u)i = 12ai
+
+X
+
+> j
+
+(cot αij + cot βij )( uj − ui), (3) where the sum is over all neighbors j of vertex i, ai is the Voronoi area around vertex i, and the angles α, β are defined in Fig. 3. Eq. (3) follows from the divergence theorem, applied to the Voronoi cell around each vertex, and is equivalent to the Laplacian obtained from the lin-ear Lagrange elements in the finite-element method [9]. For static surfaces, triangulax thus produces identical results to finite-element simulations. We calculate ai ro-bustly using the method of Ref. [34]. Using the cotan Laplacian, we simulated a nonrecipro-cal version of the Cahn–Hilliard model (NRCH) [38], a generic model of pattern formation and traveling waves, on a torus embedded in 3d (Fig. 3). The NRCH com-prises two conserved fields ϕ, ψ , evolving as: 
+
+∂tϕ = ∆  −ϕ + Dψ + ϕ3 − ∆ϕ , ∂tψ = ∆ ( |D|ϕ + d ψ ) ,
+
+(4) where D, d are diffusion coefficients. We discretized Eq. (4) using the cotan Laplacian and an implicit Euler scheme. For analysis, triangulax also supports project-ing data from 3d to 2d using coordinate charts (known as “UV maps” in computer graphics).  
+
+> 3. Membrane elasticity
+
+Membranes are often modeled as 2d surfaces embed-ded in 3d [2]. Here, we consider a membrane for which the surface tension is negligible and the elastic energy is dominated by bending. This is the case for many lipid bilayers, like the cellular plasma membrane. Such lipid bilayers combine aspects of fluids and solids: they re-sist out-of-plane bending elastically, but flow viscously in-plane [2]. The Helfrich energy is a geometric model for the bending energy of a surface [39], based on the Gaussian and mean curvatures K, H :
+
+EH =
+
+Z
+
+dA 
+
+ k
+
+2 (H − H0)2 + k′K
+
+
+
+, (5) where k, k ′ are elastic moduli and H0 is the preferred (mean) curvature of the membrane. For closed surfaces, the second term is a topological constant and is thus irrelevant for simulations of meshes with fixed topol-ogy. Much of the physics of membranes arises from con-straints on the volume V and area A of the membrane, which force the adoption of non-trivial bent shapes. We describe these constraints via the reduced volume v =6√π V /A 3/2 relative to a sphere with the same area [40].  
+
+> 1. Discretized elastic energy
+
+triangulax discretizes this model using DDG. The Gaussian curvature at vertex i becomes the angular de-6
+
+FIG. 2. Area-perimeter vertex models. (a) A triangular mesh (black edges) and the dual Voronoi tessellation (blue polygons). (b) Zoomed-in view of a Voronoi cell with cell area ai and perimeter pi. The Voronoi cells are centered at triangular mesh vertices ri and have corners V located at triangle circumcenters. Cell and triangle edges are orthogonal. (c) Trajectories of a cell group due to stochastic self-propulsion. (d) When a cell-cell edge shrinks to length 0 (left series of images), a T1-event changes the mesh topology by flipping a triangulation edge (right series of images). Numerically, edge flip triggers can be computed from the triangulation angles [25]. 
+
+FIG. 3. Partial differential equations on curved surfaces. (a) The discrete Laplace operator on triangular meshes is defined by the cotan Laplacian. (b) NRCH model on a torus embedded in 3d leads to traveling waves along the long axis. Parameter values: D = −0.14 , d = 0 .1, R ϕdA = R ψdA = 0. (c) 2d kymograph along the long axis on the outer radius of the torus in (b). 
+
+fect Ki = (2 π − P 
+
+> j
+
+γj )/a i, where the sum is over all angles γj at vertex i (Fig. 3a). DDG also provides a dis-crete expression for the mean curvature Hi at each vertex (Eq. (S3) in SI. S1). Thus, all terms in Eq. (5) are com-puted without the higher-order derivatives required in coordinate parametrizations. The area integral R dA (·)becomes P 
+
+> i
+
+ai (·), so that the discretized energy reads 
+
+EH = X
+
+> i
+
+ai
+
+ k
+
+2 (Hi − H0)2 + k′Ki
+
+
+
+. (6) The resulting force density fi per vertex is 
+
+fi = − 1
+
+ai
+
+δE δri
+
+. (7) The functional derivative δE δri (computed via autodiff) represents the total force, integrated over the area around a vertex (vertices with larger area influence E more strongly). In finite-element terms, the Voronoi areas ai
+
+define the mass matrix of the discretization. 
+
+2. Numerical optimization 
+
+Using the discretized bending energy, we obtained minimum-energy membrane shapes by gradient-based optimization, using JAX to automatically compute deriva-tives. We used the optimistix library of non-linear optimizers [35]. We implemented area and volume con-straints using the augmented Lagrangian method [41]. Numerical optimization of Eq. (5) is notoriously chal-lenging due to its reparametrization invariance [17]. Membranes are fluid and do not elastically resist in-plane material redistribution, only out-of-plane bending. In the discrete setting, moving vertices in the local tangent plane does not change the energy, which only depends 7on the surface shape. This means the optimization land-scape has flat directions that cause mesh degeneration, leading to numerical instability. Inspired by Ref. [42], we address this issue by splitting vertex motion into two sub-problems: 1. Normal phase : minimize the physical energy Eq. (5) by motion along surface normals. 2. Tangential phase : minimize a parametrization pseudo-energy by motion orthogonal to surface nor-mals. The parametrization pseudo-energy penalizes degenerate mesh configurations, and the restricted optimization only along the tangential direction ensures that it does not bias the physical minimum-energy shapes. We use a neo-Hookean parametrization energy (see next section), but this choice can easily be switched out, since gradients (forces and stresses) are computed automatically. Itera-tively minimizing normal and tangential energy, we ob-tain minimum energy shapes with low mesh distortion (Fig. 4a). We verified our results against analytical so-lutions for rotationally symmetric surfaces, computed by the method of Ref. [2] (Fig. 4b; see SI Sect. S3).  
+
+> 3. Coupling to scalar patterns
+
+Many substances, including large classes of pro-teins [43], can bind to membranes and modify their preferred curvature H0 [2]. Shape-concentration cou-pling is of great importance for sculpting the shapes of cells and intracellular organelles [44]. We simulate a minimal model for a shape instability induced by this geometry-concentration coupling [45]. We consider a sin-gle scalar concentration field ϕ restricted to the mem-brane surface, whose Landau free energy of the con-centration field around the equilibrium value ϕ = 0 is R dA   a 
+
+> 2
+
+ϕ2 + b 
+
+> 2
+
+|∇ ϕ|2. We assume ϕ induces a sponta-neous curvature H0 = Λ ϕ. Thus, the joint free energy of membrane and field reads 
+
+F =
+
+Z
+
+dA 
+
+ k
+
+2 H2 − ΛHϕ + a
+
+2 ϕ2 + b
+
+2 |∇ ϕ|2
+
+
+
+. (8) Eq. (8) implies that, vice versa, the ϕ-field “prefers” re-gions of non-zero curvature. For sufficiently large Λ, this leads to an instability (high-ϕ regions increase in curva-ture, attracting yet more ϕ). We used triangulax to simulate the overdamped dy-namics of this model 4. Both membrane shape (vertex positions ri) and the field (values ϕi) relax the free en-ergy, 
+
+∂tϕ = −δF/δϕ, ∂tr = −δF/δ r. (9)   
+
+> 4Strictly speaking, these pseudo-dynamics minimize the free en-ergy but do not capture ϕ-advection by in-plane flows.
+
+These relaxational dynamics, in which ϕ is not con-served, are chosen as a minimal example (see Discus-sion). Conserved dynamics ( ∂tϕ = ∆ δF/δϕ ) are also straightforward to implement using the cotan-Laplacian. 
+
+triangulax automatically computes these functional derivatives from the discretized version of Eq. (8). Fig. 4d shows the development of the resulting instability. Here, we enforced the volume and area constraints using a quadratic energy penalty.  
+
+> 4. Elasticity of thin shells
+
+Elastic deformations of thin shells are an important subject in soft-matter physics, which can be elegantly de-scribed using the framework of metric elasticity [3, 46]. In brief, the physical shape of an elastic shell with thickness 
+
+h is described by a Riemannian metric g, measuring the physical distance between nearby material points. The reference configuration corresponds to a second metric gr ,measuring the energetically preferred distance between material points (Fig.5a). The elastic energy is computed from the non-linear deformation tensor C = g−1 
+
+> r
+
+· g. Acommon choice is the neo-Hookean model: 
+
+EnH = h
+
+Z
+
+dA Gs
+
+2
+
+ tr( C)
+
+√det C − 2
+
+
+
++ Gb
+
+2
+
+√det C − 1
+
+2
+
+!
+
+,
+
+(10) where Gs, G b are the shear and bulk moduli. Due to its favorable stability behavior even for large deformations, we used Eq. (10) as the parametrization pseudo-energy in the membrane simulations above. To implement Eq. (10) discretely, we followed Refs. [27, 47] and represented the metric tensor gijk of each triangle ijk intrinsically in terms of the triangle edge vectors (SI Sect. S1). The en-ergy Eq. (10) only describes the energy due to in-plane deformations. In addition to the metric g, capturing bending requires the 2 nd fundamental form b, which mea-sures the extrinsic curvature through the change of the surface normal n (the mean curvature is 2 H = tr g−1b). A simple bending energy reads [27] 
+
+EB = Gf
+
+Z
+
+dA tr(( b − br )2). (11) 
+
+Gf ∝ h3 is the flexural modulus, and br is the reference 2nd fundamental form. A simple way to generate a curved reference configuration is to glue together two sheets with different target metrics into a bilayer (e.g., an expand-ing top and contracting bottom sheet) [46]. triangulax 
+
+also implements a discrete version of Eq. (11), based on Ref. [27]. To discretize b, one computes the dihedral an-gles φij between the normal vectors of the two triangles that meet at an edge ij (Fig.5a, top). The bending en-8Mesh Vertices Exact Shape 
+
+> Initial Mesh Optimization Final Mesh
+
+(a) (g) (e) 
+
+(b) 
+
+Tangential 
+
+> Optimization
+
+Normal 
+
+> Optimization
+
+(d) Time  Concentration Helfrich Energy Minimization (f) Control triangles Update connectivity 
+
+(c) 
+
+FIG. 4. Membrane mechanics. (a) Initial condition (left) and minimum-energy shape for the Helfrich energy Eq. (5) with reduced volume v = 0 .75. (b) The results from triangulax match the exact, rotationally symmetric solution. (c) Membranes are lipid bilayers that elastically resist out-of-plane bending (red), but behave like a viscous fluid in-plane (blue). (d) Coupling to concentration fields can lead to instability and geometric pattern formation. Snapshots from relaxational dynamics of Eq. (8) with k = 1, Λ = 2, a = 1, b = 1. The initial condition is an (oblate) minimum energy shape for v = 0 .75. (e) Membrane energy only depends on surface shape, not the in-plane position of vertices. Many meshes may represent the same shape, but some meshes are more preferable to others. Skinny triangles can lead to numerical instability in simulations, so uniform equilateral triangulations are preferable. (f) Mesh quality is improved by controlling triangle shapes (size, aspect ratio) by optimizing an in-plane pseudo-energy, and by performing edge flips for poorly conditioned triangles. Both operations preserve the number of vertices and are fully compatible with JAX . (g) Motion of mesh vertices is split between a normal phase for the physical energy and a tangential phase for the parameterization energy. 
+
+ergy becomes 
+
+EB = B X
+
+> ij
+
+e2
+
+> ij
+
+aij 
+
+(φij − φij,r )2, (12) where eij is the edge length, and aij is the edge area (1 /3 of the summed area of the two adjacent triangles). 
+
+triangulax also implements a generalization of Eq. (12) from Ref. [47] in which br is encoded as a per-face tensor instead of target angles φij,r .
+
+5. Inverse design of a shape-changing elastomer sheet 
+
+Finally, we applied triangulax to an example inverse problem, the design of a shape-changing liquid crystal elastomer sheet, following Refs. [48, 49]. Such sheets have a nematic orientation θ imprinted. When heated, the material locally shrinks along the nematic director and expands in the orthogonal direction. The sheet is modeled using metric elasticity, Eq. (10). The reference metric of the actuated state is determined by the nematic director: 
+
+gr = Λ T · g0 · Λ, Λ = R(θ) · diag( λ, 1/λ ) · R(θ)T , (13) where g0 is the metric of the initial, non-heated state, 
+
+λ > 1 is the material’s expansion factor, and R is a ro-tation matrix. To control the sheet’s curvature, one can glue together two sheets with different directors θt, θ b.Differences in strain across the two layers induce nonzero reference curvature br̸ = 0. The goal is to paint two nematic director fields onto an initial surface S0 so that the elastically relaxed shape after heating matches a desired target S1. Because the expansion factor λ is a fixed material constant, the prob-lem is constrained: it is not possible to morph each piece of the material into the target shape. Note that Ref. [49] already introduces a numerical algorithm for this in-verse problem, based on elegant geometry and computer-graphics techniques. We propose an autodiff-based ap-proach that, while less efficient, is more easily general-ized. It is a black-box approach that works with any forward simulation model and does not exploit special structure of the model. Given an orientation field θt, θ b (encoded as per-triangle angles), we start from S0 and compute the min-imum energy shape of the actuated reference metric Eq. (13), resulting in a shape ˆS1. We then measure the difference to the target shape S1 using a loss L. The loss can be augmented by additional penalty terms P,9Initial Relaxed Relaxed Teacher Student Initial 
+
+> Error
+
+(a) (b) (c)                         
+
+> FIG. 5. Thin shell elasticity and inverse problems. (a) In metric elasticity, a thin elastic sheet has a reference metric gr,specifying the minimum-energy distance between nearby material points, and a reference 2 nd fundamental form, specifying the minimum-energy bending radii and axes. On a discrete surface, bending is measured by the dihedral angle between adjacent triangle normals. (b) An initial spherical mesh relaxes to an elongated shape when the “teacher” nematic pattern is actuated, deforming the reference metric. Red line segments show the nematic director θt.After training, the student recovers the teacher’s shape and pattern. Parameter values: Gs=Gb=Gf= 1 , h = 0 .1, λ = 1 .1. (c) Nematic pattern trained to deform a monkey’s head into a sphere upon actuation. Deviation from sphericity is measured by the radius variance, which drops by a factor of 10, although the snout and ears are not completely flattened. Parameter values: Gs=Gb=Gf= 1 , h = 0 .1, λ = 1 .5.
+
+for example, to encourage smooth director fields. We then minimize L with respect to the design fields θt, θ b
+
+to obtain the optimized pattern: 
+
+θ∗ 
+
+> t
+
+, θ ∗ 
+
+> b
+
+= arg min 
+
+> θt,θ b
+
+L[ˆ r1] + P[θt, θ b],
+
+with ˆ r1 = arg min  
+
+> r
+
+E(r; θt, θ b). (14) Since the triangulax simulation is differentiable, min-imization can be carried out with gradient-based meth-ods. In traditional, non-differentiable simulations, opti-mization or fitting requires parameter scans, which be-come infeasible for high-dimensional problems (here, the design fields have dimension 2 × No. of faces). We use the conjugate-gradient solver from optimistix to mini-mize the energy, and the Adam optimizer [50] from the machine-learning library optax to minimize the loss [51]. Simulation details (loss functions, optimizer settings) can be found online. As a first example, we paint a “teacher” pattern on a spherical mesh that deforms it into an ellipsoid (Fig.5b). With this deformed shape as target S1, we use the above method to recover the teacher pattern. The optimized “student” pattern reproduces the teacher shape almost exactly, and recovers the teacher pattern. As a sec-ond example, we aim to morph a complex shape into a sphere (Fig.5c). We chose a smoothed version of the “Suzanne” mesh of a monkey’s head from the 3d software Blender. The loss now penalizes the deviation of the re-laxed configuration ˆS1 from a sphere. The optimized pattern comes close to accomplishing this task, dropping the deviation from sphericity by 10 × (although the snout and ears are not completely flattened). 
+
+> DISCUSSION
+
+We have presented triangulax , a geometry-processing and simulation toolkit for curved 2d surfaces that com-bines discrete differential geometry [9] and automatic dif-ferentiation [10]. Based on discrete differential geometry, we developed an algorithm for simulations of surfaces un-dergoing large deformations without requiring coordinate charts. The library is based on the JAX framework [10] and thereby provides access to key machine-learning technology. Autodiff greatly facilitates both minimiza-tion of (multi-physics) free energies and allows optimizing the parameters of entire simulations. triangulax is not “hard-coded” for soft-matter applications and can be ap-plied to other physical or engineering systems described by curved surfaces, embedded into spaces of arbitrary dimension and periodicity. We demonstrated triangulax on a range of problems across soft-matter physics, from vertex models [5] to membrane mechanics [2]. We validated our discretiza-tions against exact solutions and existing software. An important limitation of the example simulations shown in Fig. 4 is that they do not fully model the viscous hy-drodynamics of in-plane membrane flows [52]. We aim to release a complete tutorial with the next iteration of the software, using a stream-function approach that can be implemented using the triangulax toolset. More gen-erally, our simulations implicitly assumed an “adiabatic limit” in which the membrane relaxes to mechanical equi-librium rapidly compared to the evolution of the scalar concentration field due to diffusion. More generally, due to its use of autodiff, triangulax 
+
+is well-suited to “multiphysics” simulations, like protein patterns on deforming surfaces (Fig. 4d). Within the framework of Onsager’s variational principle [11, 53], a multiphysics model is specified by the joint free energy and dissipation potential of all variables (concentrations, 10 surface shape, etc.) The dynamics are governed by min-imizing the total energy dissipation rate. Autodiff auto-mates the calculation of the resulting (generalized) forces and frictions, and facilitates the dissipation rate mini-mization. triangulax -based “surface” models can also be integrated with other physics, like particle-based mod-els or 3d bulk fluid dynamics, for example via the im-mersed boundary method [54]. In future work, we plan to use triangulax to study how concentration patterns, governed by reaction-diffusion dynamics, can sculpt the geometry of fluid membranes, a key question for the shape of cells and organelles [44]. Compared to coordinate-based ap-proaches [28, 29], triangulax can handle dramatic shape deformations, for example during tubulation or budding. We further anticipate that the ability to automatically differentiate entire simulations will unlock new possibil-ities, for example, to develop quantitative models of bi-ological processes that involve complex nonequilibrium dynamics on deformable membranes [55–58]. More generally, we believe that gradient-based opti-mization is a promising route to explore the principles of surface shape programming. Indeed, in toy models (cellular automata), optimization of differentiable mod-els has generated striking examples of self-organized pat-tern generation [13], and shed light on the underlying mechanisms. We hope that triangulax brings this ex-citing line of research to the wide range of biophysics and soft-matter models that can be simulated with triangular meshes. 
+
+> ACKNOWLEDGMENTS
+
+We thank Fridtjof Brauns, Andrej Koˇ smrlj, Noah Mitchell, and Ned Wingreen for helpful discussions and feedback on the manuscript. Research reported in this publication was supported by the National Science Foun-dation through the grants MCB-2410354 and DMR-2011750 (through the Princeton Institute for Complex Materials), and by the National Institute of General Medical Sciences (NIGMS) of the National Institutes of Health (NIH) under award numbers R01GM082938 and R35GM156427. The content is solely the responsibility of the authors and does not necessarily represent the of-ficial views of the National Institutes of Health or the National Science Foundation. S.S. is supported by a Princeton University First-Year Fellowship and a sum-mer research assistantship from the Princeton Physics Department. The work by Q.Y. is supported in part by an LITP fellowship from the Leinweber Institute for The-oretical Physics at Stanford University. N.C. is supported by a fellowship from the Princeton Center for Theoretical Science. 
+
+Author contributions N.C. designed research and de-veloped software. S.S. and Q.Y. performed research. S.S., Q.Y., and N.C. wrote the manuscript. 
+
+AI usage disclosure We used Claude Code by An-thropic (Models Opus 5 and 5.5) for programming as-sistance and automated software testing. 
+
+Data availability The software package, doc-umentation, and tutorials are available online at https://github.com/nikolas-claussen/triangulax. 
+
+Conflicts of interest The authors declare no conflicts of interest.                                                             
+
+> [1] D. L. Weaire and S. Hutzler, The Physics of Foams ,reprinted ed. (Clarendon Press, Oxford, 2005). [2] U. Seifert, Configurations of fluid membranes and vesi-cles, Advances in Physics 46 , 13 (1997). [3] E. Efrati, E. Sharon, and R. Kupferman, The metric de-scription of elasticity in residually stressed soft materials, Soft Matter 9, 8187 (2013). [4] G. Turk, Generating textures on arbitrary surfaces us-ing reaction-diffusion, in Proceedings of the 18th Annual Conference on Computer Graphics and Interactive Tech-niques (ACM, 1991) pp. 289–298. [5] R. Farhadifar, J.-C. R¨ oper, B. Aigouy, S. Eaton, and F. J¨ ulicher, The Influence of Cell Mechanics, Cell-Cell In-teractions, and Proliferation on Epithelial Packing, Cur-rent Biology 17 , 2095 (2007). [6] N. H. Claussen, F. Brauns, and B. I. Shraiman, Tissue shape from cell-scale active tensions (2026), arXiv:2601.14467 [cond-mat.soft]. [7] F. Brauns, G. Pawlik, J. Halatek, J. Kerssemakers, E. Frey, and C. Dekker, Bulk-surface coupling identifies the mechanistic connection between Min-protein patterns in vivo and in vitro, Nature Communications 12 , 3312 (2021). [8] G. E. Karniadakis, I. G. Kevrekidis, L. Lu, P. Perdikaris, S. Wang, and L. Yang, Physics-informed machine learn-ing, Nature Reviews Physics 3, 422 (2021). [9] K. Crane, F. de Goes, M. Desbrun, and P. Schr¨ oder, Dig-ital geometry processing with discrete exterior calculus, in ACM SIGGRAPH 2013 Courses , Siggraph ’13 (ACM, New York, NY, USA, 2013). [10] J. Bradbury, R. Frostig, P. Hawkins, M. J. John-son, Y. Katariya, C. Leary, D. Maclaurin, G. Nec-ula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang, JAX: Composable transformations of Python+NumPy programs, https://github.com/jax-ml/jax (2018). [11] M. Arroyo, N. Walani, A. Torres-S´ anchez, and D. Kau-rin, Onsager’s Variational Principle in Soft Matter: Intro-duction and Application to the Dynamics of Adsorption of Proteins onto Fluid Membranes, in The Role of Me-chanics in the Study of Lipid Bilayers , Vol. 577, edited by D. J. Steigmann (Springer International Publishing, Cham, 2018) pp. 287–332. [12] C. P. Goodrich, E. M. King, S. S. Schoenholz, E. D. Cubuk, and M. P. Brenner, Designing self-assembling kinetics with differentiable statistical physics models,
+
+11 
+
+Proceedings of the National Academy of Sciences 118 ,e2024083118 (2021). [13] A. Mordvintsev, E. Randazzo, E. Niklasson, and M. Levin, Growing neural cellular automata, Distill 10.23915/distill.00023 (2020). [14] R. Deshpande, F. Mottes, A.-D. Vlad, M. P. Brenner, and A. dal Co, Engineering morphogenesis of cell clusters with differentiable programming, Nature Computational Science 5, 875 (2025), arXiv:2407.06295 [q-bio.CB]. [15] S. H. Pahng, G. Guan, B. Fefferman, and S. Hormoz, DiffeoMorph: Learning to Morph 3D Shapes Using Dif-ferentiable Agent-Based Simulations (2025). [16] A. Pasqui, J. M. C. Ocana, A. Sinha, M. Perez, F. Del-bary, G. Gosti, M. Miotto, D. Caudo, M. Ernoult, and H. Turlier, VertAX: A differentiable vertex model for learning epithelial tissue mechanics (2026), arXiv:2604.06896 [cs.LG]. [17] K. A. Brakke, The Surface Evolver, Experimental Math-ematics 1, 141 (1992). [18] S. S. Schoenholz and E. D. Cubuk, Jax, m.d.: A frame-work for differentiable physics (2019). [19] T. Xue, S. Liao, Z. Gan, C. Park, X. Xie, W. K. Liu, and J. Cao, JAX-FEM: A differentiable GPU-accelerated 3D finite element solver for automatic inverse design and mechanistic data science, Computer Physics Communi-cations 291 , 108802 (2023). [20] K. M. Jatavallabhula, E. Smith, J.-F. Lafleche, C. F. Tsang, A. Rozantsev, W. Chen, T. Xiang, R. Lebaredian, and S. Fidler, Kaolin: A PyTorch Library for Accelerat-ing 3D Deep Learning Research (2019). [21] The CGAL Project, CGAL User and Reference Manual 
+
+(CGAL Editorial Board, 2026) version 6.2. [22] A. Jacobson, D. Panozzo, et al. , Libigl: A simple C++ geometry processing library (2018). [23] C. Zhu, C. T. Lee, and P. Rangamani, Mem3DG: Mod-eling membrane mechanochemical dynamics in 3D us-ing discrete differential geometry, Biophysical Reports 2,100062 (2022). [24] R. Sknepnek, Soft active matter on surfaces (SAMoS), https://github.com/sknepneklab/SAMoS (2013). [25] D. L. Barton, S. Henkes, C. J. Weijer, and R. Sknepnek, Active Vertex Model for cell-resolution description of ep-ithelial tissue mechanics, PLOS Computational Biology 
+
+13 , e1005569 (2017). [26] T. Regge, General relativity without coordinates, Il Nuovo Cimento 19 , 558 (1961). [27] E. Grinspun, A. N. Hirani, M. Desbrun, and P. Schr¨ oder, Discrete shells, in Proceedings of the 2003 ACM SIG-GRAPH/Eurographics Symposium on Computer Anima-tion , Sca ’03 (Eurographics Association, San Diego, Cal-ifornia, 2003) pp. 62–67. [28] A. Winter, Y. Liu, A. Ziepke, G. Dadunashvili, and E. Frey, Phase separation on deformable membranes: In-terplay of mechanical coupling and dynamic surface ge-ometry, Physical Review E 111 , 044405 (2025). [29] Q. Yu and A. Koˇ smrlj, Pattern formation of lipid do-mains in bilayer membranes, Soft Matter 21 , 4288 (2025). [30] I. Goodfellow, Y. Bengio, and A. Courville, Deep Learn-ing (MIT Press, Cambridge, Massachusetts, 2016). [31] Y. Cao, S. Li, and L. Petzold, Adjoint sensitivity anal-ysis for differential-algebraic equations: Algorithms and software, Journal of Computational and Applied Mathe-matics 149 , 171 (2002). [32] R. Newbury, J. Collins, K. He, J. Pan, I. Posner, D. Howard, and A. Cosgun, A Review of Differentiable Simulators, IEEE Access 12 , 97581 (2024). [33] P. Kidger, On Neural Differential Equations , Ph.D. the-sis, University of Oxford (2021). [34] M. Meyer, M. Desbrun, P. Schr¨ oder, and A. H. Barr, Discrete Differential-Geometry Operators for Triangu-lated 2-Manifolds, in Visualization and Mathematics III ,edited by G. Farin, H.-C. Hege, D. Hoffman, C. R. John-son, K. Polthier, H.-C. Hege, and K. Polthier (Springer Berlin Heidelberg, Berlin, Heidelberg, 2003) pp. 35–57. [35] J. Rader, T. Lyons, and P. Kidger, Optimistix: Modu-lar optimisation in JAX and equinox, arXiv:2402.09983 (2024), arXiv:2402.09983. [36] D. Bi, X. Yang, M. C. Marchetti, and M. L. Manning, Motility-Driven Glass and Jamming Transitions in Bio-logical Tissues, Physical Review X 6, 021011 (2016). [37] R. S. Sutton, A. G. Barto, et al. , Reinforcement learning: An introduction , Vol. 1 (MIT press Cambridge, 1998). [38] F. Brauns and M. C. Marchetti, Nonreciprocal Pattern Formation of Conserved Fields, Physical Review X 14 ,021014 (2024). [39] W. Helfrich, Elastic Properties of Lipid Bilayers: Theory and Possible Experiments, Zeitschrift f¨ ur Naturforschung C 28 , 693 (1973). [40] U. Seifert, K. Berndl, and R. Lipowsky, Shape transfor-mations of vesicles: Phase diagram for spontaneous- cur-vature and bilayer-coupling models, Physical Review A 
+
+44 , 1182 (1991). [41] J. Nocedal and S. J. Wright, eds., Numerical Optimiza-tion , Springer Series in Operations Research and Finan-cial Engineering (Springer-Verlag, New York, 1999). [42] A. Sahu, Arbitrary Lagrangian–Eulerian finite element method for lipid membranes, Journal of Fluid Mechanics 
+
+1020 , A46 (2025), arXiv:2412.07596 [physics.comp-ph]. [43] J. C. Stachowiak, E. M. Schmid, C. J. Ryan, H. S. Ann, D. Y. Sasaki, M. B. Sherman, P. L. Geissler, D. A. Fletcher, and C. C. Hayden, Membrane bending by protein–protein crowding, Nature Cell Biology 14 , 944 (2012). [44] N. S. Gov, Guided by curvature: Shaping cells by cou-pling curved membrane proteins and cytoskeletal forces, Philosophical Transactions of the Royal Society B: Bio-logical Sciences 373 , 20170115 (2018). [45] S. Leibler, Curvature instability in membranes, Journal de Physique 47 , 507 (1986). [46] W. M. Van Rees, E. Vouga, and L. Mahadevan, Growth patterns for shape-shifting elastic bilayers, Proceedings of the National Academy of Sciences 114 , 11597 (2017). [47] H.-Y. Chen, A. Sastry, W. M. Van Rees, and E. Vouga, Physical simulation of environmentally induced thin shell deformation, ACM Transactions on Graphics 37 ,1 (2018). [48] H. Aharoni, E. Sharon, and R. Kupferman, Geometry of Thin Nematic Elastomer Sheets, Physical Review Letters 
+
+113 , 257801 (2014). [49] H. Aharoni, Y. Xia, X. Zhang, R. D. Kamien, and S. Yang, Universal inverse design of surfaces with thin nematic elastomer sheets, Proceedings of the National Academy of Sciences 115 , 7206 (2018). [50] D. P. Kingma and J. Ba, Adam: A method for stochastic optimization, CoRR abs/1412.6980 (2014). [51] DeepMind, I. Babuschkin, K. Baumli, A. Bell, S. Bhu-patiraju, J. Bruce, P. Buchlovsky, D. Budden, T. Cai, A. Clark, I. Danihelka, A. Dedieu, C. Fantacci, J. God-12 
+
+win, C. Jones, R. Hemsley, T. Hennigan, M. Hes-sel, S. Hou, S. Kapturowski, T. Keck, I. Kemaev, M. King, M. Kunesch, L. Martens, H. Merzic, V. Miku-lik, T. Norman, G. Papamakarios, J. Quan, R. Ring, F. Ruiz, A. Sanchez, L. Sartran, R. Schneider, E. Sezener, S. Spencer, S. Srinivasan, M. Stanojevi´ c, W. Stokowiec, L. Wang, G. Zhou, and F. Viola, The DeepMind JAX Ecosystem (2020). [52] M. Arroyo and A. DeSimone, Relaxation dynamics of fluid membranes, Physical Review E 79 , 031915 (2009). [53] M. Doi, Onsager’s variational principle in soft matter, Journal of Physics: Condensed Matter 23 , 284118 (2011). [54] C. S. Peskin, Flow patterns around heart valves: A nu-merical method, Journal of Computational Physics 10 ,252 (1972). [55] E. S. Freeman Rosenzweig, B. Xu, L. Kuhn Cuellar, A. Martinez-Sanchez, M. Schaffer, M. Strauss, H. N. Cartwright, P. Ronceray, J. M. Plitzko, F. F¨ orster, N. S. Wingreen, B. D. Engel, L. C. Mackinder, and M. C. Jonikas, The Eukaryotic CO2-Concentrating Organelle Is Liquid-like and Exhibits Dynamic Reorganization, Cell 
+
+171 , 148 (2017). [56] T.-S. Hsieh, V. A. Lopez, M. H. Black, A. Osinski, K. Pawlowski, D. R. Tomchick, J. Liou, and V. S. Tagliabracci, Dynamic remodeling of host membranes by self-organizing bacterial effectors, Science 372 , 935 (2021). [57] T.-S. Hsieh, B. Ramm, Q. Yu, J. L. Yuly, J. P. Pfister, Y. Wu, J. Huang, Y. Meir, N. S. Wingreen, and V. S. Tagliabracci, A minimal kinase-phosphatase system and its lipid substrates self-organize into dynamic patterns, bioRxiv , 2026.07.27.740984 (2026). [58] Q. Yu, T. GrandPre, A. G. T. Pyo, A. Koˇ smrlj, and N. S. Wingreen, Membrane-anchored mobile tethers modulate condensate wetting, localization, and migration, PRX Life 4, 023014 (2026). [59] M. Desbrun, A. N. Hirani, M. Leok, and J. E. Marsden, Discrete Exterior Calculus (2005), arXiv:math/0508341. [60] S. C. Brenner and L. R. Scott, The Mathematical The-ory of Finite Element Methods , edited by J. E. Marsden, L. Sirovich, and S. S. Antman, Texts in Applied Math-ematics, Vol. 15 (Springer New York, New York, NY, 2008). [61] P. Cignoni, M. Callieri, M. Corsini, M. Dellepiane, F. Ganovelli, and G. Ranzuglia, MeshLab: an Open-Source Mesh Processing Tool, in Eurographics Italian Chapter Conference , edited by V. Scarano, R. D. Chiara, and U. Erra (The Eurographics Association, 2008). [62] R. Goldman, Curvature formulas for implicit curves and surfaces, Computer Aided Geometric Design 22 , 632 (2005). [63] K. Hildebrandt, K. Polthier, and M. Wardetzky, On the convergence of metric and geometric properties of poly-hedral surfaces, Geometriae Dedicata 123 , 89 (2006). [64] D. Cohen-Steiner and J.-M. Morvan, Restricted delau-nay triangulations and normal cycle, in Proceedings of the Nineteenth Annual Symposium on Computational Geom-etry (ACM, San Diego California USA, 2003) pp. 312– 321. [65] J.-P. Marx, The Schwarz lantern, Math Counterexam-ples.net (2016). [66] R. Swinbank and R. James Purser, Fibonacci grids: Anovel approach to global modelling, Q. J. R. Meteorol. Soc. 132 , 1769 (2006). 13  
+
+> SUPPLEMENTARY INFORMATION S1. Geometric objects and operators in DDG
+
+Our summary here follows Ref. [9]. The discretiza-tion described below matches the implementation in 
+
+triangulax .
+
+a. Discrete exterior calculus (DEC) Exterior forms are fundamental to differential geometry. On a 2d man-ifold, there are three types: 0-forms (ordinary func-tions), 1-forms (covectors), and 2-forms (scalar densi-ties). A k-form can be integrated over a d−k-dimensional subspace. Thus, DEC discretizes continuous k-forms by integrating them over d − k-dimensional mesh ele-ments [59]. A function u is represented by its vertex values ui = u(ri), a covector field α by the integral over edges αij = R 
+
+> ij
+
+α·de, and a density ρ by the integral over faces, ρijk = R 
+
+> ijk
+
+ρ dA . Note that both faces and edges are oriented. The exterior derivative d maps k to k + 1-forms (for example, on 1-forms, d corresponds to the familiar curl operator). It obeys Stokes’ theorem, R 
+
+> ∂Ω
+
+α = R 
+
+> Ω
+
+dα ,where Ω is an integration region and α a k-form. In DEC, Stokes’ theorem defines the discrete version of d.For example, the discrete gradient is ( du )ij = R 
+
+> ∂(ij )
+
+u =
+
+u(rj ) − u(ri) and the discrete curl around a triangle is (dα)ijk = αij + αjk + αki .
+
+b. Area integral, Laplace operator, and Hodge star 
+
+In differential geometry, the metric g defines the local area element √det g d 2x. To assign an area to each ver-tex ri, we use Voronoi duality (Fig. 2), which assigns a polygonal cell to each vertex. The cell corners are the tri-angle circumcenters, which makes cell and triangle edges orthogonal. The Voronoi area ai defines the local area el-ement, leading to the discretization R (· · · )√det g d 2x 7 →P
+
+> i
+
+(· · · )i ai of the area integral. We implement a version of ai that is robust on irregular meshes [34]. triangulax 
+
+also provides the barycentric vertex areas (the average of the surrounding triangle areas), used by many implemen-tations instead of the Voronoi areas [23]. However, the Voronoi areas lead to more accurate discretizations [34]. Applying the divergence theorem to the Voronoi cell i
+
+leads to a discrete Laplace operator: (∆ u)i := 1
+
+ai
+
+Z
+
+> i
+
+∆u dA = 1
+
+ai
+
+Z
+
+> ∂i
+
+∇u · dn
+
+≈ 1
+
+ai
+
+X
+
+> j
+
+e∗
+
+> ij
+
+uj − ui
+
+eij 
+
+.
+
+(S1) The ratio of cell e∗ 
+
+> ij
+
+and triangle edge lengths eij works out exactly to the cotangent weights in Eq. (3). More generally, DDG uses the Voronoi duality to define a dis-crete equivalent of the differential-geometric Hodge star operator [59]. The Hodge star uses the Voronoi cell areas 
+
+ai and cell edge lengths e∗ 
+
+> ij
+
+, available in triangulax .
+
+c. Interpolation, divergence, gradient, and link to finite-element method Evaluating a discrete function defined by vertex values ui at arbitrary points on the surface requires interpolation. It is convenient to intro-duce a basis of finite-element test functions [60]. These 
+
+ϕi(r) defined by their values at vertices ϕi(rj ) = δij and linear interpolation in between. In terms of this basis, the interpolated function reads u(r) = P 
+
+> i
+
+uiϕi(r). The gradient of the test functions is constant on each face and reads ∇ϕi = P
+
+> cyc
+
+(rk − rj )⊥/(2 aijk ), where ( ⊥)denotes a 90 ◦ rotation about the triangle normal. Thus, the discrete gradient of an interpolated function is con-stant on each face and reads ( ∇u)ijk = P 
+
+> l=i,j,k
+
+ul∇ϕl.The gradient vector ∇u is expressed in the basis of the 2d or 3d embedding space. Indeed, alternatively to DEC, vector fields on a surface embedded in d-dimensional space can be considered as a set of d scalar functions, the vector’s components in Euclidean embedding space. The divergence operator on such vector fields is defined by ( ∇ · v)i = − P 
+
+> jk
+
+aijk vijk · ∇ ϕi, where the sum is over all faces adjacent to vertex i.Composing the discrete gradient and divergence results in the discrete Laplace operator Eq. (3) (cotan Lapla-cian), (∆ u)i = ( ∇ · ∇ u)i. Hence, the cotan Laplacian co-incides with a finite-element discretization. The Voronoi area weights are referred to as “mass matrix” in finite elements. 
+
+d. Normal vectors and curvature Normal vectors are naturally defined for each triangle by nijk = eij ×
+
+eik /|eij × eik |. Vertex normals are the average of the surrounding triangle normals, weighted by triangle areas. Differential geometry distinguishes intrinsic curvature and extrinsic curvature. In 2d, the former is fully defined by the Gaussian curvature K. Curvature modifies the angle sum of a triangle T as P 
+
+> i=1 ,2,3
+
+γi = π + R 
+
+> T
+
+KdA .Therefore, DDG discretizes the K via the angle deficit at a vertex, Ki = (2 π − P 
+
+> j
+
+γj )/a i. Extrinsic curvature (bending) is measured by the change in the unit normal 
+
+n across the surface. In the discrete setting, this change is measured by the dihedral angle φij between the face normals that meet at an edge. The mean curvature is defined by 2 H = −∇ · n. This is equivalent to 2 Hn =
+
+−∆r, where r is the surface embedding. In DDG, H
+
+can thus be discretized by applying the cotan Laplacian (coordinate-wise) to the vertex positions: 
+
+Hi = − 12 ni · (∆ r)i (S2) Eq. (S2) implicitly contains a weighted combination of the dihedral angles. An alternative discretization, Steiner’s formula, uses the dihedral angles directly: 
+
+Hi = 14ai
+
+X
+
+> j
+
+e∗ 
+
+> ij
+
+φij (S3) 
+
+triangulax implements both Eq. (S2) and (S3). 
+
+e. Tangent basis and fundamental forms In coordinate-based geometry, the coordinate derivatives 
+
+e1 = ∂/∂x 1, e2 = ∂/∂x 2 define a basis of the local tangent plane. DDG defines a basis of the tangent plane to each triangle face ijk using its edge vectors. 14                   
+
+> Module name Functionality
+> trigonometry trigonometry and linear algebra utilities
+> triangular mesh input/output
+> mesh half-edge data structure for triangular meshes, compatible with JAX topology topological mesh modifications
+> adjacency vertex-vertex, vertex-face, and face-face adjacency operators
+> geometry angles, edge lengths, triangle areas, Voronoi areas, curvatures
+> periodic geometry with periodic boundary conditions
+> linops differential operators (Laplacian, gradient, . . . )
+> interp linear interpolation
+> elastic elastic energies for shells and membranes
+> algorithms diverse mesh utilities (statistics, quality improvement)
+> simulation simulation management TABLE S.I. List of modules available in triangulax (see online documentation for details).
+
+One choice uses the first and second edge vector, 
+
+e1 = rj − ri, e2 = rk − ri. One can also define an orthogonal basis, ˆ e1 = ( rj − ri)/|rj − ri|, ˆe2 = nijk × ˆe1.
+
+triangulax also defines a basis for the tangent plane of each vertex i, defined to be orthogonal to the vertex normal ni. The first basis vector ˆ ei, 1 is aligned with an arbitrary edge originating from i, projected onto the tangent plane, and ˆ ei, 2 = ni × ˆei, 1.In the non-orthogonal e1, e2 face basis, the local metric tensor reads [47] 
+
+gijk =
+
+ |e1|2 e1 · e2
+
+e1 · e2 |e2|2
+
+
+
+. (S4) The 2 nd fundamental form measures the change in the normal across the surface. Its discretization uses the edge normals nij = ( nijk + nijl )/|nijk + nijl |, the averages of the normals of the two faces ijk, ijl that meet at edge 
+
+ij . The formula reads [47] 
+
+bijk =
+
+ 2e1 · (njk − nki ) e1 · (njk − nij ) + e2 · (njk − nki )
+
+e1 · (njk − nij ) + e2 · (njk − nki ) 2e2 · (njk − nij )
+
+
+
+. (S5) 
+
+f. Mesh volume The volume V of a closed mesh can be directly calculated from the vertices ri by sum-ming the (oriented) volumes of tetrahedra formed from all mesh triangles and an arbitrary base point. The gradient of V is computed using the custom gradient 
+
+dV = aini ·dri instead of using autodiff to remove certain numerical artifacts.  
+
+> S2. Discretization error and convergence
+
+Like with any numerical scheme, it is important to know if and how the DDG discretizations converge to their smooth counterparts as the mesh resolution (mean edge length h) is increased. Mathematical convergence guarantees exist for the DDG versions of the Laplace op-erator, mean curvature, and metric [63], as well as the Gaussian curvature [64]. Convergence under refinement is only guaranteed if the mesh quality (e.g., triangle de-formation) is preserved. If triangles become degenerate, even the area of a surface may not converge to its con-tinuum counterpart [65]. Importantly, like in the finite-element method, one must be careful to distinguish two possible “modes” of convergence. Pointwise convergence means that the dis-crete approximation Qh of a quantity Q converges at ev-ery surface point p, Q(p) − Qh(p) → 0. Many DDG dis-cretizations, however, only converge in the weak sense, that is, averaged over (arbitrarily small) “test regions”, R
+
+> Ω
+
+(Qh −Q)dA → 0. Note that the energies of membranes and shells are precisely such surface integrals over energy densities. Importantly, however, the pointwise DDG dis-cretizations Qh(p) are stable and do not blow up as the mesh is refined [34]. In Fig. S1, we test the convergence of the DDG dis-cretizations for a series of surfaces defined implicitly by an equation F (x, y, z ) = 0, for which the geometric quan-tities can be calculated exactly [62]. The gradient and Laplace operators converge linearly pointwise. To assess convergence in the weak sense, we integrate the quan-15 10 2 10 1                                                       
+
+> mean edge length h
+> 10 1
+> 10 2
+> 10 3
+> median patch rel . error
+> Patch Gaussian curv .K
+> torus ellipsoid saddle
+> O(h)10 210 1
+> mean edge length h
+> Patch mean curv .H
+> 10 4
+> 10 3
+> 10 2
+> relative error
+> Gradient (ax)
+> sphere
+> O(h)
+> plane
+> Laplace -Beltrami
+> 10 210 1
+> mean edge length h
+> 10 15
+> 10 14
+> 10 13
+> 10 12
+> 10 210 1
+> mean edge length h
+> 10 210 1
+> mean edge length h
+> 10 1
+> 10 2
+> 10 3
+> median patch rel . error
+> patch area from metric torus ellipsoid saddle
+> O(h2 )10 210 1
+> mean edge length h
+> patch Hfrom 2nd fund .form
+> 10 210 1
+> mean edge length h
+> 10 010 3
+> 10 6
+> pointwise rel . error
+> Pointwise Gaussian curv .K
+> sphere median sphere max ellipsoid median ellipsoid max
+> 10 210 1
+> mean edge length h
+> Pointwise mean curv .H
+> Laplace +Voronoi Dihedral +barycentric
+
+(a) (b) (c) (d) 
+
+FIG. S1. Convergence of mean curvature, Gaus-sian curvature, and Laplace operator with mesh re-finement. Operators were tested on the plane, the unit sphere, an ellipsoid with axis stretch factors (1 .0, 0.8, 0.6), a paraboloid z = 12 (x2 − y2), and a torus with major/minor axis ratio 4. Meshes of resolution with h = 0 .25 , 0.5, 1, 2, 4percent of the surface bounding box diagonal were generated using the MeshLab software [61]. To test weak convergence (panels c,d), each surface was broken into 8 disjoint patches. Exact values were computed using the formulas for implicit surfaces [62]. 
+
+tities over a set of patches whose size remains fixed as the mesh is refined. As expected, we find that mean and Gaussian curvatures converge linearly, while the metric (area element) converges quadratically. Gaussian and mean curvature do not converge pointwise, but remain stable. An alternative discretization of the mean curva-ture using barycentric areas [23] is less accurate than the Laplacian-based formula. 
+
+S3. Minimal Helfrich Energy Shapes With Rotational Symmetry 
+
+We use rotationally symmetric shapes to verify the minimal Helfrich energy shapes found with numerical op-timization of triangular meshes. Following the method outlined in [40], in which shapes are described by dis-tances along ( Z) and perpendicular ( X) to an axis of ro-tational symmetry, we calculated the profile, energy, and Lagrange multipliers (membrane tension λ and osmotic pressure p) for minimal Helfrich energy shapes subject to volume and area constraints. Fig. S3a shows good agreement between the ex-act, rotationally symmetric ( X, Z ) profiles and shapes found with nonlinear optimization of mesh-based ener-gies across three levels of mesh refinement. Both the prolate (“peanut”) and oblate (“red blood cell”) shapes correspond to local minima of the Helfrich energy with 
+
+H0 = 0 and k = 1, subject to area and volume constraints quantified by reduced volume v = 6 √πV /A 3/2 = 0 .75 and length scale R = ( A/ 4π)1/2 = 1. To find minimal energy shapes with finer meshes, a (stretched, as in SI Sect. S4) sphere with the desired number of vertices was interpolated to the minimum-energy shape found with a coarser mesh using the interp module. Fig. S3b depicts the convergence of the minimal energy and the Lagrange multipliers found with numerical optimization to the ex-act values with increasing mesh refinement (number of vertices n). Results are nondimensionalized using the length scale R and energy scale E = 2 πk (Helfrich en-ergy of a sphere). We can also leverage the exact rotationally symmet-ric shapes to verify the force densities on the triangu-lated meshes found with autodiff. Fig. S4 compares the (signed) magnitude of the force densities (all forces act normal to the surface) arising from the Helfrich energy (fH ), constant surface tension ( fA), and constant pressure (fV ) as calculated with the exact rotationally symmetric shape and autodiff on a triangulated mesh. We see ex-cellent agreement between the exact force densities and those found with autodiff. The strongest disagreement seen is between the pressure force density, which results from the rather simple expression fV = pˆn, inheriting the entire error of the Lagrange multiplier (It cannot be bal-anced by deviations in curvature like fA and fH , which both involve curvature). In each case, the force density is reported as a non-dimensional value f R3/k . Further-more, we observe the autodiff force densities sum to zero 16  
+
+> 1
+
+import jax  
+
+> 2
+
+import jax.numpy as jnp  
+
+> 3
+
+from triangulax import triangular, mesh, geometry  
+
+> 45
+
+# Load example mesh and convert to half-edge mesh  
+
+> 67
+
+vertices, faces = triangular.read_obj("test_meshes/disk.obj", dim=2)  
+
+> 8
+
+hemesh = mesh.HeMesh.from_triangles(vertices.shape[0], faces)  
+
+> 910
+
+# With the half-edge mesh, one can carry out various operations, for example  
+
+> 11
+
+# computing the coordination number by summing incoming half-edges per vertex:  
+
+> 12 13
+
+coord_number = jnp.zeros(hemesh.n_vertices)  
+
+> 14
+
+coord_number = coord_number.at[hemesh.dest].add(jnp.ones(hemesh.n_hes))  
+
+> 15
+
+print("Mean coordination number:", coord_number.mean())  
+
+> 16 17
+
+>>> Mean coordination number: 5.40458  
+
+> 1
+
+# Define a simple geometric function and compute its gradient with JAX  
+
+> 23
+
+def mean_voronoi_area(vertices: jax.Array, hemesh: mesh.HeMesh) -> jax.Array:  
+
+> 4
+
+"""Compute the mean Voronoi area per vertex."""  
+
+> 5
+
+voronoi_areas = geometry.get_voronoi_areas(vertices, hemesh)  
+
+> 6
+
+return jnp.mean(voronoi_areas)  
+
+> 78
+
+value, gradient = jax.value_and_grad(mean_voronoi_area)(vertices, hemesh)  
+
+> 9
+
+print("Mean gradient norm:", jnp.linalg.norm(gradient, axis=1).mean())  
+
+> 10 11
+
+>>> Mean gradient norm: 0.0003638338 
+
+FIG. S2. triangulax usage example. 
+
+as expected for stationary shapes of the Helfrich energy (subject to volume and area constraints). 
+
+S4. Benchmark against an existing package for membrane mechanics simulation 
+
+We benchmark the performance of triangulax against 
+
+Mem3DG , an extensible framework for modeling 3d mechanochemical dynamics of membranes based on dis-crete differential geometry on triangulated meshes [23]. 
+
+Mem3DG is implemented in C++, which enables high com-putational efficiency but does not allow for automatic dif-ferentiation. To compare the performance of triangulax 
+
+and Mem3DG , we consider one of the most classic problems in membrane mechanics: deflation of a vesicle to prolate and oblate minimum-energy shapes (see Fig. 4(a) and Fig. 4 in ref. [23]). Specifically, the membrane is evolved by minimizing the Helfrich energy with volume and area penalties: 
+
+E = k
+
+2
+
+Z
+
+(H − H0)2 dA 
+
++ KA(A − A0)2
+
+2A0
+
++ KV
+
+ VV0
+
+− ln VV0
+
+− 1
+
+
+
+,
+
+(S6) where A0 and V0 are the target area and volume, and KA
+
+and KV are the magnitudes of area and volume penal-ties. k is the bending stiffness and H0 is the preferred curvature. Throughout this section, we take A0 = 4 π,
+
+V0 = 4π 
+
+> 3
+
+· 0.75, KA = 1, KV = 0.1, H0 = 0, and 
+
+k = 3 .288 × 10 −4. All simulations are performed on a Mac Mini with Apple Silicon M4 Pro processors. We initialize the simulations with a spherical Fibonacci lattice, which leads to a uniform mesh quality across the sphere [66]. To ensure convergence to prolate or oblate shapes, we perform a volume-preserving axisymmetric scaling diag( ρ−1/3, ρ −1/3, ρ 2/3) and solve for ρ so that the seed’s discrete reduced volume ( v = 6 √π V /A 3/2) is exactly v = 0 .75, taking ρ > 1 for the prolate branch and 
+
+ρ < 1 for the oblate one. To examine how performance scales with the mesh resolution, we repeat the calculation for different numbers of vertices: n = 642 , 1250 , 2562. Since the mesh mutator in Mem3DG does not preserve the number of vertices, we adjust the length scale for the mu-tator such that the final number of vertices is comparable to that of triangulax . We set the mutation period to 500 integration steps. We first confirm that triangulax and Mem3DG pro-duce the same equilibrium shapes, with reduced volumes 
+
+v ≈ 0.780 for oblate shapes and v ≈ 0.777 for prolate 17 
+
+FIG. S3. Comparison of exact minimal Helfrich en-ergy shapes with results of triangular mesh optimiza-tion. (a) Exact rotationally symmetric profiles for minimal Helfrich energy shapes, compared with vertices of triangular meshes after nonlinear optimization of discretized Helfrich en-ergy. Profiles are reported for 3 levels of mesh refinement with (only 20 vertices shown for clarity). Shapes correspond to v = 0 .75, R = 1, H0 = 0 for both prolate (left) and oblate (right) branches. (b) Convergence of (nondimensional) Hel-frich energy and Lagrange multipliers (membrane tension λ
+
+and osmotic pressure difference p) to their exact values with mesh refinement. 
+
+shapes [Fig. S5(a)]. Comparing the efficiency of the two packages [Fig. S5(b)–(c)], we find that the two pack-ages are comparable at modest mesh resolutions, but 
+
+triangulax performs substantially better at large num-bers of vertices ( n). Furthermore, triangulax also main-tains a better mesh quality, with the minimal triangular angle concentrated between 40 ◦ and 50 ◦, while Mem3DG 
+
+exhibits a wider angle distribution and inhomogeneous mesh quality [Fig. S5(d); see also Fig. S5(a)]. 18 
+
+FIG. S4. Autodiff-derived force densities compared to exact values. Force densities found by applying autodiff to mesh-based energies compared to exact values for (a) Helfrich energy, (b) constant membrane tension, and (c) constant os-motic pressure. The shapes correspond to the same prolate and oblate shapes as in Fig. S3, with autodiff results reported for the 5120 triangle mesh. Only 20 vertices are shown from the triangulated mesh for visual clarity. Forces are densities reported as nondimensional values f R3/k .19 (a) 
+
+# (b)  (c)  (d) 
+
+FIG. S5. Comparison of triangulax and Mem3DG for membrane mechanics . (a) Final equilibrium prolate and oblate shapes for triangulax and Mem3DG . Each triangle is colored by its minimum angle on a shared linear scale. (b–c) Process CPU seconds (b) and wall clock (c) for a repeat solve, which excludes triangulax ’s one-off compilation. (d) Cumulative probability distribution of the per-face minimum angle. For (a) and (d), the number of vertices was n = 2562 for triangulax 
+
+and comparable for Mem3DG .20 initial (blue ), optimized (red )(a)0.0 0.5 1.0 1.5 
+
+> trap anisotropy
+> 1.0 1.2 1.4 1.6 1.8 2.0
+> aspect ratio
+
+(b) simulation JAX gradient     
+
+> 0.0 2.5 5.0 7.5 10.0
+> gradient descent iteration
+> 1.0 1.2 1.4 1.6 1.8 2.0
+> aspect ratio
+
+(c)         
+
+> target
+> optimized s03.4 3.6 3.8 4.0
+> target shape index s04.00 4.05 4.10 4.15 4.20 4.25 4.30
+> shape index  q
+> simulation JAX gradient
+> 0.0 2.5 5.0 7.5 10.0
+> gradient descent iteration
+> 4.05 4.10 4.15 4.20 4.25
+> shape index  q
+> target
+> 3.8 4.0 4.2 4.4 4.6 4.8
+> cell shape index
+
+(d) (e) (f)
+
+FIG. S6. Automatic differentiation of simulations with topological changes . (a–c) show the inverse design of tissue aspect ratio, and (d–f) show the inverse design of shape parameter s0 = p0/√a0. These toy problems allow validating the simulation gradients computed by autodiff against finite differences and physical plausibility. (a) Tissue shape for cells in an SVP model in a harmonic trap potential V = k
+
+> 2
+
+ e+λx2 + e−λy2 with anisotropy λ. Blue cells show the final state of a simulation run with λ = 0, including over 1,000 T1 transitions (edge flips) and stochastic self-propulsion forces. We begin with an isotropic trap ( λ = 0), and then optimize λ to design a target of aspect ratio 2 in the simulation’s final state ( λ ∼ 1.5, red cells). (b) JAX autodiff accurately computes the gradient of the tissue aspect ratio with respect to the anisotropic parameter 
+
+λ (red), in good agreement with that calculated by finite difference (blue). (c) This allows optimized λ to generate a desired aspect ratio of 2 in the final configuration by gradient descent. The simulation output for the optimized λ is shown in red in (a). (d) Optimizing the target shape parameter s0 = p0/√a0 using autodiff, to bring the observed shape parameter s
+
+(computed from cell shapes at simulation output) to 4 .25. (e) Autodiff gradients match finite differences from simulations. In the fluid regime, the autodiff gradients become unreliable for very long simulations due to chaotic T1 dynamics. (Autodiff computes gradients for a “frozen” set of T1 transitions). Choosing shorter simulation times per gradient step avoids this issue. (f) Gradient-based optimization of model parameters to match the observed shape parameter to the target.

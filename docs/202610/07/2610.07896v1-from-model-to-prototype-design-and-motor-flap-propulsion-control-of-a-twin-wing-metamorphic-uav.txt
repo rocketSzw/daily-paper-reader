@@ -1,0 +1,254 @@
+Title: From Model to Prototype: Design and Motor-Flap Propulsion Control of a Twin-Wing Metamorphic UAV
+
+URL Source: https://arxiv.org/pdf/2610.07896v1
+
+Published Time: Wed, 07 Oct 2026 01:01:18 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# From Model to Prototype: Design and Motor-Flap Propulsion Control of a Twin-Wing Metamorphic UAV 
+
+Anja Bosak*, Dorian Eri´ c*, Ana Milas, Stjepan Bogdan 
+
+Abstract — This paper presents the design and control strat-egy for MetaMorpher , a metamorphic Unmanned Aerial Vehicle (UAV), capable of both spinning-wing hover and fixed flying-wing cruise flight. Since control of the cruise configuration is comparatively well established in the literature, this paper focuses on control of the MetaMorpher in hover mode, building on the flight dynamics model and conceptual design validated in previous work. The control algorithm is implemented using one of two phase-synchronized strategies: motor propulsion, which pulses motor thrust in synchrony with the vehicle’s rotation, or flap propulsion, a novel strategy that pulses the deflection of the wing-mounted elevons. We evaluate both strategies in simulation through different flight experiments. Simulation results confirm the mathematical model and show stable reference tracking, demonstrating flap propulsion as a lightweight, decoupled alternative for hover control. Experi-mental testing validated the vertical-dynamics propulsion model against the physical prototype, demonstrating very good steady-state agreement across different configurations. 
+
+I. I NTRODUCTION 
+
+Unmanned aerial vehicles (UAVs) capable of both vertical takeoff and hovering, as well as efficient long-range cruising, are needed for tasks such as power-line monitoring [1] and bridge inspection [2], which require confined launch sites and extended range. Conventional rotorcraft and fixed-wing aircraft each satisfy only one of these requirements. Metamorphic UAVs meet both, reconfiguring their airframe between hover- and cruise-optimized shapes. However, turn-ing from this concept into a flying, controllable vehicle requires an actuator layout and suitable control strategy. We address this challenge with MetaMorpher , which builds on previously developed spincopter [3], [4], an in-herently stable UAV whose twin-wing rotating structure generates lift by spinning two wings with a pair of propellers. MetaMorpher extends this platform into a metamorphic design that folds between the spinning-wing hover con-figuration and a fixed flying-wing cruise configuration. Its conceptual design and a nonlinear, segmented-aerodynamics flight dynamics model have previously been presented and validated through simulation in [5]. Implementing position control in the hover configuration, however, poses a challenge that conventional Vertical Take-Off and Landing (VTOL) controllers do not face. In this case, the aerodynamic surfaces and propulsion units rotate with the airframe, a fixed-axis control input cannot pro-duce a constant horizontal force. Instead, the control action  
+
+> *Authors contributed equally. All authors are with the University of Zagreb, Faculty of Electrical Engineering and Computing, LARICS Lab-oratory for Robotics and Intelligent Control Systems, Unska 3, 10000 Za-greb, Croatia;
+
+(anja.bosak, dorian.eric, ana.milas, stjepan.bogdan)@fer.unizg.hr 
+
+Fig. 1: UAV in hover mode configuration during real-world exper-iments. 
+
+should be synchronized with the vehicle’s rotational phase and applied only within selected angular sectors of each revolution. The spincopter implemented this principle by pulsing the imbalance between its two motor thrusts [3], [4], an approach that couples horizontal and vertical control since both motors also determine the vehicle’s overall lift [3]. Since MetaMorpher’s cruise mode already requires a pair of wing-mounted elevons for attitude control, a well-established problem ( [6]), that we do not address in detail here, motivated us to use it as an alternative channel for the novel control principle. Therefore, this paper presents the design and control algorithm for the MetaMorpher. The resulting vehicle has a 0.7 m wingspan and an estimated ready-to-fly mass of approximately 454 g, with two independently driven wing-mounted propellers and two independently actuated trailing-edge elevons. For position control in hover mode, we im-plement and compare two phase-synchronized strategies: motor propulsion, which pulses the motor thrust imbalance following the spincopter approach in [3], and flap propulsion, a novel strategy that instead pulses the elevon deflection in synchrony with the vehicle’s rotation while motor speed is held constant. We evaluate both strategies using a nonlinear Simulink model, demonstrating stable waypoint tracking in simulation. The main contributions of this work are: 1) Physical design of a MetaMorpher prototype that im-plements the airframe and actuator layout derived from the mathematical model in [5]. 2) Implementation and comparison of two phase-synchronized control strategies for position control in hover mode: motor propulsion and flap propul-arXiv:2610.07896v1 [cs.RO] 6 Oct 2026 sion, a novel scheme that repurposes MetaMorpher’s cruise-mode elevons for hover-mode actuation vali-dated through simulation tests. 3) Parameter identification of the throttle-to-spin-rate re-sponse in simulation and on the physical prototype. 4) An open-source Simulink code of the control strategy to support reproducibility. This paper is divided into six sections. Section II reviews related work on different designs and control algorithms of MetaMorpher-like vehicles. Section III describes the Meta-Morpher prototype. Section IV presents the motor- and flap-propulsion control strategies. Sections V and VI report the simulation and experimental setup and flight-test results, respectively, to validate the design of the vehicle. Finally, Section VII presents conclusions and directions for future work. II. R ELATED WORK 
+
+Conventional UAV airframes typically use a single con-figuration, trading hover capability for cruise efficiency. Metamorphic designs avoid this trade-off through approaches ranging from bio-inspired wing folding [7] to dedicated tilt-rotor [8] and tail-sitter [9] layouts. However, most of this work stops at mechanical concepts and theoretical analysis. Accurate simulation models and physical prototypes with control strategies validated through flight tests remain rare. Few review papers address the design of morphing aircraft alongside their flight control. For instance, Chu et al. [10] reviewed the broader field of morphing aircraft, covering configuration design methods, the nonlinear dynamics and aerodynamic interference introduced by wing morphing, and the flight control strategies used to address them. Authors in [11] focused more specifically on control, surveying shape, flight-dynamics, and aeroelastic control strategies for a wide range of fixed-wing morphing concepts. Harvey et al. [12] took a different angle, reviewing avian-inspired morphing in which wing sweep, dihedral, twist, and camber replace conventional control surfaces to provide pitch, roll, and yaw control, including on tailless airframes; camber-morphing trailing edges, similar to elevons, provide pitch control when actuated symmetrically and roll control when actuated asymmetrically. Across these reviews, the scope remains fixed-wing or gliding flight, while none address vehicles like MetaMorpher that transition between rotary-wing hover and fixed-wing cruise. Several hardware platforms have demonstrated metamor-phic hover-to-cruise flight. Low et al. [13], [14] developed the Transformable HOvering Rotorcraft (THOR), which in-spired MetaMorpher’s wing sizing and models the vehicle as a rigid body in each flight mode. Sufiyan et al. [9], [15] in-troduced a multimodal vehicle, jointly optimizing design and control parameters through a collaborative co-evolutionary approach. State-of-the-art control papers have also focused on specific aspects of the transition problem. Yuksek et al. [16] developed a six-degree-of-freedom nonlinear model for transition control of a tilt-rotor UAV and validated it through both simulation and a physical flight demonstration on their Wingspan  
+
+> Root cord
+> Starboard wing
+> Starboard thruster
+> Port thruster
+> Port wing
+> Center of mass
+> Wing axis of rotation
+> Port elevon Starboard elevon
+> Starboard elevon servo Port elevon servo
+> Starboard wing servo Port wing servo
+
+Fig. 2: UAV in cruise mode configuration with marked-down actuator and control surface positions. 
+
+TURAC prototype. Zhao et al. [17] proposed Kriging-based control allocation for a flying-wing UAV with a morphing trailing edge, validated in simulation, addressing control-surface actuation without full airframe metamorphosis or a hover mode. Both of MetaMorpher’s control strategies, detailed in Section IV, rely on synchronizing the control input with the vehicle’s rotational phase rather than producing a fixed control force in the body frame. This principle is closely related to cyclic pitch control on a conventional helicopter rotor, where blade pitch is varied once per revolution to redirect the rotor’s thrust in a commanded inertial direction [18]. On the spincopter, this principle was implemented entirely through differential motor thrust [3], [4]. Phase-synchronized flap deflection has also been investigated on single-wing, samara-inspired monocopters, where a trailing-edge flap is deflected within selected angular sectors of each revolution to produce horizontal control forces [19]. To the best of our knowledge, no existing metamorphic UAV has achieved horizontal control through elevon deflection on a twin-wing spinning platform, nor directly compared it against motor pulsation on the same model. This work bridges these gaps by implementing MetaMor-pher’s previously validated model as a flight-ready prototype and evaluating two phase-synchronized control strategies for its hover mode. Finally, this work lays the foundation for combining motor and flap propulsion into a single control architecture and for extending phase-synchronized control across the transition between hover and cruise flight. III. M ETA MORPHER DESIGN 
+
+A. Design Overview 
+
+The UAV is designed to operate in both spinning-wing hover and fixed-wing cruise configurations. The transition mechanism follows a concept similar to [14], where the two wings are independently rotated by servo actuators about spanwise pivot axes. Each wing is connected to the fuselage through a one-degree-of-freedom (1-DoF) revolute joint. The pivot shafts also serve as the primary wing spars, reducing the number of structural components and the overall mechanism complexity. The final vehicle layout, shown in Fig.2, includes two independently driven wing-mounted propellers and two in-dependently actuated trailing-edge control surfaces, referred to as flaps in the spinning-wing hover configuration and as elevons in the fixed-wing cruise configuration, reflecting their differing aerodynamic role in each flight mode. This arrangement provides separate port and starboard propulsion and aerodynamic control inputs, which are used in this work to generate asymmetric forces and moments. Further details of the mechanical layout, electronic components, and wing geometry are given in the following subsections. 
+
+B. Actuator Layout 
+
+The wing pivot shafts pass through the central fuselage and are positioned as far forward as permitted by the wing geometry and structural requirements. This leaves sufficient volume for the battery, flight controller, and other onboard electronics while allowing the center of mass to be placed within the required range. The pivot shafts also act as the primary wing spars, such that the wing rotation mechanism does not require an additional load-bearing element. The rotation of the wing is coupled to the actuator through a pair of gears, giving the wings a ±90 ◦ range of motion. The propulsion units are positioned near the outer wing sections to increase the moment arm of the thrust force about the vehicle rotation axis. This increases the available spin-up moment in the hover configuration and the control moment available from differential thrust. However, the local tangential velocity at the propeller distance from the center of the UAV, rm, increases with radial distance from the rotation axis ωx, Vtan = rmωx. The motor position was therefore selected as a compromise between thrust moment and propeller performance under the increased local inflow velocity. The final actuator placement is shown in Fig. 2. The elevon servo actuators are installed within recessed cavities on the upper wing surface to minimize external protrusions and the associated aerodynamic drag. A mechan-ical linkage transfers the servo motion to the trailing-edge elevons. The geometry of the linkage provides an elevon deflection range of ±35 ◦ (with respect to the wing), which is used for both conventional control inputs and the asymmetric periodic actuation considered in this work. 
+
+C. Wing Design 
+
+The wing geometry was selected following the design procedure from [5]. The UAV has a wingspan of 0.7 m , a reference wing area of approximately 0.09 m 2, a root chord of 160 mm , and a taper ratio of 0.688 . For the estimated ready-to-fly mass of 0.45 kg , this corresponds to a target wing loading of 5 kg /m2.The cruise configuration uses the reflexed Eppler E387 airfoil, while a symmetric NACA 0010 profile is used in the hover configuration. The symmetric hover profile avoids an aerodynamic bias when one wing is inverted during the transformation. The two profiles were selected with similar outer geometry to support the wing-profile morphing mechanism. Each wing contains an independently actuated trailing-edge elevon with a span of 225 mm and a mean chord of 23 mm . The elevons are positioned with their                              
+
+> TABLE I: Mass breakdown of MetaMorpher components.
+> Component Qty. Unit mass [g]
+> Flight Controller 110 IMU 14Electronic Speed Controller 212 BLDC motor 233 Propeller 23Battery (3S, 1300 mAh) 1108 Receiver 13Carbon-fibre spar 117 Fuselage 138 Wing 265 Wing pivot actuator 212 Elevon 27Elevon actuator 25
+> Total estimated mass 454
+> Fig. 3: Overall schematic diagram of the control, actuation, and UAV model modules. The control module includes altitude, spin, and horizontal position controllers, whose outputs are propagated to motor and flap pulsation. The vehicle model sends the actuator commands through wing kinematics, segment aerodynamics, and force and moment summation to obtain the 6-DOF dynamics, parameterized by wing geometry, aerodynamic coefficients, and gravity [5]. State feedback closes the loop back to the control module.
+
+inboard edges aligned with the corresponding servo arms, simplifying the linkage geometry and reducing the required linkage length. Their outboard extent overlaps the propeller slipstream, increasing the local dynamic pressure over part of the elevon and maintaining aerodynamic control at low forward speeds [20]. 
+
+D. Hardware Components 
+
+The onboard electronics consist of a custom Flight Con-troller (FC) based on the RP2040 microprocessor, two Elec-tronic Speed Controllers (ESCs), a radio receiver, and an IMU module. The flight controller gathers inertial measure-ments from the IMU and generates independent commands for the port and starboard propulsion units, wing actuators, and elevon servos. The two propulsion units are driven by ESCs running AM32 firmware using the DSHOT protocol for communication with the FC, selected to support the current requirements of the 2207 BLDC motors and to allow rapid motor-speed modulation. The vehicle is powered by a 3S
+
+1300 mAh LiPo battery. The component mass breakdown is given in Table I. IV. F LIGHT CONTROL 
+
+The flight control system was developed for the spinning flight configuration of the vehicle, in which the aerodynamic surfaces and wing-mounted propulsion system rotate together with the airframe. In this configuration, conventional fixed-axis control inputs cannot be applied directly to generate a constant force in the inertial horizontal plane. Instead, the control action must be synchronized with the rotational phase of the vehicle. Two control approaches were considered. The first uses differential modulation of the tip-mounted motors, while the second uses periodic deflection of the aerodynamic flaps. In both cases, horizontal control is achieved by apply-ing the control input only during selected portions of each rotation. 
+
+A. Motor Pulsation 
+
+The motor-based control system uses the two wing-mounted propellers both to support the vehicle vertically and to generate horizontal control forces. The motor commands therefore consist of a nominal thrust component together with additional contributions from the altitude, rotational-speed, and horizontal-position controllers. Altitude control is achieved by simultaneously adjusting the thrust of both motors around the nominal operating point. The altitude error, determined from the difference between the reference and measured altitude, is processed by the altitude controller to generate a thrust correction. When additional vertical force is required, the thrust of both motors is increased, while a reduction in thrust is commanded when the vehicle needs to descend. Applying the altitude correction equally to both motors changes the total thrust while maintaining the required balance between the two propulsion units. The rotational motion about the longitudinal body axis is controlled using the measured roll rate ωx. The difference between the reference and measured roll rate is processed by a PI controller. The resulting control action modifies the motor commands so that the desired spinning condition can be maintained. As already mentioned, the horizontal motion is generated using a phase-synchronized motor pulsation mechanism. The horizontal position error is first converted into a desired direction of motion in the horizontal plane of FW . This di-rection is represented by a phase angle, λ, which determines the angular location within each vehicle rotation at which the motor correction should be applied. The instantaneous rotational phase γ of the vehicle is compared with λ. A threshold-based switching law activates the horizontal motor correction only within selected angular sectors of the rotation: 
+
+∆Txy =
+
+
+
++AT , cos( γ − λ) ≥ η, 
+
+−AT , cos( γ − λ) ≤ − η, 
+
+0, otherwise ,
+
+(1) where AT denotes the motor pulsation amplitude and η
+
+is the switching threshold. Opposite corrections are then applied to the port and starboard motors as: 
+
+TP = Tbase + ∆ Txy ,TS = Tbase − ∆Txy , (2) where Tbase includes the nominal thrust and the contri-butions required for altitude and rotational-speed regulation, while ∆Txy represents the phase-dependent horizontal con-trol input. Since the vehicle continuously rotates, the direction asso-ciated with the differential motor action also rotates in the inertial frame. Synchronizing the thrust modulation with the rotational phase causes the individual periodic contributions to produce a non-zero average force in the commanded horizontal direction. Changing the phase λ changes the direction of this average force, while changing the pulsation amplitude modifies its magnitude. 
+
+B. Flap Pulsation 
+
+The flap controller applies the same phase-synchronized control principle as the motor-based approach, while using periodic aerodynamic flap deflections to generate the re-quired horizontal control action. Let pxy , pxy, ref ∈ R2 denote the vehicle’s measured and reference horizontal position in FW , and vxy ∈ R2 its measured horizontal velocity. The position error: 
+
+ep = pxy, ref − pxy , (3) is converted into a limited velocity reference: 
+
+vxy, ref = sat( Kp ep, v max ) , (4) where Kp is a proportional gain and sat( ·, v max ) limits the vector magnitude to vmax while preserving its direction. The resulting velocity error: 
+
+ev = vxy, ref − vxy , (5) determines the commanded flap-deflection amplitude and phase angle: 
+
+Af = sat( Kv ∥ev ∥, A f max ) ,λ = mod( λX − atan2( evy , e vx ), 2π) , (6) where Kv is a proportional gain, Af max is the maxi-mum commanded flap-deflection amplitude, bounded by the elevon’s mechanical deflection range (Section III ), and λX
+
+is the calibrated actuation phase corresponding to the positive 
+
+x direction. The rotational phase of the vehicle is compared with the commanded phase. The flap is activated only within prede-fined angular regions of each revolution. The corresponding phase-synchronized flap command is defined as: 
+
+δf =
+
+
+
++Af , cos( γ − λ) ≥ η, 
+
+−Af , cos( γ − λ) ≤ − η, 
+
+0, otherwise ,
+
+(7) where η is the switching threshold. The switching law therefore produces positive flap deflection in one angular sector, negative deflection in the opposite sector, and zero deflection during the remaining portion of the rotation. Since the orientation of the aerodynamic control action changes continuously as the vehicle rotates, this phase syn-chronization allows the flap actuation to generate a control effect in the desired horizontal direction. The phase com-mand determines the direction of the control action, while the flap-deflection amplitude determines its magnitude. 
+
+C. Combined Control Strategy 
+
+The motor and flap controllers are based on the same underlying concept, the continuous rotation of the vehicle is used as part of the control mechanism. Rather than attempting to produce a fixed body-frame control force, the control input is synchronized with the rotational phase so that the resulting force acts in a desired inertial-frame direction. In this work, the motor and flap pulsation mechanisms are developed and evaluated independently, characterizing each channel’s individual contribution to horizontal control. Our results show that flap pulsation achieves a faster response than motor pulsation (Fig. 7, Fig. 5). This suggests that the two mechanisms are not simply interchangeable but potentially complementary. Flap pulsation can be used for fast, fine-grained position corrections, and motor pulsation as an additional control for larger position changes. Combining both actuators into a single architecture that exploits this complementarity is proposed as future work. In such asystem, the motors would continue to provide the primary thrust, altitude regulation, and rotational-speed control, while horizontal control would be distributed between motor and flap pulsation according to the magnitude and urgency of the required correction. V. S IMULATION -BASED EVALUATION 
+
+The proposed control approaches were evaluated using the nonlinear MetaMorpher simulation model developed in Simulink, available at 1. The analysis was performed in the spinning flight configuration and focused on the vertical dynamics of the vehicle and its horizontal position control capability. First, the vertical response was identified for different wing configurations. The motor and flap pulsation controllers were then evaluated separately to determine their ability to generate controlled horizontal motion while main-taining the commanded altitude. 
+
+A. Vertical Dynamics Identification 
+
+Prior to evaluating the horizontal control strategies, the vertical dynamics of the vehicle were characterized around a steady operating condition (hovering). A small step change in motor thrust was applied and the resulting change in vertical velocity was recorded. The response was then used to identify a second order dynamic model. Fig. 4 compares the simulated vertical velocity responses with the identified models for the 30 ◦ and 40 ◦ wing config-urations. In both cases, the vertical speed response exhibits underdamped behavior, characterized by an initial increase in vertical velocity, followed by an overshoot and convergence toward a steady-state value.                   
+
+> 1MetaMorpher control 0246810 12 14 16 18
+> " vz [m/s]
+> 00.01 0.02 0.03 0.04 0.05 0.06 0.07
+> Simulated response Identified model
+> T [s] 0246810 12 14 16 18
+> " vz [m/s]
+> -0.01 00.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09
+> Simulated response Identified model
+> T [s]
+
+Fig. 4: Comparison of the simulated vertical velocity response and the identified second-order models for the 30 ◦ (top) and 40 ◦
+
+(bottom) wing configurations. 
+
+The similarity between the simulated and identified re-sponses indicates that the dominant vertical dynamics around the considered operating points can be represented by a low-order linear model. The identified dynamics characterize the vehicle response around the spinning-flight operating condition and provide a basis for the development of the altitude control loop. 
+
+B. Motor Pulsation Control 
+
+The motor pulsation controller was first evaluated using a fixed horizontal position reference. The commanded changes in position were defined as px, ref = 0 m and py, ref = 1 m, while the altitude reference change was set to pz, ref = 1 m. Fig. 5 shows the resulting position response. Following the initial vertical transient, the altitude converges toward the commanded value and remains close to the reference. In the horizontal plane, the controller produces motion primarily along the commanded y direction, with py approaching the 
+
+1 m reference. At the same time, the displacement along the non-commanded x direction remains comparatively small. This response demonstrates that the phase-synchronized dif-ferential motor thrust can generate a directed horizontal control action while altitude is kept unchanged. To further evaluate the controller, a sequence of horizontal waypoints was introduced together with a varying altitude reference. The horizontal path was defined by three way-points, P1, P2, and P3, requiring the controller to change the commanded direction of motion during the maneuver. The altitude reference was simultaneously changed from 1 m to 
+
+1.2 m and subsequently returned to 1 m. 0 10 20 30 40 50 60 70 80             
+
+> p [m]
+> 00.5 1px
+> py
+> px,ref = 0 m py,ref = 1 m
+> T [s]
+> 010 20 30 40 50 60 70 80
+> p [m]
+> 00.5 1
+> pz
+> pz,ref = 1 m
+
+Fig. 5: Position response using the phase-synchronized motor pul-sation controller for px, ref = 0 m, py, ref = 1 m, and pz, ref = 1 m. 
+
+Fig. 6: Waypoint tracking using the phase-synchronized motor pul-sation controller. The horizontal trajectory is defined by waypoints 
+
+P1, P2, and P3, while the altitude reference is varied during the maneuver. 
+
+The resulting response is shown in Fig. 6. The vehicle follows the commanded horizontal path between the three waypoints, with deviations occurring mainly during tran-sitions between successive reference points. The altitude response follows the commanded changes while the horizon-tal maneuver is performed. The three-dimensional trajectory further illustrates the simultaneous horizontal and vertical motion of the vehicle. This test demonstrates the ability of the motor pulsation controller to modify the direction of the phase-synchronized control action as the horizontal reference changes. 
+
+C. Flap Pulsation Control 
+
+The flap pulsation controller was initially evaluated using the same fixed horizontal and vertical position references as the motor-based controller. The horizontal reference was set to px, ref = 0 m and py, ref = 1 m, while the altitude reference was maintained at pz, ref = 1 m. In this case, the horizontal control action was generated by phase-synchronized flap deflections rather than differential motor thrust. Fig. 7 shows the resulting position response. The vehicle progresses toward the commanded y position and approaches the 1 m reference, while the x position remains close to its zero reference. Following the initial transient, the altitude 
+
+Fig. 7: Position response using the phase-synchronized flap con-troller for px, ref = 0 m, py, ref = 1 m, and pz, ref = 1 m. 
+
+Fig. 8: Waypoint tracking using the phase-synchronized flap con-troller. The horizontal trajectory is defined by waypoints P1, P2,and P3, while the altitude reference is varied during the maneuver. 
+
+converges toward the commanded value. The response there-fore demonstrates that phase-synchronized flap actuation can generate a directed horizontal control action while the altitude-control loop operates independently. The flap controller was subsequently evaluated using the same waypoint sequence used for the motor pulsation con-troller. The horizontal reference was varied between P1, P2,and P3, while the altitude reference was changed from 1 mto 1.2 m and subsequently returned to 1 m. Fig. 8 shows the resulting horizontal, vertical, and three-dimensional responses. The vehicle follows the commanded path between the successive waypoints, demonstrating that the phase of the flap actuation can be adjusted as the desired horizontal direction changes. Deviations from the commanded path are visible during the transitions, while the vehicle approaches the vicinity of each waypoint. The altitude response simultaneously follows the commanded changes between 1 m and 1.2 m .The waypoint maneuver extends the fixed-reference test by requiring changes in both the magnitude and direction of the horizontal control action. The resulting trajectory demon-strates that phase-synchronized aerodynamic actuation can provide horizontal position control for successive reference directions while the motor system maintains the required spinning-flight and altitude conditions. The two control approaches achieve comparable horizontal waypoint-tracking performance, evaluated by the final way-point error. Because the controllers are designed to reach successive reference positions rather than follow a prescribed trajectory, the evaluation uses the final waypoint error rather than path-based metrics. The mean final-waypoint error, calculated over the commanded waypoints P1, P2, and P3,was 0.0397 m for the motor and 0.0394 m for the flap pul-sation controller. These results demonstrate that both phase-synchronized actuation methods can generate controlled hor-izontal motion toward successive reference positions. VI. E XPERIMENTAL EVALUATION 
+
+This section validates the simulation model of Section III against the physical prototype by comparing steady-state response to a commanded throttle step change. A propeller’s thrust depends not only on rotational speed but also on the advance ratio J = V∞/(nD ), where V∞ is the inflow velocity at the propeller disk, n the rotational speed, and 
+
+D the propeller diameter; as J increases, the thrust coef-ficient, and thus the thrust produced at a given rotational speed, decreases. The comparison is restricted to steady state because the expected mismatch, a J dependent reduction in propeller thrust, depends on the tangential velocity the propeller experiences due to the vehicle’s own spin, Vtan =
+
+rmωx (Section III-B), which reaches a fixed value once the measured spin rate ωx settles. 
+
+A. Experimental Setup 
+
+Each test began at a 30% throttle baseline, matching the initial condition used in simulation, after which a step command was applied to a target between 60% and 80% in 5% increments and held until ωx reached steady state. This range was bounded by the measurement system (Optitrack) volume: below 60% the vehicle did not lift off, and above 80% it climbed out of the tracking volume before vertical ve-locity settled. Spin rate and vertical velocity were measured not only with an optical marker-tracking system, but were backed also by onboard IMU fusion. Three configurations were tested to separate wing angle and elevon effects: 30 ◦
+
+wing angle/ 0◦ flap (A), 40 ◦ wing angle/ 0◦ flap (B), and 30 ◦
+
+wing angle/ 15 ◦ flap (C), each swept over the full throttle range described above. The UAV performing tests in a real-world scenario is shown in Fig. 1. 
+
+B. Results 
+
+Fig. 9 shows a representative step from 30% to 70% throttle. Spin rate and vertical velocity both settle within roughly two seconds, with a mild overshoot in vertical veloc-ity consistent with the second-order behaviour identified in simulation (Section V); steady-state values used for analysis are taken from this settled portion of the response. To compare propulsion gain directly between the two do-mains, the simulation’s throttle command is mapped linearly onto thrust, with 100% throttle corresponding to 4 N, the maximum static thrust the propeller/motor combination can produce at zero inflow velocity ( V∞ = 0 ). This common scaling places the simulated and measured steady-state spin-rate gain, K = ∆ ωss /∆u, on the same axis in Fig. 10. The simulated gain follows a smooth, monotonically decreasing 0 0.5 1 1.5 2 2.5 3 3.5                     
+
+> pz [m]
+> 1.2 1.4 1.6 30% throttle (idle) 30% throttle (idle) 70% throttle (lift-off) 70% throttle (lift-off)
+> 00.5 11.5 22.5 33.5
+> " vz [m/s]
+> 00.1 0.2 30% throttle (idle) 30% throttle (idle) 70% throttle (lift-off) 70% throttle (lift-off)
+> T [s]
+> 00.5 11.5 22.5 33.5
+> !z [RPM]
+> 200 250 300 350 30% throttle (idle) 30% throttle (idle) 70% throttle (lift-off) 70% throttle (lift-off)
+
+Fig. 9: Step response of configuration B showing vertical position, vertical velocity, and spin rate for a throttle step from 30% to 70%. Throttle (%)                  
+
+> 60 62 64 66 68 70 72 74 76 78 80
+> K
+> 44.5 55.5 6Wing angle 30 °, Flap 0 °(sim) Wing angle 30 °, Flap 0 °(real) Wing angle 40 °, Flap 0 °(sim) Wing angle 40 °, Flap 0 °(real) Wing angle 30 °, Flap 15 °(sim) Wing angle 30 °, Flap 15 °(real)
+
+Fig. 10: Steady-state spin-rate gain versus throttle target for all three configurations, comparing simulation (dashed) against measured hardware response (markers). 
+
+trend. The measured gain instead departs from this trend and varies more between throttle levels, which is attributed to the advance-ratio-dependent reduction in thrust discussed above: the propeller does not deliver the full linearly-scaled thrust once it is spinning, an effect the simulation’s static, linear assumption does not capture. As a further consistency check on the propulsion model, Fig. 11 compares measured against simulated steady-state spin rate for all three configurations (the perfect match is represented by the line). Configuration B matches simulation very closely (RMSE 2.1%), while configurations A and C, both at 30 ◦, are slightly underpredicted by the model (RMSE 2.8% and 9.1%), with the gap slightly larger at low throttle and shrinking as throttle increases. This is consistent with the advance-ratio effect motivating the comparison, since the static thrust curve used in simulation does not account for the reduced thrust coefficient at nonzero inflow, the larger gap at 
+
+30 ◦ than at 40 ◦ supports this explanation without confirming it outright, since elevon-modified slipstream interaction could also contribute and is not isolated here. Fig. 12 compares the steady-state gain of vertical velocity to throttle across configurations. Unlike the spin-rate gain, this increases consistently with throttle for all three, and configuration B reaches the highest value at 80% throttle, roughly 38% above A and 33% above C, indicating the 40 ◦
+
+wing angle converts throttle to climb rate most effectively. Because the propeller’s tangential velocity remains an order of magnitude larger than the vehicle’s vertical velocity even for the fastest-climbing configuration, the axial contribution to advance ratio stays small relative to the tangential com-ponent across all conditions tested, thus not impacting the propeller thrust. Simulated !x [RPM]            
+
+> 320 340 360 380 400 420 440 460 480 500
+> Real  !x [RPM]
+> 320 340 360 380 400 420 440 460 480 500
+> 60% 60%
+> 65% 65%
+> 70% 70% 75% 75%
+> 80% 80%
+> 60% 60%
+> 65% 65%
+> 70% 70%
+> 75% 75%
+> 80% 80%
+> 60% 60%
+> 65% 65%
+> 70% 70% 75% 75%
+> 80% 80%
+> ideal match Wing angle 30°, Flap 0° Wing angle 40°, Flap 0° Wing angle 30°, Flap 15°
+
+Fig. 11: Measured versus simulated steady-state spin rate for all three configurations, labeled by throttle target. The dashed line indicates ideal agreement. Throttle target [%]      
+
+> 60 65 70 75 80
+> " vz [m/s]
+> 00.05 0.1 0.15 0.2 0.25 0.3 0.35 Wing angle 30°, Flap 0° Wing angle 40°, Flap 0° Wing angle 30°, Flap 15°
+
+Fig. 12: Steady-state gain of vertical velocity with respect to throttle for all three configurations. 
+
+This evaluation covers steady-state behaviour only. The phase-synchronized control strategies of Section IV act on timescales below the settling time characterized here, so validating the propulsion model’s transient and periodic response remains a future work to be done before those strategies can be evaluated on hardware. VII. C ONCLUSION 
+
+This paper presents the design and hover-mode control of MetaMorpher, a metamorphic UAV combining spinning-wing hover with fixed flying-wing cruise. Building on a pre-viously validated flight dynamics model, we implemented a physical prototype with independently driven wing-mounted propellers and independently actuated elevons, and devel-oped two phase-synchronized hover control strategies: motor pulsation, modulating differential thrust, and flap pulsation, a novel strategy pulsing elevon deflection while motor speed is held constant. Simulation results validated both strategies, reaching comparable final-waypoint accuracy, suggesting the two channels are complementary rather than interchangeable. Experimental testing further validated the vertical-dynamics propulsion model against the physical prototype, showing very good steady-state agreement across three wing/elevon configurations. Future work will address the propulsion model’s transient and periodic response, a prerequisite for hardware evaluation of the horizontal motion controllers in hover mode. Also, synthesis of combined motor and flap pulsation into a single architecture exploiting their complementary strengths, should be investigated, which will provide a comparison of their efficiency and control performance across configurations by closed-loop flight testing of the full controller on the physical MetaMorpher prototype. The ultimate goal is to design and demonstrate the transition between spinning-wing hover mode and fixed-wing cruise mode to cover a complete flight envelope of MetaMorpher. REFERENCES [1] Y. Luo, X. Yu, D. Yang, and B. Zhou, “A survey of intelligent trans-mission line inspection based on unmanned aerial vehicle,” Artificial Intelligence Review , vol. 56, no. 1, pp. 173–201, 2023. [2] T. Panigati, M. Zini, D. Striccoli, P. F. Giordano, D. Tonelli, M. P. Limongelli, and D. Zonta, “Drone-based bridge inspections: Current practices and future directions,” Automation in Construction , vol. 173, p. 106101, 2025. [3] M. Orsag, S. Bogdan, T. Haus, M. Bunic, and A. Krnjak, “Model-ing, simulation and control of a spincopter,” in Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) ,(Shanghai, China), pp. 2998–3003, 2011. [4] M. Orsag, J. Cesic, T. Haus, and S. Bogdan, “Spincopter wing design and flight control,” Journal of Intelligent & Robotic Systems , vol. 70, no. 1–4, pp. 165–179, 2013. [5] A. Bosak, D. Eri´ c, A. Milas, and S. Bogdan, “Design and aerodynamic modeling of metamorpher: A hybrid rotary and fixed-wing morphing uav,” in 2026 International Conference on Unmanned Aircraft Systems (ICUAS) , pp. 672–679, 2026. [6] Y. Hu, J. Song, and M. Wu, “A review of control methods for tailless aircraft,” Guidance, Navigation and Control , vol. 4, no. 4, p. 2430002, 2024. [7] S. K. H. Win et al. , “Design and control of the first foldable single-actuator rotary wing micro aerial vehicle,” Bioinspiration & Biomimetics , vol. 16, no. 6, p. 066019, 2021. [8] K. Anuar and N. Takesue, “Development of fixed-wing vtol uavs with the four-retractable rotor propulsion,” Journal of Robotics and Mechatronics , vol. 37, no. 1, p. 510, 2025. [9] D. Sufiyan, L. S. T. Win, S. K. H. Win, G. S. Soh, and S. Foong, “Joint mechanical design and flight control optimization of a nature-inspired unmanned aerial vehicle via collaborative co-evolution,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 2044–2051, 2021. [10] L. CHU, Q. LI, F. GU, X. DU, Y. HE, and Y. DENG, “Design, modeling, and control of morphing aircraft: A review,” Chinese Journal of Aeronautics , vol. 35, no. 5, pp. 220–246, 2022. [11] M. S. Parancheerivilakkathil, J. S. Pilakkadan, R. M. Ajaj, M. Amooz-gar, D. Asadi, Y. Zweiri, and M. I. Friswell, “A review of control strategies used for morphing aircraft applications,” Chinese Journal of Aeronautics , vol. 37, no. 4, pp. 436–463, 2024. [12] C. Harvey, L. L. Gamble, C. R. Bolander, D. F. Hunsaker, J. J. Joo, and D. J. Inman, “A review of avian-inspired morphing for uav flight control,” Progress in Aerospace Sciences , vol. 136, pp. 100—, 2022. [13] K. H. Low and A. Win, “Design and dynamic analysis of a trans-formable hovering rotorcraft (thor),” in 2017 IEEE International Conference on Robotics and Automation (ICRA) , pp. 5405–5412, 2017. [14] K. H. Low and A. Win, “Towards a stable three-mode transformable hovering rotorcraft (thor),” in 2018 IEEE/ASME International Confer-ence on Advanced Intelligent Mechatronics (AIM) , pp. —, 2018. [15] D. Sufiyan, L. S. T. Win, S. K. H. Win, Y. H. Pheh, G. S. Soh, and S. Foong, “An efficient multimodal nature-inspired unmanned aerial vehicle capable of agile maneuvers,” Advanced Intelligent Systems ,vol. 4, no. 1, p. 2100113, 2022. [16] B. Yuksek, A. Vuruskan, U. Ozdemir, M. A. Yukselen, and G. Inalhan, “Transition flight modeling of a fixed-wing vtol uav,” Journal of Intelligent & Robotic Systems , vol. 84, pp. 181–205, 2016. [17] X. Zhao, Y. Yang, and X. Ma, “Kriging aerodynamic modeling and multi-objective control allocation for flying wing uavs with morphing trailing-edge,” IEEE Access , vol. 9, pp. 59999–60012, 2021. [18] J. G. Leishman, Principles of Helicopter Aerodynamics . New York, NY: Cambridge University Press, 2nd ed., 2006. [19] K. Fregene and C. Bolden, “Dynamics and control of a biomimetic single-wing nano air vehicle,” in Proceedings of the American Control Conference (ACC) , pp. 51–56, 2010. [20] T. Ikami, K. Fujita, and H. Nagai, “Low-reynolds-number flowfield of wing with control surface in propeller slipstream,” Journal of Aircraft ,vol. 58, no. 2, pp. 228–235, 2021.

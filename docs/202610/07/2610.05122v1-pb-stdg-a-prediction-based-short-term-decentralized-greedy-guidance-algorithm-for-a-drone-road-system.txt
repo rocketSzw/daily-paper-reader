@@ -1,0 +1,871 @@
+Title: PB-STDG: A Prediction-Based Short-Term Decentralized Greedy Guidance Algorithm for a Drone Road System
+
+URL Source: https://arxiv.org/pdf/2610.05122v1
+
+Published Time: Tue, 06 Oct 2026 01:33:56 GMT
+
+Number of Pages: 48
+
+Markdown Content:
+# PB-STDG: A Prediction-Based Short-Term Decentralized Greedy Guidance Algorithm for a Drone Road System 
+
+Zhouyu Qu a, Andreas Willig a, Xiaobing Wu b
+
+> aDept. of Computer Science and Software Engineering, University of Canterbury, Private Bag 4800, Christchurch, 8140, New Zealand
+> bWireless Research Centre, University of Canterbury, Private Bag 4800, Christchurch, 8140, New Zealand
+
+Abstract 
+
+In recent years, Unmanned Aerial Vehicles (UAVs) or drones have been increasingly adopted in urban environments for applications such as parcel delivery, infrastructure inspection, emergency response, and drone light shows. A non-negligible issue is how to manage the increasing number of drones operated by di ff erent entities, to enable them to cooperatively avoid potential colli-sions and determine conflict-free short-term flight paths in urban airspace. This paper presents a Prediction-Based Short-Term Decentralized Greedy (PB-STDG) guidance algorithm for a struc-tured Drone Road System (DRS). PB-STDG extends the original STDG algorithm by introduc-ing a prediction mechanism that enables drones to anticipate the decisions of neighboring drones using additional information shared in beacon packets, aiming to address the over-conservative behavior observed in the STDG algorithm. Several simulation scenarios are used to evaluate and compare the proposed algorithm with STDG. The results show that PB-STDG improves tra ffi ceffi ciency while maintaining a safety level comparable to that of STDG. 
+
+Keywords: Drone, Congestion Control, Guidance and Navigation, Road System, Wireless Communication 
+
+1. Introduction 
+
+Continuous advances in drones, or unmanned aerial vehicle (UAV), technology have signifi-cantly expanded the range of drone applications, attracting growing interest from both academia and industry. Although drones were initially developed for military operations [14, 6], their ap-plications have gradually expanded into a wide range of civilian and commercial fields, such as arXiv:2610.05122v1 [cs.RO] 4 Oct 2026 aerial photography [12, 25, 32], emergency response [26], and infrastructure inspection [15, 24]. More recently, drone applications have expanded into delivery and entertainment. Commercial drone delivery services are now being used for last-mile parcel distribution by companies such as Amazon Prime Air [3] and Google Wing [31]. Food delivery by drones has also entered commer-cial operation in cities including Shenzhen, China, where Meituan operates urban drone delivery routes [33]. Beyond delivery, large-scale drone light shows have become a popular feature of public celebrations, such as the drone show program at Darling Harbour in Sydney [17], where coordinated drone swarms are deployed for regular night-time performances. With the growth of these drone applications, the number of deployed drones is continuously increasing [8]. These drones generally share the same low-altitude airspace, particularly in urban environments. Unlike traditional ground tra ffi c systems, most current drone operations are con-ducted in an unstructured and free-flight manner. Each drone independently plans its trajectory based on its own algorithms and available information. Although such an approach provides flexibility, it becomes increasingly di ffi cult to maintain safety and manage large-scale drone op-erations involving di ff erent operators and service providers. Conflicts between competing flight paths may lead to tra ffi c congestion or even collisions as the number of drones increases, which can degrade overall system e ffi ciency and pose risks to public safety. To address this challenge, several studies on structured airspace management have been pro-posed, aiming to organize low-altitude airspace into predefined aerial structures and constrain drone movements within them. A representative example is the NASA drone tra ffi c management concept [11]. In this framework, the low-altitude airspace is organized into multiple layers based on altitude. High-speed fixed-wing UAVs are typically assigned to higher layers, while low-speed rotary-wing UAVs operate in lower layers. Within each layer, the airspace is further structured into di ff erent types of aerial structures, including sky-corridors, sky-tubes, and sky-lanes. Drones are allowed to fly freely within sky-corridors, whereas sky-tubes impose directional constraints on movement. Sky-lanes provide an additional level of restriction by regulating lateral motion, preventing drones from cruising in parallel within the same lane. Several studies have explored layer-based approaches for drone tra ffi c management, using di ff erent altitude layers to regulate drone movement and heading directions [7, 27, 19]. Other studies have proposed more structured drone road systems inspired by ground transportation net-2works, including corridor-based and lane-level structures [18, 29]. Building on these concepts, [22] proposes a Drone Road System framework consisting of structured roads and ramps. All road segments are designed to be unidirectional, with a defined number of lanes and an allowed speed range, to support safe and predictable drone movement. The system can also be encoded in XML format, enabling flexible updates and e ffi cient distribution across di ff erent platforms. While drone tra ffi c management systems such as drone road systems provide a structured framework for organizing low-altitude airspace, conflicts between drones can still occur within the constrained network, particularly under high-density tra ffi c conditions. In such environments, drones may compete for optimal routes, and di ff erent types of conflicts may arise due to speed di ff erences or directional changes during navigation. Therefore, e ff ective drone guidance and collision avoidance mechanisms remain essential. A large body of research has been devoted to UAV navigation and collision avoidance in free-flight environments. These include approaches such as [9] and [30], which determine short-term collision-free paths for UAVs in environments containing obstacles and other dynamic con-straints. The Particle Swarm Optimization (PSO) approach [1] iteratively updates drone positions based on individual and global best solutions. Another widely studied approach is Deep Rein-forcement Learning (DRL) [10, 2, 16], which learns drone control policies through interaction with the environment. These methods typically use sensory inputs such as images, video streams, or onboard sensor data to generate control actions via deep neural networks. By optimizing a re-ward function, drones can learn collision-free navigation in dynamic and complex environments. Specifically, several studies have investigated safe guidance and collision avoidance algo-rithms for drone delivery scenarios. In [20], three collision avoidance strategies are proposed to manage large numbers of drones delivering goods to random destinations in urban environments. Similarly, [5] presents a centralized navigation approach for a fleet of drones to achieve safe point-to-point parcel delivery missions. In addition, [4] introduces two centralized algorithms to ensure safe delivery operations within a simplified two-layer airspace structure. However, these approaches su ff er from several limitations: (i) they often rely on global in-formation of other agents, (ii) they require multiple types of onboard sensors, and (iii) they are primarily designed for free-flight environments and cannot be directly adapted to structured airspace systems. In the large-scale drone tra ffi c system we focus on, where drones are owned 3by di ff erent operators and perform diverse tasks, these limitations become more critical. Specif-ically, global coordination is di ffi cult to achieve in practice, as it is unrealistic for each drone to obtain or maintain global knowledge of all other drones in the city-scale airspace. Moreover, di ff erent navigation algorithms across di ff erent drones further increase system uncertainty, since individual drones are unable to accurately predict the behavior of others under inconsistent or un-known algorithms. They will also make di ff erent assumptions about the available sensors, and in this paper, we make very minimal assumptions, requiring only GPS and wireless communication. Based on these challenges and assumptions, a research gap can be identified in the guid-ance of large-scale drone tra ffi c under limited coordination. Existing approaches often rely on assumptions about the available sensing, communication, or coordination capabilities of drones. However, in a large-scale drone road system, drones may be operated by di ff erent manufacturers or service providers and may therefore have limited ability to coordinate with one another. There is therefore a need for a guidance approach that can manage interactions among a large num-ber of independently operating drones without relying on extensive coordination or additional sensing capabilities. To address this research gap, a baseline guidance algorithm for structured drone road systems is required that can be applied to di ff erent types of drones while relying on minimal information and limited sensing capabilities. In our previous studies [21, 23], STDG was proposed to address drone route navigation and collision avoidance challenges on the standardized Drone Road Sys-tem introduced in [22]. The STDG algorithm relies only on position and velocity information exchanged between drones through beacon packets, and provides short-term, coordination-free, and decentralized guidance. Drones periodically execute STDG to make short-term lane and speed decisions based on the current tra ffi c conditions and potential collision risks. Previous simulation results for STDG revealed a key limitation: significant speed loss when avoiding potential collisions. Since the algorithm is coordination-free (i.e., drones only exchange beacon packets, with no other form of coordination) and only position and velocity information is shared, it is di ffi cult for drones to accurately estimate or predict the decisions of others. As a result, lane switching may be suppressed when multiple neighboring drones simultaneously select the same lane to switch. In such cases, drones tend to remain in their current lanes and may further reduce their speed or even come to a complete stop until the surrounding tra ffi c4conditions change. This behavior significantly degrades tra ffi c throughput and system e ffi ciency. In our previous study, the algorithm settings that allow some potential risks to be disregarded result in an increase in average speed from around 7 m /s to 10 m /s, approaching the preferred speed of 12.5 m /s, with only a slight increase in the collision rate (i.e., from 1 to 5 collisions among 150,000 drones). The results show that STDG has room to improve its average speed, as a substantial speed increase can be achieved by slightly relaxing its treatment of potential collision risks with only a small increase in actual collisions. This motivates the prediction of neighboring drones’ future actions to better distinguish po-tential risks from likely collisions, thus allowing drones to make more e ff ective lane-switching and speed-selection decisions without unnecessary stops or slowdowns and avoiding additional collisions that may occur in such situations. In this paper, we focus on designing a prediction-based extension to the previous STDG guidance algorithm. The proposed approach extends the beacon structure by including additional safety information, which allows drones to predict the movement decisions of their neighbors over the next short period. This capability helps reduce situations where drones tend to remain in their current lanes and encourages necessary lane changes, either to overtake slower predecessors or to move towards their target lanes without prolonged stopping. Extensive simulations are conducted using the same simulation framework and largely the same experimental configuration as the original STDG study. The results show that, under the same tra ffi c scenario, the proposed prediction-based algorithm substantially reduces the speed loss while maintaining a close-to-zero collision rate. Additional simulations are performed un-der di ff erent road-system configurations and algorithm parameter settings to comprehensively evaluate PB-STDG against the original STDG algorithm. The main contributions of this paper are summarized as follows. 
+
+• We propose PB-STDG, a prediction-based extension of the original STDG algorithm that enables drones to predict the movement decisions of neighboring drones. The proposed approach reduces the tendency of multiple drones to remain in their current lanes during concurrent lane switching and, in the tested complex DRS, increases the average speed from 10.28 m /s to 12.18 m /s while maintaining a close-to-zero collision rate. 5• We design an extended beacon structure and an event-driven beacon transmission mecha-nism that provide the guidance algorithm with additional safety information for predicting the decisions of neighboring drones, with a modest increase in beacon packet size. 
+
+• We conduct extensive simulations under di ff erent drone densities and algorithm configu-rations to evaluate the proposed algorithm and compare it with the STDG algorithm. The results demonstrate the e ff ectiveness of the proposed approach across di ff erent tra ffi c con-ditions and algorithm settings. The remainder of this paper is organized as follows. Section 2 briefly introduces the DRS adopted in this work and reviews the baseline STDG algorithm on which PB-STDG is built. Section 3 describes the system settings and assumptions, including the wireless communica-tion and networking settings, beacon content, and beacon transmission mechanism. Section 4 presents PB-STDG in detail. Section 5 describes the simulation assumptions and configurations and evaluates PB-STDG against STDG through extensive simulation studies. Finally, Section 6 concludes the paper and discusses future research directions. 
+
+2. Background 
+
+The prediction-based algorithm proposed in this paper is built upon the drone road system (DRS) [22] and the Short-Term Decentralized Greedy (STDG) algorithm [23] developed in pre-vious work. 
+
+2.1. Drone Road System 
+
+For large-scale drone tra ffi c management, the drone road system introduces a common frame-work to construct predefined routes. This framework simplifies tra ffi c management and collision avoidance by making the movements of individual drones more predictable. The predefined road system can be represented in an XML file, which simplifies both road network updates and the transmission of updated information to drones currently cruising within the system. Each drone road system consists of one or multiple roads and zero or multiple ramps. Both roads and ramps are unidirectional, meaning that drones within the same road or ramp follow the same travel direction. Road is the primary component of the system and consists of one central 6lane and multiple parallel lanes arranged in a hexagonal grid topology. Each lane is assigned a unique identifier ( i, j) and can have up to six neighboring lanes (shown in Figure 1), with the identifiers ( i + 1, j), ( i − 1, j), ( i, j + 1), ( i, j − 1), ( i + 1, j − 1), and ( i − 1, j + 1). Since roads may be curved, an arc-length parameter s is introduced to represent the relative position of a drone along a lane. The value of s represents the distance traveled by the drone from the beginning of the lane along the lane. 
+
+> Figure 1: Left: Simple lane arrangement example, identifier (0,0) is the central lane of the road. Right: Example of position-cost calculation.
+
+Ramp is a special type of road that consists of a single lane and is used either to connect two roads or to provide additional entry and exit access to the drone road system. When constructing a ramp, one or two connection points are defined on existing road lanes. If only one connection point is specified, the ramp is referred to as an on /off -ramp, where the other end serves as either an entry or exit of the system. Otherwise, the ramp connects two lanes and is referred to as a connecting ramp. During its lifetime in the system, a drone first enters the network through either a road entry point or an on-ramp, and its end-to-end path planning is done in advance. In this study, we assume that the plan is never altered afterwards. It then navigates through the system by moving along lanes and may perform lane switching to overtake slower drones or to reach connected lanes leading to other roads or ramps. In this process, a drone can only directly switch to one of its neighboring lanes and then repeat the lane-switching maneuver until it reaches its target lane. Finally, the drone reaches its destination road or o ff -ramp and exits the system at the corresponding endpoint. 72.2. Short-Term Decentralized Greedy Algorithm 
+
+The Short-Term Decentralized Greedy (STDG) algorithm serves as a baseline guidance method for the drone road system introduced in Section 2.1. STDG ensures that drones can successfully complete their trips within the road system while providing essential functionalities such as col-lision avoidance, lane-switching, and speed-selection. The algorithm generates short-term deci-sions based on the current local tra ffi c situation over a limited time horizon. This enables drones to overtake slower neighbors and progress toward target connection points without missing them. The inputs of STDG consist primarily of the position and velocity of the current drone and those of neighboring drones, obtained through periodic beacon transmissions. The algorithm is fully decentralized and does not require any explicit coordination beyond beacon exchange. At the start of the algorithm, a drone considers its current lane and all neighboring lanes as candidate lanes, and evaluates a weighted cost function for each candidate. The lane with the minimum cost is selected as the output lane. If the selected lane di ff ers from the current lane, the drone performs a lane-switching action; otherwise, it remains in its current lane. After lane selection, the drone updates its speed based on either its preferred speed or the speed of its immediate predecessor in the selected lane, whichever is lower. The total cost consists of three components: position cost, speed cost, and collision cost. The position cost is designed to guide drones toward their target connection points and support lane switching decisions toward subsequent roads or ramps. The basic position cost is defined based on the hop distance between the current lane and the target lane associated with the next con-nection point, and the distance to that connection point. For example, consider a drone located at lane (0 , 0) with a target lane (1 , 0), assuming that all neighboring lanes are available and ac-cessible. The basic position cost for each candidate lane is defined as (example shown in Figure 1): 
+
+• 0, for lane (1 , 0) 
+
+• 1, for lanes (0 , 0), (0 , 1), and (1 , −1) 
+
+• 2, for lanes ( −1, 0), (0 , −1), and ( −1, 1) If a drone does not have a target connection point (i.e., its destination is the current road /ramp.), its basic position cost is set to zero. The final position cost is further scaled by a multiplicative 8factor based on the distance between the drone’s current position and its target connection point. This factor is a monotonically non-negative decreasing function of distance, which reduces the influence of position cost for drones that are far from their targets, while increasing the switching priority for drones that are closer to their target connection points. The speed cost imposes a penalty on drones when their deployable speed is lower than their preferred speed. The deployable speed for each candidate lane is determined by the drone’s preferred speed, the speed of its predecessor, and the distance-dependent constraints. Here, the predecessor refers to the nearest ahead drone in the same lane. If the distance to the predecessor is below a predefined threshold and the predecessor’s speed is lower than the drone’s preferred speed, the deployable speed is set to the predecessor’s speed. Otherwise, it is set to the drone’s preferred speed. The speed cost is then computed using an increasing function of the gap between the preferred speed and the deployable speed. The collision cost is designed to prevent lane switching maneuvers that may lead to collisions. Its calculation consists of two steps. First, if any drone is detected in the candidate lane within a predefined distance of the current drone, the collision cost is set to the maximum value. This indicates that the candidate lane is infeasible for switching due to the high risk of an immediate collision. Second, if the cost is not set to the maximum value, the algorithm counts the number of drones in the lanes adjacent to the candidate lane that are within the same predefined distance of the current drone. The collision cost is then set equal to this count. This value represents the potential collision risk caused by multiple drones simultaneously attempting to switch into the same lane. A special rule is introduced for leading drones to break deadlocks that may occur when multiple drones are closely clustered and block one another. A leading drone is defined as the foremost drone that has no other drone ahead of it within a predefined safety distance. Such a drone is assigned the highest lane switching priority, and its cost in the second stage of the cost calculation is always set to zero. This allows the leading drone to switch lanes first, thereby creating opportunities for the following drones to resolve the blockage. The final cost is calculated as the weighted sum of the three cost components. The corre-sponding weights are configurable algorithm parameters that can be adjusted for di ff erent tra ffi cscenarios. After selecting the output lane and speed, the drone determines whether it is su ffi ciently close 9to its target connection point or the road closing point. If so, and the selected output lane is the current lane, the drone enters a stop state. This decision aims to help the drone avoid missing its target connection point or entering the closed section of the road. In this case, the interval before the next algorithm execution is reduced to allow the drone to leave the stop state more quickly when an opportunity becomes available. Otherwise, the interval is set to its normal value. The drone then maintains the selected speed and stays at, or switches to, the selected output lane until the next execution of the algorithm. 
+
+3. System Model 
+
+In this section, the scope of this study and the underlying assumptions are described. The sys-tem model is adopted from the previous STDG study [23] and is presented here for completeness before introducing the proposed prediction-based algorithm. 
+
+3.1. Beacon Packet 
+
+PB-STDG relies only on information exchanged through beacon packets. In STDG, the beacon mainly includes position and velocity information (several 3-D coordinates) of nearby drones. To better predict the decisions of other drones, the prediction-based algorithm extends the information included in each beacon while maintaining the same periodic beaconing rate. The newly introduced information types are: 
+
+• Preferred speed : Each drone is assigned a preferred speed representing its optimal cruis-ing speed for maximum energy e ffi ciency based on its weight and physical design. This double value is included in the beacon to allow other drones to estimate the sender’s speed cost. 
+
+• Lane being switched to : If the drone is currently switching lanes, it informs other drones of the lane it is switching to. Otherwise, this field remains empty. 
+
+• Time for next algorithm execution : This information allows other drones to estimate the likelihood of the sender changing its movement decision in the near future. If a su ffi cient time gap exists before the next execution, other drones may assume that the sender will maintain its current movement state and will not participate in lane switching competition. 10 • Target lane : If the destination of a drone is located on a di ff erent road or ramp from its current position, the drone must switch to the lane containing the connection point leading toward that destination. Sharing this information enables other drones to estimate the sender’s position cost. Figure 2 shows the modified beacon structure and the corresponding length of each field. The original beacon size was 160 bytes, while the proposed extension increases it to 172 bytes. For the main content block, the original size was 116 bytes, and the newly introduced information adds only 12 bytes, extending the size to 128 bytes. 
+
+> Figure 2: Beacon Content
+
+An important assumption of this study is that each drone can accurately determine its current position and velocity using its onboard GPS without measurement uncertainty, and that all drones are time-synchronized via GPS. Assuming perfect GPS measurements allows any remaining in-formation uncertainty to be attributed to the communication process. Furthermore, the drone is assumed to be able to convert the GPS measurements, including latitude, longitude, altitude, speed, and heading, into the corresponding position and velocity representation used in the drone road system (DRS). In the DRS, position information consists of the road identifier, lane identi-fier, and the arc-length parameter along the current road segment. Velocity refers to the moving speed of the drone along the current road. 
+
+3.2. Wireless Communication 
+
+In the STDG system model, drones periodically broadcast beacon packets and obtain infor-mation about neighboring drones by receiving their beacons. A parameter, beaconing rate ( br ), is 11 used to represent the number of beacon transmissions per second (Hz). Then, the average beacon interval is approximately 1 /br , although a small amount of randomness is introduced into each interval to avoid synchronization e ff ects. In the prediction-based algorithm, a key modification to the beaconing mechanism is that a drone transmits an additional beacon immediately after completing an execution of the algorithm, in addition to the regularly scheduled beacon transmissions. This allows other drones to promptly obtain updated information about its movement state after a decision is made, providing more up-to-date information for predicting its subsequent actions. It is assumed that when an additional beacon is transmitted, the regular beacon timer is reset. Consequently, the next periodic beacon transmission will occur after another interval of approx-imately 1 /br seconds. Furthermore, beacon transmissions are assumed to be local broadcasts that do not require acknowledgments or routing protocols. Signal interference in the system is controlled by the beaconing rate and transmit power, and occurs only among beacon transmis-sions. Excluding external interference allows communication-related uncertainty to be attributed primarily to beacon collisions, packet loss, and transmission delays. Such interference may re-sult in beacon packet loss or transmission delay. This will be the main source of information uncertainty in the simulation. The beacon transmission mechanism follows the beaconing approach commonly adopted in IEEE 802.11p-based vehicular ad hoc networks (VANET) systems [13]. However, the physical-layer parameters are adapted for the drone communication scenario. In particular, a center fre-quency of 2.4 GHz, a bandwidth of 10 MHz, and a transmission bitrate of 12 Mbps are employed in the simulation. At the MAC layer, the IEEE 802.11 EDCA mechanism is adopted as the de-fault channel access scheme for vehicular ad hoc networks. In this work, only the best-e ff ort access category (AC_BE) is used. The contention window is configured with a minimum value of 31 and a maximum value of 1023, and the AIFS is set to 7. For the wireless channel model, a log-distance path loss model with a specified path loss exponent is adopted [28]. External interference, multipath fading, and shadowing e ff ects from buildings or other structures are not considered in this work. 12 4. Proposed PB-STDG Algorithm 
+
+The proposed algorithm is a variant of the previous short-term decentralized greedy (STDG) algorithm [23], which relies on additional shared information in the beaconing packet to reduce the upcoming decision uncertainty of neighboring drones. This algorithm requires drones to operate within the drone road system formalism proposed in [22]. 
+
+4.1. Preliminaries 
+
+One challenge of STDG is the uncertainty of neighboring drones. With limited shared infor-mation, it is hard to predict the upcoming actions of neighbors. Thus, to avoid most potential risks, drones should choose conservative decisions, such as slowing down or keeping the current lane, which lowers the average speed and throughput. In addition, under these actions drones tend to stay in outer lanes which have fewer neighboring lanes. Based on the preliminary study (tested DRS is shown in Figure 10), the outer lane usage ( ≈ 22%) is noticeably higher than the inner lane usage ( ≈ 13%). This leads to low utilization of inner lanes and reduced e ffi ciency of the DRS. Based on the observations, achieving the lowest collision rate ( <0.01%) results in an average drone speed of only 7.06 m /s, well below the preferred cruising speed of 12.5 m /s. When the algorithm is configured to disregard most potential risks from neighboring drones, the average speed increases to 11.6 m /s, while the collision rate increases only slightly to 0.36%. When all potential risks are disregarded, the average speed further increases to 12.3 m /s, with a collision rate of 1.27%. These results indicate that maintaining a close-to-zero collision rate requires drones to substantially reduce their speed to account for potential collisions that may not actually occur, such as when neighboring drones continue along their current trajectories. This is the motivation of the proposed prediction-based guidance algorithm. It aims to make safer and more e ffi cient decisions that improve average speed, throughput, and DRS utilization while maintaining the close-to-zero collision rate achieved by the coordination-free STDG ap-proach. We assume that all drones run the same guidance algorithm and know their end-to-end paths, which can be planned by other algorithms, and are also familiar with the entire DRS within which they operate. 13 At the highest level, the algorithm first filters competitor drones from all nearby drones and predicts a decision for each according to their priority which is mainly determined by its current position. The drones are considered competitors when they would run the algorithm on their side within a short time. After each predicted decision, the algorithm assumes the relevant competitor will make the same decision and then simulates its e ff ect on the current environment and updates relevant parameters for the prediction. This process is repeated until no competitor has higher priority than the current drone. The algorithm then makes the actual decision for the current drone based on iteratively updated parameters for the current drone, specifying the speed and lane to be used until the next invocation. The overall workflow is shown in Figure 3. 
+
+> Figure 3: Workflow of PB-STDG
+
+4.2. The Motivation of Splitting Blocks 
+
+In prediction-based scenarios, drones are assumed to exchange additional information, which improves the accuracy of predicting other drones’ actions. By knowing how others make their decisions, it becomes easier to plan a safe and e ffi cient path for the current drone. However, due to various limitations such as communication range and packet loss, drones cannot obtain complete global information about all drones in the system. Moreover, even neighboring drones 14 may possess di ff erent information. In such cases, predictions may not match the actual actions when the predictor’s knowledge di ff ers from that of the predicted drones. To improve prediction accuracy, we divide each road into multiple equal-length blocks whose boundaries are normal to the central lane. With a known block length ϵb and the distance trav-eled along the road Lt, a drone can determine the block to which it currently belongs as ⌊Lt/ϵ b⌋.Drones only predict the actions of others within the same block, while treating drones in other blocks as potential risks. The process is shown in Figure 4. Drones D and E belong to the same block, and E has higher priority since it is ahead. When D runs the algorithm, it first simulates E and then makes its own decision based on the simulation result. When E runs the algorithm, it directly makes its own decision due to its highest priority without considering D. During the decision-making and prediction process, drones in other blocks, such as F, are considered unpre-dictable, and D and E use the previous coordination-free approach to account for them. 
+
+> Figure 4: Road division into equal-length blocks for more accurate prediction
+
+In the above process, drone D knows how E will make its decision and already has all relevant information, so this prediction has a higher probability of being correct. In contrast, without using blocks, a drone only predicts the actions of nearby drones within a certain range. For example, D may predict E but not F, while E predicts F. In this case, D knows that E will predict F, and F will also predict some other drones further ahead. Since D does not have complete information about all drones ahead, it cannot make an accurate prediction of E’s actions. 15 Without using blocks, even if the prediction accuracy is su ffi ciently high, another challenge arises from the dependency chain introduced by the prediction process. Each drone’s decision depends on the predicted decisions of nearby drones, particularly those ahead of it. Consequently, on a long road with high drone density, the rearmost drone must first predict the decision of the frontmost drone, followed by the second frontmost drone, and so on, before it can determine its own action. As the number of drones increases, this dependency chain substantially increases the computational complexity and results in many unnecessary calculations for drones that are too far away to have any meaningful influence on the current drone’s decision. The use of blocks reduces the computational complexity and breaks the chain of dependence: drones only simulate neighbors within the same block and treat all other drones as conservatively as in the coordination-free approach. In addition, within one block it is easy to establish a priority system based on position and MAC address (to break the tie). Drones near the front boundary of a block (such as E) will make keep-current-lane decisions similar to the previous method. However, drones behind them (like D) in the same block can correctly simulate these decisions and determine that they have higher priority than other competitors, and that the current situation is safe enough to start lane switching. Drones further behind D will also move into the inner lane if the available gap is su ffi cient and they win the priority. In this way, road usage is distributed more evenly across the lanes. 
+
+4.3. Selection of Block Length 
+
+In the proposed algorithm, a block is introduced to coordinate lane-switching decisions in crowded tra ffi c conditions, where drones cannot determine whether neighboring drones are also attempting to switch to the same lane. Drones within the same block predict other drones’ de-cisions and determine their own actions accordingly. The block length is therefore a critical parameter, as it directly a ff ects the computational complexity, e ffi ciency, and prediction accuracy of the algorithm. Let n denote the number of neighboring drones detected by drone A. In the original STDG algorithm, the computational complexity is O(n), as drone A evaluates each neighboring drone once when calculating the cost function and making the decision. In PB-STDG, drone A may need to predict the decisions of multiple neighboring drones within the same block before making its own decision. The computational complexity then increases to O(mn ), where m is the number 16 of neighboring drones located within the same block. Since m is directly determined by the block length, increasing the block length also increases the computational complexity of the algorithm. Within each block, drones closer to the front boundary are given higher priority when mak-ing decisions. However, these drones may need to consider neighboring drones located in the next-ahead block, whose future actions cannot be predicted. Hence, these neighboring drones are treated as unpredictable potential collision risks. With the additional shared information, includ-ing the target lane and the scheduled time of the next algorithm execution, drones can identify and filter out some of these potential collision risks, thereby reducing unnecessary conservatism during the decision-making process. But to ensure safety, the drones at the front of a block may still adopt conservative actions 1 similar to those in the original STDG algorithm, often slowing down or stopping unnecessarily. The overall e ffi ciency of the algorithm is therefore influenced by the proportion of drones a ff ected by this e ff ect. Increasing the block length decreases the number of blocks and therefore reduces the proportion of drones that may make conservative decisions because of neighboring drones in next-ahead blocks. In the previous STDG and the proposed algorithm, ϵ1 defines the distance threshold used to determine whether a neighboring drone is considered a direct or potential collision risk. If another drone is within ϵ1 of the current drone, it is treated as a direct collision risk if it is in the candidate lane 2. If it is in a lane adjacent to the candidate lane, it is instead treated as a potential collision risk. A block length satisfying ϵb < ϵ 1 may cause neighboring drones within the potential collision range to be excluded from the prediction process. This is more likely to occur under high-density tra ffi c conditions since drones are closely spaced. Therefore, the prediction-based algorithm may make overly aggressive decisions and lead to an increased collision rate. To ensure that all relevant neighboring drones are considered during prediction, the block length should satisfy 
+
+ϵb ≥ ϵ1.
+
+The final factor influenced by the block length is the prediction accuracy. In the proposed algorithm, drones predict the decisions of neighboring drones based on the information learned 
+
+> 1However, they also ignore drones that will not execute the algorithm within a short period based on the information shared in the beacon packet. Therefore, even in such cases, the prediction-based algorithm performs more lane switching than STDG.
+> 2The lane that the current drone is considering switching to.
+
+17 from received beacon packets. To achieve accurate predictions, the information available to the predicting drone should be as consistent as possible with the actual information available to the predicted drone. The worst-case communication requirement occurs when the rearmost drone in the current block needs to predict the frontmost drone in the same block. To ensure that the rearmost drone can receive the same safety information as the frontmost drone, the distance can be as large as twice the block length. Since the rearmost drone should at least learn the information for all drones in the next-ahead block, the block length should satisfy: 
+
+ϵb < communication range 
+
+2Combining the above considerations, the block length should be carefully selected. It should not be too large, as this increases the computational complexity and reduces prediction accuracy, nor should it be too small, as this may cause the prediction process to ignore nearby drones. Based on this trade-o ff , the default block length used in this paper is set to 50 m, which is larger than the appropriate value of 15 m for ϵ1 identified in the previous study and smaller than half of the communication range ( ≈ 120 m). The performance of other block lengths is also evaluated in the simulations to validate this parameter selection. Based on the assumption that the block length ϵb is set to an appropriate value, we restrict the prediction-based algorithm to consider only drones in the current block and adjacent blocks. This restriction reduces the computational complexity while retaining the information most relevant to short-term collision avoidance and prediction. 
+
+4.4. Notations 
+
+We inherit the same notation (listed in Table 1) as in [23] for consistency, and we additionally define the following symbols used in PB-STDG: 
+
+• The block length ϵb.
+
+• The block identifier b represents the b-th block of the road. 
+
+• The set H(b) contains all existing drones in block b on the road. 
+
+• For a block b, bstart (b) and bend (b) denote the arc-length parameters of the start and end points of block b, respectively. 18 Symbol Description 
+
+(i, j) Lane identifier 
+
+N(i, j) One-hop neighbor lanes of ( i, j) (excluding ( i, j)) 
+
+C(i, j) Candidate lanes from ( i, j) ( N(i, j) ∪ (i, j)) 
+
+∆(i, j) Set of drones on lane ( i, j) known to the current drone 
+
+∆(L) Union of ∆(i, j) for all ( i, j) ∈ L 
+
+(i, j), (i′, j′)1 Hop distance between two parallel lanes ( i, j) and ( i′, j′)
+
+pos (A) Current arc-length-parameter of drone A 
+
+s An arc-length parameter point 
+
+Cmax High cost for marking infeasible candidate lanes 
+
+tnormal Time interval between two consecutive algorithm executions in normal cases 
+
+tstop Time interval between two consecutive algorithm executions when a drone is stopping 
+
+ts Time required for a complete lane switch 
+
+σγi′, j′ |γi, j (s) Distance along lane ( i, j) obtained by mapping the arc-length parameter s from lane ( i′, j′)Table 1: Notation used in the coordination-free STDG algorithm 
+
+4.5. Algorithm Inputs 
+
+The algorithm inputs are the neighbor table constructed from received beacon packets, the drone road system map, and the current drone’s own information. For each drone A in the neighbor table on the same road as the current drone (including the current drone itself), we collect: 
+
+• The drone ID /MAC Address A.
+
+• The current speed vA and the preferred speed vAp .
+
+• The current arc-length parameter sA.
+
+• The current lane identifier ( i, j)A.
+
+• The target lane identifier ( iT , jT )A, associated arc-length parameter point s(iT , jT )A , and the distance dtarget     
+
+> (iT,jT)A
+
+from the current position to that point. These values are set to None if drone A does not have a target lane. 
+
+• The lane ( iS , jS )A drone A is currently switching to; it is set to None if drone A is not currently switching lanes. 19 • The time tAn , which represents the remaining time until drone A executes its next invocation of the algorithm. It is calculated by subtracting the current time from the next algorithm time recorded in the beacon. Here, we pre-process these inputs into the following forms for use in subsequent algorithm steps. This pre-processing stage is executed at the start of every algorithm invocation. 
+
+• The current block identifier b of the current drone A. This is defined as 
+
+bA =
+
+
+
+σγ(i, j)A |γi0, j0 (sA)
+
+ϵb
+
+ (1) where ϵb is a configurable parameter that determines the block length used to split a road into several equal-sized blocks, and ( i0, j0) is the central lane identifier. 
+
+• The set of competitor drones O(A) of the current drone A is defined as 
+
+O(A) = nA′ A′ ∈ H(bA), tA′ 
+
+> n
+
+< tc, (iS , jS )A′
+
+= ∅o (2) where tc is an algorithm parameter used to determine the drones that may potentially col-lide with the current drone. If tA′ 
+
+> n
+
+< tc, this means that another drone A′ will start its algorithm within a very short time of the current drone A, and may su ff er a concurrent collision. These competitors should be in the same block as the current drone and should not be switching lanes. 
+
+• For each lane ( i, j) in the current road, the set of direct hazard drones D(i, j)A is 
+
+D(i, j)A = nA′ A′ ∈
+
+> 1
+
+[
+
+> k=−1
+
+H(bA + k),
+
+(( i, j)A′
+
+= (i, j)) ∨ (( iS , jS )A′
+
+= (i, j)) ,
+
+sA′
+
+∈ hbstart (bA) − ϵ1, bend (bA) + ϵ1
+
+io 
+
+(3) A direct hazard drone is a drone with which other drones may collide if they directly switch to its lane. A drone A′ is considered a direct hazard of lane ( i, j) if it is either currently on that lane or is switching to that lane. And it should be within a “bu ff ered” range ϵ1 around block bA.20 • For each lane ( i, j) in the current road, the set of potential hazard drones P(i, j)A is 
+
+P(i, j)A = nA′ A′ ∈
+
+> 1
+
+[
+
+> k=0
+
+H(bA + k),
+
+h(i, j)A′
+
+, (i, j)i 
+
+> 1
+
+= 1, tA′ 
+
+> n
+
+≤ 0 ∨
+
+tA′ 
+
+> n
+
+< tc ∧ sA′
+
+∈ hbend (bA), bend (bA) + ϵ1
+
+io 
+
+(4) A potential hazard drone is one whose behavior is highly uncertain and may result in a collision with other drones switching to the same lane simultaneously. A drone A′ can be seen as a potential hazard of lane ( i, j) if its current lane ( i, j)A′
+
+is a neighbor of ( i, j), and it either has a negative value 3 of tA′ 
+
+> n
+
+or is in the next block of b with tA′ 
+
+> n
+
+< tc. The selection areas corresponding to the sets O(A), D(i, j)A), and P(i, j)A are shown in Figure 5.      
+
+> Figure 5: The selection areas of drones in O(A), D(i,j)A), and P(i,j)A. Drones are assumed to receive complete infor-mation from at least the current block and blocks immediately ahead of and behind that.
+
+• The set C(( i, j)A′
+
+)A of candidate lanes for each drone A′ in set O(A) ∪ { A}. For each lane (i′, j′)A′
+
+∈ C(( i, j)A′
+
+)A the following information is further collected: 
+
+– The distance-along-the-lane dahead   
+
+> (i′,j′)A′
+
+to the closest drone ahead on lane ( i′, j′)A′
+
+.
+
+> 3This is caused by packet loss or delays in the beacon packets.
+
+21 – The speed v(i′, j′)A′ of the closest drone ahead on lane ( i′, j′)A′
+
+. It is assigned a value of infinity when there is no drone ahead. 
+
+– The number of direct hazard drones ∆direct   
+
+> (i′,j′)A′
+
+for drone A′ is defined as: 
+
+∆direct   
+
+> (i′,j′)A′
+
+= nA′′ ∈ D(( i′, j′)A′
+
+)A |σγi′′ , j′′ |γi′, j′ (sA′
+
+) − pos (A′′ )| < ϵ 1
+
+o (5) And the number of potential hazard drones ∆potential   
+
+> (i′,j′)A′
+
+drone A′ is defined as: 
+
+∆potential   
+
+> (i′,j′)A′
+
+= nA′′ ∈ P(( i′, j′)A′
+
+)A |σγi′′ , j′′ |γi′, j′ (sA′
+
+) − pos (A′′ )| < ϵ 1
+
+o (6) where ϵ1 > 0 is a threshold parameter used to control the selection range, and ( i′′ , j′′ )denotes the lane occupied by drone A′′ .These two numbers are used to represent the risk of the candidate lane. 
+
+– The achievable speed v∗  
+
+> (i′,j′)A′
+
+of drone A′ candidate lane ( i′, j′)A′
+
+, it is 
+
+v∗  
+
+> (i′,j′)A′
+
+=
+
+
+
+vA′ 
+
+> p
+
+: (dahead   
+
+> (i′,j′)A′
+
+> ϵ 2) ∧  (i′, j′)A′
+
+= (iT , jT )A′ 
+
+min 
+
+
+
+vA′ 
+
+> p
+
+, dtarget     
+
+> (iT,jT)A′
+
+/ts
+
+
+
+: (dahead   
+
+> (i′,j′)A′
+
+> ϵ 2) ∧  (i′, j′)A′
+
+, (iT , jT )A′ 
+
+min 
+
+
+
+vA′ 
+
+> p
+
+, v(i′, j′)A′ , dtarget     
+
+> (iT,jT)A′
+
+/ts
+
+
+
+: (dahead   
+
+> (i′,j′)A′
+
+≤ ϵ2) ∧  (i′, j′)A′
+
+, (iT , jT )A′ 
+
+min nvA′ 
+
+> p
+
+, v(i′, j′)A′
+
+o : (dahead   
+
+> (i′,j′)A′
+
+≤ ϵ2) ∧  (i′, j′)A′
+
+= (iT , jT )A′ 
+
+(7) 
+
+The achievable speed is the minimum of the preferred speed, the speed of the drone ahead (if it exists and its distance-along-the-lane from drone A′ is less than a thresh-old ϵ2), and the distance to the target point divided by the switching time ts.
+
+• For drone A′ belongs to O(A) ∪ { A}, the set of restricting lanes B(( i, j)A′
+
+)A ⊂ C(( i, j)A′
+
+)A \{(iT , jT )A′
+
+}. These lanes include the attachment points to non-target connection or o ff -ramps of drone A′ and may likely be occupied by other drones targeting one of these ramps. 
+
+4.6. Cost Model 
+
+In PB-STDG, we need to calculate the total cost for the current drone and the competitor drones belonging to O(A). Thus the equation of total cost for drone A′ in a candidate lane (i′, j′)A′
+
+is: 
+
+c(( i′, j′), v∗  
+
+> (i′,j′)A′
+
+)A′
+
+= cs(v∗  
+
+> (i′,j′)A′
+
+)A′
+
++ κ1 · cp(i′, j′)A′
+
++ κ2 · cc(i′, j′)A′
+
+(8) 22 where κ1, κ 2 ≥ 0 are non-negative weight parameters. In the total cost function: 
+
+• cs(·) is the speed cost function which assigns a cost related to the speed loss (i.e., the di ff erence between the preferred and achievable speed) on that lane. It is defined as 
+
+cs(v)A′
+
+= vA′ 
+
+> p
+
+− v2
+
+(9) This model imposes a stronger penalty for larger speed loss. 
+
+• cp(·) is the position cost function that quantifies how urgently the drone should move to-ward its target lane or away from the target lanes of other drones. It is defined as 
+
+cp(i′, j′)A′
+
+=
+
+
+
+f (dtarget     
+
+> (iT,jT)A′
+
+) · h(i′, j′), (iT , jT )A′ i 
+
+> 1
+
+: (( iT , jT )A′
+
+) , none) ∧ (( i′, j′) < B(( i′, j′)A′
+
+)A)
+
+Cmax : (( i′, j′) , (( iT , jT )A′
+
+) ∧ (( i′, j′) ∈ B(( i′, j′)A′
+
+)A)
+
+C f − h(i′, j′), (if , jf )i 
+
+> 1
+
+: (( iT , jT )A′
+
+) = none) ∧ (( i′, j′) < B(( i′, j′)A′
+
+)A)0 : otherwise (10) 
+
+Here, f (dtarget     
+
+> (iT,jT)A′
+
+) is a non-negative decreasing function that provides a multiplier rep-resenting the urgency level for the position cost if the drone A′ has a target lane. The influence of the position cost is small when the drone is far from its target. In this case, the term h(i′, j′), (iT , jT )A′ i 
+
+> 1
+
+represents a cost penalty that decreases as the hop distance from the candidate lane to the target lane becomes smaller. When drone A′ has no target lane, candidate lanes leading to other ramps are assigned the maximum cost penalty. For other candidate lanes ( i′, j′), the cost penalty is defined as a constant C f minus the hop distance to the farthest lane ( i f , j f ) that includes an attachment point to another ramp. Otherwise, the cost is set to zero. 
+
+• cc(·) is the collision cost function, which quantifies the risk associated with switching to the candidate lane. It is defined as 
+
+cc(i′, j′)A′
+
+=
+
+
+
+Cmax : (( i′, j′) , (i, j)A′
+
+) ∧ (∆direct   
+
+> (i′,j′)A′
+
+> 0) 0 : (i′, j′) = (i, j)A′
+
+∆potential   
+
+> (i′,j′)A′
+
+: otherwise (11) Any positive value of ∆direct   
+
+> (i′,j′)A′
+
+indicates a high risk of direct collision with other drones in lane ( i′, j′), thus the cost is set to the maximum value. If the candidate lane is the current 23 lane, no switching occurs and there is no risk of collision in this case. Otherwise, the cost equals the value of ∆potential   
+
+> (i′,j′)A′
+
+, reflecting the number of drones with uncertain behavior that could concurrently switch to the candidate lane and induce a collision. 
+
+4.7. Predict Competitor Decisions and Update Metrics 
+
+After obtaining the algorithm inputs, a competitor set O(A) is constructed. The next step is to predict the decisions of these competitors using the information contained in their beacon pack-ets. To ensure that all drones predict their competitors in the same order, a priority comparison function pd(A, A′) is introduced to determine the relative priority between two drones. In this paper, we have 
+
+pd(A, A′) = (sA > σ γ(i, j)A |γ(i, j)A′ (sA′
+
+)) ∨ (sA = σγ(i, j)A |γ(i, j)A′ (sA′
+
+) ∧ (A > A′)) (12) We only consider competitors whose priority is higher than that of the current drone A, since their decisions may a ff ect drone A. Competitors with lower priority than A are not predicted by A; instead, they are required to take the decision of A into account when making their own decisions. In this step, the algorithm iteratively selects the yet-unpredicted competitor A′ with the high-est priority from the set. If its priority is lower than that of the current drone, or if the set is empty, the iteration terminates and the final decision for the current drone is made. Otherwise, the following procedure is executed: 1. For each candidate lane ( i′, j′)A′
+
+∈ C(( i, j)A′
+
+)A of drone A′, calculate the weighted total cost c(( i′, j′), v∗  
+
+> (i′,j′)A′
+
+)A′
+
+.2. Select the predicted output pair (( io, jo)A′
+
+, v(io, jo)A′ ) based on the following equations 
+
+cA′ 
+
+> min
+
+≜ min      
+
+> (( i′,j′),v∗
+> (i′,j′)A′)∈τ
+
+c (i′, j′), v∗ 
+
+> (i′,j′)A′
+
+A′
+
+(13) 
+
+ (io, jo)A′
+
+, vA′
+
+> o
+
+ =
+
+
+
+arg min     
+
+> (( i′,j′),v∗
+> (i′,j′)A′)∈τ
+
+c (i′, j′), v∗ 
+
+> (i′,j′)A′
+
+A′
+
+, cA′ 
+
+> min
+
+< Cmax ,
+
+ (i, j)A′
+
+, 0, cA′ 
+
+> min
+
+≥ Cmax .
+
+(14) 24 where τ denotes the set of candidate lane–speed pairs. In the original STDG algorithm, when multiple candidate lanes have the same minimum cost below Cmax , a lane is randomly selected from these candidates as the output lane. In the prediction-based algorithm, however, this selection process needs to be deterministic and known to all drones so that they obtain the same result. Therefore, a lane priority function pl! (i, j), (i′, j′) is introduced to break ties. In this paper, we adopt a simple form: 
+
+pl
+
+ (i, j), (i′, j′) = (i ∗ k + j) > (i′ ∗ k + j′) (15) The constant k is chosen as a su ffi ciently large integer to ensure that di ff erent pairs ( i, j)output distinct values of ( i ∗ k + j). If the current lane ( i, j)A′
+
+also outputs the minimal cost, we directly select ( io, jo)A′
+
+= (i, j)A′
+
+without applying the lane priority comparison. Otherwise, the lane with the highest priority is selected. 3. If the output lane coincides with the current lane but di ff ers from the target lane, determine whether the competitor needs to stop in order to avoid missing the target point by the following criterion: 
+
+vA′ 
+
+> o
+
+=
+
+
+
+0 : (dtarget     
+
+> (iT,jT)A′
+
+< ϵ 2) ∧ (dahead   
+
+> (io,jo)A′
+
+< ϵ 2)
+
+dtarget     
+
+> (iT,jT)A′
+
+/tnormal : (dtarget     
+
+> (iT,jT)A′
+
+< ϵ 2) ∧ (dahead   
+
+> (io,jo)A′
+
+≥ ϵ2)
+
+vA′ 
+
+> o
+
+: otherwise (16) 4. Based on the predicted decision, update: (a) vA′
+
+to vA′
+
+> o
+
+(b) ( i, j)A′
+
+to ( io, jo)A′
+
+(c) add A′ to D(io, jo)A if it does not exist 5. Remove A′ from O(A)
+
+4.8. Make Final Decision and Schedule the Next Run 
+
+After simulating the decisions that other competitors may make and assuming that they have acted according to the predicted decisions, the algorithm proceeds to make the final decision for the current drone A by applying the same steps from 1 to 3 described in Section 4.7. The current 25 drone A will then switch to the output lane with the output speed, and immediately broadcast a beacon to inform nearby drones of its updated state. The period until the next algorithm invocation tnext depends on the final decision. If the output lane di ff ers from the current lane, tnext is set to ts to ensure that the drone can adjust immediately upon completing the lane switch. Otherwise, if the output speed is nonzero, tnext = tnormal ; if the output speed is zero, tnext = tstop where tstop < tnormal . This setting allows stopped drones to check their surrounding environment more frequently, ensuring a faster exit from the stopped state. The overall pseudocode is listed below. 
+
+Algorithm 1: PB-STDG: Prediction-Based Short-Term Decentralized Greedy 
+
+Data: collect algorithm inputs (see Section 4.5) 
+
+Result: (io, jo), vo
+
+1 vo ← 0; ( io, jo) ← (i, j); 
+
+2 O(A) ← updated and sorted according to Eq.(2) and (12) ; 
+
+3 for A′ ∈ O(A) do 4 if O(A) is empty or pd (A, A′) is True then 5 break; 
+
+6 end 7 vA′ 
+
+> o
+
+← 0; 
+
+8 (io, jo)A′ ← (i, j)A′ ;
+
+9 cA′ 
+
+> o
+
+← Cmax ;
+
+10 C(( i, j)A′ )A ← N (i, j)A′ ∪ n(i, j)A′ o;
+
+11 for (i′, j′)A′ ∈ C(( i, j)A′ )A do 12 ctotal ← cs(v∗  
+
+> (i′,j′)A′
+
+)A′ + κ1 · cp(i′, j′)A′ + κ2 · cc(i′, j′)A′ ;
+
+13 if cA′ 
+
+> total
+
+< cA′ 
+
+> o
+
+or (cA′ 
+
+> total
+
+== cA′ 
+
+> o
+
+and ( pl
+
+ (i′, j′)A′ , (io, jo)A′  or (io, jo)A′ == (i, j)A′ ) ) then 14 cA′ 
+
+> o
+
+← ctotal ;
+
+15 vA′ 
+
+> o
+
+← v∗  
+
+> (i′,j′)A′
+
+;
+
+16 (io, jo)A′ ← (i′, j′)A′ ;
+
+17 end 18 end 19 Update algorithm metrics based on step 4 described in Section 4.7; 
+
+20 Remove A′ from O(A)
+
+21 end 22 Make own decision: vo, (io, jo) ← updated using the same procedure as in Lines 7–18 by replacing A′ with A;
+
+23 Switch to lane ( io, jo) with speed vo;
+
+24 Schedule the next execution of algorithm based on the method introduced in Section 4.8 
+
+26 5. Simulation Results 
+
+In this section, we present several simulation results to compare the performance metrics, mainly the collision rate and average speed, between the STDG and prediction-based algorithms. We explore the impact of environmental parameters and algorithm configurations, and conduct a sensitivity study. Finally, we discuss this algorithm and outline directions for future research. 
+
+5.1. Simulation Environment and Assumptions 
+
+We run the simulations on OMNeT ++ 5.6.2 with the INET framework version 4.2.5. Table 2 lists the fixed simulation and algorithm parameters.                     
+
+> Parameter Value
+> Path Loss Exponent 2Minimal Safety Distance 0.5 m Lane Radius 10 m Preferred Speed Interval 10–15 m /sPreferred Speed Distribution Uniform Replication Number per Simulation 50 Simulation time 500 s Algorithm Period (Normal) tnormal 2 s Algorithm Period (Stop) tstop 0.5 s Time for lane switching ts1 s Time Threshold tc0.5 s Maximum Cost Definition Cmax 30000 Distance Threshold ϵ230 m Table 2: Fixed Simulation Parameters
+
+In the prediction-based algorithm, we introduce an additional parameter, block length ϵb. In Section 4, we introduced guidelines for selecting a suitable value of ϵb. In our simulations, this parameter is fixed at 50 meters for most scenarios. During the simulation process, we make the following assumptions: 
+
+• Drones are assumed to have knowledge of the tested DRS. Once a drone is injected into the system, it is assigned a random destination. The end-to-end path from its start point to the destination is also known by the drone, and it will follow that path during its whole lifespan. 27 • Drones in the road system are treated as points. A collision is considered to occur when the distance between two drones is smaller than the minimum safety distance. The two drones involved in the collision are immediately removed from the simulation and no longer a ff ect other drones in the system. However, their safety information is still retained by other drones until no packet has been received from them for ten seconds. 
+
+• For each lane with an entry point at the beginning of the road, drones are continuously injected into the lane at randomly determined time intervals. The inter-arrival time is drawn from an exponential distribution with a mean determined by the Generation Rate .The generation rate represents the ideal number of drones generated per second for each lane. However, when the road system becomes fully occupied by drones, additional drones cannot be injected. In such a case, the actual number of drones injected into the system per second per lane is referred to as the In jection Rate , which can be much lower than the 
+
+Generation Rate under high-density conditions. 
+
+• Once a drone reaches its destination, it is immediately removed from the simulation, but its information remains in other drones’ neighbor tables until the corresponding entries expire. The neighbor table stores all safety information received from other drones, and its entries are maintained as soft state. 
+
+• Drones accurately know and send their current position to neighbors. GPS noise is ignored during the simulation. 
+
+• In the original STDG algorithm, a threshold of 2 ϵ1 is used to identify potential risks in neighboring lanes, whereas the prediction-based algorithm uses a threshold of ϵ1. To pro-vide a consistent basis for comparison, a threshold of ϵ1 is used for both algorithms in all subsequent simulations. This adjustment increases the average speed of STDG, while its collision rate remains close to that obtained with the original threshold. The key performance metrics are Collision Rate (cr) , which is the fraction of collided drones among all injected drones; Average Speed (as) , which indicates the average speed of all injected drones; and Throughput , which is the number of drones arriving at their destinations per second, also referred to as the arrival count. With low collision rates, the throughput should be practically the same as the injection rate. The preliminary study shows that the system reaches a steady state 28 after an initial transient period. The detailed period depends on the road system, and the largest value among all tested road systems is 200 seconds. Thus we only count the throughput after that time in all simulations. Additional metrics will also be investigated for specific purposes in the following sections. For all following simulations, we run 50 replications and the presented results are the average values for these replications to ensure they are statistically meaningful. 
+
+5.2. Comparing the Two Algorithms on Simple DRS 
+
+First, a preliminary study was conducted to explore the impact of MAC /PHY parameters, including transmit power and beaconing rate. The tested values were 2 mW and 5 mW for transmit power, and 5 Hz, 10 Hz, 20 Hz, and 50 Hz for beaconing rate. Both the STDG and prediction-based algorithms were evaluated on a simple road system consisting of two roads connected by two ramps (shown in Figure 6). This simple DRS allows us to evaluate the ability of the algorithm to help drones reach their destinations, overtake slower drones, switch to another road, and avoid collisions. 
+
+> Figure 6: A simple DRS used to compare STDG and PB-STDG. The two roads are located at di ff erent altitude levels. The right-hand side shows the lane arrangement of both roads.
+
+Table 3 lists the value of key algorithm parameters used in this section. We choose a con-servative position-to-collision cost weight ratio, κ1/κ 2. A small value makes the total cost more likely to reach Cmax , causing drones to make more conservative decisions. The distance threshold is also selected to ensure close-to-zero collisions will happen if no packet loss occurs. Therefore the e ff ects of the MAC /PHY parameters on the algorithms could be clearly observed. The results show that there are no significant di ff erences between di ff erent transmit power–beaconing rate combinations, except for all 50 Hz cases, which result in a 0.2% collision rate across all trans-29 Parameter Notation Value 
+
+Position Cost Coe ffi cient κ1 1Collision Cost Coe ffi cient κ2 10000 Distance Threshold for Searching Neighboring Drones ϵ1 15 m 
+
+> Table 3: Key Algorithm Parameters in Initial Study
+
+mit powers and algorithms, compared to the close-to-zero collision rates observed in the other cases. This result is consistent with the previous study of the STDG algorithm. Therefore, in all subsequent simulations, 2 mW and 10 Hz are selected as the fixed values for transmit power and beaconing rate. During the exploration of the STDG algorithm, one finding was that an extremely small 
+
+κ1/κ 2 ratio (e.g., 1 /10000) results in the lowest collision rate, but also the lowest average speed compared to other ratios such as 1 /1, 1 /100, and 100 /1. Since the objective of the proposed prediction-based algorithm is to improve the average speed without degrading the collision rate, the following simulations in this section focus on comparing the average speed and throughput under the κ1/κ 2 = 1/10000 setting. From the results, the average collision rates for all algorithms and all varied parameters are always close-to-zero (average value < 0.007%, with the maximum value 0.17% over all replica-tions). Figure 7 shows the average speed achieved by the STDG and prediction-based algorithms. The gray bars are fixed at 12.5 m /s, which represents the ideal average speed calculated from the default uniform speed distribution ranging from 10 m /s to 15 m /s. The percentage values shown in the legend (25% and 50%) represent the proportion of drones whose destinations are di ff erent from their initial roads. Since the evaluated scenario consists of two roads connected by two ramps, a value of 50% indicates that half of the drones must cross a connecting ramp to move from their spawn road to the other road, and the remaining half continue cruising on their original roads throughout the simulation. The most obvious finding is that the prediction-based algorithm achieves a higher average speed than the STDG algorithm in all cases. As the generation rate increases, the di ff erences between the two algorithms become more noticeable. When the generation rate ( gr ) is 0.1 or 0.2, the average speeds achieved by the prediction-based algorithm can even reach the ideal value. When gr = 0.5, the average speeds of both algorithms decrease substantially but the performance 30 Figure 7: Average speed for STDG and Prediction-Based algorithms in two-road two-ramp scenario, where the beaconing rate is 10 Hz and the transmit power is 2 mW. 
+
+gap between the two algorithms becomes more pronounced, with values of 4.71 m /s versus 6.51 m/s in the 50% case, and 5.70 m /s versus 8.19 m /s in the 25% case for the STDG and prediction-based algorithms, respectively. Another observation is that the average speed decreases as the proportion of drones whose entry and exit roads are di ff erent increases. This trend becomes more evident at higher generation rates. Figure 8 shows the throughput for the same simulations. Since each of the two tested roads consists of five lanes, the ideal arrival count is equal to the total number of lanes (i.e., 10) multi-plied by the generation rate. Then, the ideal arrival counts are 1, 2, and 5 for generation rates ( gr )of 0.1, 0.2, and 0.5, respectively. When some roads become congested, the actual arrival count may be much lower than the ideal value because no additional drones can be injected into these roads for a period of time. This is the main reason for the di ff erence between the actual and ideal arrival counts. Since the collision rates are close-to-zero in all cases, the impact of collisions on the arrival count can be largely ignored. For generation rates ( gr ) of 0.1 and 0.2, the arrival counts per second are similar for both algorithms and are only slightly lower than the ideal values. However, in the gr = 0.5 cases, the prediction-based algorithm demonstrates substantially better performance than the STDG algorithm. Even in the 50% case, where half of the drones need to switch roads, the prediction-based algorithm achieves a higher arrival count than the 25% case of the STDG algorithm. 31 Figure 8: Arrival count for STDG and Prediction-Based algorithms in two-road two-ramp scenario, where the beaconing rate is 10 Hz and the transmit power is 2 mW. 
+
+5.3. Evaluation of Lane Usage Distribution 
+
+During the study of the STDG algorithm, a hypothesis was proposed regarding the existence of an inner lane vanishing phenomenon. Based on observations from the simulation results, this phenomenon refers to the tendency of inner lanes to become frequently less occupied when the generation rate is high. The prediction-based algorithm considers the inner lane vanishing problem and aims to improve the utilization of inner lanes, with the potential to improve average speed and throughput. In this section, lane usage distributions are collected and analyzed to evaluate the e ff ects of di ff erent algorithms. The usage of lane ( i, j) is defined as 
+
+usage i, j =
+
+P3000  
+
+> k=0
+
+fi, j(200 + 0.1k)
+
+P3000  
+
+> k=0
+
+n(200 + 0.1k)where fi, j(t) denotes the number of drones in lane ( i, j) at time t, and n(t) denotes the total number of drones across all lanes in the same road at time t. The simulation reaches a steady state after 200 s and ends at 500 s. Therefore, drone positions are sampled every 0.1 s over the interval from 200 s to 500 s, yielding 3001 samples. The lane usage is then computed as the ratio of the accumulated number of drones in lane ( i, j) to the accumulated number of drones across all lanes during the sampling period. We first reproduce the previous simulations in which the inner lane vanishing phenomenon was observed under the κ1/κ 2 = 1/10000 setting. The results show that the inner-lane (i.e. lane 32 (0,0)) usage of STDG is 12.5% and 14.5% for generation rates ( gr ) of 0.1 and 0.2, respectively. We then evaluate the prediction-based algorithm using the same parameter settings. The corre-sponding inner-lane usage increases to 16.8% and 18.3%, respectively. The average speeds of STDG and the prediction-based algorithm are 11.9 m /s and 12.4 m /s for gr = 0.1, and 7.1 m /sand 12.3 m /s for gr = 0.2, respectively. In this scenario, the prediction-based algorithm improves inner-lane utilization. Many drones that would otherwise be blocked by slower drones ahead are able to switch to the central lane, where they can travel at their preferred speed or experience less speed reduction. Therefore, the average speed is increased. Next, two additional road systems are introduced to further investigate the e ff ects of the two algorithms on lane usage. One system consists of a single 1000 m long road without any ramps, allowing the e ff ects of the algorithms to be evaluated without bias caused by di ff erent destinations. Its lanes form a three-tier hexagonal network, where the first tier contains the central lane with lane identifier (0,0), the second tier consists of six lanes directly connected to the central lane, and the third tier contains twelve lanes connected to the second-tier lanes. Another system is derived from the first system by introducing an o ff -ramp connected to lane (2,0) at the end of the road to evaluate the algorithms under biased tra ffi c conditions. We refer to them as "1r0r" (1 road and zero ramps) and "1r1r" (1 road with 1 ramp) in the following discussion. We set the generation rate to 0.5 for both road systems to simulate a high-density scenario. For the 1r0r case, the simulation results show that no collisions occurred for either algorithm, and the lane usage distributions for them remain uniform, with the percentage for each lane be-ing approximately 5%. However, in the 1r1r scenario, when half of the drones need to switch to the ramp, a lane vanishing phenomenon similar to that observed previously appears in lane (2,0) when using the STDG algorithm. The prediction-based algorithm also exhibits this phe-nomenon, although it is much less pronounced. Figure 9 shows the lane usage distributions for both algorithms. For the STDG algorithm, lane (2,0) exhibits the lane vanishing phenomenon. Its lane usage of 2.95% is substantially lower than that of all other lanes. In contrast, the five left-hand-side lanes ((-2,2), (-2,1), (-2,0), (-1,-1), and (0,-2)), together with the central lane (0,0), carry a sub-stantially higher proportion of drones. Meanwhile, the lanes adjacent to (0,0) and (2,0) also 33 Figure 9: Lane Usage Distributions for STDG and Prediction-Based Algorithms in One Road One Ramp Scenario. In each hexagon, ( i, j) denotes the lane identifier, and the percentage indicates the corresponding lane usage. 
+
+exhibit relatively low lane usage, although the imbalance is less pronounced than that of lane (2,0). For the prediction-based algorithm, the same phenomenon can still be observed, but it is much less pronounced. Lane usage is distributed more evenly across the network, and the under-utilization of lane (2,0) is largely mitigated. Since the position cost function encourages drones whose destination is not the o ff -ramp to move away from lane (2,0), these drones tend to concentrate in the left-hand-side lanes under both algorithms. As lanes such as (0,0) and (-2,0) become increasingly crowded, drones using STDG are less likely to switch to another lane because they assume that many neighboring drones have the same intention. In contrast, the prediction-based algorithm enables drones to predict the actions of their neighbors, and allows them to avoid such overly cautious decision-making and make e ff ective use of the available road space. In the 1r1r scenario, the average speeds achieved by the two algorithms are both around 5 m /s, indicating that the severe congestion limits the e ff ectiveness of the prediction-based algorithm. In contrast, in the 1r0r scenario, the average speeds achieved by the STDG and prediction-based algorithms are 11.12 m /s and 12.48 m /s, respectively. Although the prediction-based algorithm provides only a modest improvement over STDG, it maintains an average speed that is very close to the ideal cruising speed of 12.5 m /s. 34 5.4. Complex Road System and Impact of Block Length 
+
+In the following studies, we focus on evaluating the prediction-based algorithm on a complex road system which contains four roads, seven ramps, and a total of 21 lanes. The road system is shown in Figure 10. Each unit cell in the figure represents a 200 m × 200 m area, and all four roads are about 1200 meters long. 
+
+> Figure 10: Drone Road System used in the simulations
+
+We investigate the e ff ect of the block length ϵb on the performance metrics, where ϵb is measured in meters. The parameter combination κ1-κ2-ϵ1 = 10-10000-15 is used throughout this experiment, and two drone generation rates, gr =0.2 and gr =0.5, are considered. The results are presented in Figures 11 and 12. For the gr = 0.2 case, the collision rate reaches its highest value 1.11% when ϵb = 1m, and rapidly decreases to a close-to-zero level as ϵb increases. The average speed shows no significant variation, remaining around 12.26 m /s for all tested values. For the gr = 0.5 case, the collision rate remains significantly high when ϵb is small. The highest collision rate of 2.58% occurs when ϵb = 1m, while the second-highest value of 0.44% is observed when ϵb = 5m. However, when ϵb > 50 m, only a few collisions are observed, and the di ff erence between these cases is negligible. Regarding the average speed, it decreases rapidly 35 Figure 11: Collision rate for di ff erent block lengths 
+
+from 12.06 m /s to 8.79 m /s when ϵb < 30 m, and then remains relatively stable as ϵb continues to increase. 
+
+> Figure 12: Average speed for di ff erent block lengths
+
+5.5. Further Comparison and Sensitivity Analysis 
+
+The next simulation compares the proposed prediction-based algorithm with STDG. Based on the previous results for the STDG algorithm, when gr = 0.2, the best collision rate perfor-mance is achieved with the κ1-κ2-ϵ1 combination of 1-10000-15, while the highest average speed is achieved with the 100-1-5 combination. We then investigate the performance of these two parameter combinations under the prediction-based algorithm. Table 4 summarizes the results for both algorithms. In the first case ( κ1 = 1, κ2 = 10000, ϵ1 = 15), which corresponds to a low-collision con-36 κ1 κ2 ϵ1 Max. Collision Rate Avg. Speed (m /s) Arrival Count STDG 1 10000 15 0.057% 10.2842 2.74                  
+
+> Prediction-Based 0.00% 12.1829 3.62
+> STDG 100 151.27% 12.3005 3.73
+> Prediction-Based 0.64% 12.3117 3.73
+> Ideal 0.00% 12.5 4.2 Table 4: Simulation results for 50 replications in the complex road system for STDG and PB-STDG, where gr =0.2
+
+figuration, both algorithms achieve a close-to-zero collision rate. However, the prediction-based algorithm achieves a noticeably higher average speed (12.18 m /s compared to 10.28 m /s for STDG) and approaches the theoretical ideal value of 12.5 m /s. It also achieves a higher arrival count, indicating improved overall system throughput without increasing collision risk. The arrival count represents the system throughput, and the ideal value under the tested set-ting is 4.2. The prediction-based algorithm achieves 3.62 arrivals, compared to 2.74 for STDG, corresponding to 86.2% and 65.2% of the ideal value, respectively. In the second case ( κ1 = 100, κ2 = 1, ϵ1 = 5), which emphasizes speed-oriented opti-mization, both algorithms reach near-maximum average speeds (around 12.30 m /s). But the prediction-based algorithm still achieves a lower maximum collision rate (0.64% versus 1.27%). Compared to the ideal metrics, the parameter combination (1, 10000, 15) for the prediction-based algorithm provides a favorable balance between safety and tra ffi c e ffi ciency among the tested set-tings, achieving a zero collision rate and an average speed of 12.2 m /s, only 0.3 m /s below the theoretical ideal value. We further test more parameter combinations and conduct a sensitivity study on the prediction-based algorithm to understand the relative impact of these parameters on our performance met-rics. For comparison, the same parameter combinations are also evaluated using STDG. Table 5 shows the full simulation results under various parameter combinations, and Table 6 shows the results of the sensitivity study. Across di ff erent generation rates, the overall average speed and arrival count for these pa-rameter combinations remain relatively consistent. When gr = 0.2, the average speed remains around 12.3 m /s, while for gr = 0.1, it is approximately 12.45 m /s. 37 Generation Rate κ1 κ2 ϵ1 Collision Rate (%) Average Speed (m /s) Arrival Count                                                                                                 
+
+> 0.2 110 15 0.0086 (1.3888) 12.32 (9.56) 3.73 (1.69) 0.2 110 50.4224 (1.41) 12.36 (12.01) 3.78 (3.79) 0.2 110000 15 0 (0.0026) 12.18 (10.28) 3.62 (2.74) 0.2 110000 50.4694 (1.164) 12.37 (11.72) 3.75 (3.57) 0.2 10 10 15 0.0022 (1.1604) 12.28 (11.89) 3.74 (3.64) 0.2 10 10 50.314 (1.726) 12.28 (11.93) 3.78 (3.57) 0.2 10 10000 15 0 (0.0048) 12.28 (11.13) 3.75 (3.58) 0.2 10 10000 50.3306 (1.0864) 12.29 (11.83) 3.78 (3.41) 0.1 110 15 0 (0) 12.47 (12.17) 2.01 (1.99) 0.1 110 50.138 (0.1946) 12.48 (12.24) 1.97 (1.95) 0.1 110000 15 0 (0) 12.49 (11.95) 1.98 (1.98) 0.1 110000 50.0934 (0.3966) 12.49 (12.14) 1.98 (1.91) 0.1 10 10 15 0.004 (0.3680) 12.45 (12.24) 1.99 (1.99) 0.1 10 10 50.0646 (1.4428) 12.41 (12.30) 1.96 (1.98) 0.1 10 10000 15 0 (0) 12.46 (11.95) 1.99 (1.97) 0.1 10 10000 50.1003 (0.4016) 12.43 (12.11) 2 (2.01) Table 5: Simulation results from 50 independent simulation replications under various parameter combinations for PB-STDG and STDG (shown in parentheses).
+
+The collision rate becomes zero in many cases where ϵ1 = 15 m, whereas in the remaining cases it remains close to zero ( < 9 × 10 −3%). In contrast, when ϵ1 = 5 m, the collision rate shows noticeable non-zero values ranging from 0 .06% to 0 .5%. Compared with the STDG algorithm, the prediction-based algorithm consistently achieves a higher average speed while maintaining a lower or comparable collision rate across all parame-ter combinations. In particular, in the 1-10000-15 and 10-10000-15 scenarios, both algorithms achieve close-to-zero collisions, whereas the prediction-based algorithm provides a noticeable improvement in both average speed and throughput. A linear regression model was fitted using coded parameter levels to quantify the relative influence of the tested factors. The remaining variation of percentage contribution is associated with residual and /or interaction e ff ects. From the sensitivity study results of the PB-STDG, the R2 values for collision rate, average speed, and arrival count are 99.14%, 94.51%, and 99.98%, which indicates that the regression 38 Collision rate Average speed (m /s) Arrival count                                                      
+
+> Average of responses 1.2e-3 12.3837 2.8631 Minimum of responses 0.0 12.1829 1.97 Maximum of responses 4.69e-3 12.4952 3.81
+> R2value (%) 99.1394 94.5068 99.9791
+> Regression coe ffi cients
+> Cost parameter κ1(Coe ffi cient α1)-2.0e-4 -1.8e-2 1.1e-2 Cost parameter κ2(Coe ffi cient α2)0.0 -3.8e-3 -6.9e-3 Distance threshold parameter ϵ1(Coe ffi cient α3)-1.2e-3 -1.0e-2 -1.2e-2 Generation rate (Coe ffi cient α4)-8.0e-4 -8.4e-2 0.8781
+> Percentage contributions
+> Cost parameter κ1(% contr.) 1.2934 3.5112 0.0146 Cost parameter κ2(% contr.) 0.0626 0.1567 0.0061 Distance threshold parameter ϵ1(% contr.) 54.4785 1.1312 0.0183 Generation rate (% contr.) 20.8291 78.4950 99.8278 Table 6: Regression analysis results and percentage contributions of parameters for PB-STDG.
+
+models fit the simulation data very well and are able to explain most of the observed variation in the performance metrics. The generation rate contributes most significantly to the arrival count (99.83%). It also has a substantial e ff ect on the average speed (78.50%) and a moderate e ff ect on the collision rate (20.83%). Among the algorithm parameters, the distance threshold parameter ϵ1 makes the largest contribution to the collision rate (54.48%), with a negative regression coe ffi cient indi-cating that increasing ϵ1 reduces the collision rate. In addition, ϵ1 has a minor negative e ff ect on the average speed (1.13%). The remaining regression coe ffi cients and percentage contributions indicate that the position cost parameter κ1 and the collision cost parameter κ2 have limited influence on the performance metrics. Specifically, κ1 contributes 3.51% to the average speed and 1.29% to the collision rate, while the contributions of the other parameters are negligible. 
+
+5.6. Discussion 
+
+In the simulation study, we investigate both the previous STDG algorithm and the proposed prediction-based algorithm under various parameter settings across several road systems. Across all simulation results, a common conclusion is that the prediction-based algorithm consistently 39 achieves higher average speeds while maintaining comparable or lower collision rates compared to the STDG algorithm in all tested scenarios. This advantage becomes more pronounced when the drone density is high or when a large proportion of nearby drones need to switch lanes frequently. For example, in the complex drone road system scenario, the average speed increases from 10.28 m /s to 12.18 m /s when using the prediction-based algorithm. In the scenario shown in Figure 7, the prediction-based algorithm provides at least a 35% improvement in average speed without degrading the collision rate. The additional prediction mechanism provides a possible explanation for these observations. During the previous study, the challenge of STDG in the feasible-lane selection phase was that drones could not determine whether nearby drones also intended to switch to the same lane. Un-der the low-collision-rate strategy (i.e., low position cost weight and high collision cost weight), drones tend to make highly conservative decisions. A candidate lane can be easily discarded when nearby drones are detected in its neighboring lanes, causing the stay-in-current-lane be-havior to become the preferred option. This consequently reduces the overall average speed. Under the speed-oriented strategy (i.e., high position-cost weight and low collision-cost weight), the issue described above can be alleviated. However, the trade-o ff is that drones tend to ignore the risk of concurrent switching, which consequently leads to a higher collision risk. PB-STDG is able to balance these two strategies. Since drones share additional information with neighboring drones, such as target lanes and preferred speeds, they can predict the decisions of nearby drones and make more informed decisions accordingly. In the evaluated scenario, only a small number of drones near the front boundary of a block need to explicitly consider concurrent switching conflicts. Most drones instead rely on predicted behaviors of neighboring drones and select either the optimal lane or a secondary optimal lane if the preferred lane is already occupied. Drones then have a greater opportunity to switch to lanes that either allow higher cruising speeds or lead toward their target destinations without unnecessary slowing or stopping. To further validate this finding, we collect the total number of algorithm executions and the number of decisions that switch lanes for both algorithms in the same four-road, seven-ramp DRS with the same parameter configuration (10-10000-15 as κ1-κ2-ϵ1, and gr = 0.2). The results are shown in Table 7. From the results, the prediction-based algorithm performs fewer algorithm executions but 40 Algorithm Total Algorithm Executions Lane-Switching Decisions 
+
+STDG 186288 2445 PB-STDG 142419 4790 
+
+> Table 7: Comparison of STDG and PB-STDG in Handling Concurrent Lane Switching
+
+makes more lane-switching decisions. According to the cost model, a successful lane-switching action either increases a drone’s cruising speed or moves it closer to its target lane. Both cases help the drone reach its destination faster and consequently improve the throughput. Therefore, the substantial increase in lane-switching decisions made by the prediction-based algorithm in-dicates that it can encourage drones to safely perform lane switching, thereby improving tra ffi ceffi ciency. In addition, since the number of drones is similar for both algorithms and drones execute the algorithm more frequently when they are in the stop state, fewer algorithm executions suggest that drones using the prediction-based algorithm are less likely to remain in the stop state. This indirectly demonstrates the higher operational e ffi ciency of drones under the prediction-based algorithm. Based on the additional simulation results on lane usage distribution, the previously proposed inner lane vanishing hypothesis is not an accurate explanation of the limitation of the STDG algorithm. The results suggest that, without any lane-switching demand, the STDG algorithm does not noticeably a ff ect the lane usage distribution and therefore does not cause inner lanes to vanish. However, when a large proportion of drones share the same target lane, the STDG algorithm can cause the target lane to gradually fall out of use. This occurs because many drones fail to switch to the desired lane in order to avoid potential collisions with other drones attempting the same maneuver. As a result, these drones may accumulate in the surrounding lanes and block the target lane. Figure 9 indicates that the PB-STDG algorithm can mitigate the lane vanishing problem by applying the same mechanism for resolving concurrent switching conflicts discussed above. In addition, it leads the lane usage distribution toward a more even pattern, but high-demand lanes still have correspondingly high usage. In contrast, under the STDG algorithm, some high-demand lanes remain underutilized. This is one of the main reasons why the prediction-based 41 algorithm achieves a higher average speed. However, in an extremely crowded scenario, where a large number of drones have the same target ramp and become congested before entering it, the prediction-based algorithm provides limited improvement in the throughput from the road to the target ramp. In this case, the bottle-neck is no longer caused by the decision-making process but by the limited capacity of the drone road system, which is determined by drone density and road system design. Based on the results of varying the block length ϵb, ϵb should not be set to a small value, especially when it is smaller than ϵ1. This is because drones only consider neighbors belonging to the same or adjacent blocks as potential collision risks. When ϵb is small, drones only consider a relatively limited area (their current and adjacent blocks) around themselves and may ignore other drones that are physically close but located outside the considered blocks. In this case, the collision rate increases noticeably. When the drone density is high, a larger ϵb value may slightly increase the collision rate. This is because a larger block size means that more neighboring drones need to be considered during the prediction process. An incorrect prediction for any neighboring drone may a ff ect the decision-making process and eventually lead to a collision. Therefore, an appropriate value of ϵb should be larger than the threshold ϵ1 but should not be excessively large, as it may increase the prediction complexity and prediction error rate. The sensitivity study indicates that the environmental parameter generation rate has the great-est influence on average speed and throughput, while the algorithm parameter ϵ1 has the most significant e ff ect on collision rate. In comparison, the remaining parameters, κ1 and κ2, have only limited influence on the performance metrics in the prediction-based algorithm. Under the STDG algorithm, however, κ1 and κ2 contribute more substantially to system performance. This phenomenon is expected for both algorithms. In the STDG algorithm, the κ1/κ 2 ratio controls the strategy used to handle concurrent switching problems. A higher ratio leads to more aggressive decisions, whereas a relatively lower ratio results in more conservative behavior. These di ff erent strategies then produce variations in both collision rate and average speed. In the prediction-based algorithm, κ2 is often less influential because the movements of nearby drones can be predicted, making it unnecessary to heavily consider potential collision risks in most cases. As a result, varying κ1 alone does not substantially alter the candidate lane pool. Consequently, the average speeds across di ff erent parameter settings remain close to each other. 42 Although the prediction-based algorithm performs better than the STDG algorithm in our evaluated scenarios, it still has several disadvantages that are not directly reflected in the simula-tion results. The first issue is the increased computational complexity. For STDG, the computa-tional complexity depends on the number of nearby drones and is a ff ected by the transmit power. Under the same transmit power, since drones are required to predict the movements of nearby drones within the same block, the overall complexity increases from O(n) to O(mn ), where n is the number of nearby drones and m is the number of nearby drones within the same block. In addition, a relatively minor issue is the vulnerability introduced by the additional information shared in beacon packets. Such information may be manipulated to gain higher lane switching priority. For example, a drone could falsely advertise a higher preferred speed, thereby increas-ing the speed cost calculated by neighboring drones and causing them to avoid a lane that the malicious drone subsequently switches into. 
+
+6. Conclusion and Future Work 
+
+This paper presents PB-STDG, a prediction-based extension of the Short-Term Decentral-ized Greedy (STDG) guidance algorithm. The proposed algorithm inherits the cost-function mechanism of STDG, which encourages drones to continuously make short-term greedy deci-sions to improve tra ffi c e ffi ciency. It further introduces a prediction mechanism that enables drones to anticipate the decisions of neighboring drones using the additional information shared in beacon packets. This prediction process alleviates the over-conservative behavior observed in high-density tra ffi c scenarios. By predicting the intended movements of neighboring drones, each drone can make more informed decisions. A series of simulation studies was conducted to evaluate the proposed prediction-based algo-rithm and compare its performance with the original STDG algorithm under the same drone road system. We first investigated the e ff ects of wireless communication parameters, including the beaconing rate and transmit power. The results show that, within a reasonable range, these pa-rameters have little impact on the algorithm performance. We then compared the two algorithms under di ff erent drone road system configurations and algorithm parameter settings. The simula-tion results demonstrate that the proposed PB-STDG consistently achieves higher average speed and throughput while maintaining the same or even lower collision rate in almost all scenarios. 43 The sensitivity analysis and the block length study further show that the influence of the orig-inal cost-function weights, κ1 and κ2, is noticeably reduced in the prediction-based algorithm. Instead, the performance is mainly determined by the distance threshold ϵ1 and the newly intro-duced block length parameter ϵb. With appropriate parameter settings, the algorithm achieves an average speed close to the ideal cruising speed while maintaining a close-to-zero collision rate. The main concern for the prediction-based algorithm is its computational complexity, which depends on the number of drones within the same block. Choosing a smaller value of ϵb can reduce the additional computational cost, but it may also increase the collision rate because the prediction process may fail to include all nearby drones. Another potential issue is the vulner-ability introduced by the additional shared information. Malicious drones may transmit false information to gain priority during lane-switching competition. Finally, this study assumes ideal operating conditions by neglecting GPS positioning errors, interference from other wireless sig-nals, environmental noise, and ionospheric or tropospheric disturbances. Therefore, the simula-tion results may not fully represent real-world scenarios. Future research may address these limitations in several directions. One possible approach is to develop a purely coordination-based or negotiation-based guidance algorithm that avoids complex prediction and cost calculations. Alternatively, the prediction mechanism could be fur-ther optimized to reduce computational complexity while incorporating data validation or trust mechanisms to improve the reliability of the shared information. In addition, more realistic com-munication and positioning models should be incorporated into the simulation to evaluate the robustness and applicability of the proposed algorithm under practical operating conditions. To further improve the realism of the simulation, developing more accurate models of drone dynam-ics and the lane-switching process is another possible direction. 
+
+Acknowledgment 
+
+This project is supported by University of Canterbury Aho Hinatore Accelerator Scholarship. X. Wu is partially supported by the Tait Foundation. 44 AI Declaration 
+
+Generative artificial intelligence (AI) tools were used only for language editing and gram-mar correction. They were not used to generate scientific content, research ideas, methodology, results, or conclusions. All AI-assisted revisions were carefully reviewed and verified by the authors, who take full responsibility for the final content of the manuscript. 
+
+References 
+
+[1] B. Abhishek, S. Ranjit, T. Shankar, G. Eappen, P. Sivasankar, and A. Rajesh. Hybrid pso-hsa and pso-ga algorithm for 3d path planning in autonomous uavs. SN Applied Sciences, 2:1–16, 2020. [2] F. AlMahamid and K. Grolinger. Agile dqn: adaptive deep recurrent attention reinforcement learning for autonomous uav obstacle avoidance. Scientific Reports, 15(1):18043, 2025. [3] Amazon. Amazon prime air drone delivery, 2026. URL https://www.amazon.com /gp/help/customer/display.html?nodeId=T3jxhuvPfQ629BOIL4 . Accessed: 2026-07-01. [4] A. Bahabry, X. Wan, H. Ghazzai, H. Menouar, G. Vesonder, and Y. Massoud. Low-altitude navigation for multi-rotor drones in urban areas. IEEE Access, 7:87716–87731, 2019. doi: 10.1109 /ACCESS.2019.2925531. [5] A. Bahabry, X. Wan, H. Ghazzai, G. Vesonder, and Y. Massoud. Collision-free navigation and e ffi cient scheduling for fleet of multi-rotor drones in smart city. In 2019 IEEE 62nd International Midwest Symposium on Circuits and Systems (MWSCAS), pages 552–555, 2019. doi: 10.1109 /MWSCAS.2019.8885363. [6] A. Bousquet. The eye of war: Military perception from the telescope to the drone. U of Minnesota Press, 2018. [7] M. Doole, J. Ellerbroek, V. L. Knoop, and J. M. Hoekstra. Constrained urban airspace design for large-scale drone-based delivery tra ffi c. Aerospace, 8(2), 2021. ISSN 2226-4310. doi: 10.3390 /aerospace8020038. URL https://www.mdpi.com/2226-4310/8/2/38 .45 [8] Drone Industry Insights. Global state of drones 2025, 2025. URL https://droneii.co m/project/global-state-of-drones-2025-2 . Accessed: 2026-07-01. [9] G. Farid, S. Cocuzza, T. Younas, A. A. Razzaqi, W. A. Wattoo, F. Cannella, and H. Mo. Modified a-star (a*) approach to plan the motion of a quadrotor uav in three-dimensional obstacle-cluttered environment. Applied Sciences, 12(12):5791, 2022. [10] J. Han, Y. Zhu, and J. Yang. A deep reinforcement learning method for collision avoidance with dense speed-constrained multi-uav. IEEE Robotics and Automation Letters, 10(3): 2152–2159, 2025. [11] D.-S. Jang, C. A. Ippolito, S. Sankararaman, and V. Stepanyan. Concepts of airspace structures and system analysis for uas tra ffi c flows for urban areas. In AIAA Information Systems-AIAA Infotech@ Aerospace, page 0449. American Institute for Aeronautics and Astronautics (AIAA), 2017. [12] H.-K. Jung and G.-S. Choi. Improved yolov5: E ffi cient object detection using drone images under various conditions. Applied Sciences, 12(14):7255, 2022. [13] G. Karagiannis, O. Altintas, E. Ekici, G. Heijenk, B. Jarupan, K. Lin, and T. Weil. Vehicular networking: A survey and tutorial on requirements, architectures, challenges, standards and solutions. IEEE communications surveys & tutorials, 13(4):584–616, 2011. [14] Y. Ko, J. Kim, D. G. Duguma, P. V. Astillo, I. You, and G. Pau. Drone secure commu-nication protocol for future sensitive applications in military zone. Sensors, 21(6):2057, 2021. [15] A. Lekidis, A. G. Anastasiadis, and G. A. Vokas. Electricity infrastructure inspection using ai and edge platform-based uavs. Energy Reports, 8:1394–1411, 2022. [16] Y. Liu, Z. Liu, G. Wang, C. Yan, X. Wang, and Z. Huang. Flexible multi-uav formation control via integrating deep reinforcement learning and a ffi ne transformations. Aerospace Science and Technology, 157:109812, 2025. [17] New South Wales Government. Free drone show lights up darling harbour – new trial, 2025. URL https://www.nsw.gov.au/ministerial-releases/free-drone-sho w-lights-up-darling-harbor-new-trial . Accessed: 2026-07-01. 46 [18] D. D. Nguyen, J. Rohacs, and D. Rohacs. Autonomous flight trajectory control system for drones in smart city tra ffi c management. ISPRS International Journal of Geo-Information, 10(5), 2021. ISSN 2220-9964. doi: 10.3390 /ijgi10050338. URL https://www.mdpi.c om/2220-9964/10/5/338 .[19] B. Pang, W. Dai, T. Ra, and K. H. Low. A concept of airspace configuration and opera-tional rules for uas in current airspace. In 2020 AIAA /IEEE 39th Digital Avionics Systems Conference (DASC), pages 1–9, 2020. doi: 10.1109 /DASC50938.2020.9256627. [20] N. Peinecke and A. Kuenz. Deconflicting the urban drone airspace. In 2017 IEEE /AIAA 36th Digital Avionics Systems Conference (DASC), pages 1–6, 2017. doi: 10.1109 /DASC .2017.8102048. [21] Z. Qu and A. Willig. Sensorless and coordination-free lane switching on a drone road segment—a simulation study. Drones, 6(12), 2022. ISSN 2504-446X. doi: 10.3390 /dron es6120411. URL https://www.mdpi.com/2504-446X/6/12/411 .[22] Z. Qu, A. Willig, and X. Wu. An xml-based representation of a drone road system for urban areas. In IEEE 2025 35th International Telecommunication Networks and Applications Conference (ITNAC). IEEE, 2025. [23] Z. Qu, A. Willig, and X. Wu. Short-term guidance algorithm on a drone road system. Computer Communications, 250:108450, 02 2026. doi: 10.1016 /j.comcom.2026.108450. [24] A. Raja, L. Njilla, and J. Yuan. Adversarial attacks and defenses toward ai-assisted uav infrastructure inspection. IEEE Internet of Things Journal, 9(23):23379–23389, 2022. [25] S. Ri, J. Ye, N. Toyama, and N. Ogura. Drone-based displacement measurement of infras-tructures utilizing phase information. Nature communications, 15(1):395, 2024. [26] S. Soni, P. Chandra, P. C. Sharma, J. Gangrade, and D. K. Singh. Medical kit deliv-ery using drone: Critical medical infrastructure solution for emergency medical situation. International Journal of Disaster Risk Reduction, 108:104502, 2024. [27] A. R. Svaigen, A. Boukerche, L. B. Ruiz, and A. A. Loureiro. Biomixd: A bio-inspired and tra ffi c-aware mix zone placement strategy for location privacy on the internet of drones. Computer Communications, 195:111–123, 2022. 47 [28] S. R. Theodore et al. Wireless Communications: Principles and Practice. In Upper Saddle River. Prentice Hall, 2002. [29] L. A. Tony, A. Ratnoo, and D. Ghose. Lane geometry, compliance levels, and adaptive geo-fencing in corridrone architecture for urban mobility. In 2021 International Conference on Unmanned Aircraft Systems (ICUAS), pages 1611–1617, 2021. doi: 10.1109 /ICUAS518 84.2021.9476745. [30] J. Wang, Y. Li, R. Li, H. Chen, and K. Chu. Trajectory planning for uav navigation in dynamic environments with matrix alignment dijkstra. Soft Computing, 26(22):12599– 12610, 2022. [31] Wing. Wing drone delivery technology, 2026. URL https://wing.com/technology .Accessed: 2026-07-01. [32] M. Xiao, J. Liang, L. Ji, Z. Sun, and Z. Li. Aerial photography trajectory-tracking controller design for quadrotor uav. Measurement and Control, 55(7-8):738–745, 2022. [33] Z. Yang. How meituan is using drones for food delivery in shenzhen, 2023. URL https: //www.technologyreview.com/2023/05/23/1073500/drone-food-delivery-s henzhen-meituan/ . Accessed: 2026-07-01. 48

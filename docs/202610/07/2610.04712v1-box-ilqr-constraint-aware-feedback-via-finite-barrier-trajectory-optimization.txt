@@ -1,0 +1,651 @@
+Title: Box-iLQR: Constraint-Aware Feedback via Finite-Barrier Trajectory Optimization
+
+URL Source: https://arxiv.org/pdf/2610.04712v1
+
+Published Time: Tue, 06 Oct 2026 01:06:54 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Box-iLQR: Constraint-Aware Feedback via Finite-Barrier Trajectory Optimization 
+
+Abhijeet ∗ and Suman Chakravorty ∗
+
+Abstract — Iterative Linear Quadratic Regulator (iLQR) and Differential Dynamic Programming (DDP) are attractive trajectory-optimization methods because their backward recur-sions provide both nominal trajectories and local time-varying feedback laws. Hard state and input constraints, however, can drive solutions toward constraint boundaries where little corrective authority remains during closed-loop execution. This paper presents Box-iLQR , a log-barrier iLQR method for box-constrained states and controls, with emphasis on the resulting feedback policy. Barrier gradients bias nominal trajectories away from constraint boundaries, while barrier curvature enters the Riccati recursion that determines the feed-back gains. We show that control-barrier curvature smoothly attenuates feedback as an actuator approaches saturation, while state-barrier curvature propagates backward through the value function to shape feedback before future state constraints are encountered. This motivates retaining a finite barrier rather than always driving the barrier parameter toward zero, thereby preserving state and actuator margin. Comparisons with CL-DDP and ALTRO are presented on pendulum, cart-pole, Acrobot, and car-parking problems. Monte Carlo experiments demonstrate improved closed-loop behavior with finite barriers, while a six-input MuJoCo fish example demonstrates data-driven Box-iLQR using dynamics Jacobians estimated from simulator rollouts. Box-iLQR achieves convergence comparable to, and in some cases better than, the baseline methods. More-over, the feedback policy obtained with a finite barrier ensures constraint satisfaction even under execution uncertainty. 
+
+I. I NTRODUCTION 
+
+Trajectory optimization is a fundamental tool for motion planning and control of nonlinear robotic systems. Among shooting-based methods, Differential Dynamic Programming (DDP) and the iterative Linear Quadratic Regulator (iLQR) are particularly attractive because they exploit the temporal structure of the optimal-control problem and produce a time-varying local feedback law together with the optimized nominal trajectory [1], [2], [3]. Modern robotics software and algorithms such as Crocoddyl further demonstrate the practical utility of Riccati-based optimal-control methods for complex nonlinear systems [4]. Among Riccati-based trajectory-optimization methods, we focus on iLQR rather than full DDP. Recent Sequential Quadratic Programming (SQP) interpretations show that iLQR provides a consistent quadratic approximation of the discrete optimal-control problem, while the additional dynamics-Hessian terms in DDP can produce indefinite local models and poor cost predictions away from a solution [5], [6]. This makes iLQR particularly suitable for the barrier-continuation setting considered here, where updates of the 
+
+> ∗Department of Aerospace Engineering, Texas A&M University, College Station, TX, USA.
+
+barrier parameters repeatedly change the local objective and may move the optimization away from its current minimizer. The feedback returned by iLQR is not merely a numerical byproduct. A related line of work views nonlinear control and reinforcement learning as the search for a nominal maneuver together with a local feedback controller, rather than as the direct search for a high-dimensional global policy [7], [8], [3]. In this view, trajectory optimization determines the operating trajectory, while local perturbation dynamics determine the feedback correction around it. The central difficulty is that practical systems are con-strained. Actuators saturate, joint or workspace coordinates are bounded, and safety requirements can impose explicit limits on states. CL-DDP incorporates box-constrained con-trols through stagewise constrained quadratic subproblems [9]. Feasibility-driven DDP methods improve globalization and initialization behavior [10], while hybrid and projection methods offer alternative constrained formulations [11], [12], [13]. ALTRO combines an augmented-Lagrangian formu-lation with structure-exploiting trajectory optimization to address general nonlinear constraints [14]. Interior-point methods provide another important class of constrained op-timization techniques, including structured optimal-control solvers and interior-point variants of DDP [15], [16], [17], [18]. A key distinction of the primal log-barrier formulation used in Box-iLQR is that every accepted iterate remains strictly inside the feasible region. In contrast, augmented-Lagrangian methods may pass through infeasible intermedi-ate trajectories while progressively reducing the constraint residual. Primal-dual interior-point methods likewise do not require strict primal feasibility at every intermediate iteration [17], [16], [18]. Box-iLQR, therefore, preserves strict feasi-bility throughout the accepted optimization sequence, at the cost of requiring a strictly feasible initialization. Moreover, Box-iLQR offers a critical advantage for feedback-oriented deployment: the log-barrier curvature directly shapes the Riccati gains, ensuring closed-loop system satisfies the con-straints under uncertainty. Pure primal barrier methods, however, introduce an im-portant numerical issue. Wright showed that after reducing a barrier parameter, a Newton step can become strongly infeasible even when computed from an interior iterate [19]. Classical nonlinear optimization therefore combines barrier models with globalization mechanisms such as line search or trust regions [20]. Similar behavior is relevant to trajectory optimization because a control perturbation at one time instant affects all downstream states. This paper takes a complementary viewpoint: if the output arXiv:2610.04712v1 [math.OC] 3 Oct 2026 of trajectory optimization will be used directly as a feedback controller , driving the barrier parameter arbitrarily close to zero may not be desirable. At a hard-constrained optimum, a control can lie almost exactly at its saturation limit, leaving little authority for disturbance rejection in one direction. Likewise, a nominal state that approaches a path-constraint boundary has little geometric margin against execution un-certainty. Retaining a finite logarithmic barrier intentionally shifts the nominal solution into the feasible interior and simultaneously modifies the local curvature from which the feedback matrix is computed. The principal contributions of this work are:  
+
+> •
+
+A finite-barrier Box-iLQR formulation that handles si-multaneous state and control box constraints while pre-serving the standard local feedback policy parametriza-tion of iLQR/DDP leading to the structured backward-forward search.  
+
+> •
+
+A characterization of how barrier curvature shapes the feedback gains. As a constrained control approaches its bound, the corresponding row of the feedback matrix tends to zero. On the other hand, the state-barrier cur-vature propagates backward and modifies the feedback before the state constraint is reached thereby allowing for constraint satisfaction even in the presence of un-certainty.  
+
+> •
+
+A finite-barrier stopping rule for feedback deployment. Instead of driving the barrier parameter to zero, the optimization may terminate at a positive barrier value to retain state and actuator margins for closed-loop execution that ensures constraint satisfaction.  
+
+> •
+
+Numerical validation against CL-DDP and ALTRO, to-gether with a data-driven MuJoCo example in which the local dynamics are identified from simulator rollouts. Experiments show that Box-iLQR is competitive/ better than CL-DDP and ALTRO on nominal constrained ot-pimal control, while the finite-barrier feedback reduces observed state-constraint violations to zero in problems under uncertainty, which the competing methods cannot accomplish. II. P ROBLEM FORMULATION 
+
+Consider the discrete-time finite-horizon optimal-control problem 
+
+min   
+
+> {uk}N−1
+> k=0
+
+J = ϕ(xN ) +  
+
+> N−1
+
+X
+
+> k=0
+
+ℓ(xk, u k), (1a) s.t. xk+1 = f (xk, u k), k = 0 , . . . , N − 1, (1b) 
+
+xi < x k,i < x i, i ∈ I x, (1c) 
+
+uj < u k,j < u j , j ∈ I u. (1d) Here xk ∈ Rn, uk ∈ Rm, and x0 is fixed. Only selected state or control components need to be constrained. We assume that f is continuously differentiable and that the nominal running and terminal costs are twice continuously differentiable over the region visited by the optimizer. 
+
+A. Continuous- and discrete-time state constraints 
+
+If the original plant is continuous time, 
+
+˙x = fc(x, u ), (2) and u(t) = uk on Ik = [ tk, t k+1 ], let F∆t denote the exact zero-order-hold flow map. Then 
+
+xk+1 = F∆t(xk, u k) (3) is an exact sampled representation of the continuous dynamics. A zero order control hold means the control is not violated for continuous dynamics as well. Although for states, we only have endpoint feasibility as we convert continuous dynamics to discrete. Endpoint feasibility alone does not generally imply continuous-time path feasibility. For a con-strained state component xi, assume additionally that xi(t) is monotonic on each sampling interval, Ik. Under this explicit assumption, 
+
+xi ≤ xk,i , x k+1 ,i ≤ xi ⇐⇒ xi ≤ xi(t) ≤ xi, t ∈ Ik.
+
+(4) With numerical integration, (4) holds only up to the integration error. This qualification is important whenever discrete nodes are used to represent continuous-time state constraints [21]. A continuous-time performance index in Lagrange form can be readily approximated by the discrete cost in (1) using a numerical transcription scheme such as Euler or Runge– Kutta integration. 
+
+B. Log-barrier subproblem 
+
+For state-barrier parameters μi > 0 and control-barrier parameters σj > 0, define 
+
+bx(xk; μ) = − X
+
+> i∈I x
+
+μi [log( xk,i − xi) + log( xi − xk,i )] ,
+
+(5) 
+
+bu(uk; σ) = − X
+
+> j∈I u
+
+σj
+
+log( uk,j − uj ) + log( uj − uk,j ) .
+
+(6) The barrier-augmented running cost is 
+
+ℓb(xk, u k) = ℓ(xk, u k) + bx(xk; μ) + bu(uk; σ). (7) The terminal state barrier is included whenever xN is con-strained. Because the logarithm is defined only in the strict interior, every accepted Box-iLQR iterate remains strictly feasible with respect to the discrete box constraints. This differs from penalty and augmented-Lagrangian approaches, which can admit infeasible intermediate iterates while driv-ing the constraint residual toward zero. Thus, feasibility is enforced directly by the domain of the optimization problem rather than only through a penalty on constraint violation. For a constrained scalar control uj ,(bu)uj = −σj
+
+ 1
+
+uj − uj
+
+− 1
+
+uj − uj
+
+
+
+, (8) 
+
+(bu)uj uj = σj
+
+ 1(uj − uj )2 + 1(uj − uj )2
+
+
+
+> 0. (9) Analogous expressions hold for constrained state com-ponents. The barrier therefore contributes both a repulsive gradient and a rapidly increasing positive curvature near each boundary, as in standard logarithmic interior-point methods [20]. III. B OX -ILQR Box-iLQR retains the standard backward–forward struc-ture of iLQR while incorporating the state and control barriers defined in Sec. II. As summarized in Algorithm 1, each iteration first performs a backward pass along the current nominal trajectory to compute a local feedforward correction and feedback policy. A nonlinear forward rollout is then performed using this policy, with line search used to ensure sufficient decrease and strict feasibility. Previous work provides the convergence analysis and associated theoretical guarantees for the underlying log-barrier formulation [21]. Let (¯ xk, ¯uk) denote the current nominal trajectory. Lin-earizing the dynamics about this trajectory gives 
+
+δx k+1 = Akδx k + Bkδu k, (10) where Ak = fx(¯ xk, ¯uk), and Bk = fu(¯ xk, ¯uk).
+
+During the backward pass of Algorithm 1, the barrier-augmented stage cost is quadratically approximated along the nominal trajectory. Combining this approximation with the value function at k + 1 gives 
+
+Qx = ℓb,x + A⊤ 
+
+> k
+
+V k+1  
+
+> x
+
+, Qu = ℓb,u + B⊤ 
+
+> k
+
+V k+1  
+
+> x
+
+,
+
+(11) 
+
+Qxx = ℓb,xx + A⊤ 
+
+> k
+
+V k+1  
+
+> xx
+
+Ak, Quu = ℓb,uu + B⊤ 
+
+> k
+
+V k+1  
+
+> xx
+
+Bk,
+
+(12) 
+
+Qux = ℓb,ux + B⊤ 
+
+> k
+
+V k+1  
+
+> xx
+
+Ak. (13) The terminal conditions on Vx and Vxx are 
+
+V Nx = ϕx, and V Nxx = ϕxx .
+
+When required, the control Hessian is regularized as 
+
+eQuu = Quu + λI, λ ≥ 0, (14) so that it remains positive definite. Minimization of the local quadratic model gives the affine control correction 
+
+δu k = kk + Kkδx k, (15) where 
+
+kk = − eQ−1 
+
+> uu
+
+Qu, Kk = − eQ−1 
+
+> uu
+
+Qux . (16) The value-function derivatives are then propagated backward in time using the usual Riccati recursion. Because the barrier derivatives are included in ℓb, both state and control con-straints directly modify the same backward recursion that produces kk and Kk.During the forward pass of Algorithm 1, the nonlinear system is rolled out using 
+
+u+ 
+
+> k
+
+(α) = ¯ uk + αk k + Kk(x+ 
+
+> k
+
+− ¯xk), (17) 
+
+x+ 
+
+> k+1
+
+= f (x+ 
+
+> k
+
+, u + 
+
+> k
+
+), x+0 = x0. (18) Here α ∈ (0 , 1] scales the feedforward update while retaining the feedback correction. Before the barrier cost is evaluated, the complete nonlinear rollout is checked for strict satisfac-tion of all box constraints. If the rollout is infeasible or does not provide sufficient decrease, Algorithm 1 reduces the step according to 
+
+α ← βαα, 0 < β α < 1. (19) Only when feasibility cannot be recovered for α ≥ ¯α is the corresponding barrier parameter increased and the backward pass recomputed. Thus, the trajectory update is first glob-alized through line search before the barrier model itself is modified. This ordering is motivated by the infeasible-Newton behavior of pure primal barrier methods [19]. Full DDP additionally includes contractions between the value gradient and second derivatives of the dynamics. These terms can improve local convergence near a solution, but away from the optimum they need not preserve positive curvature and can produce a poor local model. Recent work shows that iLQR corresponds to a consistent SQP approximation of the discrete optimal-control problem and retains stronger descent properties [5], [6]. Since barrier continuation repeatedly changes the local objective, we use the more robust iLQR approximation. Algorithm 1 summarizes the feasibility-first continuation strategy. If no feasible rollout is recovered, the barrier associated with the violated constraint is increased; if fea-sible rollouts exist but none provides sufficient decrease, the regularization is increased instead. After convergence of the fixed-barrier subproblem, the barrier parameters are reduced toward γstop . For nominal constrained optimization, 
+
+γstop is chosen near zero, whereas for feedback deployment continuation may terminate at a finite γfb > 0.IV. F INITE BARRIERS AS FEEDBACK SHAPING 
+
+The logarithmic barrier does more than enforce feasibil-ity during trajectory optimization: its gradient modifies the nominal trajectory, while its curvature directly affects the feedback gains computed in the backward pass. Consider a scalar constrained quantity z ∈ (z, z ) with barrier 
+
+b(z; γ) = −γ [log( z − z) + log( z − z)] . (20) Its descent contribution is 
+
+−∇ b = γ
+
+ 1
+
+z − z − 1
+
+z − z
+
+
+
+, (21) Algorithm 1 Box-iLQR 
+
+Require: Strictly feasible (¯ x, ¯u), barriers γ = [ μ⊤, σ ⊤]⊤ >
+
+0 
+
+> 1:
+
+while termination condition not satisfied do  
+
+> 2:
+
+Linearize dynamics and quadratize the barrier-augmented cost  
+
+> 3:
+
+Backward pass: compute (kk, K k)N −1 
+
+> k=0
+
+using (11)– (16)  
+
+> 4:
+
+α ← 1, accepted ← false  
+
+> 5:
+
+while α ≥ ¯α do  
+
+> 6:
+
+Roll out (17)–(18)  
+
+> 7:
+
+if rollout is infeasible then  
+
+> 8:
+
+α ← βαα 
+
+> 9:
+
+else if sufficient decrease is satisfied then  
+
+> 10:
+
+(¯ x, ¯u) ← (x+, u +) 
+
+> 11:
+
+accepted ← true  
+
+> 12:
+
+break  
+
+> 13:
+
+else  
+
+> 14:
+
+α ← βαα 
+
+> 15:
+
+end if  
+
+> 16:
+
+end while  
+
+> 17:
+
+if no feasible rollout was found then  
+
+> 18:
+
+Increase offending barrier parameter(s)  
+
+> 19:
+
+else if not accepted then  
+
+> 20:
+
+Increase regularization λ 
+
+> 21:
+
+else if fixed-barrier problem has converged then  
+
+> 22:
+
+Reduce γ toward γstop  
+
+> 23:
+
+end if  
+
+> 24:
+
+end while  
+
+> 25:
+
+return (x⋆, u ⋆, K ⋆)
+
+which increasingly repels the nominal trajectory from a nearby boundary. Along the central path, perturbed comple-mentarity gives approximately 
+
+s ≈ γλ⋆ , (22) where s is the active constraint slack and λ⋆ is the cor-responding Lagrange multiplier [20] for hard constraint. Hence, retaining γ > 0 deliberately preserves finite interior margin. For a constrained input component uk,j , write the control Hessian as 
+
+eQuu,k = Hk + Db,k , (23) where Hk contains the non-barrier terms, and Db,k is the diagonal barrier Hessian. Its jth diagonal entry is 
+
+[Db,k ]jj = σj
+
+ 1(uk,j − uj )2 + 1(uj − uk,j )2
+
+
+
+. (24) 
+
+Proposition 1. Suppose Hk and Qux,k remain bounded and the block of eQuu,k associated with the remaining controls remains uniformly nonsingular. For fixed σj > 0, if uk,j 
+
+approaches either of its bounds, then 
+
+Kk,j : → 0. (25) 
+
+Proof: Let 
+
+dj = [ Db,k ]jj . (26) From (24), dj → ∞ as the corresponding slack tends to zero. After permuting the jth control to the first coordinate, 
+
+eQuu,k =
+
+dj + O(1) b⊤
+
+b C
+
+
+
+, (27) where b and C−1 remain bounded. The block inverse formula therefore gives 
+
+e⊤ 
+
+> j
+
+eQ−1 
+
+> uu,k
+
+= O(d−1 
+
+> j
+
+). (28) Since Qux,k is bounded, 
+
+Kk,j : = −e⊤ 
+
+> j
+
+eQ−1
+
+> uu,k
+
+Qux,k → 0. (29) For a slack sj from the approaching bound, 
+
+[Db,k ]jj ≈ σj
+
+s2
+
+> j
+
+!
+
+, (30) so Proposition 1 gives 
+
+∥Kk,j :∥ = O s2
+
+> j
+
+σj
+
+!
+
+, sj → 0. (31) CL-DDP exhibits a related limiting behavior through its active-set formulation. When a control is clamped at a bound, the corresponding feedback row is set to zero [9]. Box-iLQR reaches the same limiting structure continuously: as the nominal input approaches saturation, the logarithmic barrier curvature increases and progressively attenuates the corre-sponding feedback gain. Thus, CL-DDP changes the local feedback structure through a discrete active-set decision, whereas Box-iLQR modifies it smoothly through the barrier Hessian. State barriers influence the feedback policy through the same backward pass. Their curvature enters ℓb,xx and is propagated backward through the value Hessian Vxx . At an earlier time step, 
+
+Quu = ℓb,uu + B⊤V k+1  
+
+> xx
+
+B, (32) 
+
+Qux = ℓb,ux + B⊤V k+1  
+
+> xx
+
+A, (33) and therefore 
+
+K = −Q−1 
+
+> uu
+
+Qux . (34) Consequently, curvature generated by a future state constraint influences earlier feedback gains before the nominal trajec-tory reaches the constrained region. We refer to this effect as constraint-aware or anticipatory feedback. Finally, we distinguish between a barrier used to approx-imate the hard-constrained optimum and one retained for feedback deployment: 
+
+(xopt , u opt , K opt ) : γstop = ϵopt , ϵopt ≪ 1, (35) 
+
+(xfb , u fb , K fb ) : γstop = γfb > 0. (36) The first provides a closer approximation to the hard-constrained nominal solution. The second intentionally re-tains state and actuator margin and is used when the feedback policy itself is an important output of the optimization. The finite barrier therefore trades nominal optimality for interior margin and potentially improved closed-loop robustness. Although we do not provide guarantees of constraint satisfaction under uncertainty, we evaluate its closed-loop effect empirically in Sect. V. V. E XPERIMENTS 
+
+Box-iLQR is evaluated on pendulum, cart-pole, Acrobot, and car-parking benchmarks and on a data-driven MuJoCo fish model. For the baseline comparisons, ALTRO is im-plemented using the open-source Altro.jl package [14], while CL-DDP is implemented following the control-limited DDP formulation of Tassa et al. [9]. Reported iteration counts are solver-specific convergence statistics and should not be interpreted as direct computational-time comparisons. The pendulum, cart-pole, and Acrobot controls satisfy 
+
+|u| ≤ 1, |u| ≤ 2, and |u| ≤ 5, respectively. For the state-constrained cart-pole, the cart position additionally satisfies 
+
+|x| ≤ 0.15 m. The car has componentwise control bounds 
+
+|u1| ≤ 0.5 and |u2| ≤ 2; its state-constrained variant additionally requires |x|, |y| ≤ 1.5 m. The control-only car-parking task uses xg = [0 , 0, 0, 0] ⊤ as in [9], whereas the state-constrained task uses xg = [0 , 0, 2π, 0] ⊤.
+
+A. Benchmark Comparison 
+
+Table I shows that Box-iLQR obtains solutions comparable to the established constrained solvers on the control-limited benchmarks. For the pendulum, Box-iLQR and CL-DDP obtain nearly identical costs, 55 .49 and 55 .46 , respectively. The same behavior is observed for the control-constrained cart-pole, where the corresponding costs are 762 .45 and 
+
+762 .44 . For control-only car parking, ALTRO obtains the lowest reported objective, 1.4361, followed by Box-iLQR at 1.9065 and CL-DDP at 1.9448. ALTRO converged to a better solution than Box-iLQR/CL-DDP. All three methods converge for the Acrobot. ALTRO obtains the lowest cost, 39581 .50 , followed by Box-iLQR at 40494 .38 and CL-DDP at 41712 .44 . Figure 1 compares the resulting trajectories. The different objective values em-phasize that the methods are local nonlinear optimizers and need not converge to identical stationary solutions even from the same task initialization. The main distinction appears when state constraints are introduced. For the state-constrained cart-pole, ALTRO con-verges to a feasible solution with higher cost, 912 .38 , while the CL-DDP formulation considered here does not accommo-date state constraints. Box-iLQR converges with cost 765 .05 .For state-constrained car parking, both ALTRO and Box-iLQR converge to constraint-feasible trajectories, while the CL-DDP formulation considered here is not applicable. As shown in Fig. 2, the ALTRO and Box-iLQR reach the desired terminal configuration xg = [0 , 0, 2π, 0] ⊤, with a final cost of 0.70 and 0.69 , respectively. For the state-constrained car-parking task, ALTRO was sensitive to initialization and solver parameters in our experiments; the solution reported 0 2 4 6 8 10                          
+
+> 31 [rad]
+> -1 01234
+> ALTRO CL-DDP Box-iLQR
+> 0246810
+> 32 [rad]
+> -3 -2 -1 01230246810
+> _31 [rad/s]
+> -4 -2 024680246810
+> _32 [rad/s]
+> -20 -10 010 20
+> Time [s]
+> 012345678910
+> u [N m]
+> -6 -4 -2 0246
+
+Fig. 1. Acrobot swing-up using ALTRO, CL-DDP, and Box-iLQR. All three solutions satisfy the actuator constraint |u| ≤ 5.x [m]            
+
+> -1.5 -1 -0.5 00.5 11.5
+> y [m]
+> -1.5 -1 -0.5 00.5 11.5 ALTRO Box-iLQR Initial state Goal
+> Time [s]
+> 0510
+> u1
+> -0.5 00.5
+> Time [s]
+> 0510
+> u2
+> -3 -2 -1 012
+
+Fig. 2. State- and control-constrained car parking. Both trajectories satisfy the position constraints −1.5 ≤ x, y ≤ 1.5. Both Box-iLQR and ALTRO reach the desired terminal configuration xg = [0 , 0, 2π, 0] ⊤, with Box-iLQR attaining a slightly lower nominal cost. The lower panels show the corresponding control histories and bounds. 
+
+in Table I is the converged constraint-feasible result used for comparison. The closed-loop effect of the resulting feedback law is examined later in Fig. 5, where Box-iLQR feedback is shown to eliminate the state-constraint violations observed under open-loop execution in the tested Monte Carlo set. These results indicate that Box-iLQR is not uniformly superior in iteration count or nominal objective value. Its main advantage is instead the ability to treat state and control box constraints in the same Riccati-based formulation while retaining a local feedback policy. TABLE I BENCHMARK COMPARISON. COSTS ARE EVALUATED USING THE COMMON NOMINAL OBJECTIVE AND EXCLUDE BARRIER, PENALTY, AND AUGMENTED-LAGRANGIAN TERMS. ( N/A - CL-DDP CANNOT ACCOMODATE STATE CONSTRAINTS . ) ALTRO CL-DDP Box-iLQR Problem Constraints Iterations Cost Iterations Cost Iterations Cost Pendulum Control 436 67.24 206 55.46 527 55.49 
+
+Cart-pole Control 1091 994.92 3554 762.44 8226 762.45 
+
+Cart-pole State + control 968 912.38 N/A – 3729 765.05 
+
+Acrobot Control 4665 39581.50 4797 41712.44 4096 40494.38 Car parking Control 142 1.4361 1597 1.9448 335 1.9065 Car parking State + control 113 0.70 N/A – 954 0.69 
+
+Box-iLQR maintains strict feasibility of every accepted iterate, whereas the augmented-Lagrangian mechanism used by ALTRO does not require intermediate trajectories to remain feasible. This property is particularly useful when intermediate trajectories are passed to a simulator, hardware system, or another planning layer that assumes constraint-feasible states and controls. 
+
+B. Finite-Barrier Feedback 
+
+We next examine whether the barrier value that best approximates the hard-constrained optimum also provides the most useful feedback controller. For stochastic execution, the applied input is 
+
+u(q) 
+
+> k
+
+= sat [u,u ]
+
+
+
+u(q) 
+
+> k, fb
+
++ ρ|u(q)
+
+> k, fb
+
+| ⊙ ξ(q)
+
+> k
+
+
+
+, (37) where u(q) 
+
+> k, fb
+
+= u⋆k + Kk(x(q) 
+
+> k
+
+− x⋆k), ξ(q) 
+
+> k
+
+∼ N (0 , I ).
+
+Thus, the disturbance magnitude scales with the current feedback-corrected input. For the control-constrained cart-pole, feedback obtained at 
+
+σ ≃ 0.03 is compared with Box-iLQR continued to approx-imately σ = 10 −6 and with CL-DDP. As shown in Fig. 3, the finite-barrier feedback produces substantially smaller terminal errors ( || xN − xg || 2) over the tested uncertainty range than the aggressively continued Box-iLQR solution and CL-DDP. The finite-barrier nominal solution still reaches the upright equilibrium with terminal error of order 10 −3
+
+in 1000 Monte Carlo realizations. Using the feedback, the terminal error is almost zero for feedback at barrier parameter 
+
+≈ 0.03 . The shaded region in Fig. 3 denotes ¯eN ± 3se,where se is the sample standard deviation of the terminal error. In addition to achieving a lower mean terminal error, the finite-barrier Box-iLQR policy exhibits a narrow 3se
+
+envelope, indicating low variability across the Monte Carlo realizations. Thus, its improved closed-loop performance is not limited to the mean response; the terminal errors remain tightly concentrated across the tested realizations. For the state-constrained cart-pole, we retain the larger barrier γfb ≈ 0.02 to provide additional interior margin and perform 100 closed-loop simulations at ρ = 0 .05 . Figure 4 shows all four states and the applied control. No cart-position constraint violation is observed in the tested realizations. The state trajectories have very small dispersion and therefore 0 0.005 0.01 0.015 0.02 0.025 0.03 0.035 0.04 0.045 0.05                     
+
+> Control-noise level, ;
+> 10 !4
+> 10 !3
+> 10 !2
+> 10 !1
+> 10 0
+> 10 1
+> 10 2
+> Terminal error,  kxN ! xg k2
+> CL-DDP Box-iLQR, <:0:03 Box-iLQR, <:10 !6
+> Fig. 3. Cart-pole terminal error under execution uncertainty. Solid curves show the mean over 1000 Monte Carlo realizations, and the shaded regions denote ¯eN±3se, where seis the sample standard deviation of the terminal error. Box-iLQR feedback at σ≃0.03 is compared with Box-iLQR at
+> σ≃10 −6and CL-DDP.
+
+largely overlap the nominal trajectory; the individual Monte Carlo realizations are more readily visible in the control history. We perform the same closed-loop evaluation for the state-constrained car-parking problem. Figure 5 shows 100 Monte Carlo realizations at a finite barrier value of approximately 
+
+σ ≈ 0.02 and noise level ρ = 0 .05 . The controls are saturated at their prescribed bounds, |u1| ≤ 0.5 and |u2| ≤ 2, while the position constraints are |x|, |y| ≤ 1.5 m. We compare open-loop execution, uk = u⋆k, with the Box-iLQR feedback policy, uk = u⋆k + Kk(xk − x⋆k),
+
+under identical realizations of the multiplicative execution uncertainty in (37). Table II summarizes the results. For the car-parking problem, 29 of 100 open-loop realizations violate the state constraints, whereas no violation is observed among the 100 realizations using Box-iLQR feedback. Box-iLQR likewise achieves a 100% success rate for the state-constrained cart-pole problem. These results demonstrate that the feedback substantially improves robustness across both state-constrained examples. A closed-loop comparison with ALTRO is not included because ALTRO is used typically to compute constrained nominal trajectories and does not 0 2 4 6 8 10                              
+
+> x [m]
+> -0.15 -0.1 -0.05 00.05 0.1 0.15 0246810
+> _x [m/s]
+> -0.5 00.5 0246810
+> 3 [rad]
+> 01234560246810
+> _3 [rad/s]
+> -10 -5 0510
+> Time [s]
+> 0123456789
+> u [N]
+> -2 -1 012Nominal MC mean Control bounds Nominal MC mean
+> jxj50:15 m
+
+Fig. 4. State-constrained cart-pole feedback at σ ≃ μ ≃ 0.02 and ρ =0.05 . Gray curves denote 100 Monte Carlo realizations. The constraints are 
+
+|x| ≤ 0.15 m and |u| ≤ 2; no state violation is observed in the tested set. TABLE II STATE -CONSTRAINT VIOLATIONS OVER 100 M ONTE CARLO RUNS .Problem Open loop Box-iLQR (finite-barrier) Car parking (state) 29/100 0/100 Cart-pole (state) 100/100 0/100 
+
+directly provide a feedback policy that can ensure constraint satisfaction under uncertainty as analyzed in this section. In addition, its augmented-Lagrangian iterations need not remain feasible at intermediate steps, unlike the accepted iterates of Box-iLQR, thereby not allowing to use a feedback associated with a sub-optimal iterate as used by Box-ILQR. 
+
+C. Data-Driven MuJoCo Fish 
+
+The final experiment applies Box-iLQR to the six-input MuJoCo fish [22], with |uj | ≤ 1, j = 1 , . . . , 6. Unlike the analytical benchmarks, the local dynamics are identified from black-box simulator rollouts following the D2C/search-for-feedback viewpoint [7], [8]. Around the nominal trajectory, the linear perturbation model 
+
+δx k+1 ≈ bAkδx k + bBkδu k (38) is estimated by least squares from 200 symmetric perturba-tion rollouts. The identified matrices replace the analytical Jacobians in the Box-iLQR backward pass. The task is to drive the fish toward pg = 0 0.4 0.2⊤ .
+
+Both iLQR and Box-iLQR drove the fish to the target. Fig-ure 6 compares the resulting Box-iLQR control histories with unconstrained iLQR. The unconstrained solution requests inputs outside the admissible interval, whereas data-driven Box-iLQR keeps all six controls within their prescribed bounds. This demonstrates that the same barrier formulation can handle multiple simultaneously constrained actuators even when the local plant Jacobians are obtained entirely from rollout data. x [m]              
+
+> -1.5 -1 -0.5 00.5 11.5
+> y [m]
+> -1.5 -1 -0.5 00.5 11.5
+> Open loop
+> x[m]
+> -1.5 -1 -0.5 00.5 11.5
+> y [m]
+> -1.5 -1 -0.5 00.5 11.5
+> Box-iLQR feedback
+> Nominal MC mean MC terminal states Start Goal State constraint
+
+Fig. 5. State-constrained car parking under identical execution disturbances with ρ = 0 .05 . Gray curves show 100 Monte Carlo realizations, with the nominal trajectory in solid black and the Monte Carlo mean dashed. The red boundary denotes |x|, |y| ≤ 1.5 m. Open-loop execution violates the state constraints in 29 /100 runs, while no violation is observed with finite-barrier Box-iLQR feedback at γfb ≈ 0.02 .Time (s) −1.00 −0.75 −0.50 −0.25 0.00 0.25 0.50 0.75 1.00 Control                     
+
+> Tail
+> Time (s) −1.0 −0.5 0.0 0.5 1.0 Control
+> Tail Twist
+> Time (s) −3 −2 −1 0123Control
+> Left Fin Flap
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0 Time (s) −2 −1 0123Control
+> Right Fin Flap
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0 Time (s) −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 Control
+> Left Fin Pitch
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0 Time (s) −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 Control
+> Right Fin Pitch
+> Unconstrained iLQR Box-iLQR Control bounds
+
+Fig. 6. Six-input MuJoCo fish controls. Unconstrained iLQR exceeds the actuator limits, whereas data-driven Box-iLQR satisfies all six bounds. 
+
+Closed-loop robustness is evaluated for ρ ∈{0.01 , 0.02 , . . . , 0.50 } using 1000 realizations per noise level. To quantify the deviation caused solely by execution uncertainty, we measure the terminal position error relative to the nominal Box-iLQR terminal position: 
+
+e(q)
+
+N = p(q)
+
+f − pnom 
+
+f 2
+
+, where p(q)
+
+f is the terminal fish position in the qth Monte Carlo realization and pnom 
+
+f is the nominal terminal position. Figure 7 reports the mean terminal error and 3se dispersion, where se denotes the standard deviation. The results show that finite-barrier feedback recovered from identified local dynamics remains effective across the tested noise range, demonstrating that Box-iLQR can combine constrained trajectory optimization and local feedback recovery without analytical plant Jacobians. Even at ρ = 0 .3, the ¯eN ± 3se envelope remains below 0.05 , indicating tightly concentrated terminal position errors despite 30% multiplicative control noise. VI. C ONCLUSION 
+
+This paper presented Box-iLQR, a log-barrier iLQR method for box-constrained states and controls that preserves the standard backward–forward structure and local affine feedback policy of unconstrained iLQR. iLQR is chosen over full DDP because its local approximation provides more reliable descent behavior away from the optimum [6]. The barrier admits a useful feedback interpretation. As a constrained control approaches saturation, its curvature 0.0 0.1 0.2 0.3 0.4 0.5 
+
+> Control noise level
+> 0.00 0.05 0.10 0.15 0.20 0.25 0.30
+> Terminal deviation ‖ pf − pnom
+> f ‖2
+> Fish Closed-Loop Robustness to Control Noise
+> Mean ±3 se
+> Mean terminal error
+
+Fig. 7. MuJoCo fish terminal position error relative to the nominal terminal position. The solid curve shows the mean over 1000 Monte Carlo realizations and the shaded region denotes ¯eN ±3se, where se is the sample standard deviation of the terminal position error. 
+
+increases and smoothly attenuates the corresponding feed-back row, while state-barrier curvature propagates backward through the value function and influences feedback before a future state boundary is encountered. This motivates re-taining a finite barrier when the feedback law, rather than only the nominal constrained optimum, is the desired output. Unlike penalty-based constrained trajectory optimization, the log-barrier formulation maintains strict feasibility of ac-cepted iterates, while still returning the local feedback policy associated with the constrained trajectory. Across pendulum, cart-pole, Acrobot, and car-parking benchmarks, Box-iLQR produces competitive control-constrained solutions and directly handles the state-constrained cases considered here. For state-constrained car parking, both ALTRO and Box-iLQR reach the desired ter-minal configuration, with comparable nominal costs. Closed-loop cart-pole and car-parking experiments demonstrate the value of the barrier-modified feedback policy under execution uncertainty. Retaining a finite barrier improves closed-loop behavior in the cart-pole and car-parking example, while Box-iLQR feedback eliminates the state-constraint violations observed under open-loop car-parking execution in the tested Monte Carlo set. The six-input MuJoCo fish experiment further shows that the same constrained feedback framework can use local dynamics identified entirely from simulator rollouts. Future work will focus on automatically selecting finite barrier values using disturbance or covariance information, developing infeasible-start and receding-horizon variants, and validating the method on physical robotic platforms. We also plan to extend the feedback framework beyond box constraints to more general state and control constraints. REFERENCES [1] D. Q. Mayne, “A second-order gradient method for determining optimal trajectories of non-linear discrete-time systems,” International Journal of Control , vol. 3, no. 1, pp. 85–95, 1965. [2] Y. Tassa, T. Erez, and E. Todorov, “Synthesis and stabilization of complex behaviors through online trajectory optimization,” in 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems ,2012, pp. 4906–4913. [3] M. N. G. Mohamed, S. Chakravorty, R. Goyal, and R. Wang, “On the feedback law in stochastic optimal nonlinear control,” in 2022 American Control Conference (ACC) , 2022, pp. 970–975. [4] C. Mastalli, R. Budhiraja, W. Merkt, G. Saurel, B. Hammoud, M. Naveau, J. Carpentier, L. Righetti, S. Vijayakumar, and N. Mansard, “Crocoddyl: An efficient and versatile framework for multi-contact optimal control,” in 2020 IEEE International Conference on Robotics and Automation , 2020, pp. 2536–2542. [5] Abhijeet and S. Chakravorty, “A sequential quadratic programming perspective on optimal control,” 2026. [Online]. Available: https://arxiv.org/abs/2605.25318 [6] ——, “A sequential quadratic programming perspective on optimal control,” in 2026 American Control Conference (ACC) , 2026, pp. 3862–3867. [7] R. Wang, A. Sharma, K. S. Parunandi, R. Goyal, M. N. G. Mohamed, and S. Chakravorty, “The search for feedback in reinforcement learning,” Journal of Dynamic Systems, Measurement, and Control , vol. 147, no. 6, p. 061002, 06 2025. [Online]. Available: https://doi.org/10.1115/1.4068705 [8] R. Wang, K. S. Parunandi, D. Yu, D. Kalathil, and S. Chakravorty, “Decoupled data-based approach for learning to control nonlinear dynamical systems,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3582–3589, 2022. [9] Y. Tassa, N. Mansard, and E. Todorov, “Control-limited differential dynamic programming,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) , 2014, pp. 1168–1175. [10] C. Mastalli, I. Havoutis, M. Focchi, D. G. Caldwell, and C. Semini, “Feasibility-driven differential dynamic programming,” IEEE Trans-actions on Robotics , vol. 36, no. 5, pp. 1364–1378, 2020. [11] G. Lantoine and R. P. Russell, “A hybrid differential dynamic programming algorithm for constrained optimal control problems. part 1: Theory,” Journal of Optimization Theory and Applications ,vol. 154, no. 2, pp. 382–417, 2012. [Online]. Available: https://doi.org/10.1007/s10957-012-0039-0 [12] M. Giftthaler and J. Buchli, “A projection approach to equality constrained iterative linear quadratic optimal control,” 
+
+2017 IEEE-RAS 17th International Conference on Humanoid Robotics (Humanoids) , pp. 61–66, 2017. [Online]. Available: https://api.semanticscholar.org/CorpusID:8565564 [13] Z. Xie, C. K. Liu, and K. K. Hauser, “Differential dynamic programming with nonlinear constraints,” 2017 IEEE International Conference on Robotics and Automation (ICRA) , pp. 695–702, 2017. [Online]. Available: https://api.semanticscholar.org/CorpusID:7648776 [14] T. A. Howell, B. E. Jackson, and Z. Manchester, “ALTRO: A fast solver for constrained trajectory optimization,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,Macau, China, 2019, pp. 7666–7673. [15] C. V. Rao, S. J. Wright, and J. B. Rawlings, “Application of interior-point methods to model predictive control,” Journal of Optimization Theory and Applications , vol. 99, no. 3, pp. 723–757, 1998. [16] S. Prabhu, S. Rangarajan, and M. Kothare, “Differential dynamic programming with stagewise equality and inequality constraints using interior point method,” in 2025 American Control Conference (ACC) ,2025, pp. 2255–2261. [17] L. Vanroye, A. Sathya, J. De Schutter, and W. Decr´ e, “Fatrop: A fast constrained optimal control problem solver for robot trajectory optimization and control,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2023, pp. 10 036–10 043. [18] A. Pavlov, I. Shames, and C. Manzie, “Interior point differential dynamic programming,” IEEE Transactions on Control Systems Tech-nology , vol. 29, no. 6, pp. 2720–2727, 2021. [19] M. H. Wright, “Why a pure primal newton barrier step may be infeasible,” SIAM Journal on Optimization , vol. 5, no. 1, pp. 1–12, 1995. [20] J. Nocedal and S. J. Wright, Numerical Optimization , 2nd ed. New York: Springer, 2006. [21] Abhijeet and S. Chakravorty, “Safe optimal control using log barrier constrained ilqr,” 2026. [Online]. Available: https://arxiv.org/abs/2602.05046 [22] E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems , 2012, pp. 5026–5033.

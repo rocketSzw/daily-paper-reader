@@ -1,0 +1,513 @@
+Title: NMPP: Nonlinear Model Predictive Planning for Agile UAV Flight in Cluttered Environments
+
+URL Source: https://arxiv.org/pdf/2610.08695v1
+
+Published Time: Wed, 07 Oct 2026 01:53:23 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# NMPP: Nonlinear Model Predictive Planning for Agile UAV Flight in Cluttered Environments 
+
+Ondˇ rej Proch´ azka, Juraj Pauko, Robert Pˇ eniˇ cka, Martin Saska 
+
+Abstract — Flying a quadrotor through a cluttered environ-ment requires not only planning a collision-free reference trajectory based on perceived obstacles, but the reference also needs to be dynamically feasible and within the actuation limits of the vehicle, so that the controller can track it precisely. Existing methods either optimize a smooth polynomial inside a convex corridor, which limits agility, or treat obstacles as soft costs traded against tracking performance. We propose a Nonlinear Model Predictive Planning (NMPP) that imposes perceived obstacles as hard geometric constraints and hands a full-state reference to an obstacle-blind SE (3) controller. Our planner achieves a 58– 67 % lower position RMSE than a linear Model Predictive Control trajectory planner and a 41– 70 % lower RMSE than a polynomial trajectory planner. It also completes all forest flights with up to 9.5 m s −1 speed without collisions, and achieves 86 % flight success rate under a more aggressive speed profile where a state-of-the-art planner has only 26 % success rate. The real-world deployment showed reliable execution flying up to 5.5 m s −1 in an unknown cluttered environment. 
+
+SUPPLEMENTARY MATERIAL  
+
+> Video: https://youtu.be/pWIOeak4yeE
+
+I. I NTRODUCTION 
+
+Multirotor Unmanned Aerial Vehicles (UAVs) are increas-ingly deployed in missions that require flight through clut-tered and initially unknown environments, including search and rescue [1] and infrastructure inspections [2]. In such missions, the achievable flight speed determines how much of the environment can be covered within the vehicle’s limited endurance, which motivates operating the platform close to its dynamic limits. Flying fast between obstacles requires a reference trajectory that is not only collision-free but also respects the UAV’s dynamics and actuation limits. The obstacles are perceived by the onboard sensors only during the flight, so the trajectory has to be planned online. The trajectory is often generated with simplified vehicle dynamics, causing a mismatch between the planned and flown trajectory [3]. Moreover, collision avoidance and dynamic feasibility are commonly handled in separate stages, where a collision-free path is first found in a map and then converted into a trajectory for the controller. Thus, the path ignores the dynamics and the trajectory ignores the obstacles. This paper addresses the generation of such a trajectory in a single onboard optimization, which respects the UAV 
+
+> The authors are with the Multi-robot Systems Group, Faculty of Elec-trical Engineering, Czech Technical University in Prague, Czech Republic (http://mrs.felk.cvut.cz/ ). This work has been supported by the Czech Science Foundation (GA ˇ CR) under research project No. 23-06162M, by the European Union under the project Robotics and Advanced Industrial Production (reg. no. CZ.02.01.01/00/22 008/0004590) and by CTU grant no SGS26/077/OHK3/1T/13. (Ondˇ rej Proch´ azka and Juraj Pauko contributed equally to this work.)
+
+(a) (b) (c) Fig. 1: Illustrative images from real-world experiments: (a) UAV used in the experiments, (b) flown path visualization in RViz, and (c) top view of the course with the flown path. dynamics and actuation limits while remaining collision-free with respect to the obstacles perceived by the onboard Light Detection and Ranging (LiDAR) sensor. The planner relies only on onboard sensing and has to return a solution within a few milliseconds of each planning period. The result is continuously handed to an SE (3) geometric controller [4] as a full-state reference, so that the controller can follow it without deviating into the obstacles it was planned around. Meeting these requirements in one optimization is difficult for three reasons. First, the free space around obstacles is nonconvex, so imposing the obstacles as hard constraints makes the problem nonconvex and prone to local minima and infeasibility. Second, the sensor returns a variable and unbounded number of obstacles, while the problem has to keep a fixed size for its computation time to stay pre-dictable. Third, a solution that is feasible at the discrete prediction nodes can still intersect an obstacle between two of them. Existing work addresses these difficulties in two ways. Corridor-based polynomial optimization restricts the trajectory to a convex subset of the free space, which removes the nonconvexity and allows online computation [5], [6]. However, the smooth polynomial representation keeps the vehicle from flying close to its dynamic limits. Placing the avoidance inside the control loop instead preserves the reaction to what is currently perceived [7], [8], [9], but the obstacles are then expressed as soft costs, so that the avoidance is traded against tracking rather than guaranteed. To this end, we propose Nonlinear Model Predictive Planning (NMPP), which uses Nonlinear Model Predictive arXiv:2610.08695v1 [cs.RO] 6 Oct 2026 Control (NMPC) as a trajectory planner that generates a full-state reference for a separate controller rather than actuator commands. Each optimization is initialized from the previously generated prediction rather than from the noisy state estimate, which allows imposing the obstacle constraint exactly. The accumulated point cloud is converted into ellipsoids, of which a fixed number enters the problem, keeping its size constant regardless of the scene. The hard constraint is complemented by a soft obstacle penalty and a softened acceleration-level Higher-Order Control Barrier Function (HOCBF) condition [10]. The full obstacle set validates the trajectory between prediction nodes. To enforce actuation limits efficiently, the NMPC uses the thrust rate as its control input. The thrust and angular-acceleration limits thus become linear constraints. To the best of our knowledge, this is the first planner that imposes LiDAR-perceived obstacles as hard constraints on the full quadrotor dynamics with thrust dynamics and runs onboard. In simulation, NMPP is compared with two trajectory planners, one based on linear Model Predictive Controller (MPC) [11] and one based on polynomial trajectories [12]. All three provide their reference to the same unmodified 
+
+SE (3) controller [4], so the reference is the only component that differs. Across five constraint profiles with speed limits, NMPP achieves a 58– 67 % lower position Root Mean Square Error (RMSE) than the linear MPC trajectory planner and a 41– 70 % lower RMSE than the polynomial trajectory planner. The obstacle avoidance is evaluated in a Poisson forest against SUPER [6], with both planners flying in the same world towards the same goal. NMPP completed all flights without collision at speeds up to 9.5 m s −1 (super fast 
+
+profile), whereas the success rate of SUPER dropped to 70 % 
+
+under that profile. Under a more aggressive profile, the two planners reached the goal in 86 % and 26 % of fifty flights, respectively. Last but not least, we deployed the planner on a real quadrotor and validated it in a cluttered outdoor environment, as illustrated in Fig. 1. The UAV successfully avoided obstacles while flying at speeds up to 5.5 m s −1.II. R ELATED WORK 
+
+Methods for autonomous UAV navigation in cluttered en-vironments range from reactive collision avoidance to global, optimization-based, and learning-based trajectory planning. Reactive methods compute avoidance commands directly from the current perception data. Artificial Potential Fields (APF) represent obstacles through repulsive potentials [13], while Velocity Obstacles identify control velocities that may lead to a future collision [14]. Extensions such as ORCA support reciprocal collision avoidance between mul-tiple agents [15]. Reciprocal velocity constraints have also been integrated into NMPC for mutual collision avoidance in agile UAV flight [16]. These approaches are computationally efficient, but their local decisions can lead to local minima and usually rely on simplified vehicle dynamics. Global motion planners instead search for a collision-free path in a representation of the environment. Graph-search and sampling-based algorithms, such as A*, RRT, and RRT*, can find paths through complex obstacle configurations [17]. The resulting path is commonly used to further plan a smooth trajectory that can be tracked by the UAV. Minimum jerk/snap polynomial trajectories are widely used for this purpose because the differential flatness of a quadrotor allows smooth position trajectories to be mapped to reference attitude and thrust [18], [19]. Efficient polynomial repre-sentations further enable the generation of long trajectories with many segments [12]. Minimum-time formulations based on a point-mass model exploit the maneuverability of the UAV more effectively than polynomial trajectories, at the cost of a reference that is only partially feasible for the real vehicle [3]. However, these methods generally require predefined waypoints or a collision-free corridor and do not themselves determine how to avoid newly perceived obstacles. Optimization-based planners incorporate smoothness, dy-namic feasibility, and collision avoidance into a single trajectory-planning problem. Corridor-based methods such as GCOPTER [5] efficiently optimize polynomial trajectories while enforcing smoothness-based formulations. Receding safe corridors can also be constructed incrementally along the flight, so that high-speed smooth trajectories are planned within them [20]. The corridor, however, restricts the trajec-tory to a convex subset of the free space, so the motion that can be produced is limited by how the corridor was carved rather than by the capability of the vehicle. MPC provides an alternative in which the future vehicle motion is optimized over a receding horizon. It naturally supports state, input, and actuation constraints and has there-fore been applied to UAV trajectory tracking and collision avoidance [11]. An NMPC controller that integrates the dynamics of the low-level flight controller was shown to reduce the tracking error on agile references [21]. There, the optimization is placed at the controller level, where it pro-duces the commands for the actuators, whereas the method proposed here places it at the planner level, where it produces a reference for a separate controller. The CIAO and CIAO* methods, presented in [22], [23], respectively, formulate collision avoidance through convex inner approximations of free space, providing recursively feasible predictive motion planning in static and predictable dynamic environments. The principal difficulty is that a nonlinear geometric constraint has to be introduced for every obstacle that the optimization accounts for, so the size of the problem grows with the number of obstacles that are taken into account. When the environment is measured online, that number is neither known in advance nor bounded, which is what the following approaches, and NMPP have to address. Several planners therefore reduce or avoid dense volu-metric mapping. NanoMap stores a local history of depth measurements and performs uncertainty-aware proximity queries without fusing all measurements into a global voxel-map [24]. EGO-Planner removes the need for an Euclidean Signed Distance Field (ESDF) by extracting obstacle in-formation only when the optimized trajectory intersects an occupied region [25]. SUPER generates polyhedral flight corridors directly from LiDAR point clouds and optimizes an exploratory and a backup minimum-snap polynomial trajectory within them, to distinguish high-speed progress from motion guaranteed to remain in observed free space [6]. These methods substantially reduce mapping overhead, but collision avoidance is still performed through path search, corridor construction, and polynomial trajectory optimiza-tion. A different line of work removes the modular pipeline altogether and learns a mapping from sensor data directly to control commands, which avoids the latency accumulated across mapping, planning and control [26], [27]. These methods embed little prior knowledge about the controlled vehicle, so a change of the platform or its parameters requires retraining on large amounts of data. Another group of methods integrates perception directly into predictive control. Local point clouds can be queried directly using KD-trees to construct obstacle costs inside a point-mass MPC formulation [28]. Point-cloud constraints can be incorporated into Control Barrier Function (CBF)-based MPC by selecting risk points close to the predicted motion [7]. For quadrotors, multiple obstacle constraints can be aggregated into a composite CBF and enforced by a high-rate safety filter operating on a third-order dy-namic model [8]. Alternatively, Geometric Model Predictive Path Integral (GMPPI) approach sampled UAV rollouts di-rectly into depth images [9] and evaluates collision without constructing an explicit geometric map. These approaches demonstrate the benefits of connecting local perception with predictive control, but they either simplify the vehicle dy-namics, apply collision avoidance as a separate safety filter, or represent obstacles only through soft collision costs. In contrast, NMPP imposes the LiDAR-perceived obstacles as hard constraints on the full quadrotor dynamics with thrust dynamics, without restricting the trajectory to a convex corridor. A fixed number of ellipsoids keeps the problem size constant regardless of the scene, and the planner runs onboard while providing a full-state reference. III. P ROBLEM FORMULATION 
+
+We consider the problem of online trajectory planning for a quadrotor flying toward one or a sequence of reference waypoints in an initially unknown environment. At each replanning instant, the objective is to generate a finite-horizon trajectory that progresses toward the active reference while respecting the nonlinear quadrotor dynamics and the physical limitations of the UAV. In addition, the generated trajectory must remain collision-free with respect to obstacles observed by the onboard LiDAR sensor. 
+
+A. UAV Model Definition 
+
+Let the state be x = ( p, q, v, ω), with position p ∈ R3,unit-quaternion attitude q, linear velocity v and body rate 
+
+ω, and let f ∈ R4 be the vector of per-rotor thrusts fi. The rotors act on the body through the constant allocation 
+
+fT = T e3, T =
+
+> 3
+
+X
+
+> i=0
+
+fi, τ = M f , (1) 
+
+M =
+
+
+
+y0 y1 y2 y3
+
+−x0 −x1 −x2 −x3
+
+−κ −κ κ κ
+
+ , (2) where fT is the thrust vector in the body frame, T is the collective thrust, fi is the thrust produced by the i-th rotor, τ is the torque produced in the body frame, and 
+
+e3 = (0 , 0, 1) ⊤. The allocation matrix M is determined by the rotor positions (xj , y j ) in the body frame and the rotor torque constant κ.The quadrotor dynamics are given by 
+
+˙p = v, (3a) 
+
+˙v = R(q)( fT + fD )
+
+m + g, (3b) 
+
+˙q = 12 q ⊛
+
+ 0
+
+ω
+
+
+
+, (3c) 
+
+˙ω = J−1(τ − ω × Jω ), (3d) where the operator ⊛ denotes the quaternion multiplication, 
+
+R(q) is the rotation matrix corresponding to the quaternion 
+
+q, m is the mass of the UAV, g is the gravitational accelera-tion vector, and J is the diagonal inertia matrix of the rigid body. The drag force is modelled as fD = −Kv R(q)⊤v,where Kv = diag( kvx , k vy , k vz ) contains the linear drag coefficients. 
+
+B. Nonlinear Model Predictive Control Formulation 
+
+The reference trajectory is generated by repeatedly solving a finite-horizon Optimal Control Problem (OCP), stated in the form used by the acados framework [29]. Over a horizon of N shooting nodes with time steps ∆tk, and in a real-time-iteration scheme, the planner solves 
+
+min      
+
+> x0: N,u0: N−1,s0: N
+> N−1
+
+X
+
+> k=0
+
+ ℓ(xk, uk) + Φ s(sk)
+
++ ℓe(xN ) + Φ es(sN ) (4a) s.t. x0 = ˆ x, (4b) 
+
+xk+1 = fRK 4(xk, uk, ∆tk), (4c) 
+
+h ≤ h(xk, uk) ≤ h, (4d) 
+
+hs − sk ≤ hs(xk, uk) ≤ hs + sk, (4e) 
+
+sk ≥ 0, (4f) where k indexes the shooting nodes, uk is the control input, 
+
+ˆx is the current state estimate, ℓ and ℓe are the stage and terminal costs, and fRK 4 denotes the discrete dynamics obtained by integrating (3) over the time step ∆tk with a fourth-order Runge–Kutta scheme. The vector h collects the constraints that are enforced exactly, and hs those that are softened with the slack variables sk, which are penalised by Φs(s) = 12 s⊤Zs + z⊤s with the quadratic and linear penalty weights Z and z. A subset of the softened constraints is imposed at the terminal node as well, with its own slack variables sN and penalty Φes. The stage cost, the two constraint sets, and the choice of the time steps ∆tk are described in Section IV. PERCEPTION    
+
+> ONLINE TRAJECTORY PLANNING
+> EXECUTION
+> LiDAR
+> point cloud
+> Local cloud processing
+> ROI · history · voxel · clustering
+> Ellipsoid abstraction
+> PCA · splitting · inflation
+> Fixed active set
+> prediction-ranked
+> Waypoint reference
+> Previous valid
+> prediction
+> shift + resample
+> NMPC trajectory planner
+> nonlinear UAV model · thrust-rate input
+> hard geometry + soft HOCBF / obstacle cost
+> Validate candidate
+> all ellipsoids + ground
+> keep previous if invalid
+> next valid prediction
+> 100 Hz interpolation SE(3) controller Quadrotor
+> State estimate
+> pose + heading
+> All ellipsoids
+> kept for validation
+
+Fig. 2: Whole NMPP system pipeline. IV. P ROPOSED METHOD 
+
+In this section, we describe NMPP, an NMPC configura-tion that enables its use as a trajectory planner rather than a controller. The complete pipeline is summarized in Fig. 2. 
+
+A. Augmented NMPC Model 
+
+In the conventional formulation [21], the thrust is the control, u = f . We instead augment the state with the thrust and take its rate as the control, 
+
+x = ( p, q, v, ω, f ), u = ˙f ∈ R4, (5) leaving the dynamics (3) unchanged. We use the thrust rate as the control because the solver keeps the control constant between two shooting nodes. If the thrust itself is the control, it jumps at every node, and so do the linear and angular accelerations of the planned trajectory, which is then only p ∈ C1 and ω ∈ C0. Writing the linear acceleration as a = ˙ v and differentiating (3b) and (3d), using ˙R = R[ω]× and the allocation (1), gives 
+
+j = ˙ a = R(q) [ ω]×
+
+ fT + fD
+
+
+
+m
+
++ R(q)   P 3 
+
+> i=0
+
+˙fi
+
+e3 + ˙fD
+
+
+
+m ,(6a) 
+
+¨ω = J−1 M ˙f − ˙ω × Jω − ω × J ˙ω, (6b) where both the jerk and the angular jerk depend linearly on ˙f . With the thrust rate as the control, the thrust changes continuously, the accelerations no longer jump, and the reference becomes one order smoother, p ∈ C2 and ω ∈ C1.
+
+B. Constraints 
+
+With the thrust as a state and its rate as the control, the actuator limits become linear bounds on the state and the control. The bounds 
+
+fk ∈ [fmin , f max ], per-rotor thrust (7a) 
+
+Tk ∈ [Tmin , T max ], collective thrust (7b) 
+
+J−1M f k ∈  − ˙ωmax , ˙ωmax 
+
+, ang. acceleration (7c) form the hard constraints (4d), while 
+
+ωk ∈ [ωmin , ωmax ], body rate (8a) 
+
+vk ∈ [vmin , vmax ], linear velocity (8b) 
+
+R(qk) 
+
+> 33
+
+≥ cos θmax , tilt (8c) 
+
+n⊤ 
+
+> i
+
+qxy,k ≤ sin θmax  
+
+> 2
+
+, tilt polygon (8d) are implemented as softened constraints using the slack variables in (4e). This permits temporary violations of the motion limtis, for example after switching to a more restric-tive constraint profile, without making the optimization in-feasible. The actuator constraints (7a)-(7c), however remain hard. In (8d), qxy,k = qx,k qy,k 
+
+⊤ contains the x and 
+
+y components of the attitude quaternion qk. The vectors 
+
+ni, i = 1 , . . . , 4, define the directions used to construct the octagonal approximation of the circular tilt region in the (qx, q y ) plane, with n1 = (1 , 0) ⊤, n2 = (0 , 1) ⊤ and 
+
+n3,4 = 1√2 (1 , ±1) ⊤. The limits on the linear acceleration are not imposed on the acceleration itself, but through the collective thrust (7b) and the tilt (8c)–(8d). Neglecting drag, the vertical and horizontal accelerations of the UAV are 
+
+az = Tm cos θ − g and axy = Tm sin θ, where θ is the tilt angle and g is the gravitational acceleration. The bounds on the vertical acceleration are therefore enforced by tightening the collective thrust limits to 
+
+Tk ∈  max  Tmin , m (g − a−
+
+> z,max
+
+),
+
+min  Tmax , m (g + a+
+
+> z,max
+
+) , (9) and the bound on the horizontal acceleration by replacing the tilt limit with 
+
+θmax ← min 
+
+
+
+θmax , arcsin axy,max 
+
+g + a+
+
+> z,max
+
+
+
+, (10) which is the largest tilt at which the upper thrust limit of (9) still produces at most axy,max . Since [R(q)] 33 = 1 −
+
+2( q2 
+
+> x
+
++ q2 
+
+> y
+
+), the tilt constraint (8c) is equivalent to q2 
+
+> x
+
++ q2 
+
+> y
+
+≤
+
+sin 2 θmax  
+
+> 2
+
+, and (8d) is a linear outer approximation of this disc. Using both constraints allows the solver to bound the tilt in the linear general-constraint block of the Quadratic Programming (QP), while (8c) retains the exact condition. For the same reason, the gyroscopic contribution ω × Jω of (3d) is neglected in (7c), so that the bound stays linear in the state instead of becoming a nonlinear path constraint. It is small relative to M f in the operating regime considered. 
+
+C. Collision Avoidance 
+
+The collision-avoidance method connects local LiDAR perception directly with the NMPC trajectory planner. The main difficulty is that a point cloud contains thousands of points and an unpredictable number of obstacles, whereas the NMPC must retain a fixed problem size to provide predictable onboard computation. Therefore, the measured environment is first converted into a compact set of el-lipsoidal obstacles. A fixed number of the most relevant obstacles is included in the optimization, while the complete perceived obstacle set is retained for subsequent trajectory validation. 1) Point-Cloud Processing: Let P =
+
+{ξ1, . . . , ξ Np }, ξi ∈ R3 denote an accumulated LiDAR point cloud expressed in the static planning frame. Points corresponding to the UAV body and ground are removed, and the cloud is restricted to a local heading-aligned Range Of Interest (ROI) around the vehicle. The onboard Livox MID-360 uses a non-repetitive scanning pattern. To obtain a more complete representation of obstacle surfaces, the consecutive point clouds are accumulated over non-overlapping 0.20 s windows to obtain denser obstacle coverage. The cloud P is downsampled using a range-adaptive voxel grid [30]. A fine resolution is retained near the UAV, where accurate obstacle boundaries are important, while increas-ingly coarse resolutions are used farther away. Euclidean clustering then partitions the processed cloud into 
+
+C = {C 1, . . . , CNc }, Cm ⊆ P , (11) where Cm denotes an obstacle cluster. 
+
+2) Obstacle Representation: Each cluster Cj is repre-sented by one or more oriented ellipsoids. Compared with a sphere, an ellipsoid provides a tighter approximation of elongated structures such as tree trunks, poles, and walls. Principal Component Analysis (PCA) determines the orien-tation of the ellipsoid, after which its center and radii are selected such that all points in Cj are enclosed. An additional inflation safety margin accounts for the vehicle size in the perceived obstacle boundary. The resulting perceived obstacle set is denoted by 
+
+E = {E 1, . . . , ENe }. (12) An ellipsoid Ej with center cj is represented by 
+
+Ej = ξ ∈ R3 (ξ − cj )⊤Aj (ξ − cj ) ≤ 1 , (13) where the positive-definite matrix Aj contains its orientation and radii. Equivalently, the obstacle function is defined as 
+
+hj (p) = ( p − cj )⊤Aj (p − cj ) − 1. (14) A point lies inside the obstacle if hj (p) < 0, while hj (p) ≥
+
+0 describes the collision-free region. The ground is modeled separately as a horizontal plane at height zg. Including the prescribed safety clearance dg, the minimum admissible altitude is 
+
+zmin = zg + dg. (15) This representation assumes locally level terrain and does not account for ground inclination or uneven terrain. 
+
+3) Obstacle Constraints and Penalties: The obstacle con-ditions extend the NMPC formulation at the beginning of this section. Together with the UAV constraints, every ellipsoid selected for the optimization introduces the hard geometric constraint 
+
+hj (pk) ≥ 0, k = 1 , . . . , N, (16) at the prediction nodes. Consequently, a feasible solution cannot place a prediction node inside any selected ellipsoid. The hard constraint (16) defines the collision-free region but does not actively encourage the predicted trajectory to maintain a larger separation from the obstacle while remain-ing feasible. Therefore, a soft obstacle penalty is additionally included in the objective function. The signed radial distance from the ellipsoid boundary is approximated by 
+
+dj,k = ∥pk − cj ∥2 1 − 1
+
+phj (pk) + 1 
+
+!
+
+. (17) The corresponding bounded obstacle potential is 
+
+Jobs,j,k = 12
+
+h
+
+1 − tanh 
+
+ αobs 
+
+2 (dj,k − εobs )
+
+i 
+
+, (18) where εobs determines the distance at which the penalty becomes active and αobs controls its steepness. The soft obstacle penalty at prediction node k is 
+
+Jobs ,k = X 
+
+> Ej∈E act
+
+J2
+
+> obs,j,k
+
+, (19) where Eact ⊆ E is the set of obstacles included in the current optimization. The penalty is small far from an obstacle, and increases smoothly near its boundary, thereby encouraging the optimizer to initiate an avoidance maneuver before the hard constraint becomes active. To account for both the obstacle clearance and the rate at which the UAV approaches the obstacle, an additional acceleration-level condition is constructed from the first two derivatives of hj as follows 
+
+˙hj,k = 2( p − cj )⊤Aj vk, (20) 
+
+¨hj,k = 2 v⊤ 
+
+> k
+
+− Aj vk + 2( pk − cj )⊤Aj ak, (21) where ak = ˙vk is the translational acceleration at the prediction node k. Following the HOCBF [8], [10], the implemented acceleration-level condition is written directly as 
+
+¨hj,k + kvel ˙hj,k + kpos hj (pk) ≥ − sj,k , sj,k ≥ 0, (22) where kpos > 0 and kvel > 0 determine the response to the obstacle clearance and approach rate, respectively. A newly perceived obstacle may require an acceleration that cannot be produced immediately under the vehicle constraints. There-fore, the acceleration-level condition is softened by sj,k ,which is penalized in the NMPC objective. The geometric constraint hj (pk) ≥ 0 remains hard, and no separate first-order HOCBF constraint is imposed for LiDAR obstacles. 
+
+4) Obstacle Selection and Trajectory Validation: The generated solver contains a fixed maximum number Nobs 
+
+of obstacle slots. If Ne > N obs , the obstacles are ranked according to their minimum normalized separation from the remaining prediction 
+
+Sj = min  
+
+> k=0 ,...,N −1
+> λ∈[0 ,1]
+
+hj ((1 − λ)pk + λpk+1 ) . (23) The obstacles with the lowest values of Sj form the active set 
+
+Eact . A trajectory intersecting any ellipsoid or violating the minimum ground altitude is rejected. The remaining previous prediction is then checked against the updated obstacle set and reused only if it remains collision-free. D. Cost Function 
+
+The stage and terminal costs of (4a) are formulated as nonlinear least squares, 
+
+ℓ = 12 yk − y∗
+
+> k
+> 2
+> W
+
+, ℓe = 12 ye − ye∗ 2 
+
+> We
+
+, (24) with ∥e∥2 
+
+> W
+
+= e⊤We and the stage residual 
+
+yk = p⊤ 
+
+> k
+
+q⊤ 
+
+> e,k
+
+v⊤ 
+
+> k
+
+ω⊤ 
+
+> k
+
+f ⊤ 
+
+> k
+
+u⊤ 
+
+> k
+
+˙ω⊤ 
+
+> k
+
+Jobs ,k 
+
+⊤ ,
+
+(25) where qe,k ∈ R3 is the vector part of the error quaternion between qk and the reference attitude. The corresponding weight is 
+
+W = blkdiag  Q, Rf , R, Q ˙ω , Q obs 
+
+. (26) The block Q penalizes the tracking error in position, attitude, linear velocity, and body rate. The remaining blocks are specific to the thrust-augmented formulation, Rf regulates the thrust state fk towards its hover value, R penalizes the control uk = ˙fk and therefore forbids bang-bang thrust. 
+
+Q ˙ω penalizes the angular acceleration, and Qobs weights the obstacle penalty Jobs ,k defined in Section IV-C. The terminal residual ye drops the two control-dependent entries uk and 
+
+˙ωk, with We = blkdiag( Q, Rf , Q obs ). The time steps ∆tk
+
+are not uniform. Short steps near the current state preserve integration accuracy, while longer steps at the end of the horizon extend the horizon’s reach with a fixed number of shooting nodes. 
+
+E. Implementation Details 
+
+The planner is integrated into the open-source UAV system of [31] and runs at 100 Hz . The horizon consists of N = 28 
+
+shooting nodes spanning 2.0 s , distributed as five steps of 
+
+10 ms , five of 50 ms , five of 80 ms and thirteen of 100 ms .The number of obstacle slots is fixed at Nobs = 15 when the solver is generated, so the dimensions of the problem do not change during the flight. Each iteration is initialized by sampling the stored prediction at the elapsed time. The opti-mization and the reference output are decoupled. The solver runs on its own timer, while the command passed to the controller is produced at every control step by interpolating the stored prediction between the two nodes surrounding its current age, and the prediction is discarded once it grows older than the horizon, after which the tracker falls back to commanding the current vehicle state until a new solution arrives. TABLE I: The constraint profiles. The snap limit equals the jerk limit in every profile.                                    
+
+> Profile vxy axy jxy vzaz↑/↓
+> [m s −1][m s −2][m s −3][m s −1][m s −2]
+> slow 1.0 1.0 20 1.0 1.0/1.0
+> medium 4.0 2.0 40 2.0 1.0/1.0
+> fast 8.0 4.0 60 4.0 2.0/2.0
+> super fast 10.0 10.0 120 3.0 3.0/2.0
+> agile 13.0 15.0 120 3.0 4.0/2.0
+
+TABLE II: Mean 3D RMSE ( m) of a 20 m flight in free space for varying constraint profiles. vpeak is the range of peak speeds reached across the three planners in ( m s −1)while Reduction denotes the percentage decrease in error relative to each baseline. No standard deviation exceeded 
+
+0.045 m .                                    
+
+> Profile vpeak NMPP MPC Poly Red. Red.
+> (proposed) (baseline) (baseline) vs MPC vs Poly
+> slow 1.0–1.2 0.032 0.077 0.055 58.2 41.3
+> medium 3.9–4.1 0.078 0.238 0.192 67.3 59.5
+> fast 5.9–7.2 0.122 0.373 0.307 67.4 60.3
+> super fast 7.3–8.8 0.178 0.497 0.398 64.1 55.2
+> agile 9.5–10.0 0.186 0.545 0.624 65.9 70.2
+
+V. E XPERIMENTS AND RESULTS 
+
+A. Experimental methodology 
+
+This section evaluates NMPP in simulation and real-world experiments. First, the tracking accuracy of the generated reference is compared with a linear MPC trajectory planner [11] and a polynomial trajectory planner [12]. Collision avoidance is then evaluated in a simulated forest. Finally, the complete system is deployed in the real UAV platform. In every simulated comparison the evaluated planners provide their reference to the same unmodified SE (3) controller [4], so that the comparison isolates the reference planner, and each configuration is flown ten times, or fifty times under the agile profile. All flights are performed under one of the constraint profiles of Table I, which are enforced by the underlying UAV system. The profiles are identical for all evaluated planners. The planner’s thrust and attitude limits are fixed and do not change with the profile. 
+
+B. Simulation Results 
+
+The simulations use a simulated multirotor in Gazebo with an emulated PX4 autopilot, while the trajectory planner and the remaining control components run within the open-source UAV system [31]. The same vehicle model and state estimator are used for all evaluated trajectory planners, and the simulations run on a laptop with an Intel Core i7-13700H processor. 
+
+1) Reference Tracking: The obstacle-free experiment ex-amines whether including the UAV dynamics, attitude, and thrust evolution directly in the trajectory planning improves the trackability of the resulting reference. As shown in Table II, the advantage of NMPP is retained across all evaluated constraint profiles. The worst-case error follows the same trend, averaged over the ten flights of each TABLE III: Tracking and computational performance of NMPP in the simulated forest. The RMSE is pooled over the ten flights of each profile. tmean and tp95 cover the NMPC update only.                                     
+
+> Profile RMSE [ m]vmax [m s −1]tmean [ms ]tp95 [ms ]
+> slow 0.041 1.47 5.51 7.88
+> medium 0.096 4.29 5.86 8.66
+> fast 0.143 7.08 5.95 9.57
+> super fast 0.172 9.51 5.74 8.92
+> agile 0.198 11.38 6.91 9.79 0246810 12 14
+> t [s]
+> 010 20
+> computation time [ms]
+> individual flights mean = 5.7 ms 10 ms solver period
+
+Fig. 3: NMPP solution time over the ten simulated forest flights under the super fast profile. profile, the maximum tracking error ranges from 0.07 m 
+
+to 0.55 m for NMPP, against 0.12 m to 1.23 m for the linear MPC trajectory planner and 0.10 m to 1.4 m for the polynomial trajectory planner. The absolute gap to the linear MPC trajectory planner widens from 0.045 m under the slow 
+
+profile to 0.359 m under the agile profile. 
+
+2) Obstacle avoidance: The second experiment evaluates whether NMPP retains its tracking performance when the reference must be modified online according to local LiDAR measurements. We use a Poisson forest [32], containing trees with diameter of 0.6 m and a density of δ = 125 tree · m−2.This environment follows the forest configuration commonly used for evaluating high-speed UAV navigation [26], [20], [27]. The simulated UAV is equipped with an Ouster OS0-128 LiDAR operating at 20 Hz . Each flight targets a goal 
+
+40 m ahead and counts as successful when the vehicle reached it without a crash, a failsafe or a timeout. The tracking performance of NMPP in the forest experi-ments is summarized in Table III. While the tracking error increases with trajectory aggressiveness, the mean NMPC solution time stays within 5.5 ms to 7.0 ms across all profiles. The per-update solution times of the super fast profile are shown in Fig. 3. Although individual solves exceed the 
+
+10 ms period of the planner loop, mostly within the first second of the flight, the reference is not interrupted, because the command is interpolated from the stored prediction (Section IV-E). The predicted motion over all ten flights with the super fast constraint profile is summarized in Fig. 4. The lines crossing some of the more distant obstacles are predictions computed before the LiDAR sensor could scan them. To assess relative performance under identical conditions, NMPP is compared with SUPER [6]. Both planners use the same simulated world and provide their references to the same SE (3) controller. Their prediction horizons are 
+
+Fig. 4: Predicted trajectories obtained during the ten super fast simulation runs. Obstacles are shown in black with red-dashed safety margins. TABLE IV: Success rate and clearance in the forest. Min. clr. is the smallest airframe-to-trunk gap over the successful flights, with the propeller tips reaching 0.231 m from the vehicle centre, so a negative value is a propeller strike the flight survived. The agile row is from fifty flights per method.                          
+
+> Profile NMPP (proposed) SUPER succ. [ %]min. clr. [ m]succ. [ %]min. clr. [ m]
+> slow 100 +1.243 100 -0.041
+> medium 100 +0.800 100 +0.004
+> fast 100 +0.270 100 +0.183
+> super fast 100 +0.264 70 +0.158
+> agile 86 +0.131 26 -0.145
+
+configured to cover comparable time intervals. Both methods reached the goal in every run up to the fast profile. Under the 
+
+super fast profile NMPP maintains a 100 % success rate, but the success rate of SUPER decreases to 70 % (see Table IV). Under the agile profile, NMPP reached the goal in 43 of 50 flights and SUPER in 13, with peak speeds of 11 .4 m s −1
+
+and 13 .2 m s −1, respectively. 
+
+C. Real-world experiments 
+
+NMPP is deployed on a custom-built quadrotor with a take-off mass of 3.25 kg , based on a Readytosky Mark4 10-inch V2 frame with a wheelbase of 427 mm . The propulsion consists of four iFlight XING-E 3314 900 kV motors with three-blade Gemfan 1045-3 propellers, driven by a Skystars Jupiter 80 A BL32 electronic speed controller. The low-level attitude-rate loop runs on a Holybro Pixhawk 6C mini flight controller with the PX4 firmware, which is commanded by the same UAV system [31] running on a Jetson Orin NX with an A603 carrier board. State estimation fuses the onboard Inertial Measurement Unit (IMU) with a Holybro F9P Heli-cal Real-time Kinematics (RTK) Global Navigation Satellite System (GNSS) receiver and the obstacle measurements are provided by a Livox Mid-360 LiDAR. The real-world experiments consist of ten flights through the approximately 40 m obstacle course under the fast con-straint profile. The experiments were conducted in strong and gusty wind, which disturbed the lightweight pylons as well as the UAV. Consequently, the obstacle boundaries were not perfectly stationary during individual flights, which introduced additional perception uncertainty not present in the simulation. The aggregated real-world results are summarized in Ta-ble V and the resulting flown trajectories are shown in Fig. 5. On the onboard computer the mean solution time rises to 
+
+13 .5 ms , above the 10 ms period of the planner loop, so a newly optimized trajectory is not available at every control step. Because the command is interpolated from the stored prediction (Section IV-E), the reference remains continuous and the lower update rate is not visible to the controller. VI. C ONCLUSION 
+
+In this paper, we introduced NMPP, an NMPC-based trajectory planner that provides dynamically feasible and collision-free trajectories. Because the optimization is for-mulated over the UAV model and its actuation limits, the TABLE V: Aggregated performance over the ten real-world flights under the fast profile. The RMSE is the mean and standard deviation over the individual flights, vmax denotes maximum achieved flight speed and tmean and tp95 denote the mean and 95th-percentile NMPP computation times, respectively. 
+
+Nflights RMSE [ m] vmax [m s −1] tmean [ms ] tp95 [ms ]10 0.328 ± 0.070 5.55 13.52 20.03 0 5 10 15 20 25 30 35 40  
+
+> x[m]
+> −10 −5 0
+> y [m]
+> 0123456
+> vxy  [m s −1 ]
+
+Fig. 5: Real UAV trajectories with corresponding speeds. resulting reference can be tracked closely by an unmodified 
+
+SE (3) controller. The position RMSE is reduced by 58 % 
+
+to 67 % against a linear MPC trajectory planner [11] and by 41 % to 70 % against a polynomial trajectory planner [12] driving the same controller. In a Poisson forest, the planner reached the goal without collision in all ten flights of each of the first four constraint profiles, whereas the success rate of SUPER [6] decreased to 70 % under the super fast 
+
+constraint profile. Under a more aggressive profile ( agile ), the NMPP succeeded in 86 % of fifty flights and SUPER in 26 % . The planner was deployed on a real UAV, which avoided obstacles at speeds up to 5.5 m s −1 in gusty wind, running everything on board. REFERENCES [1] P. Doherty et al. , “A uav search and rescue scenario with human body detection and geolocalization,” in AI 2007: Advances in Artificial Intelligence , M. A. Orgun et al. , Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2007, pp. 1–13. [2] M. Burri, et al. , “Aerial service robots for visual inspection of thermal power plant boiler systems,” in 2nd International Conference on Applied Robotics for the Power Industry , 2012, pp. 70–75. [3] K. Teissing, et al. , “Real-time planning of minimum-time trajectories for agile uav flight,” IEEE Robotics and Automation Letters , vol. 9, no. 11, pp. 10 351–10 358, 2024. [4] T. Lee, et al. , “Geometric tracking control of a quadrotor uav on se (3),” in 49th IEEE conference on decision and control (CDC) . IEEE, 2010, pp. 5420–5425. [5] Z. Wang, et al. , “Geometrically constrained trajectory optimization for multicopters,” IEEE Transactions on Robotics , vol. 38, no. 5, pp. 3259–3278, 2022. [6] Y. Ren, et al. , “Safety-assured high-speed navigation for MAVs,” 
+
+Science Robotics , vol. 10, no. 98, p. eado6187, 2025. [7] F. Liang, et al. , “Point cloud-based control barrier functions for model predictive control in safety-critical navigation of autonomous mobile robots,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 2060–2067. [8] M. Harms, et al. , “Safe quadrotor navigation using composite control barrier functions,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 6343–6349. [9] P. Pochobradsk´ y, et al. , “Geometric model predictive path integral for agile uav control with online collision avoidance,” IEEE Robotics and Automation Letters , 2026. [10] W. Xiao et al. , “High-order control barrier functions,” IEEE Transac-tions on Automatic Control , vol. 67, no. 7, pp. 3655–3662, 2022. [11] T. Baca, et al. , “Model predictive trajectory tracking and collision avoidance for reliable outdoor deployment of unmanned aerial ve-hicles,” in 2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2018, pp. 6753–6760. [12] Z. Wang, et al. , “Generating large-scale trajectories efficiently using double descriptions of polynomials,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) , 2021, pp. 7436– 7442. [13] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” in Proceedings of the 1985 IEEE International Conference on Robotics and Automation , vol. 2, 1985, pp. 500–505. [14] P. Fiorini et al. , “Motion planning in dynamic environments using velocity obstacles,” The International Journal of Robotics Research ,vol. 17, no. 7, pp. 760–772, 1998. [15] J. van den Berg, et al. , “Reciprocal n-body collision avoidance,” in Robotics Research: The 14th International Symposium ISRR , ser. Springer Tracts in Advanced Robotics. Springer, 2011, vol. 70, pp. 3–19. [16] V. Kratky, et al. , “Rvc-nmpc: Nonlinear model predictive control with reciprocal velocity constraints for mutual collision avoidance in agile uav flight,” arXiv preprint arXiv:2512.08574 , 2025. [17] S. Karaman et al. , “Sampling-based algorithms for optimal motion planning,” The International Journal of Robotics Research , vol. 30, no. 7, pp. 846–894, 2011. [18] D. Mellinger et al. , “Minimum snap trajectory generation and control for quadrotors,” in 2011 IEEE International Conference on Robotics and Automation , 2011, pp. 2520–2525. [19] C. Richter, et al. , “Polynomial trajectory planning for aggressive quadrotor flight in dense indoor environments,” in Robotics Research: The 16th International Symposium ISRR , ser. Springer Tracts in Advanced Robotics. Springer, 2016, vol. 114, pp. 649–666. [20] Y. Ren, et al. , “Bubble planner: Planning high-speed smooth quadrotor trajectories using receding corridors,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2022, pp. 6332– 6339. [21] P. M. Gupta, et al. , “Lol-nmpc: Low-level dynamics integration in nonlinear model predictive control for unmanned aerial vehicles,” in 
+
+2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025, pp. 1186–1193. [22] T. Schoels, et al. , “An NMPC approach using convex inner approxima-tions for online motion planning with guaranteed collision avoidance,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) , 2020, pp. 3574–3580. [23] ——, “CIAO ⋆: MPC-based safe motion planning in predictable dy-namic environments,” IFAC-PapersOnLine , vol. 53, no. 2, pp. 6555– 6562, 2020. [24] P. R. Florence, et al. , “NanoMap: Fast, uncertainty-aware proximity queries with lazy search over local 3D data,” in 2018 IEEE Inter-national Conference on Robotics and Automation (ICRA) , 2018, pp. 7631–7638. [25] X. Zhou, et al. , “EGO-Planner: An ESDF-free gradient-based local planner for quadrotors,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 478–485, 2021. [26] A. Loquercio, et al. , “Learning high-speed flight in the wild,” Science Robotics , vol. 6, no. 59, p. eabg5810, 2021. [27] Y. Zhang, et al. , “Back to newton’s laws: Learning vision-based agile flight via differentiable physics,” 2024. [28] L. Zhang, et al. , “Mapless collision-free flight via MPC using dual KD-trees in cluttered environments,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 19 653–19 660. [29] R. Verschueren, et al. , “acados – a modular open-source framework for fast embedded optimal control,” Mathematical Programming Com-putation , 2021. [30] R. B. Rusu et al. , “3D is Here: Point Cloud Library (PCL),” in IEEE International Conference on Robotics and Automation , 2011, pp. 1–4. [31] T. Baca, et al. , “The mrs uav system: Pushing the frontiers of reproducible research, real-world deployment, and education with au-tonomous unmanned aerial vehicles,” Journal of Intelligent & Robotic Systems , vol. 102, no. 1, Apr. 2021. [32] S. Karaman et al. , “High-speed flight in an ergodic forest,” in 2012 IEEE International Conference on Robotics and Automation . IEEE, 2012, pp. 2899–2906.

@@ -1,0 +1,482 @@
+Title: RIWANav: Recursive World-Action Models with Self-Improvement for Urban Navigation
+
+URL Source: https://arxiv.org/pdf/2610.08640v1
+
+Published Time: Wed, 07 Oct 2026 01:50:15 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+Preprint 
+
+# RIWANav: Recursive World–Action Models with Self-Improvement for Urban Navigation 
+
+Jing Xie 1, Shouwei Ruan 2, Yubin Wang 3,‡, Yuxiang Zhang 4
+
+Haitao Yang 5, Songchang Jin 6, Dianxi Shi 6,∗
+
+> 1
+
+MoE Key Lab of Artificial Intelligence, Institute of AI, School of Computer Science, Shanghai Jiao Tong University, Shanghai, China 
+
+> 2
+
+Beihang University, Beijing, China 3The Hong Kong University of Science and Technology, Hong Kong, China 
+
+> 4
+
+Tsinghua University, Beijing, China 5The University of Texas at Austin, Austin, USA 
+
+> 6
+
+Intelligent Game and Decision Lab (IGDL), Beijing, China 
+
+Abstract — Long-horizon urban navigation requires sequential local decisions whose errors can compound over time. Imitation learning (IL) rarely learns from failures, while physical trial-and-error reinforcement learning (RL) is costly. Action-conditioned world models can provide imagined feedback by predicting visual consequences for candidate actions. However, a frozen world model may become less reliable as the policy evolves. In this paper, we introduce RIWAN AV , a post-training framework that casts the coupled adaptation of a world model and an action model (policy) as task-specific recursive self-improvement (RSI). Each cycle alternates two updates. The world model evaluates policy actions through imagined outcomes, providing comparative feedback for group-relative policy optimization (GRPO). The improved policy then constructs a grounded self-curriculum, selecting expert-consistent action–video pairs by behavioral novelty and prediction error. The refined world model supplies feedback for the next policy update, closing the recursive self-improvement loop. Experiments show that RIWAN AV 
+
+outperforms training baselines and prior methods, validating the proposed recursive self-improvement loop between the policy and world model. Real-world trials further demonstrate its practical applicability. 
+
+I. I NTRODUCTION 
+
+Long-horizon urban navigation requires an agent to reach a language-specified destination from street-level observations and recent motion history. At each step, the agent must translate the global goal into a local decision, recover from mistakes, and determine when to stop. Existing methods commonly learn this behavior by imitating expert trajecto-ries [1], [2]. Although imitation learning (IL) provides strong initialization, it mainly supervises successful expert actions and cannot learn from policy-induced failures, as shown in Fig. 1(a). This limitation is particularly consequential in urban navigation, where one inaccurate local motion changes the next observation and can compound over subsequent decisions [3]. Reinforcement learning (RL) can learn from such failures, but collecting long-horizon trial-and-error interaction is costly. Navigation post-training therefore needs outcome feedback without requiring every candidate action to be physically executed. Action-conditioned world models serve as learned sim-ulators for policy improvement. Navigation world models (NWM) [4] and recent world action models [3], [5], [6] predict future observations conditioned on candidate actions. Their imagined outcomes allow a policy to compare local decisions before execution. However, a world model used for 
+
+> ‡
+
+Project leader. ∗Corresponding author. (b). Frozen World Model post-training (a). Imitation Learning   
+
+> Human Trajectories
+> Agent . . . . . .
+> Policy Action-conditioned World Model Improve Policy
+> Human frames
+> . . .
+> actions Imagination
+> (c). Recursive World–Action Models Self-Improvement
+> Improve Policy
+> Human frames
+> . . . Agent
+> Improve World Model
+> . . .
+> Reliable demonstrations
+> Policy Learn from Failures Navigation-Aligned Imagination Learn from Failures Co-Evolution
+> . . .
+> Imagination
+> actions Policy Action-conditioned World Model Learn from Failures Navigation-Aligned Imagination
+> Agent
+
+Fig. 1. From imitation learning to recursive world–action models self-improvement. (a) Imitation learning trains the policy from expert trajectories but provides limited supervision for policy-induced failures. (b) A frozen world model enables learning from imagined outcomes, but its predictions become misaligned with the evolving policy. (c) RIWAN AV closes the training loop: imagined outcomes improve the policy, while grounded policy-induced samples refine the world model for subsequent policy learning. 
+
+policy optimization should not remain frozen, as illustrated in Fig. 1(b). As the policy improves, the frozen world model does not adapt to the evolving distribution of urban navigation behaviors. Inaccurate predictions can then distort subsequent policy updates, making the frozen model a bottleneck of model-based post-training. We therefore seek a training framework that adapts the world model alongside the policy. Recursive self-improvement (RSI) motivates a training process in which each improvement stage changes the conditions for the next [7]. We bring this principle to navigation post-training by coupling policy opti-mization with world-model adaptation. The improved policy determines which demonstrations the world model should learn next, while the refined world model provides updated feedback for subsequent policy learning. Self-improvement therefore emerges from a recursive training loop between the policy and world model. We introduce RIWAN AV (Recursive Self-Improvement 
+
+1arXiv:2610.08640v1 [cs.RO] 6 Oct 2026 Preprint 
+
+of World– Action Models for Nav igation), a post-training framework that recursively improves a world model and an action model (policy). Each cycle alternates two coupled updates, as shown in Fig. 1(c). First, the action-conditioned world model predicts visual outcomes for multiple policy actions. Their relative quality provides imagined feedback for Group Relative Policy Optimization (GRPO) [8]. Second, the improved policy constructs candidate action–video pairs for adapting the world model to the policy’s evolving behavior distribution. To maintain valid supervision from the offline dataset, we retain candidates that remain locally consistent with recorded expert motion. A grounded self-curriculum then prioritizes these samples according to behavioral novelty and current prediction error. The refined world model supplies the imagined feedback for the next policy update, closing the recursive training loop. Our contributions are concluded as follows:  
+
+> •
+
+We introduce RIWAN AV , a post-training framework that recursively improves a navigation policy and a visual world model.  
+
+> •
+
+We develop a self-curriculum that filters policy proposals by expert consistency and prioritizes accepted action– video pairs by behavioral novelty and prediction error.  
+
+> •
+
+Experiments demonstrate consistent improvements across seen and unseen environments, with real-world deployment further validating practical effectiveness. II. R ELATED WORK 
+
+A. Real-World Navigation 
+
+Real-world navigation policies are learned from diverse robot trajectories and goal-conditioned supervision [9], [10], [11]. CityWalker [1] scales urban navigation learning with large collections of walking and driving videos. U RBAN -NAV [2] aligns city-scale human trajectories with landmark-grounded language. OmniVLA [12] learns a shared navigation policy across image, language, and mixed goal modalities. Other works explore generative guidance: NoMaD [11] uses a goal-masked diffusion policy, whereas VENTURA [13] generates instruction-conditioned visual paths for downstream control. These methods primarily improve navigation through data, supervision, and policy design. Our work instead focuses on post-training. 
+
+B. World Models for Policy Learning 
+
+World models support planning and policy learning through learned future dynamics [14], [15]. PlaNet [16] and Dreamer [17] established latent imagination for policy learning, with later works scaling to broader domains [18], [19] and high-dimensional visual observations [20], [21]. Recent world models extend to navigation and embodied control [22], [23], while increasingly connect visual prediction with policy optimization [3], [24]. NWM [4] ranks navigation trajectories using controllable video prediction, whereas Fast-WAM [6] jointly models video and actions to improve policy learning without explicit future generation. Rather than treating the world model as a fixed source of imagined feedback, we study how the world model and policy can continually adapt to one another as policy behavior evolves. 
+
+C. Recursive Self-Improvement 
+
+Recursive self-improvement traditionally studies sys-tems that improve their own problem-solving process [7]. POET [25] co-evolves environment–agent pairs, generates new challenges, and transfers solutions across environments. Model-based policy learning faces a related problem at the level of learned dynamics. Uncertainty-aware prediction and short rollouts reduce exploitation of model errors [14], [15], while conservative objectives penalize uncertain transi-tions [26], [27]. PDML [28] adapts model learning toward the current policy distribution. Other approaches prioritize ex-perience through learning progress, novelty, or curiosity [29], [30], [31]. In this paper, we connect these directions: the world model improves the policy through imagined feedback, and the evolving policy guides the next world-model update. This closed loop enables the two components to improve one another recursively. III. M ETHOD 
+
+We introduce RIWAN AV , a post-training framework that recursively couples a navigation policy with an action-conditioned world model. As shown in Fig. 2, each cycle alternates between policy optimization and world-model adaptation. First, the current world model predicts the visual outcomes of candidate actions, providing a basis for comparing actions and improving the policy. Second, the improved policy generates candidate actions, and those consistent with expert motion are paired with recorded future frames to build the policy-induced replay pool. The grounded self-curriculum prioritizes these pairs by behavioral novelty and current prediction error for world-model adaptation. The refined world model then supplies imagined feedback for the next policy update, closing the recursive self-improvement loop. 
+
+A. Overall 
+
+We denote the offline U RBAN NAV dataset [2] by D =
+
+{(st, a D 
+
+> t
+
+, o D 
+
+> t+1: t+T
+
+)}t, where aD 
+
+> t
+
+is the recorded expert action at time t and oD 
+
+> t+1: t+T
+
+contains its subsequent T RGB frames. A state st = ( ot−C+1: t, q t−C+1: t, ℓ ) contains the most recent 
+
+C RGB observations o, their poses q, and a language goal 
+
+ℓ. The policy πθ (a | s) defines a distribution over an H-waypoint action a = [ p1, . . . , p H ] ∈ RH×2 in the current camera frame, where each pj ∈ R2 is a planar waypoint; a separate head predicts the stop probability. The action-conditioned C OSMOS world model [32] predicts the visual consequence of a proposed action as 
+
+ˆot+1: t+T = fϕ(ot, A(a), ℓ ), (1) where A converts the waypoint chunk into the relative-pose sequence consumed by C OSMOS . The supervised policy 
+
+πθ0 and pretrained world model fϕ0 initialize the recursion. During recursion stage k, fϕk remains frozen while the policy improves by comparing imagined outcomes for actions proposed from the same state. The improved policy then supplies expert-consistent action–video pairs to the policy-induced replay pool. The grounded self-curriculum selects samples from this pool to update fϕk to fϕk+1 . The recorded 
+
+> 2
+
+Preprint Reliable Samples 
+
+ℒ!"#$%& 
+
+ℒ'( 
+
+. . . 
+
+𝑎 )
+
+𝑎 *
+
+𝑎 +
+
+> Actions
+
+. . . 
+
+𝑜 ),
+
+𝑜 *,
+
+𝑜 +,
+
+> Videos
+
+𝑟 +
+
+𝑟 )
+
+𝑟 *
+
+. . . 
+
+𝐴 +
+
+𝐴 )
+
+𝐴 *
+
+. . .   
+
+> World Model Policy World Model
+> Frames Novelty
+
+𝑁 - Error 𝐸 -   
+
+> Pred. GT
+> Priority 𝑝 !Prioritized Replay Buffer Self-Curriculum Rewards Advantages
+
+𝑎 .!
+
+𝑎 .   
+
+> Trainable Parameter Update
+> Policy Improvement World Model Improvement
+> Data Flow Filter
+> 12
+> A large digital billboard ...
+> Use
+> Text
+> Recursive
+> Fig. 2. Recursive self-improvement loop in RIWAN AV .(1) The current world model imagines action consequences that improve the policy. (2) The improved policy constructs a grounded self-curriculum that improves the next world model. Repeating these updates recursively changes both components and the feedback exchanged between them. The flame marks the component optimized in each phase.
+
+expert action aD 
+
+> t
+
+anchors future supervision, while πθ0
+
+provides a fixed reference for behavioral novelty. Every policy-proposed action can inform policy optimization, but only expert-consistent actions are paired with recorded future frames and added to the policy-induced replay pool. The self-curriculum prioritizes these expert-consistent action–video pairs by behavioral novelty and current prediction error. The resulting fϕk+1 supplies imagined feedback for the next policy-improvement phase. Repeating this recursion yields the final world model fϕK .
+
+B. World Simulation for Policy Improvement a) Policy cold-start: We first obtain a strong navigation policy through supervised fine-tuning (SFT), implemented as behavior cloning on expert trajectories from U RBAN NAV [2]. Frozen DINOv2 visual features [33], CLIP text features [34], and pose embeddings are fused by a transformer waypoint head. The corresponding SFT objective LSFT combines waypoint L1 error, directional error, and stop-prediction binary cross-entropy on the expert data. The resulting πθ0 provides the initialization and a fixed behavior reference during post-training, but does not by itself compare alternative actions proposed by the learned policy. 
+
+b) Learning from imagination: At state s, the current policy outputs a mean waypoint chunk μθ (s). We sample M
+
+candidate actions ai ∼ N (μθ (s), σ 2I), where σ controls the sampling scale, I is the identity matrix, and i ∈ { 1, . . . , M }
+
+indexes candidates. The current world model, held fixed dur-ing this policy-update phase, predicts each candidate’s visual outcome ˆo+ 
+
+> i
+
+through Eq. (1). The navigation scoring function 
+
+Rnav assigns each candidate a score ri = Rnav (s, a i, ˆo+ 
+
+> i
+
+) that measures the quality of its imagined consequence. Comparing candidates from the same state reduces sensitivity to absolute reward scale and directly identifies which local decision produces the better imagined outcome. We perform online policy optimization in the world simulator using GRPO [8]. States are drawn from the offline dataset, while candidate actions are sampled from the current policy and evaluated through imagined outcomes. We compute the group-relative advantage as 
+
+Ai = ri − ¯r
+
+std( r1: M ) + ϵA
+
+, (2) where ¯r and std( r1: M ) are the mean and standard deviation of the M rewards, and ϵA > 0 ensures numerical stability. Let πold be the policy that sampled the candidate group and ρi(θ) = πθ (ai | s)/π old (ai | s) its likelihood ratio. During post-training, we retain the waypoint and direction components of the supervised objective as an expert-anchor loss Lexp . For the waypoint-action update, we optimize 
+
+LPolicy = − 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+min( ρiAi, clip( ρi, 1 − η, 1 + η)Ai)+ βD KL (πθ (· | s)∥πθ0 (· | s)) + λexp Lexp , (3) where η is the ratio-clipping range, while β and λexp weight the reference-policy Kullback-Leibler (KL) penalty and expert anchor, respectively. The expert anchor compares the current prediction with recorded expert waypoints, whereas the KL term constrains the action distribution relative to the frozen initial policy πθ0 . Thus, the group-relative term learns from imagined action consequences, while clipping, the KL penalty, and the expert anchor prevent unstable drift from the supervised policy. 
+
+C. Curriculum Learning for World Model Improvement a) Policy-induced Replay: The improved policy deter-mines the behaviors on which the next world-model update should focus. However, not every policy-proposed action forms a reliable correspondence with the recorded future 
+
+oD 
+
+> t+1: t+T
+
+. Actions that deviate substantially from aD 
+
+> t
+
+lack 
+
+3Preprint 
+
+valid supervision. We therefore retain only policy-proposed actions that remain locally consistent with recorded expert motion. Following U RBAN NAV [2], we use average distance error (ADE), maximum average distance error (MADE), average orientation error (AOE), and maximum average orientation error (MAOE) as action-to-expert discrepancies. Using M = {ADE , MADE , AOE , MAOE } to index these metrics, we define the expert-consistency score 
+
+Qi =
+
+P 
+
+> m∈M
+
+wm exp −dm(ai, a D 
+
+> t
+
+)/τ m
+
+P 
+
+> m∈M
+
+wm
+
+, (4) where dm(ai, a D 
+
+> t
+
+) is the discrepancy from the recorded expert action under metric m, wm is its nonnegative weight, and 
+
+τm > 0 is a metric-specific scale. The score Qi ∈ [0 , 1] 
+
+summarizes the candidate’s consistency with recorded expert motion across the distance and orientation measures. We admit a candidate only when its rollout is valid, Qi ≥ qmin ,and the individual maximum-error tolerances are satisfied, where qmin is the expert-consistency threshold. Each retained action and its recorded future form an expert-consistent action– video pair, which serves as a reliable sample for world-model training. Policy-proposed actions that fail the check are skipped for world-model training but remain useful for policy optimization. The filter prevents mismatched action– video pairs while allowing the policy phase to explore more broadly. Each admitted pair (s, a i, o +D ) enters the policy-induced replay pool Rk.
+
+b) Grounded self-curriculum: Uniform replay treats all accepted samples equally, regardless of their behavioral novelty or prediction error. The improved policy instead constructs a grounded self-curriculum from expert-consistent action–video pairs. The self-curriculum prioritizes each pair by behavioral novelty relative to πθ0 and current prediction error under fϕk . For candidate ai, we measure its behavioral deviation from the initial policy mean as Di = ∥ai −
+
+μθ0 (s)∥2/√2H. Let ei be the mean pixel L1 error between temporally aligned frames from the predicted and recorded futures. We map these quantities to bounded novelty and prediction-error scores: 
+
+Ni = 1 − exp( −Di/τ N ), Ei = 1 − exp( −τE ei), (5) where τN > 0 and τE > 0 control the respective scales. The replay priority is 
+
+pi = Qi (ϵp + λN Ni + λE Ei) , (6) where λN and λE balance novelty and error, while ϵp >
+
+0 preserves nonzero priority. At each world-model update, newly admitted and historical pairs compete within the same replay pool. We sample without replacement in proportion to 
+
+pαi , where α ≥ 0 controls the strength of prioritization. The sampled batch defines the world-model objective 
+
+LWM (ϕ) = E(s,a i,o +D )∼B p
+
+Lvideo 
+
+ fϕ(ot, A(ai), ℓ ), o +D  ,
+
+(7) where Bp ⊂ R k denotes the sampled replay batch and o+D is the recorded future paired with ai. The term Lvideo denotes the native conditional video-model objective of C OSMOS [32]. The three factors serve distinct roles. The score Qi weights each pair by expert consistency, while Ni and Ei prioritize behavioral novelty and current prediction error. Together, they focus adaptation on expert-consistent pairs that differ from the initial policy’s behavior or remain poorly predicted by the current world model. After adaptation, fϕk+1 evaluates subsequent policy-proposed actions and supplies updated imagined feedback for policy improvement. This reciprocal exchange closes the recursive self-improvement loop. IV. E XPERIMENTS 
+
+We test our RIWAN AV through three questions. First, can a learned visual world model improve the navigation policy beyond policy-only training? Second, does policy-guided world-model refinement improve over a frozen world model? Third, does the world model become more accurate on behaviors from the improved policy? Controlled comparisons, ablations, and world-model analyses address these questions in sequence. A physical-robot deployment evaluates transfer beyond offline benchmarking. 
+
+A. Experimental Setup a) Dataset and evaluation: We evaluate on the official train, test-seen, and test-unseen splits of U RBAN NAV [2]. All training frameworks receive the same recent-frame, pose-history, and language goals and predict eight local waypoints plus a stop probability. Every framework uses the same data split, episode list, trajectory mapping, and 3-m success radius. Unless otherwise stated, results are means and standard deviations over three random seeds. Success Rate (SR) measures final goal attainment, Oracle Success Rate (OSR) records whether any visited pose reaches the goal region, and Navigation Error (NE) measures final goal distance. Success weighted by Path Length (SPL) evaluates path efficiency [36]; normalized Dynamic Time Warping (nDTW) and success-weighted nDTW (SDTW) evaluate trajectory fidelity [37]. Higher values are better except for NE. 
+
+b) Baselines: The controlled comparison fixes the policy architecture [2], initialization, data, interface, and evalua-tion protocol while changing the post-training framework. Imitation learning [2] is the common policy trained on expert trajectories. PPO [35] and GRPO [8] are policy-only baselines that optimize the same navigation objective without action-conditioned visual feedback. PPO-WM and GRPO-WM use the corresponding policy optimizer with imagined consequences from a frozen C OSMOS [32]. RIWAN AV uses GRPO-based policy improvement and additionally adapts COSMOS with the proposed grounded self-curriculum. 
+
+c) Implementation details: The policy predicts eight waypoints over eight seconds and compares four candidates at each state; C OSMOS predicts 17 frames at 2 fps from 16 relative-pose actions. Policy training uses a learning rate of 
+
+10 −5 and clipping range η = 0 .20 . The self-curriculum uses expert-consistency threshold qmin = 0 .35 and equal novelty and prediction-error weights λN = λE = 0 .50 . The world model is updated every 500 policy steps using at most 500 replay examples. Training runs on four NVIDIA H200 GPUs. Real-world deployment uses a custom-built mobile robotic platform equipped with a forward-facing camera that provides RGB observations. 
+
+> 4
+
+Preprint 
+
+TABLE I NAVIGATION PERFORMANCE ON THE URBAN NAV TEST -SEEN AND TEST -UNSEEN SPLITS . V ALUES ARE REPORTED AS MEAN ± STANDARD DEVIATION .
+
+Test Seen Training framework SR (%) ↑ SPL (%) ↑ NE ↓ nDTW (%) ↑ SDTW (%) ↑ OSR (%) ↑
+
+Imitation learning 70.91 70.55 3.8427 83.81 69.16 71.18 PPO [35] 72 .04 ± 0.06 71 .40 ± 0.09 3.8634 ± 0.0136 84 .02 ± 0.08 70 .29 ± 0.06 72 .36 ± 0.07 
+
+GRPO [8] 75 .11 ± 0.75 74 .45 ± 0.75 3.7012 ± 0.1803 86 .40 ± 0.47 73 .37 ± 0.76 75 .32 ± 0.81 
+
+PPO-WM 78 .90 ± 0.18 78 .25 ± 0.19 2.9530 ± 0.0647 88 .06 ± 0.13 77 .36 ± 0.18 79 .39 ± 0.20 
+
+GRPO-WM 83 .35 ± 1.25 81 .27 ± 1.38 2.7059 ± 0.1858 90 .55 ± 0.73 81 .66 ± 1.29 84 .31 ± 1.17 
+
+RIWAN AV (ours) 89 .92 ± 0.52 86 .87 ± 0.77 1.7842 ± 0.1408 94 .21 ± 0.26 88 .28 ± 0.56 91 .88 ± 0.30 
+
+Test Unseen Training framework SR (%) ↑ SPL (%) ↑ NE ↓ nDTW (%) ↑ SDTW (%) ↑ OSR (%) ↑
+
+Imitation learning 67.88 66.03 4.4537 80.85 64.99 68.16 PPO [35] 67 .94 ± 0.09 65 .65 ± 0.16 4.3768 ± 0.0434 80 .76 ± 0.05 65 .04 ± 0.08 68 .38 ± 0.07 
+
+GRPO [8] 70 .63 ± 1.10 68 .49 ± 1.06 4.5795 ± 0.0894 82 .34 ± 0.54 67 .82 ± 1.13 70 .91 ± 1.07 
+
+PPO-WM 75 .05 ± 0.21 72 .44 ± 0.19 3.5912 ± 0.0462 84 .96 ± 0.15 72 .27 ± 0.22 75 .56 ± 0.21 
+
+GRPO-WM 80 .31 ± 0.94 76 .09 ± 1.05 3.3314 ± 0.1014 87 .77 ± 0.45 77 .62 ± 0.92 81 .01 ± 0.82 
+
+RIWAN AV (ours) 88 .25 ± 0.43 82 .59 ± 0.25 2.0429 ± 0.0815 91 .95 ± 0.16 85 .51 ± 0.39 89 .37 ± 0.44 
+
+TABLE II COMPARISON WITH REPRESENTATIVE PRIOR APPROACHES ON THE URBAN NAV TEST -SEEN AND TEST -UNSEEN SPLITS . V ALUES ARE REPORTED AS MEAN ± STANDARD DEVIATION .
+
+Test Seen Category Method SR (%) ↑ SPL (%) ↑ NE ↓ nDTW (%) ↑ SDTW (%) ↑ OSR (%) ↑
+
+Imitation Learning UrbanNav [2] 60 .36 ± 5.39 59 .75 ± 5.34 5.3958 ± 0.6689 76 .86 ± 3.50 58 .22 ± 5.34 60 .48 ± 5.36 
+
+NoMaD [11] 82 .35 ± 0.78 77 .59 ± 0.55 2.5532 ± 0.0608 90 .15 ± 0.19 77 .97 ± 0.79 82 .47 ± 0.76 
+
+OmniVLA [12] 77 .49 ± 1.66 77 .25 ± 1.66 3.1856 ± 0.1415 90 .25 ± 0.47 73 .63 ± 1.72 77 .66 ± 1.62 
+
+WM-based Fast-WAM [6] 58 .48 ± 0.75 39 .57 ± 0.18 8.4899 ± 0.0723 64 .77 ± 0.20 50 .62 ± 0.56 62 .07 ± 0.31 
+
+NWM [4] 71 .26 ± 0.21 70 .67 ± 0.21 3.7117 ± 0.0200 83 .88 ± 0.05 69 .45 ± 0.20 71 .63 ± 0.20 
+
+Recursive Self-Improvement RIWAN AV (ours) 89 .92 ± 0.52 86 .87 ± 0.77 1.7842 ± 0.1408 94 .21 ± 0.26 88 .28 ± 0.56 91 .88 ± 0.30 
+
+Test Unseen Category Method SR (%) ↑ SPL (%) ↑ NE ↓ nDTW (%) ↑ SDTW (%) ↑ OSR (%) ↑
+
+Imitation Learning UrbanNav [2] 60 .99 ± 4.01 59 .45 ± 3.99 5.3680 ± 0.3845 76 .03 ± 2.91 57 .93 ± 3.99 61 .18 ± 4.02 
+
+NoMaD [11] 84 .80 ± 0.52 79 .85 ± 0.30 2.3520 ± 0.0656 90 .77 ± 0.21 80 .37 ± 0.55 85 .09 ± 0.51 
+
+OmniVLA [12] 81 .11 ± 1.31 80 .80 ± 1.29 2.9283 ± 0.0947 90 .82 ± 0.42 77 .05 ± 1.44 81 .17 ± 1.33 
+
+WM-based Fast-WAM [6] 55 .25 ± 0.01 35 .00 ± 0.33 9.2896 ± 0.0221 61 .56 ± 0.08 47 .16 ± 0.03 59 .75 ± 0.50 
+
+NWM [4] 67 .99 ± 0.08 65 .93 ± 0.07 4.4130 ± 0.0604 80 .68 ± 0.04 65 .06 ± 0.08 68 .46 ± 0.09 
+
+Recursive Self-Improvement RIWAN AV (ours) 88 .25 ± 0.43 82 .59 ± 0.25 2.0429 ± 0.0815 91 .95 ± 0.16 85 .51 ± 0.39 89 .37 ± 0.44 
+
+B. Comparative Experiments 1) Comparison with Training Frameworks: Table I com-pares all training frameworks under the same policy architec-ture, initialization, data, and evaluation protocol. This con-trolled study tests whether world-model adaptation adds value beyond the choice of policy optimizer and the availability of imagined feedback. Policy-only post-training provides limited gains from the shared imitation-learned initialization. On test-unseen, PPO changes SR/SPL by +0 .06% / − 0.38% , whereas GRPO improves them by 2.75% /2.46% . Frozen-world-model feed-back produces a larger change: PPO-WM improves SR/SPL over PPO by 7.11% /6.79% , and GRPO-WM improves them over GRPO by 9.68% /7.60% . These controlled comparisons isolate imagined visual consequences as a useful training signal even before world-model adaptation. Closing the recursive feedback loop provides a further gain over frozen world-model feedback. Relative to GRPO-WM, RIWAN AV improves SR/SPL by 6.57% /5.60% on test-seen and 7.94% /6.50% on test-unseen, achieving the best performance across all reported metrics on both splits. On test-unseen, it also reduces NE from 3.3314 to 2.0429 and raises nDTW, SDTW, and OSR from 87.77%/77.62%/81.01% to 91.95%/85.51%/89.37%. The agreement across success, path efficiency, route fidelity, and oracle success indicates that policy-guided world-model adaptation improves the complete rollout rather than only its stopping decision. 
+
+2) Comparison with Prior Approaches: Table II compares RIWAN AV with imitation-learning and world-model-based methods on the U RBAN NAV [2] test-seen and test-unseen splits. All systems are evaluated under the same closed-loop protocol. We use official checkpoints when available and otherwise adapt the goal or action interface. NoMaD receives text conditioning and a stop head, OmniVLA is fine-tuned through LoRA and its continuous action head, and NWM [4] reranks four policy candidates by visual-language goal alignment. UrbanNav [2] and Fast-WAM [6] retain their trained checkpoints and native action interfaces. 
+
+5Preprint                                          
+
+> TABLE III ABLATION STUDY ON THE URBAN NAV TEST -UNSEEN SPLIT . V ALUES ARE REPORTED AS MEAN ±STANDARD DEVIATION .WM Policy-induced Grounded SR (%) ↑SPL (%) ↑
+> update replay self-curriculum
+> ×××80 .31 ±0.94 76 .09 ±1.05
+> ✓××78 .23 ±1.91 74 .72 ±1.92
+> ✓✓×84 .83 ±0.33 80 .11 ±0.32
+> ✓✓✓88 .25 ±0.43 82 .59 ±0.25
+
+Among the baselines, NWM improves test-unseen SR/SPL over UrbanNav by 7.00% /6.48% while reducing NE by 
+
+0.9550 , confirming the value of predictive visual feedback in the common pipeline. RIWAN AV achieves the best performance across all six metrics on both test splits. Relative to NoMaD, the strongest prior approach in SR, it improves test-unseen SR/SPL by 3.45% /2.74% , reduces NE by 0.3091 , and raises SDTW/OSR by 5.14% /4.28% . Relative to OmniVLA, which has the strongest prior SPL, RIWAN AV 
+
+improves SR/SPL by 7.14% /1.79% and nDTW by 1.13% .Among the predictive-model baselines, RIWAN AV exceeds NWM in SR/SPL by 20 .26% /16 .66% and reduces NE from 
+
+4.4130 to 2.0429 . The advantage over both learned poli-cies and predictive-model reranking supports recursive self-improvement as a training effect rather than a consequence of a single baseline design. 
+
+C. Ablation Study 
+
+We evaluate world-model updates, policy-induced replay, and the grounded self-curriculum, as shown in Table III. World-model updates use recorded expert action–video pairs by default (static expert replay). Policy-induced replay instead uses expert-consistent policy actions paired with recorded future frames. The grounded self-curriculum prioritizes these pairs by behavioral novelty and prediction error; otherwise, they are sampled uniformly. With static expert replay, SR and SPL are 2.08% and 1.37% lower than those of the frozen-world-model baseline. Compared with static expert replay, policy-induced replay with uniform sampling improves SR and SPL by 6.60% and 5.39%, respectively. This shows the benefit of using actions proposed by the improved policy for world-model training. Adding the grounded self-curriculum to policy-induced replay further improves SR and SPL by 3.42% and 2.48%. This gain supports prioritizing expert-consistent samples by behavioral novelty and prediction error. Combining policy-induced replay with the grounded self-curriculum improves SR and SPL by 7.94% and 6.50% over the frozen-world-model baseline. These results show that updating the world model with actions from the improved policy yields better navigation performance than freezing it or training it only on expert data. 
+
+D. Evidence for Recursive Self-Improvement a) World-model improvement across recursive rounds: 
+
+This experiment tests whether policy-guided world-model adaptation improves predictions for actions. We compare the initial model, static expert adaptation, and the final RIWAN AV 
+
+world model on two fixed evaluation sets. One contains expert                                                               
+
+> TABLE IV ENDPOINT WORLD -MODEL PREDICTION QUALITY ON EXPERT ACTIONS AND ACTIONS GENERATED BY THE IMPROVED POLICY .World model Evaluation L1↓LPIPS ↓
+> actions Initial ϕ0Expert 0.1396 ±0.0032 0.4532 ±0.0065
+> Policy-induced 0.1521 ±0.0042 0.4539 ±0.0059
+> Static expert Expert 0.1352 ±0.0034 0.4265 ±0.0079
+> Policy-induced 0.1505 ±0.0044 0.4314 ±0.0067
+> RIWAN AV ϕKExpert 0.1329 ±0.0034 0.4203 ±0.0079
+> Policy-induced 0.1472 ±0.0043 0.4217 ±0.0070 04812 16 19
+> WM update cycle
+> 0.13 0.14 0.15
+> L1 ↓
+> 04812 16 19
+> WM update cycle
+> 0.42 0.44 0.46
+> LPIPS ↓
+> Expert actions Policy-induced actions
+> Fig. 3. World-model prediction quality across recursive rounds. The left and right panels show L1and LPIPS on two fixed evaluation sets: expert actions and actions generated by the improved policy. Points are means over 128 samples and error bars denote standard error. Round 0 uses the initial world model, whereas the final round K= 19 uses the final RIWAN AV
+> world model. Lower is better.
+
+actions; the other contains actions generated by the improved policy near the end of training (policy-induced actions). Each set contains 128 state-action pairs excluded from all world-model updates. Across the same eight-second horizon, we report frame-wise L1 error and Learned Perceptual Image Patch Similarity (LPIPS); lower values indicate better pixel and perceptual fidelity. Table IV reports endpoint quality, while Fig. 3 traces the same metrics across recursive rounds. Table IV and Fig. 3 jointly characterize world-model improvement across recursive rounds. The final RIWAN AV 
+
+world model performs best on both distributions: relative to the initial model, it reduces L1/LPIPS by 4.8%/7.3% on expert actions and 3.2%/7.1% on actions generated by the improved policy. Static expert adaptation improves both distributions. Policy-guided world-model adaptation further reduces L1/LPIPS by 1.7%/1.5% on expert actions and 2.2%/2.2% on policy-induced actions. The figure traces the same evaluation metrics through the intermediate recursive rounds. Despite small fluctuations between individual updates, both errors decrease overall on both action distributions, with most of the improvement retained through the final round. Together, the endpoint comparison and the evolution curves show that policy-guided adaptation improves feedback for the evolving policy without sacrificing prediction quality on the original expert-action distribution. 
+
+b) Qualitative results: As shown in Fig. 4, we provide matched qualitative comparisons on actions generated by the improved policy. The initial world model frequently loses scene structure over the eight-second rollout, while static expert adaptation does not consistently resolve distortions under the improved policy distribution. The final RIWAN AV 
+
+world model produces more coherent sidewalk boundaries, 
+
+6Preprint Initial WM Static expert 
+
+(a) (b) (c) 
+
+Ground Truth RIWANav WM (ours)   
+
+> Fig. 4. Qualitative evidence for recursive world-model improvement on actions generated by the improved policy. All three models receive the same observation, language goal, and action; the aligned recorded future is shown as reference. The rows depict night traffic, a bicycle-lined sidewalk, and a rainy sidewalk. In these cases, the RIWAN AV world model after recursive updates better preserves traversable corridors and scene layout, with fewer long-horizon artifacts.
+
+facade geometry, and arrangements of vehicles and pedestri-ans. These examples are consistent with the L1 and LPIPS improvements on the evaluation sets in Table IV: adaptation to policy-induced behaviors preserves scene structure more reliably for actions generated by the improved policy. 
+
+E. Real-World Deployment 
+
+To assess real-world applicability, we deploy the policy trained with RIWAN AV on a mobile robot in urban navigation scenarios. Given a natural-language instruction and onboard visual observations, the policy predicts waypoints to guide the robot toward the specified goal. Figure 5 shows the resulting navigation sequences across different route layouts and lighting conditions. These qualitative trials demonstrate that the learned policy can guide a physical robot toward language-specified landmarks, supporting the practical feasibility of RIWAN AV beyond offline evaluation. 
+
+F. Discussion and Limitations 
+
+The controlled comparisons and ablations clarify where RIWAN AV gains arise. Imagined world-model feedback improves navigation beyond policy-only training, and policy-guided world-model adaptation provides further gains over a frozen world model. While these results support the recursive design, its current implementation remains task-specific and relies on a fixed offline dataset. Recorded futures can supervise only policy actions close to expert motion, limiting counterfactual exploration without new interaction data. Adapting a large video world model also increases memory and computation. Although real-world trials demonstrate practical feasibility, broader evaluations across cities, environments, and robot embodiments are needed. V. C ONCLUSION 
+
+We presented RIWAN AV , a post-training framework for task-specific recursive self-improvement of a world model and a navigation policy in urban navigation. The current world Robot sequence Target   
+
+> Robot sequence Target
+> Robot sequence Target
+
+(a) (b) (c)  
+
+> Go to the blue circular sign beside the white utility box. Go to the black trash bin beside the green outdoor seating area. Go through the blue-tiled passage to the yellow tables and chairs.
+> Fig. 5. Real-world urban navigation with RIWAN AV . Orange dashed arrows indicate schematic paths, and green boxes highlight the targets.
+
+model supplies imagined feedback to improve the policy, and the improved policy constructs a grounded self-curriculum for the next world-model update. Controlled experiments show that imagined feedback improves the policy and that policy-guided world-model adaptation provides further gains over a frozen world model. The adapted world model also improves prediction fidelity on actions generated by the improved policy. These results support recursive self-improvement of world– action models as a practical approach to urban navigation. 
+
+7Preprint 
+
+REFERENCES [1] X. Liu, J. Li, Y. Jiang, N. Sujay, Z. Yang, J. Zhang, J. Abanes, J. Zhang, and C. Feng, “CityWalker: Learning embodied urban navigation from web-scale videos,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2025, pp. 6875–6885. [2] Y. Mei, Y. Yang, L. Guo, Q. Wang, M.-M. Yu, X. He, W. Wu, and J. Liu, “UrbanNav: Learning language-guided embodied urban navigation from web-scale human trajectories,” in Proceedings of the AAAI Conference on Artificial Intelligence , vol. 40, no. 22, 2026, pp. 18 505–18 513. [3] F. Zhu, Z. Yan, Z. Hong, Q. Shou, X. Ma, and S. Guo, “WMPO: World model-based policy optimization for vision-language-action models,” in International Conference on Learning Representations , vol. 2026, 2026, pp. 62 486–62 502. [4] A. Bar, G. Zhou, D. Tran, T. Darrell, and Y. LeCun, “Navigation world models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2025, pp. 15 791–15 801. [5] S. Ye, Y. Ge, K. Zheng, S. Gao, S. Yu et al. , “World action models are zero-shot policies,” arXiv preprint arXiv:2602.15922 , 2026. [6] T. Yuan, Z. Dong, Y. Liu, and H. Zhao, “Fast-WAM: Do world action models need test-time future imagination?” arXiv preprint arXiv:2603.16666 , 2026. [7] J. Schmidhuber, “Goedel machines: Fully self-referential optimal universal self-improvers,” in Artificial General Intelligence , B. Goertzel and C. Pennachin, Eds. Springer, 2007, pp. 199–226. [8] Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. K. Li, Y. Wu, and D. Guo, “DeepSeekMath: Pushing the limits of mathematical reasoning in open language models,” arXiv preprint arXiv:2402.03300 , 2024. [9] D. Shah, B. Eysenbach, N. Rhinehart, and S. Levine, “Rapid exploration for open-world navigation with latent goal models,” in Proceedings of the 5th Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 164, 2022, pp. 674–684. [10] D. Shah, A. Sridhar, N. Dashora, K. Stachowicz, K. Black, N. Hirose, and S. Levine, “ViNT: A foundation model for visual navigation,” in 
+
+Proceedings of the 7th Conference on Robot Learning , ser. Proceedings of Machine Learning Research, vol. 229, 2023, pp. 711–733. [11] A. Sridhar, D. Shah, C. Glossop, and S. Levine, “NoMaD: Goal masked diffusion policies for navigation and exploration,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) ,2024, pp. 63–70. [Online]. Available: https://arxiv.org/abs/2310.07896 [12] N. Hirose, C. Glossop, D. Shah, and S. Levine, “OmniVLA: An omni-modal vision-language-action model for robot navigation,” in 
+
+IEEE International Conference on Robotics and Automation (ICRA) ,2026. [Online]. Available: https://arxiv.org/abs/2509.19480 [13] A. Zhang, X. Meng, L. Calliari, D.-K. Kim, S. Omidshafiei, J. Biswas, A. Agha, and A. Shaban, “VENTURA: Adapting image diffusion models for unified task conditioned navigation,” arXiv preprint arXiv:2510.01388 , 2025. [14] K. Chua, R. Calandra, R. McAllister, and S. Levine, “Deep reinforce-ment learning in a handful of trials using probabilistic dynamics models,” in Advances in Neural Information Processing Systems , vol. 31, 2018, pp. 4754–4765. [15] M. Janner, J. Fu, M. Zhang, and S. Levine, “When to trust your model: Model-based policy optimization,” in Advances in Neural Information Processing Systems , vol. 32, 2019, pp. 12 498–12 509. [16] D. Hafner, T. Lillicrap, I. Fischer, R. Villegas, D. Ha, H. Lee, and J. Davidson, “Learning latent dynamics for planning from pixels,” in 
+
+Proceedings of the 36th International Conference on Machine Learning ,ser. Proceedings of Machine Learning Research, vol. 97, 2019, pp. 2555–2565. [17] D. Hafner, T. Lillicrap, J. Ba, and M. Norouzi, “Dream to control: Learning behaviors by latent imagination,” in International Conference on Learning Representations , 2020. [18] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse control tasks through world models,” Nature , vol. 640, pp. 647–653, 2025. [19] N. Hansen, H. Su, and X. Wang, “TD-MPC2: Scalable, robust world models for continuous control,” in International Conference on Learning Representations , vol. 2024, 2024, pp. 47 376–47 405. [20] V. Micheli, E. Alonso, and F. Fleuret, “Transformers are sample-efficient world models,” in International Conference on Learning Representations , 2023. [21] N. Hansen, Y. Lin, H. Su, X. Wang, V. Kumar, and A. Rajeswaran, “MoDem: Accelerating visual model-based reinforcement learning with demonstrations,” in International Conference on Learning Representa-tions , 2023. [22] G. Zhou, H. Pan, Y. LeCun, and L. Pinto, “DINO-WM: World models on pre-trained visual features enable zero-shot planning,” in 
+
+Proceedings of the 42nd International Conference on Machine Learning ,ser. Proceedings of Machine Learning Research, vol. 267, 2025, pp. 79 115–79 135. [23] X. Yao, J. Gao, and C. Xu, “NavMorph: A self-evolving world model for vision-and-language navigation in continuous environments,” in 
+
+Proceedings of the IEEE/CVF International Conference on Computer Vision , 2025, pp. 5536–5546. [24] J. Yang, K. Lin, J. Li, W. Zhang, T. Lin, L. Wu, Z. Su, H. Zhao, Y.-Q. Zhang, L. Chen, P. Luo, X. Yue, and H. Li, “RISE: Self-improving robot policy with compositional world model,” Proceedings of Robotics: Science and Systems , 2026. [25] R. Wang, J. Lehman, J. Clune, and K. O. Stanley, “POET: Open-ended coevolution of environments and their optimized solutions,” in 
+
+Proceedings of the Genetic and Evolutionary Computation Conference ,2019, pp. 142–151. [26] T. Yu, G. Thomas, L. Yu, S. Ermon, J. Zou, S. Levine, C. Finn, and T. Ma, “MOPO: Model-based offline policy optimization,” in Advances in Neural Information Processing Systems , vol. 33, 2020, pp. 14 129– 14 142. [27] R. Kidambi, A. Rajeswaran, P. Netrapalli, and T. Joachims, “MOReL: Model-based offline reinforcement learning,” in Advances in Neural Information Processing Systems , vol. 33, 2020, pp. 21 810–21 823. [28] X. Wang, W. Wongkamjan, R. Jia, and F. Huang, “Live in the moment: Learning dynamics model adapted to evolving policy,” in 
+
+Proceedings of the 40th International Conference on Machine Learning ,ser. Proceedings of Machine Learning Research, vol. 202, 2023, pp. 36 470–36 493. [29] K. Kim, M. Sano, J. D. Freitas, N. Haber, and D. Yamins, “Active world model learning with progress curiosity,” in Proceedings of the 37th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 119, 2020, pp. 5306–5315. [30] R. Sekar, O. Rybkin, K. Daniilidis, P. Abbeel, D. Hafner, and D. Pathak, “Planning to explore via self-supervised world models,” in Proceedings of the 37th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 119, 2020, pp. 8583– 8592. [31] I. Kauvar, C. Doyle, L. Zhou, and N. Haber, “Curious replay for model-based adaptation,” in Proceedings of the 40th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 202, 2023, pp. 16 018–16 048. [32] NVIDIA et al. , “Cosmos 3: Omnimodal world models for physical AI,” arXiv preprint arXiv:2606.02800 , 2026. [33] M. Oquab, T. Darcet, T. Moutakanni, H. Vo, M. Szafraniec, V. Khalidov 
+
+et al. , “DINOv2: Learning robust visual features without supervision,” 
+
+Transactions on Machine Learning Research , 2024. [34] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry, A. Askell, P. Mishkin, J. Clark, G. Krueger, and I. Sutskever, “Learning transferable visual models from natural language supervision,” in Proceedings of the 38th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 139, 2021, pp. 8748–8763. [35] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [36] P. Anderson, A. Chang, D. S. Chaplot, A. Dosovitskiy, S. Gupta, V. Koltun, J. Kosecka, J. Malik, R. Mottaghi, M. Savva, and A. R. Zamir, “On evaluation of embodied navigation agents,” arXiv preprint arXiv:1807.06757 , 2018. [37] G. Ilharco, V. Jain, A. Ku, E. Ie, and J. Baldridge, “General evaluation for instruction conditioned navigation using dynamic time warping,” CoRR , vol. abs/1907.05446, 2019. [Online]. Available: https://arxiv.org/abs/1907.05446 
+
+8
