@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-07</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-09</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 14 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-07 23:37:54 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-09 00:23:54 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>14篇中精读3篇、速读11篇，今日重点锁定空中机器人仿真与城市导航世界模型。最值得看的是9.0分《UWB Meets Crazyflow》用大规模退化反馈仿真推进空中机器人，以及8.0分《RIWANav》以递归世界-动作模型加自改进做城市导航。普通读者可先读这两篇，关注仿真鲁棒性与自改进世界模型如何落地，再按兴趣追H-JEPA等速读。</p>
+<p>今日共生成 8 篇推荐（精读 1 篇，速读 7 篇）</p>
+<p>精读：《SearchWorld: Spatial Value-Grounded Imagination for UAV Object Search via World Models》（9.0/10）</p>
+<p>速读：《VIGOR: Zero-Shot Visual Generalization via Latent-Space Consistency in Model-Based Reinforcement Learning》（7.0/10）, 《StableGrasp: Reconstructing Physically Stable Human Hand Grasps from Single Images》（7.0/10）, 《Exploiting UAV Attitude for Covert Communications: Dynamics-Consistent Trajectory-Attitude Co-Design》（6.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +74,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="UWB Meets Crazyflow: Simulating Degraded Feedback at Scale for Aerial Robotics">UWB Meets Crazyflow: Simulating Degraded Feedback at Scale for Aerial Robotics</span></li><li><span class="dpr-home-dashboard-paper-title" title="RIWANav: Recursive World-Action Models with Self-Improvement for Urban Navigation">RIWANav: Recursive World-Action Models with Self-Improvement for Urban Navigation</span></li><li><span class="dpr-home-dashboard-paper-title" title="NMPP: Nonlinear Model Predictive Planning for Agile UAV Flight in Cluttered Environments">NMPP: Nonlinear Model Predictive Planning for Agile UAV Flight in Cluttered Environments</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="SearchWorld: Spatial Value-Grounded Imagination for UAV Object Search via World Models">SearchWorld: Spatial Value-Grounded Imagination for UAV Object Search via World Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>2</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +87,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="H-JEPA: End-to-End Learning of Hierarchical World Models for Visual Planning">H-JEPA: End-to-End Learning of Hierarchical World Models for Visual Planning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Sensor-Layout-Agnostic Navigation via Geometric Observation Canonicalization">Sensor-Layout-Agnostic Navigation via Geometric Observation Canonicalization</span></li><li><span class="dpr-home-dashboard-paper-title" title="WareFly-VLA: A Vision-Language-Action Framework for UAV Navigation and Human Tracking in Smart Warehouses">WareFly-VLA: A Vision-Language-Action Framework for UAV Navigation and Human Tracking in Smart Warehouses</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="VIGOR: Zero-Shot Visual Generalization via Latent-Space Consistency in Model-Based Reinforcement Learning">VIGOR: Zero-Shot Visual Generalization via Latent-Space Consistency in Model-Based Reinforcement Learning</span></li><li><span class="dpr-home-dashboard-paper-title" title="StableGrasp: Reconstructing Physically Stable Human Hand Grasps from Single Images">StableGrasp: Reconstructing Physically Stable Human Hand Grasps from Single Images</span></li><li><span class="dpr-home-dashboard-paper-title" title="Exploiting UAV Attitude for Covert Communications: Dynamics-Consistent Trajectory-Attitude Co-Design">Exploiting UAV Attitude for Covert Communications: Dynamics-Consistent Trajectory-Attitude Co-Design</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">world-uav <strong>6</strong></span><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">uav-control <strong>5</strong></span><span class="dpr-home-dashboard-tag">world-uav <strong>2</strong></span></div>
 </section>
 </div>
 

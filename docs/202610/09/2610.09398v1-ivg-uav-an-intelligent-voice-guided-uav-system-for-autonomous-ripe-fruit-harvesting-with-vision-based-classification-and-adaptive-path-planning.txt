@@ -1,0 +1,155 @@
+Title: IVG-UAV: An Intelligent Voice-Guided UAV System for Autonomous Ripe Fruit Harvesting with Vision-Based Classification and Adaptive Path Planning
+
+URL Source: https://arxiv.org/pdf/2610.09398v1
+
+Published Time: Thu, 08 Oct 2026 00:39:28 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# IVG-UAV: An Intelligent Voice-Guided UAV System for Autonomous Ripe Fruit Harvesting with Vision-Based Classification and Adaptive Path Planning 
+
+Dinh Trung Duong 
+
+School of Computing SUNY Binghamton University 
+
+Binghamton, United States dduong3@binghamton.edu 
+
+Abstract —In tropical regions, their agricultural sectors remain highly dependent on manual labor for fruit harvesting. On large-scale farms, this dependency often results in significant labor cost and logistic complexities. This project presents the development and simulation of a voice-controlled Unmanned Aerial Vehicle (UAV) system designed to automate harvesting tasks in extensive plantations. The proposed system integrates speech recognition using Whisper [1] and LLM, computer vision–based ripeness classification, and adaptive path planning within a unified frame-work. The entire system is modeled and validated in a Gazebo simulation environment, allowing performance evaluation under controlled agricultural scenarios. 
+
+I. I NTRODUCTION 
+
+In tropical nations, their agricultural sectors remain highly dependent on manual labor for fruit harvesting. On large-scale farms, this dependency often results in significant labor cost and logistic complexities. With recent developments, robots have been introduced to reduce this burden as well as improve the productivity. A diversity of harvesting robots have been significantly investigated ranging from ground-based mobile manipulators to aerial platforms such as unmanned aerial vehicles (UAVs). These systems are mostly equipped with vision-assisted technologies, enabling fruit detection, ripeness classification, and localization through advanced computer vision and deep learning algorithms. However, the majority of existing robots depends on fully automated programming paradigms, where robots autonomously navigate and search for ripe fruits based solely on pre-defined algorithms and perception models. This leads to the lack of real-time hu-man interaction and adaptability, particularly during the fruit-searching and decision-making stages. This functionality al-lows the robot to adapt its flight trajectory according to user instructions. Additionally, it enables the UAV to handle edge cases through human intervention. This project proposes the integration of voice-guided interaction into the robotic system. This human-in-the-loop approach allows adaptive decision-making during the harvesting process, which enhances op-erational flexibility. To address the existing challenges, this work introduces IVG-UAV, a unified voice-guided UAV har-vesting pipeline that integrates speech recognition, LLM-based command interpretation, vision-based fruit detection using YOLOv8 and RGB-D sensing, and adaptive path planning for autonomous navigation in orchard environments. 
+
+Fig. 1. UAV system will integrate voice command to automate the harvesting process. Using laser beam equipped with vision-based ripeness classification to recognize the satisfied objects and avoid obstacle during the harvesting process. Applying RRT* algorithm to find the shortest path aimed to the target 
+
+Figure 1 illustrates the overall functionality of the proposed voice-guided interactive harvesting system. The framework in-tegrates aerial perception, obstacle-aware navigation, adaptive task planning, and human-in-the-loop voice interaction into a unified architecture for intelligent fruit harvesting. Initially, the UAV performs journey exploration of the orchard and scans fixed trees using vision system. Robot performs a thorough scan by applying row-following strategy, that ensures all the trees in the farm are scanned. Unlike fully autonomous harvesting systems, the proposed framework enables real-time human guidance through voice commands. The operator can issue high-level instructions such as “Harvest all the ripe fruits” or “Take ripe fruits from three trees.” These commands are processed by a speech recognition module and arXiv:2610.09398v1 [cs.RO] 7 Oct 2026 translated into structured task constraints that influence the target selection and planning modules. During visiting a tree, a drone system can use vision perception to classify the ripe fruits and can actually detach them from the tree. In a flight journey, UAV system can avoid obstacles to find a target tree and using RRT* [2] algorithm to find the shortest path that leads to the next target tree. II. R ELATED WORKS 
+
+A. Vision-assisted Avocado Harvesting UAV 
+
+In order to harvest avocados, this paper developed a vision-assisted robotic harvesting system which utilizes an aerial robot with a bimanual manipulation mechanism. The device integrates a dual-arm UAV manipulator with a gripper arm and a fixer arm with computer vision for avocado detection and posture estimation. A motion planner uses the location and orientation of the avocados determined by the visual perception module to direct the robotic arms. The gripper arm rotates to effectively separate the avocado while the fixer arm holds the fruit stem in place during harvesting. The system can recognize and pick avocados on its own in outdoor settings, according to experimental data, demonstrating the promise of aerial robotic manipulation for agricultural automation. [3] 
+
+B. Deep learning–based computer vision with robotic manip-ulation 
+
+This work suggested an intelligent robotic harvesting system that combines robotic manipulation and deep learning-based computer vision for automated fruit picking. In order to in-crease harvesting efficiency, the system focuses on forecasting the best fruit gripping locations. In order to accomplish this, the authors created an image processing pipeline based on deep learning that recognizes apples in pictures and determines the proper gripping area for robotic picking. For fruit recognition, a lightweight one-step object detection network is used, allow-ing the system to instantly recognize fruits from visual input. The robotic manipulator is then guided by the detected fruit attributes to identify appropriate grabbing places and carry out the harvesting process. [4] Both studies focus on automating fruit harvesting using computer vision–based perception and robotic manipulation techniques. In particular, they utilize visual sensing to detect fruits, estimate their position, and guide robotic systems to per-form harvesting tasks. Although both strategies significantly rely on computer vision technology, their system architectures are different: the latter focuses on vision-based grasp pre-diction utilizing lightweight deep learning models for robotic manipulators, whereas the former incorporates aerial robotics with bi-manual manipulation. Despite these differences, both works share similar limitations. The systems lack natural human–robot interaction mechanisms, such as voice-guided instructions, which could allow users to intuitively guide or supervise the harvesting process. This limitation reduces system usability in practical agricultural environments where human workers may need to interact with robotic systems dynamically. III. M ETHODOLOGY 
+
+Motivated by the limitations of existing systems, the author proposes a unified framework that combines voice-guided commands with existing robotic harvesting technologies. This approach introduces human-in-the-loop interaction, enabling users to provide intuitive voice instructions and improving the overall efficiency of robotic harvesting systems. The solu-tion contains two phases: exploration and mission execution. During the exploration phase, the UAV uses coverage-based navigation to look over the orchard and make a map of the area by finding the locations of the trees. In the next phase of the mission, the system uses the map it created to plan the best ways to harvest and detect the ripe fruits. 
+
+A. Exploration Phase 
+
+> Fig. 2. Exploration and orchard mapping flow. The UAV performs exploration flight, the vision module detects trees, and the orchard map is constructed from the detected tree positions
+
+In the exploration phase, the UAV utilizes an RGB-D camera to observe the surrounding environment and detect trees within the orchard.  
+
+> Fig. 3. Gazebo environment conversion into probabilistic voxel-based 3D map using Octomap [5]
+
+The RGB-D sensor continuously captures both color and depth information, where the depth measurements are inte-grated into an OctoMap [5] framework to generate a prob-abilistic voxel-based 3D map of the orchard. Each voxel stores occupancy information, allowing the system to model tree trunks in a consistent spatial representation. As it moves around the orchard, the UAV gradually updates the OctoMap row by row and tree by tree. The produced voxel map allows for dependable spatial knowledge from a variety of perspectives while maintaining the environment’s geometric integrity. The system determines each tree’s spatial location in the global coordinate frame based on the occupied voxel clusters that correspond to tree structures. Each detected tree ’s spatial position is represented by a 3D coordinate 
+
+Ti = ( xi, y i, z i),where xi, yi, and zi denote the spatial coordinates of the i-th tree center within the orchard map. 
+
+B. Mission execution phase          
+
+> Fig. 4. The mission execution pipeline starts with voice commands, which are converted into mission instructions using Whisper and an LLM-based interpreter. The adaptive path planner generates navigation commands while handling obstacle avoidance. MAVSDK transmits control commands to the UAV, while the vision perception module continuously processes visual data during flight. The system runs on ROS2 within a Gazebo simulation environment.
+
+After obtaining the orchard map from the exploration phase, the system enters the mission execution state. The execution pipeline is divided into three major components: (1) command generation and task planning, (2) navigation module, and (3) detection module. 
+
+1) Command generation and task planning: The command generation and task planning module converts user instructions into structured executable UAV actions. In general, the system receives voice commands from the human operator and utilizes the Whisper [1] speech recognition model to convert the spoken instructions into text-based commands. The generated textual input is subsequently processed by a multi-layer large language model (LLM) framework that integrates both Phi-3.3B [6] and Gemini 2.5 Flash models. By incorporating current mission context and domain-specific knowledge, the framework performs semantic verification, edge-case analysis, and hierarchical task planning to generate a structured UAV action plan for autonomous mission execution.  
+
+> Fig. 5. Multi-architecture LLM layers
+
+As illustrated in Figure 5, the Edge Case layer is im-plemented using the Phi-3.3B model, which utilizes current mission context and domain-specific knowledge to identify ambiguous instructions, invalid targets, and handle unclear situations such as commands containing relative descriptions including “furthest”, “nearest” or “all”. The processed com-mand is then forwarded to the Verification layer, which is also implemented using the Phi-3.3B model. In this step, the framework performs validation to recognize mismatches between the user command and the current mission context, including unavailable targets, inconsistent task sequences, in-valid navigation requests, or conflicts with environmental con-straints. After successful verification, the validated command is transmitted to the Action Planning layer, implemented using Gemini 2.5 Flash, which performs hierarchical task decom-position and converts the high-level mission objective into a structured sequence of executable UAV actions, including takeoff, navigation, harvesting, and landing operations. An example output generated by the planner is shown below: 1) takeoff uav1 2) navigate uav1 to tree 1 3) harvest uav1 tree 1 4) navigate uav1 to tree 2 5) harvest uav1 tree 2 Following that, the created action plan is provided to the Dis-patcher module, which translates the high-level task sequence into executable UAV control commands and coordinates the execution flow of navigation, perception, and harvesting activ-ities during autonomous mission execution. 
+
+2) Navigation module: The navigation module is in charge of allowing the UAV to navigate autonomously around the orchard area. The resulting map incorporates spatial informa-tion about vacant space, inhabited regions, and surrounding impediments including tree trunks, branches, and canopy structures. Based on this environmental representation, the RRT* algorithm is utilized for global path planning. The planner incrementally explores the search space to generate an optimized collision-free trajectory from the current UAV position to the target tree location. During trajectory genera-tion, collision checking is continuously performed to ensure that the generated path satisfies safety constraints and avoids environmental obstacles. Once a feasible trajectory is gener-ated, the UAV autonomously follows the planned waypoints to reach the target tree : 
+
+Ti = ( xi, y i, z i),
+
+.
+
+3) Detection module: After reaching the target tree loca-tion, the Dispatcher module continues the harvest action by assigning the UAV to traverse through three predefined bound-ing viewpoints surrounding the target tree. Each harvesting viewpoint is represented as: 
+
+Htree i = {H1(x, y, z ), H 2(x, y, z ), H 3(x, y, z )},
+
+where H1, H2, and H3 denote the three-dimensional bound-ing positions used for image acquisition around the i-th target tree. The UAV sequentially flies through these predefined viewpoints to capture RGB images from multiple perspectives, allowing improved visual coverage and reduced fruit occlusion under dense foliage conditions.  
+
+> Fig. 6. The ripe fruit is detected by detection module
+
+The captured images are subsequently processed using the pretrained YOLOv8 object detection model for fruit recogni-tion. Initially, the orchard image dataset is manually annotated with two classification labels: ripe and unripe . The labeled dataset is then utilized to train and fine-tune the YOLOv8 ob-ject detection model for fruit recognition. During the training process, the model learns discriminative visual features such as fruit color, texture, and shape characteristics to accurately distinguish harvestable ripe fruits from non-harvestable unripe fruits. After the training phase, the fine-tuned YOLOv8 model is deployed within the detection framework for real-time inference during UAV operation. During execution, the model simultaneously performs feature extraction, object location, and classification to generate bounding boxes and confidence scores for detected fruits based on RGB photos. Detection data from the three predetermined views are then pooled to increase fruit counting accuracy and decrease duplicate detections before being forwarded to the harvesting controller for autonomous harvesting. IV. E NVIRONMENT SETUP 
+
+The proposed framework is developed and evaluated using a simulation-based UAV environment integrating Gazebo and PX4 SITL simulation [7]. The UAV platform utilizes the 
+
+x500_depth model equipped with an RGB-D camera for simultaneous RGB image acquisition and depth perception during exploration and harvesting operations. PX4 is employed as the flight control stack, while QGroundControl is utilized for manual monitoring and map-building initialization during the exploration phase. Communication between Gazebo and ROS2 is established through the ros_gz_bridge interface, enabling real-time sensor data transmission and UAV state synchronization across the simulation framework. For environment representation and visualization, the sys-tem integrates OctoMap for probabilistic voxel-based 3D mapping and RViz2 for real-time visualization of occupancy maps, navigation trajectories, and perception outputs. Voice commands are processed using the Whisper speech recognition model, while the multi-layer LLM framework consists of Phi-3.3B and Gemini-2.5-Flash models for edge-case analysis, command verification, and hierarchical task planning. The fruit detection module utilizes the YOLOv8 object detection framework fine-tuned for ripe and unripe fruit classification. Autonomous UAV control and trajectory execution are per-formed using MAVSDK communication between the mission planner and the PX4 flight controller. The finished framework is run on a workstation equipped with an AMD Ryzen 7 Pro 6850U processor and 32 GB RAM, providing sufficient computational resources for real-time mapping, LLM inference, navigation planning, and com-puter vision processing. For evaluating, the author V. E VALUATION 
+
+To evaluate the performance of the proposed UAV har-vesting system, ten experimental trials are conducted. Several quantitative metrics are defined to measure the accuracy of voice command interpretation, the effectiveness of fruit de-tection for harvesting, and the success rate of autonomous navigation. The first metric evaluates the accuracy rate of voice com-mand interpretation. This metric measures whether the system correctly converts the human voice command into the intended text-based instruction and generates the corresponding task plan. It is calculated as: Avoice = Ncorrect 
+
+Ntotal 
+
+× 100% 
+
+where Ncorrect denotes the number of correctly interpreted voice commands, and Ntotal denotes the total number of voice commands across all trials. The second metric evaluates the effectiveness of fruit har-vesting by measuring the rate of detected ripe fruits per tree. This metric determines how many ripe fruits are successfully detected by the YOLOv8-based detection module compared with the total number of ripe fruits present on the target tree. It is defined as: 
+
+Rfruit = Fdetected 
+
+Ftotal 
+
+× 100% 
+
+where Fdetected represents the number of ripe fruits detected by the system, and Ftotal represents the total number of ripe fruits in the target tree. The third metric evaluates the rate of successful navigation to the target. A navigation trial is considered successful when the UAV reaches the assigned target tree without collision and within an acceptable distance threshold from the target coordinate. This metric is computed as: 
+
+Snav = Nsuccess 
+
+Ntrial 
+
+× 100% 
+
+where Nsuccess denotes the number of successful navigation trials, and Ntrial denotes the total number of navigation trials.  
+
+> Fig. 7. Overall evaluation overview of the proposed framework across 10 experimental trials.
+
+In overview, Figure 7 presents the overall execution flow and performance distribution of the system across all trials. Among the ten trials, seven commands were successfully converted into valid text-based instructions by speech recognition mod-ule, while three commands failed due to incorrect language detection and pronunciation issues. Specifically, one failure occurred because the spoken instruction was understood in the incorrect language, while two failures were caused by imprecise pronunciation during voice input. From the seven successfully interpreted commands, six generated valid task plans through the multi-layer LLM plan-ning framework, while one generated an invalid execution plan during task verification. For the six valid mission plans, the navigation module successfully guided the UAV to the assigned target tree locations without collision. After reaching the target trees, the detection module executed ripe fruit detection u from three predefined viewpoints surrounding each tree. The fruit detection results demonstrate varying detection performance depending on canopy density, fruit occlusion, and environmental visibility conditions. Across the six successful navigation trials, the system detected ripe fruits with detection rates of 1/1, 3/7, 4/5, 2/5, 5/8, and 8/15 , respectively.          
+
+> TABLE I PERFORMANCE METRICS OF THE PROPOSED UAV HARVESTING FRAMEWORK BASED ON 10 EXPERIMENTAL TRIALS
+> Metric Rate (%)
+> Voice Command Interpretation Accuracy 70.0 Valid Task Plan Generation Rate 85.7 Successful Navigation Rate 100.0 Average Ripe Fruit Detection Rate 63.1
+
+Voice Command Task Planning Navigation Fruit Detection 
+
+020 40 60 80 100 70 85 .7100 63 .1 
+
+> Rate (%)
+> Fig. 8. Comparison of evaluation metrics for the proposed UAV harvesting framework.
+
+Among all evaluated components, the navigation module achieved the highest performance with a 100% successful navigation rate, indicating that the integration of OctoMap and RRT* provided reliable collision-free trajectory generation within the orchard environment. The task planning module also demonstrated strong performance with an 85 .7% valid plan generation rate, showing that the multi-layer LLM archi-tecture effectively handled semantic verification and hierar-chical task decomposition. The voice command interpretation module achieved a 70% success rate, caused during speech recognition. Compared with the other modules, the fruit detec-tion module achieved the lowest performance with an average detection rate of 63 .1% . This reduction is mainly influenced by dense foliage, partial fruit occlusion, and varying illumination conditions within the orchard environment. Nonetheless, the overall results show that the proposed framework can perform end-to-end autonomous UAV harvest-ing operations by combining voice-guided interaction, intel-ligent task planning, autonomous navigation, and computer vision-based fruit detection into a single system. VI. L IMITATION 
+
+In overview, the framework demonstrates the possibility of voice-guided autonomous UAV harvesting, it also emphasizes the critical role of humans in the loop, allowing for a highly interactive operating process and bridging the gap between current autonomous technologies and agricultural applications. Nevertheless, several limitations of the suggested framework must be addressed. 
+
+A. Fruit Detection and Deduplication 
+
+The current detection module is unable to fully deduplicate ripe fruits detected from multiple viewpoints, which may lead to repeated detections of the same fruit instance during harvesting. In addition, the detection framework has difficulty recognizing fruits that are heavily occluded by branches and dense foliage, reducing the overall fruit detection accuracy under complex orchard conditions. 
+
+B. Continuous Mission Execution and Replanning 
+
+The system is currently limited in continuous mission execution, where long autonomous operations and dynamic mission replanning are not fully supported. 
+
+C. Dialogue-Based Interaction 
+
+Although, in task planning the system will ask the ques-tion if the command is not clear or does not specify any target trees, the system does not yet support dialogue-based interaction between the user and the system. This limitation will prevent the ability to perform perform interactive task clarification, contextual feedback, and real-time conversational mission updates. VII. F UTURE WORK 
+
+In conclusion, future system development should focus on prospective changes and enhancements that would strengthen the suggested framework’s resilience, scalability, and practical usefulness. There are some suggestions the author wants to deep dive into: 
+
+A. Robust Perception and Fruit Detection 
+
+Future work will focus on improving the resilience and accuracy of the perception module. The current detection framework will be enhanced with object tracking algorithms to handle ripe fruit deduplication during harvesting missions. In addition, more advanced perception approaches will be investigated to better detect partially occluded fruits in dense canopy environments, where visual ambiguity and overlapping foliage remain significant challenges. 
+
+B. Multi-Robot Collaboration 
+
+The framework will also be extended to support multi-robot collaboration. Future developments will investigate co-ordinated task execution among multiple UAVs to improve harvesting efficiency, increase orchard coverage, and enable distributed task allocation for large-scale agricultural opera-tions. For instance, a cooperative task-allocation system can be developed in which multiple drones autonomously distribute harvesting tasks based on fruit location, workload balancing, and mission priority to achieve faster and more intelligent harvesting operations. Another promising direction is a pick-and-catch architecture, where an aerial robot is responsible for identifying and detaching ripe fruits while a ground robot positions itself to receive and transport the harvested fruits. Such collaboration can improve collection efficiency, and en-hance the overall automation capability of orchard harvesting systems. 
+
+C. Long-Term Autonomous Operation 
+
+Another important aim is to allow continuous and long-term autonomous functioning. Future study will look into automatic replanning methods, adaptive task scheduling algorithms, and fault-tolerant mission management to allow persistent harvest-ing missions in dynamic environments. 
+
+D. Human-Robot Interaction with LLM-Based Planning 
+
+Finally, dialogue-based interaction capabilities will be inte-grated into the LLM planning framework. This enhancement aims to support conversational task clarification, contextual feedback exchange, and more natural human-robot interaction during mission execution. Incorporating interactive commu-nication can further strengthen the role of humans in the loop while bridging the gap between current autonomous technologies and practical agricultural deployment. REFERENCES [1] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and I. Sutskever, “Robust speech recognition via large-scale weak supervi-sion,” in International conference on machine learning . PMLR, 2023, pp. 28 492–28 518. [2] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” The international journal of robotics research , vol. 30, no. 7, pp. 846–894, 2011. [3] K. Alaaudeen, S. Selvarajan, H. Manoharan, and R. H. Jhaveri, “Intel-ligent robotics harvesting system process for fruits grasping prediction,” 
+
+Scientific Reports , vol. 14, no. 1, p. 2820, 2024. [4] Z. Liu, J. Zhou, C. Mucchiani, and K. Karydis, “Vision-assisted avo-cado harvesting with aerial bimanual manipulation,” Advanced Robotics Research , p. 202500003, 2024. [5] A. Hornung, K. M. Wurm, M. Bennewitz, C. Stachniss, and W. Burgard, “OctoMap: An efficient probabilistic 3D mapping framework based on octrees,” Autonomous Robots , 2013, software available at https://octomap.github.io. [Online]. Available: https://octomap.github.io [6] M. Abdin, J. Aneja, H. Awadalla, A. Awadallah, A. A. Awan, N. Bach, A. Bahree, A. Bakhtiari, J. Bao, H. Behl, A. Benhaim, M. Bilenko, J. Bjorck, S. Bubeck, M. Cai, Q. Cai, V. Chaudhary, D. Chen, D. Chen, W. Chen, Y.-C. Chen, Y.-L. Chen, H. Cheng, P. Chopra, X. Dai, M. Dixon, R. Eldan, V. Fragoso, J. Gao, M. Gao, M. Gao, A. Garg, A. D. Giorno, A. Goswami, S. Gunasekar, E. Haider, J. Hao, R. J. Hewett, W. Hu, J. Huynh, D. Iter, S. A. Jacobs, M. Javaheripi, X. Jin, N. Karampatziakis, P. Kauffmann, M. Khademi, D. Kim, Y. J. Kim, L. Kurilenko, J. R. Lee, Y. T. Lee, Y. Li, Y. Li, C. Liang, L. Liden, X. Lin, Z. Lin, C. Liu, L. Liu, M. Liu, W. Liu, X. Liu, C. Luo, P. Madan, A. Mahmoudzadeh, D. Majercak, M. Mazzola, C. C. T. Mendes, A. Mitra, H. Modi, A. Nguyen, B. Norick, B. Patra, D. Perez-Becker, T. Portet, R. Pryzant, H. Qin, M. Radmilac, L. Ren, G. de Rosa, C. Rosset, S. Roy, O. Ruwase, O. Saarikivi, A. Saied, A. Salim, M. Santacroce, S. Shah, N. Shang, H. Sharma, Y. Shen, S. Shukla, X. Song, M. Tanaka, A. Tupini, P. Vaddamanu, C. Wang, G. Wang, L. Wang, S. Wang, X. Wang, Y. Wang, R. Ward, W. Wen, P. Witte, H. Wu, X. Wu, M. Wyatt, B. Xiao, C. Xu, J. Xu, W. Xu, J. Xue, S. Yadav, F. Yang, J. Yang, Y. Yang, Z. Yang, D. Yu, L. Yuan, C. Zhang, C. Zhang, J. Zhang, L. L. Zhang, Y. Zhang, Y. Zhang, Y. Zhang, and X. Zhou, “Phi-3 technical report: A highly capable language model locally on your phone,” 2024. [Online]. Available: https://arxiv.org/abs/2404.14219 [7] L. Meier and The PX4 Contributors, “PX4 Autopilot.” [Online]. Available: https://px4.io

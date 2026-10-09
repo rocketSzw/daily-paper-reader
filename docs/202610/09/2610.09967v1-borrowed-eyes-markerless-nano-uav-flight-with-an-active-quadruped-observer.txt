@@ -1,0 +1,296 @@
+Title: Borrowed Eyes: Markerless Nano-UAV Flight with an Active Quadruped Observer
+
+URL Source: https://arxiv.org/pdf/2610.09967v1
+
+Published Time: Thu, 08 Oct 2026 01:42:40 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Borrowed Eyes: Markerless Nano-UAV Flight with an Active Quadruped Observer 
+
+Alejandro Lorite Mora 1, Dimitrios Arapis 2 and Andr´ es Fa´ ı˜ na 1
+
+Abstract — Nano unmanned aerial vehicles (nano-UAVs) can navigate confined spaces that larger robots cannot, but their payload capacity severely limits the sensors and compute avail-able for self-localization in global navigation satellite system (GNSS)-denied environments. We present a vision-based system that localizes a nano-UAV from a quadruped robot with an arm-mounted camera. The quadruped tracks the drone, estimates its position in its own coordinate system using segmentation masks and depth, and transmits that position over a real-time radio link. To ensure continuous tracking, we developed a perception-aware nonlinear Model Predictive Controller (NMPC) that dy-namically adjusts the quadruped’s body and arm to maximize the drone’s visibility, treating observation reliability as a pri-mary control objective. Relying solely on this external estimate, the nano-UAV executed predefined trajectories from takeoff to landing with a median 3D localization error of 59 mm. The system demonstrates robustness against short visual occlusions by smoothly transitioning to onboard inertial flight when line-of-sight is temporarily lost. Ultimately, this framework allows a quadruped to offload the localization burden of a nano-UAV, enabling inspection of complex spaces that neither robot could navigate alone. 
+
+I. I NTRODUCTION 
+
+Industrial assets such as storage tanks, pressure vessels, pipes, and tunnels require regular inspection for corrosion, cracks, and other structural damage. Manual inspection is time-consuming, costly, and hazardous, especially in narrow or elevated spaces. Nano unmanned aerial vehicles (nano-UAVs), weighing only tens of grams, are well suited to reaching and inspecting areas inaccessible to larger robots. However, autonomous nano-UAV deployment is severely constrained by onboard localization. Larger UAVs can carry stereo cameras or LiDAR to run visual-inertial odometry (VIO) or simultaneous localization and mapping (SLAM), but these sensors exceed the payload and power capacity of nano-scale platforms [1]. Confined industrial settings also feature repetitive, textureless steel surfaces and uneven illumination, which degrade feature-based localization even when sufficient computation is available. In laboratory settings, nano-UAVs rely on external local-ization infrastructure like motion capture or ultra-wideband  
+
+> This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. This research was supported by the IT University of Copenhagen and Helix Lab in Denmark under the Novo Nordisk Fonden through project grant number 224611. We also thank Rasmus Finderup Thomsen for his help at the Helix Lab Robotics Lab.
+> 1IT University of Copenhagen, Denmark
+
+{lori, anfv }@itu.dk .A. Lorite Mora is also with Helix Lab and Novo Nordisk A/S, Denmark. 
+
+> 2Novo Nordisk A/S, Hillerød, Denmark
+
+dim.arapis@outlook.com    
+
+> Fig. 1. The quadruped localizes the nano-UAV with no marker on the drone and no localization sensing aboard it. It computes the drone’s position with its arm camera, in its own map, and sends it over radio. Overlays are projected into the footage from the trial’s own recording: the yellow cross is the markerless estimate the drone flew on, the blue circle is the motion-capture ground truth used for evaluation only. Insets: the quadruped’s camera view and a 3×magnification of the drone.
+
+(UWB) beacons. However, installing fixed infrastructure across industrial facilities is costly, inflexible, and often impractical. Operating in real environments requires localiza-tion that preserves the nano-UAV’s payload margin without permanent infrastructure. Rather than increasing the sensing burden on the drone or instrumenting the environment, we offload localization to a mobile ground robot with greater sensing and com-putational capacity (Fig. 1). The quadruped localizes itself and estimates the 3D position of the nano-UAV using an arm-mounted camera, while the drone flies using this exter-nally supplied estimate. Crucially, the estimate is expressed directly in the quadruped’s global coordinate map rather than in an onboard frame. This provides a shared spatial representation for heterogeneous collaboration, allowing the nano-UAV to scout confined spaces and report points of interest in a frame the ground robot can directly use. Our prior work [2] demonstrated this cooperative division of labor using fiducial markers on a nano-UAV [3]. However, physical markers add considerable payload mass, increase aerodynamic drag, and enlarge the vehicle’s footprint. In addition, reactive camera tracking often loses visual contact during fast maneuvers or temporary occlusions. To overcome these limitations, we introduce a mark-erless localization and active observation framework for nano-UAVs. Our main contributions are: (i) Markerless external localization: A position-only perception pipeline that estimates the 3D position of a bare nano-UAV in the quadruped’s map frame, using depth-integrity gates to arXiv:2610.09967v1 [cs.RO] 7 Oct 2026 discard corrupted measurements and convert sensor failures into safe dropouts. (ii) Perception-aware active observa-tion: A nonlinear Model Predictive Controller (NMPC) that coordinates the quadruped’s body and arm motion to preserve line-of-sight and optimize viewing geometry. (iii) Closed-loop flight under intermittent perception: Closed-loop flight validation from takeoff to landing on the external vision feed alone, demonstrating autonomous recovery from visual occlusions through onboard inertial coasting. II. R ELATED WORK 
+
+Ground-Aerial Collaborative Localization. Leveraging ground robots to assist UAV localization is an established strategy for global navigation satellite system (GNSS)-denied environments. Existing approaches utilize ultra-wideband radios on both platforms to achieve decimeter-level local-ization [4], employ ground vehicles as external references to refine onboard state estimates [5], or use legged robots as mobile magnetic beacons, achieving tracking errors of 8 to 11 cm [6]. These methods either require dedicated onboard payload hardware [5] or provide lower accuracy than close-range visual localization [4], [6]. Markerless inter-robot observation has been explored in multi-robot SLAM, where mutually observing robots use visual detections to refine their state estimates [7]. However, such observations have not been demonstrated as the primary external position source for closed-loop flight of a nano-UAV. Removing fiducial markers eliminates added mass and aerodynamic penalties, but requires localizing a small, dark, weakly textured, and symmetric airframe directly from appearance and depth. While render-and-compare 6D pose estimators [8], [9] address similar challenges, we exploit the flight controller’s internal attitude estimation and compute only 3D position, reducing the vision pipeline to the essential external state (Section III-B). 
+
+Vision-Based Localization of Small Aerial Targets. 
+
+Prior work on aerial target detection predominantly targets larger platforms. Vrba et al. [10] detected a 0.55 m quadrotor using stereo vision up to 50 m, with subsequent work report-ing ranges up to 20 m [11]. Carrio et al. [12] localized drones using onboard depth maps at 16 Hz up to 8 m, but evaluated a 517 mm platform and attributed range limits to sensor constraints rather than target dimensions. In LiDAR-based studies [13], classification degrades when a target returns fewer than 40 points. A bare nano-UAV challenges these limits at much closer range, where its small surface area returns very few depth points. We explicitly quantify this relationship up to 3.1 m in Section IV-A. 
+
+Aerial Navigation Through Narrow Apertures. Navigat-ing confined spaces has been addressed through collision-tolerant platforms operating through manhole-sized open-ings [14], [15], or commercial caged inspection drones with full onboard SLAM. 1 Both strategies require structural protection and compute payloads well beyond the capacity of nano-UAVs. This leaves an important capability gap for  
+
+> 1Flyability Elios 3, https://www.flyability.com/elios-3/
+
+nano-UAVs, which can access tighter spaces but cannot carry the heavy sensor packages assumed by existing platforms. III. M ETHOD 
+
+A. System overview 
+
+The proposed system is shown in Fig. 1 and its processing pipeline in Fig. 2. A Boston Dynamics Spot quadruped serves as the mobile base, equipped with its own arm-mounted gripper camera, which provides color and registered time-of-flight depth (Section III-C), and an NVIDIA Jetson AGX Orin onboard computer. This computer handles quadruped control, arm articulation, and drone pose estimation. From each RGB-D frame, the pipeline extracts at most one 3D position of the drone, referenced to the quadruped’s map frame. Validated position estimates are transmitted via a low-latency radio link to the drone (a Bitcraze Crazyflie relying solely on an inertial measurement unit (IMU)) using the 
+
+crazyswarm2 server. 2
+
+The quadruped tracks its motion via onboard odometry, anchored to the world map frame by a static transform (Tmap →odom in Eq. (1)). In these experiments, an OptiTrack motion-capture system supplies that anchor and records ground truth for calibration and evaluation. Motion capture never provides state estimates to the flight controller: the drone completes its entire flight profile, from takeoff to landing, relying on the markerless pipeline. Anchoring in-stead to the quadruped’s onboard SLAM map adds negligible error: Spot’s internal map drifted < 1 cm (P95). We use the motion-capture anchor to keep reported tracking performance independent of ground-robot self-localization error. 
+
+B. Mask-Based Position Estimation 
+
+The drone’s map-frame position is constructed from rigid transforms anchored to the quadruped’s self-localization, closed by a markerless camera-to-drone estimate: 
+
+pmap →drone = Tmap →odom Todom →body Tbody →cam pcam →drone 
+
+| {z }
+
+> estimated here
+
+(1) Here TA→B is the pose of frame B expressed in frame 
+
+A, so each factor carries a point from B into A, acting on the homogeneous point. The first three encapsulate the quadruped’s state: its localization in the map frame, its internal odometry, and the arm’s forward kinematics. Only the final link is derived visually. Because the drone’s IMU maintains its attitude and yaw, full 6D pose estimation is unnecessary. The visual problem reduces to estimating the drone’s 3D position in the camera frame, extracted from a 2D segmentation mask mϕ(I) and the registered depth map 
+
+D, where D[·] reads the finite, positive depth returns under a mask: 
+
+(u, v ) = centroid  mϕ(I),z = agg  D[mϕ(I)]  + δ, 
+
+pcam →drone = z K −1[u, v, 1] ⊤,
+
+(2)  
+
+> 2Crazyswarm2, https://github.com/IMRCLab/crazyswarm2
+
+enabling 3D unprojection via camera intrinsics K. Because depth returns come from the near face, a fixed offset δ =4.5 cm carries the reading to its center. 
+
+1) Sensing and Detection: For a nano-UAV of this scale, reliable depth extraction poses a greater challenge than 2D masking. Fig. 2 outlines the deployed pipeline. The gripper camera streams color and time-of-flight depth at 640 × 480 
+
+and 60 Hz, with the depth registered to the color frame on the robot itself. A YOLO11 instance-segmentation model, 3
+
+exported to TensorRT at FP16, segments the drone in each color frame in about 4.2 ms on the onboard computer. 
+
+2) Auto-Labeled Training Data: To bypass manual an-notation, we trained the segmentation model on in-domain imagery from an automated pipeline. We prompted a foun-dation model (SAM 2 [16]) using projected motion-capture positions of the drone. Motion capture is used solely as a prompting mechanism for the labeling pipeline: the live detector never sees external motion-capture data, ensuring no circularity in training. The training set holds 7 306 positive frames: 6 025 auto-labeled from nine recordings of the drone hanging and in flight, and 1 281 composites that paste segmented drones onto footage of the surrounding rooms recorded without the drone, so the detector meets the route’s backgrounds before it flies there. A further 1 099 drone-free frames supply negatives, and two recordings serve as test sets. Seven retraining runs as the dataset expanded required 
+
+4.2 GPU-hours across laptop and desktop GPUs, with the deployed model fine-tuned in 0.31 h with zero manual labels. 
+
+3) Depth Extraction and Integrity Gates: The range ag-gregation z is sensor-dependent. While stereo cameras allow median depth extraction, the time-of-flight gripper camera requires selecting the nearest supported depth band, since the drone returns only 6 to 14% of the valid depths inside its own mask and the median therefore locks onto the background. By construction, the drone is the nearest surface inside a correct mask. Replayed against motion-capture truth, with the aggregation isolated from detector quality, the nearest band places the drone within 250 mm in 93 to 96% of frames with a 20 mm median error, versus 12 to 17% at 1.8 to 2.4 mfor the median. Crucially, thin airframes severely degrade depth readings. To prevent the estimator from silently locking onto the background, we gate every range before publishing. On the gripper camera, three gates carry it: 1) Cluster support : a band must hold at least 
+
+max(6 px , 6%) of the valid in-mask depths, or no range is produced, 2) Kinematic feasibility (rejecting updates implying >
+
+0.8 m/s jumps), 3) Size consistency against expected projection size. Our earlier stereo pipeline adds a depth-completeness floor (ρ ≥ 0.40 ) and a background-annulus rejection. The nearest-band search makes both redundant on the time-of-flight camera: a low valid fraction is the regime that search exists to rescue, and a mask holding only background yields no                  
+
+> 3Ultralytics YOLO11, https://github.com/ultralytics/ ultralytics
+> RGB-D sensing, 640 ×480 @ 60 Hz detector (YOLO11-seg, TensorRT FP16,
+> ∼4.2ms): mask +centroid (u, v )
+> depth read: nearest supported depth band cluster support: ≥max(6 px ,6%)
+> of valid in-mask depths front-surface compensation, deprojection, transform to the map frame kinematic feasibility gate size-consistency cross-check onboard filter: external position ⊕IMU
+> dropout
+> nothing published, filter coasts on IMU perception-aware controller: commands arm and body to keep the drone observable
+> Fig. 2. The deployed system. Solid path: one position per frame, expressed in the quadruped’s own map frame. Shaded stages are the three integrity gates of the deployed gripper-camera path. A failed gate publishes nothing and the drone’s filter coasts on its IMU, a dropout instead of a wrong position. Section IV-A reports their aggregate effect. Dashed: the accepted position also drives the perception-aware controller (Section III-E), which commands the arm and body so the drone stays observable.
+
+band in front of it. If any gate fails, nothing is published, and the drone coasts on its IMU. The relay forwards valid positions without extrapolation and commands landing if outages exceed safety limits. 
+
+C. Camera, Calibration, and Ground Truth 
+
+The gripper camera’s pose is intrinsically derived from the quadruped’s kinematic chain. Its time-of-flight depth successfully returns ranges on the dark airframe where a stereo camera (e.g., Intel RealSense D435) fails. Accuracy metrics compare the estimated drone position against motion-capture ground truth. For the gripper camera, the tracking chain relies on the quadruped’s kinematics registered to the motion-capture frame. We report raw accuracy through the calibrated chain alongside precision after rigid Horn/Markley alignment of the estimated and reference tracks, which ab-sorbs a constant offset in the reference chain and so isolates the estimator’s intrinsic precision. Experiments evaluate three configurations: the deployed bare airframe, an airframe with a ∼1.8 g matte panel restoring stereo depth (diagnostic), and an airframe equipped with an AprilTag (fiducial baseline). 
+
+D. Single-Estimator Fusion, IMU Coasting, and Latency 
+
+The drone operates an extended Kalman filter (EKF) that fuses the markerless position updates with high-rate attitude and yaw estimates from its onboard IMU (Bosch BMI088). The drone maintains no map frame of its own. Between external position updates, the filter integrates IMU measure-ments to coast, with uncertainty swelling during coasting and shrinking upon correction. Visual processing and radio transmission introduce a pipeline latency of ∼180 ms, so each estimate describes where the drone was, not where it is. The flights reported here fuse every estimate on arrival, without latency compensation, which leaves a position lag along the velocity vector. The measurement noise of each estimate is set to 5 cm, matching the measured error of the markerless pipeline, rather than to the millimeter trust used for motion capture. The residual lag is one source of the tracking error in Section IV-B. 
+
+E. Perception-Aware Active Observation 
+
+To maintain continuous localization, the quadruped must actively keep the drone near the camera’s optical center and within its reliable depth range. A naive controller aiming at the last known position lags behind fast maneuvers, causing the drone to exit the field of view. Instead, we formulate observation quality as the primary objective of a nonlin-ear model predictive controller (NMPC), commanding the quadruped’s body and arm to anticipate the drone’s motion using its known trajectory. Over a receding horizon of N
+
+steps, the observer minimizes: 
+
+J = 
+
+> N−1
+
+X
+
+> k=0
+
+
+
+wc θ2 
+
+> k
+
++ wr (dk − d⋆)2 − we log pk
+
++ wb ν2 
+
+> k
+
++ ∥uk∥2 
+
+> R
+
++ wms2 
+
+> k
+
++ Ω k
+
+ (3) Here, θk is the angular deviation from the optical axis (the dominant penalty, as reliability degrades beyond ∼30 ◦). dk is the distance to the drone, penalized against a standoff target 
+
+d⋆ = 1 .0 m (flown median 1.25 m, Table I). The estimator’s valid-publish probability pk is pre-tabulated against range and off-axis angle from empirical limits (Section IV-A). νk
+
+penalizes image-plane velocity (motion blur), uk = ( ub, uh)
+
+are body and hand velocities regularized by R, and sk softens a 40 px image-border margin constraint. Ωk collects four smaller regularizers that keep the posture natural and the commands smooth: arm reach toward a comfortable mid-reach, body-arm alignment, a soft ceiling on hand height, and a penalty on the command change between steps. The last two were added after closed-loop trials drove the shoulder into its joint limits. We re-solve Eq. (3) over an N =8 
+
+horizon at 5 Hz and stream the planned commands at 10 Hz. The matrix R encodes that arm motion is cheap and rapid, whereas body motion is expensive. The reactive baseline we compare against in Section IV-B is a visual servo with no prediction and no cost trade-off. At 2 Hz, it places the hand a fixed distance short of the last received drone position along the body-to-drone ray, aims the camera at that position, and walks the body only when the target leaves the arm’s reach. Because the trajectory is uploaded pre-flight, the radio link transmits only position updates, meaning path-tracking accuracies cleanly reflect localization performance. 
+
+F. Position-only control and the rate floor 
+
+Two preliminary results set the estimator’s design targets. First, we send the drone only its position, and its EKF takes attitude and yaw from the IMU, as ultra-wideband and Lighthouse positioning systems do [4]. Flown on motion capture, this position-only mode matched full-pose control on every paired trajectory. Only yaw is given up: it drifts 9 to 10 ◦ per minute, against 0.8◦ under full-pose control, a bounded wander rather than a divergence. Second, we measured what the flight demands of the position feed. A shim degrades the motion-capture position one axis at a time, in update rate, latency, noise, and dropout, and the drone flies on the degraded feed. Only the rate axis resolved a clean crossing in this single-pass session: hover remained stable down to 5 Hz and broke down at 1 Hz, so the markerless pipeline must publish above 5 Hz, and Section IV-A shows that it does, at about four times that rate. The latency, noise, and dropout axes remain preliminary. 
+
+Code and data. All the software described in this paper, comprising the position estimator, the labeling tools, the drone firmware and the changes to crazyswarm2, together with the recorded trials, will be published on acceptance. IV. E XPERIMENTS 
+
+Three experimental campaigns evaluate the system against our contributions: (A) markerless localization accuracy and depth integrity gating, (B) active observation and predictive tracking, and (C) closed-loop flight with no external local-ization in the flight loop, including visual occlusions and envelope limits. Together, these experiments demonstrate that the quadruped tracks the bare nano-UAV, maintains visibility, and closes the flight control loop on visual estimates alone. 
+
+A. Markerless localization accuracy and integrity gating 
+
+We evaluate localization accuracy against motion-capture ground truth under two regimes. Offline, on hovering flight recordings with a stationary arm ( 1.6 to 1.8 m distance), we evaluate static estimation accuracy across 205 ground-truth synchronized frames. Live, we evaluate the system across eight closed-loop flights ( 1 069 s total airborne time) with an actively moving camera spanning 0.6 to 2.3 m stand-off, measuring accuracy under real operational conditions. 
+
+Accuracy and coverage. On the hovering recording, the detector identifies the drone in 89% of frames, yielding a median 3D error of 38 .6 mm ( 32 .8 mm lateral). In live flight (Fig. 3), the median 3D error across 17 363 positions is 49 mm (P95 119 mm), with lateral and along-axis com-ponents contributing equally ( 31 mm median each). Only 
+
+0.6% of positions deviate by more than 300 mm from truth. Live errors are slightly higher than static figures because the camera moves dynamically. To isolate camera motion from drone motion, we conducted trials tracking a hovering drone: over a shared distance band, a stationary camera achieves 43 mm median error versus 55 to 58 mm when tracking, showing that camera motion incurs only a modest accuracy penalty. The pipeline publishes updates at 20 Hz whenever the drone is visible, comfortably exceeding the 
+
+5 Hz flight stability threshold. In an unmapped room absent from training data, background clutter caused false detections in 3.3% of frames at a 0.35 confidence threshold ( 10 .7% at 
+
+0.25 ), which the integrity gates filter out. 
+
+Integrity gating. Our perception pipeline prioritizes false negatives over false positives: missing updates cause mo-mentary inertial coasting, whereas incorrect position esti-mates can destabilize flight control. On the deployed gripper 0.6 0.8 1.0 1.2 1.4 1.6 1.8 
+
+> camera-to-drone distance [m]
+> 025 50 75 100 125
+> 3D error [mm]
+> shaded: the range all three cover. Medians (IQR) there, in mm: 43 (34 to 57) arm still, 55 (38 to 78) and 58 (51 to 70) arm tracking arm still, drone hovering, n=8441 arm tracking, drone weaving, n=8922 arm tracking, drone hovering, n=1971
+
+Fig. 3. Live accuracy of the deployed estimator (gripper camera) against motion capture over 17 363 positions from eight closed-loop flights. Each point is the median 3D error of the positions recorded within a 0.2 minterval of distance, the band around the curve their interquartile range, and intervals holding fewer than 80 positions are not drawn. The gray span marks the distance range all three conditions cover, and the inset box gives each condition’s median and interquartile range over that shared range. 
+
+camera, three gates safeguard estimation: cluster support, kinematic feasibility (0.8 m/s), and size consistency. On hovering recordings, most discards stem from missed de-tections ( 75 .5% ) or incomplete depth ( 18 .4% ), with corrupt background reads and size mismatches accounting for the remainder. Together, these gates ensure that 99 .4% of pub-lished live positions stay within 300 mm of truth. 
+
+Comparison to the fiducial baseline. To benchmark against fiducial tracking, we evaluated both pipelines on the stereo camera setup of our earlier work [2] (Fig. 4). On test figure-8 flights at 1.6 to 2.6 m, the markerless stereo pipeline achieved a 122 mm median error. A rigid Horn-Markley alignment reveals that 106 mm was a constant reference-chain offset, isolating the markerless sensor precision at 71 mm compared to 12 to 16 mm for the fiducial baseline. While fiducial markers offer higher raw precision, our markerless pipeline achieves sufficient accuracy for flight while eliminating phys-ical markers. 
+
+Why the bare airframe needs the gates. The stereo camera also highlights the depth challenge on nano-UAVs. Raw depth returns on the bare airframe yield a median of zero valid depth pixels out to 3.1 m. While affixing a 1.8 g matte panel restores depth returns, flight tests show the drone cannot support this payload: motor duty rises from 53 to 55% 
+
+on the bare airframe to 80 .5% with the panel, causing motor saturation and emergency landing after 23 s. Gating protects against missing depth without adding airborne mass. 
+
+B. Active Observation on the Quadruped 
+
+This experiment evaluates whether the perception-aware NMPC (Section III-E) improves drone framing compared to the reactive baseline. We quantify framing by the off-axis angle between the camera’s optical axis and the drone, treating deviations above 30 ◦ as tracking failures. During ten-waypoint flight tests, both controllers received motion-capture ground truth rather than markerless estimates, iso-lating controller tracking performance from perception noise (Table I). The off-axis angle reconstructed offline from mo-tion capture agrees with live controller telemetry to a median of 0.45 ◦. The controller weight profiles, recorded flights, and evaluation scripts are provided in the open repository. Table I summarizes tracking performance. Across six 1.50 1.75 2.00 2.25 2.50 2.75 3.00 3.25 camera-to-drone distance [m] 10 2
+
+> 10 3
+> 3D error [mm]
+> AprilTag fiducial (flight) markerless deployed (flight, gated) markerless + 1.8 g panel (static) markerless bare, raw depth (static)
+
+Fig. 4. Localization accuracy on the earlier stereo camera, comparing the fiducial baseline against three markerless configurations. Each point is the median 3D error of the positions recorded within a distance interval, and the band around a curve their interquartile range. The bare raw-depth series is medians only. Turning the gates on removes the bare airframe from the plot entirely, safely converting fatal false depths into dropouts ( 4 to 0 wrong publications over 5 539 held-out frames). TABLE I PERCEPTION -AWARE CONTROL ON THE QUADRUPED .Controller n Off-axis Range Body Hand med / P95 ( ◦) (m) (m 2) (m 2)Reactive 6 10.7 / 13.7 0.86 1.49 1.52 NMPC, low-motion 3 0.70 / 7.5 1.25 0.42 0.79 NMPC, deployed 3 0.54 / 2.7 1.25 1.72 1.61 All rows are flown on the quadruped, motion-capture fed and scored, with no detector in the loop. Off-axis is the drone’s angle off the camera axis (median / P95), range the median camera-to-drone distance, and body and hand the median convex-hull footprint swept per flight. Off-axis is reconstructed offline from motion capture, validated against the NMPC node’s live telemetry (median residual 0.45 ◦), and off-axis and range pool all airborne samples. The deployed tuning is the one flown in Sections IV-C and IV-D. 
+
+reactive flights, the median off-axis angle remained between 
+
+10 .5◦ and 10 .9◦. The perception-aware NMPC substantially improved framing: the deployed tuning held a pooled median of 0.54 ◦ (P95 2.7◦) over three flights, while a low-motion alternative maintained 0.70 ◦. While all controllers kept the drone within the 30 ◦ limit, NMPC provides critical margin during rapid maneuvers. The two NMPC tunings highlight an operational trade-off: allowing body rotation achieved a 
+
+0.70 ◦ tracking angle while sweeping only 0.42 m2 of floor area, whereas penalizing rotation commanded sidestepping to keep the background still, yielding 0.54 ◦ tracking over a 
+
+1.72 m2 footprint. We chose sidestepping because panning introduces novel background clutter that degrades detection (Section IV-C), while a stationary camera improves depth precision (Section IV-A). The reactive controller operated at a closer standoff ( 0.86 m versus 1.25 m for the NMPC), which geometrically amplifies angular error for a given lat-eral displacement. Evaluating the reactive controller’s lateral error at an equivalent 1.25 m standoff yields an off-axis angle of 7.4◦, confirming that NMPC achieves a fourteen-fold improvement in framing precision. 
+
+C. Closed-Loop Flight on Markerless Vision Alone 
+
+In this experiment the drone flies exclusively on the quadruped’s markerless position stream from takeoff to land-−3.0 −2.5 −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 
+
+x [m]                 
+
+> −0.5 0.0 0.5
+> y [m]
+> (a)
+> W1 W2 W3 W4 W5 W6 W7 W8 W9 W0 & W10
+> 012
+> cmd. height [m]  W1 W2 W3 W4 W5 W6 W7 W8 W9 W10 (b)
+> 020 40 60 80 100
+
+trajectory completed [%] 
+
+> 0.0 0.1 0.2 0.3
+> error [m]
+> motion capture, all flights (n=9) markerless, 0.6 to 0.95 m (n=3) markerless, 0.95 to 1.65 m (n=2) markerless, 2.0 m (n=3)
+> commanded path drone (motion capture) hand-camera estimate quadruped body quadruped hand (camera)
+
+Fig. 5. The closed-loop flights of Section IV-C. (a) One flight from above, with the commanded trajectory (dashed, waypoints W1 to W10) drawn over the translucent traces: the drone by motion capture (blue), the hand-camera estimate (orange), the quadruped’s body heading (red), and the hand carrying the camera (purple). The loop begins and ends over the landing pad (W0 & W10). (b) Error against progress along the trajectory, defined as the instantaneous distance from the commanded position to the drone’s true motion-capture position (mean ± one standard deviation). Shaded vertical bands indicate the 
+
+1.0 s hold at each waypoint. Gray traces represent the baseline control error from nine flights flown entirely on motion capture. Orange traces represent markerless flights, grouped by their commanded heights (top strip), which change dynamically at each waypoint. 
+
+ing. Motion capture records the flight strictly for evaluation and provides an external safety fallback. The drone’s onboard EKF fuses IMU propagation with external position estimates. If no estimate arrives for 4.0 s, the bridge hands the drone back to motion capture as a safety fallback. With the quadruped’s arm held stationary, the drone com-pleted three 120 s hovers at 1.3 m from the camera. Across these flights, the drone maintained hover station-keeping with a lateral error of 37 to 53 mm (median 44 mm) relative to its setpoint, while the visual estimate differed from motion capture by a median offset of 35 to 46 mm. Decomposed by axis, hover drift remained bounded within 24 mm laterally and 32 mm longitudinally, confirming that the onboard EKF does not oscillate under the vision stream. Next, with the ac-tive perception-aware NMPC tracking the drone, three flights executed a ten-waypoint trajectory, completing takeoff, nav-igation, and landing exclusively on the markerless estimates (Fig. 5). Each flight lasted 124 s without a single hand-back to the safety system. Across all flights, visual estimates were available at 5 Hz or higher for the entire airborne duration, achieving a 3D median error of 58 to 60 mm (P95 121 to 
+
+124 mm). The drone stayed within a median of 2.9◦ of the optical axis throughout. To prevent background shifts from disrupting visual detection, the quadruped sidestepped along the room boundaries rather than rotating (Fig. 5a, red trace). Fig. 5b compares trajectory tracking error across position sources. Error is evaluated against the moving setpoint rather than the static target waypoint. Flown on motion capture, aerodynamic tracking lag was 33 mm median. Under markerless vision, tracking error increased to 78 mm for low trajectories ( 0.6 to 0.95 m height), 88 mm for medium trajectories ( 0.95 to 1.65 m), and 109 mm for high trajectories (2.0 m). Decomposing tracking error shows that residuals peak during direction reversals at waypoints W3 and W7, settling to within 45 mm along straight legs. This roughly two- to threefold increase is driven by 0.18 s pipeline latency, 
+
+TABLE II FLOWN ENVELOPE ON A CLEAR SCENE .                                     
+
+> Drone height nConfig. Range Look-up Avail. 3D error (mm) Reached (m) (m) med ( ◦)(%) med P95 0.6 to 0.95 3 S 1.2 2 to 4 99.3 to 99.8 58 to 60 121 to 124 10/10 0.95 to 1.65 2 C 1.2 31 to 33 98.5 to 99.6 50 to 59 131 to 143 10/10 2.0 1 C 1.3 58 63.4 84 146 9/10 2.0 2 L 1.8 44 to 45 77.7 to 84.5 87 to 89 150 to 153 10/10 2.5 2 C -----0/10
+
+Each row groups flights at a given commanded height. Reached counts completed over commanded waypoints. All configurations fly the deployed NMPC controller (Table I). S is the baseline configuration. C tightens the size-consistency gate to 1.5. L increases the standoff to 1.8 m and frees wrist pitch to track higher elevations. Availability is airborne time outside estimate gaps longer than 0.15 s. No safety hand-backs occurred. Both 
+
+2.5 m attempts ended in the onboard watchdog landing during ascent. 
+
+visual estimation noise ( 56 mm median error), and the larger standoff required at higher elevations, which degrades depth resolution (Fig. 3). The drone tracks as tightly as latency permits, indicating that higher precision requires faster visual estimation rather than stiffer flight control. 
+
+D. Loss of Line of Sight and Flown Envelope 
+
+Ten additional flights stress-tested the pipeline against visual occlusions and kinematic limits: a person crossing between the robots, a step ladder in the near field, and flights near the arm’s elevation limit. During dropouts, the bridge sent no position updates, forcing the drone to coast on its IMU under two hierarchical timers. The first is an experimental safety switch that returns control to motion capture if no visual estimate arrives for 4.0 s. The second is an onboard failsafe watchdog that commands an emergency landing if all position streams cease for 4.5 s. 
+
+Occlusion. When a person walked between the robots, the camera experienced 36 sustained occlusions lasting longer than 0.5 s, recovering visual tracking every time. The longest occlusion lasted 2.78 s. During these blind intervals, the 0.0 0.1 0.2 0.3 0.4        
+
+> drift by axis [m]  hovering ( n= 10) along the camera axis (range) across the frame, horizontal across the frame, vertical median, hovering median, trajectory
+> 0.0 0.5 1.0 1.5 2.0 2.5
+> time since the camera lost the drone [s]
+> 0.0 0.1 0.2 0.3 0.4
+> drift by axis [m]  trajectory ( n= 15)
+
+Fig. 6. Where a blind drone’s drift goes. Each trace is one of 25 
+
+human occlusions, separated by whether the drone was hovering (top, solid medians) or flying the trajectory (bottom, dashed medians). Drift is resolved on the camera’s axes at the instant of loss: motion along the optical axis affects range, cross-frame motion affects tracking angle. The along-axis median reaches 0.22 m while cross-frame drift stays under 0.08 m. Medians terminate when fewer than five occlusions remain active. 0.0 0.2 0.4 0.6       
+
+> first flight, size tolerance 2.0
+> 010 20 30 40 50 60
+> time [s]
+> 0.0 0.2 0.4 0.6
+> repeat, size tolerance 1.5
+> where the drone is (motion capture) where the drone thinks it is blind: ladder in the way blind: not detected flying on motion capture
+> error [m]
+
+Fig. 7. Two flights behind a step ladder, against time from the first waypoint command, with top arrows indicating the direction of travel for each leg. Error is measured against motion capture (blue) and the drone’s onboard filter (green), and the gap between them is the unobservable drift while blind. Shaded regions mark when the camera lost the drone: dark where a ladder rail crossed the line of sight, light where the line stayed clear and the detector instead failed against background clutter. Red marks the safety hand-back to the reference feed. 
+
+drone drifted at approximately 0.14 m/s, accumulating up to 
+
+0.50 m of true physical drift while its internal IMU filter registered only 0.08 m. Inertial coasting succeeded because of the drift direction (Fig. 6): 64% of the drift occurred longitudinally along the camera’s optical axis. Because lon-gitudinal motion changes range rather than pixel location, the drone shifted by a median of only 2.8◦ off the optical axis during blind periods. It remained centered within the camera’s 72 ◦ diagonal field of view, enabling immediate visual re-acquisition once line of sight cleared. Across all occlusions, the camera regained track on the very first sample after line-of-sight recovery with a median error of 66 mm (93 mm P90), correcting the accumulated blind drift by a median belief update of 0.16 m without triggering search maneuvers. No hand-back to motion capture was triggered during any of the 36 occlusions, as the 2.78 s maximum blind duration remained below the 4.0 s safety threshold. 
+
+Near-Field Clutter. The drone flew behind a step ladder placed 0.6 m from the camera (Fig. 7). An initial flight with a permissive dimensionless size-consistency threshold of 2.0
+
+(the ratio of observed mask width to width predicted from depth) caused the estimator to lock onto the ladder rail’s depth, pulling the drone 0.68 m off course and triggering a safety hand-back. Tightening this dimensionless threshold to 1.5 rejected these spurious foreground depths. Across all 
+
+30 428 airborne frames, sweeping the threshold confirmed that 1.5 is an optimal operating point, rejecting 48% of false foreground depth locks ( 43 of 89 ) while sacrificing only 0.35% of valid frames. In a repeat flight with the tightened threshold, the drone completed its full trajectory autonomously, remaining blind for 48% of the flight ( 31 .5
+
+of 65 .0 s) but deviating at most 0.45 m from its planned path. 
+
+Drone Flight Height and Viewing Elevation. Table II summarizes the operational tracking envelope. The system tracked dynamic trajectories up to 1.65 m above the floor with over 98% estimate availability. At a flight height of 
+
+2.0 m above the floor and a 1.3 m standoff, the required camera pitch reached a median of 58 ◦ and peaked at 82 ◦,exceeding the arm’s kinematic elevation limit of 68 ◦ and reducing availability to 63 .4% . Increasing the commanded standoff to 1.8 m reduced the required elevation to 45 ◦,restoring availability to 77 .7 to 84 .5% and completing all waypoints. Attempting flight at 2.5 m height exceeded the arm’s kinematic reach during the initial ascent, triggering the onboard failsafe watchdog landing. Across all flights, the camera tracked the drone over an 83 ◦ elevation span, while azimuth variation remained within 43 ◦ because the quadruped sidesteps rather than yawing. V. D ISCUSSION AND CONCLUSION 
+
+This work demonstrates that a quadruped robot can provide a closed-loop, markerless position stream accu-rate enough to pilot a nano-UAV, eliminating the need for payload-intensive onboard fiducials or external motion-capture systems. By combining a segmentation mask with registered depth and enforcing depth-integrity gating, the pipeline localized a bare nano-UAV using the quadruped’s gripper camera with a 3D median error of 49 mm over 1 069 sof closed-loop flight. Notably, the underlying detector was trained entirely on automatically generated masks, requiring zero manual labeling. Relying exclusively on this markerless stream, the drone executed extended 120 s hovers and au-tonomous ten-waypoint trajectories from takeoff to landing with a 58 to 60 mm median localization error against motion capture. Concurrently, the quadruped used perception-aware NMPC to actively maintain the drone within the camera’s field of view, while the drone’s IMU safely coasted through transient line-of-sight occlusions lasting up to 2.8 s. The primary generalizable insight of this work is the emphasis on outlier rejection over naive estimate smoothing. On lightweight airframes, depth-channel failures are frequent and severe. Our architecture demonstrates that converting spurious readings into dropouts is substantially safer than passing corrupted positions to the drone: an onboard IMU filter readily coasts through brief dropouts, whereas a con-fidently false position estimate destabilizes the flight con-troller. Evaluated on the stereo camera setup, these gates eliminated all meter-scale background locks across 5 539 test frames. A secondary insight is the value of establishing an empirical performance budget: our baseline confirmed that stable flight requires at least a 5 Hz update rate, which our pipeline comfortably exceeded by providing 20 Hz updates whenever the drone remained in view. A central practical insight is the benefit of exploiting the quadruped’s integrated hand camera rather than adding an external sensor payload. Commercial quadruped arms and grippers already package high-resolution optical and time-of-flight depth sensors accompanied by factory kinematic cali-bration. Repurposing these built-in sensors avoids mounting extra cameras, custom brackets, or auxiliary wiring harnesses on the quadruped, while the drone flies at its stock 37 gwith no added payload. This demonstrates that collaborative heterogeneous localization requires no specialized sensory retrofitting when platforms share existing perception. Several limitations bound our results. First, the detector was trained on laboratory recordings with uniform back-grounds, confining experiments to that environment. Rotating the camera introduced novel background clutter absent from training, requiring the quadruped to sidestep to maintain background consistency (Section IV-C). The drone’s small, dark airframe returns sparse time-of-flight depth points, making depth extraction sensitive to surface orientation and ambient illumination. Second, the operational envelope is limited by the kinematic coupling between camera pitch and standoff distance. To maintain a stationary background for the detector, the quadruped keeps its camera level and tracks the drone primarily by adjusting arm height and standoff distance rather than pitching upward. Observing a higher drone forces the quadruped to increase standoff distance, pushing the target beyond the 2.3 m maximum effective range of the time-of-flight depth sensor. Tracking remains reliable between ranges of 0.6 to 2.3 m and up to 1.65 m flight height, and degrades at 2.0 m (Section IV-D). We expect a ceiling near 3.5 m by relaxing wrist pitch penalties for steeper camera tilt, though our laboratory ceiling bounded validation. Third, the architecture requires direct line-of-sight: once the drone navigates deep into cluttered structures, a single viewpoint loses observability [17]. Finally, flight campaigns spanning three hovers, three full-loop autonomous flights, ten occlusion and clutter probe flights, twelve controller flights, and nine reference flights demonstrate practical viability rather than exhaustive statistical certifications. Looking ahead, future work will focus on expanding robustness and generalizability toward real-world industrial deployments. First, visual limitations can be mitigated by training on diverse datasets with extensive augmentation, paired with airframe modifications such as high-contrast col-oring and small matte surfaces for reliable depth extraction. Second, we plan to integrate cooperative path planning that coordinates joint robot trajectories over extended inspection missions. Finally, to overcome single-viewpoint observability limits in cluttered structures, future architectures could in-corporate complementary modalities such as radio-frequency ranging, optical beacons, or onboard relative tracking. REFERENCES [1] V. Niculescu, T. Polonelli, M. Magno, and L. Benini, “NanoSLAM: Enabling fully onboard SLAM for tiny robots,” IEEE Internet Things J. , 2024, arXiv:2309.12008. [2] A. Lorite Mora and A. Fa´ ı˜ na, “Towards quadruped-provided localiza-tion and active tracking for nano-UAVs,” in Proc. Int. Conf. Climbing and Walking Robots (CLAWAR) , 2026, arXiv:2610.06215. [3] E. Olson, “AprilTag: A robust and flexible visual fiducial system,” in
