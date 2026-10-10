@@ -1,0 +1,611 @@
+Title: WAND: Learning Robust Navigation under Complex Wind Disturbances and Dense Obstacles for Quadrotors
+
+URL Source: https://arxiv.org/pdf/2610.11809v1
+
+Published Time: Fri, 09 Oct 2026 01:24:52 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> 1
+
+# WAND: Learning Robust Navigation under Complex Wind Disturbances and Dense Obstacles for Quadrotors 
+
+Zhonghan Tang 1,2, Chenhui Li 2, Shuai Liang 2, Zhongrui You 2, Jianan Li 2, Bin Zhao 2,3, Zhigang Wang 2, and Xuelong Li 4
+
+Abstract —Robust navigation in cluttered environments re-mains a fundamental challenge for quadrotors, particularly when strong wind disturbances arise, which perturb vehicle dynamics, limit control authority, and substantially increase collision risk. Existing learning-based navigation policies typically rely on obstacle perception and proprioceptive observations, requiring the policy to infer time-varying disturbance effects implicitly and thereby limiting robustness under partial observability. This pa-per proposes WAND (Wind-Aware Navigation with Disturbance Estimation), a reinforcement learning framework for navigation under time-varying wind disturbances in dense obstacle fields. Specifically, WAND estimates wind-induced disturbance acceler-ation from historical proprioceptive states using a Temporal Con-volutional Network (TCN). This estimation is integrated into the policy via a zero-initialized residual module, WindAdapter , while simultaneously providing feedforward compensation for low-level control. The dual use of the estimate couples disturbance-conditioned navigation with feedforward disturbance rejection. Across 12 wind-disturbed simulation settings, WAND improved the observed success rate by 8.3 percentage points on average relative to feedforward compensation alone. Controlled opposite-crosswind experiments further showed wind-direction-dependent trajectory adaptation. In indoor fan-induced flight tests, WAND succeeded in 18 of 20 trials, demonstrating the feasibility of real-time onboard navigation. 
+
+Index Terms —Aerial Systems: Perception and Autonomy, Re-inforcement Learning, Autonomous Vehicle Navigation 
+
+I. INTRODUCTION 
+
+# IN recent years, micro quadrotors have seen rapid adoption in exploration [1], emergency rescue [2], and urban delivery [3]. Driven by breakthroughs in low-power computing and micro-sensing [4], [5], these vehicles can now operate under extreme Size, Weight, and Power (SWaP) constraints, granting them access to dense and confined environments. In such settings, the wind disturbance experienced by the vehicle can vary over time as the airflow interacts with surrounding structures, for example, through flow acceleration near gaps or recirculation around obstacles [6], [7]. Due to their limited actuation authority, micro quadrotors are highly susceptible to 
+
+This work was supported by Shanghai Artificial Intelligence Laboratory. 
+
+(Zhonghan Tang and Chenhui Li contributed equally to this work.) (Corre-sponding author: Zhigang Wang.) 
+
+> 1
+
+Zhonghan Tang is with the Department of Electronic Engineering and Information Science, University of Science and Technology of China, Hefei 230027, China (e-mail: tzh123@mail.ustc.edu.cn). 2Zhonghan Tang, Chenhui Li, Shuai Liang, Zhongrui You, Jianan Li, Bin Zhao, and Zhigang Wang are with Shanghai Artificial Intelligence Laboratory, Shanghai 200232, China (e-mail: tangzhonghan@pjlab.org.cn; wangzhigang@pjlab.org.cn). 3Bin Zhao is also with Northwestern Polytechnical University, Xi’an 710072, China (e-mail: bin@nwpu.edu.cn). 4Xuelong Li is with the Institute of Artificial Intelligence (TeleAI), China Telecom, Beijing 100033, China (e-mail: xue-long li@ieee.org). (a) (b) 
+
+Goal 
+
+Action 
+
+Estimated wind disturbance Obstacles Perception 
+
+Fig. 1: Real-world deployment of WAND. (a) A quadrotor navigates a cluttered indoor scene under fan-induced airflow; the inset shows an anemometer reading of approximately 
+
+7.2 m /s. (b) The corresponding visualization in RViz. unsteady airflow, increasing the risk of collision in cluttered environments. Traditional navigation stacks separate geometric planning from low-level control. Geometry-oriented planners [8]–[10] focus on trajectory feasibility, whereas robust planners [11], [12] and predictive controllers [13] account for disturbances or tracking uncertainty but depend on assumed models and sufficient control authority. Strong, rapidly varying wind can therefore leave residual tracking errors that erode trajectory clearance in confined environments. In contrast, learning-based methods integrate perception and control through learned navigation policies. NavRL [14] learns safe navigation in dynamic clutter, while end-to-end ap-proaches map LiDAR [15], [16] or visual features [17] to low-level commands and support sim-to-real transfer [18]. How-ever, these policies primarily condition on obstacle perception and proprioception rather than explicit wind estimates. They arXiv:2610.11809v1 [cs.RO] 8 Oct 2026 2
+
+therefore infer time-varying aerodynamic effects implicitly, although the same observation can require different actions under different winds. This partial observability complicates robust wind-aware navigation. To address this issue, we propose WAND, a wind-aware RL framework for safe navigation in windy, cluttered environ-ments. A Temporal Convolutional Network (TCN) estimates wind-induced disturbance acceleration from proprioceptive histories, and the proposed WindAdapter encodes this estimate into wind-conditioned features. The policy combines these features with obstacle perception and the current propriocep-tive state, while the same estimate is reused for feedforward compensation. As illustrated in Fig. 1, WAND is deployed onboard for real-time navigation in a cluttered indoor envi-ronment under fan-induced airflow. Our contributions can be summarized as follows:  
+
+> •
+
+We propose WAND, a wind-aware RL framework for quadrotor navigation in cluttered environments under wind disturbances. WAND explicitly estimates wind-induced disturbance acceleration from proprioceptive his-tories and integrates it into the policy through a zero-initialized residual WindAdapter , while also reusing it for feedforward compensation during execution.  
+
+> •
+
+We validate WAND through simulation and real-world flight experiments under diverse wind conditions, demon-strating improved robustness and disturbance-adaptive behaviors compared with baseline methods. II. RELATED WORK 
+
+A. Hierarchical Navigation in Cluttered Environments 
+
+Autonomous navigation in cluttered environments has been widely studied within hierarchical planning frameworks. Rep-resentative methods such as Fast-Planner [8] and EGO-Planner [9] achieve real-time collision-free trajectory generation by ex-ploiting geometric constraints derived from occupancy maps. More recent works [10], [19] further improve computational efficiency and trajectory quality in dense obstacle fields, demonstrating strong performance in structured navigation tasks. However, these planners are primarily designed for geometric feasibility and typically rely on the low-level con-troller to track the reference trajectory with sufficient accuracy. To improve tracking robustness against external disturbances, prior works have explored disturbance-compensation strategies [13]. Nevertheless, in most hierarchical pipelines, disturbance rejection is primarily handled by the tracking controller. As a result, the planned trajectory may not explicitly account for time-varying aerodynamic effects, and severe wind gusts can drive the quadrotor beyond the intended safety margins, increasing the risk of collision. 
+
+B. Learning-Based Navigation 
+
+Learning-based navigation directly learns obstacle-avoidance and goal-reaching behaviors from data. Early learning-based approaches demonstrated sim-to-real navigation in clutter with CAD2RL [20] and privileged learning for high-speed flight in unstructured environments [21]. Building on this, Song et al. [17] combine imitation and reinforcement learning through a privileged learning-by-cheating framework that tightly couples perception and control. Xu et al. [15] and Fan et al. [16] design task-relevant LiDAR representations for safe and reactive navigation, while NavRL [14] addresses dynamic environments with moving obstacles through tailored state representations and adaptive architectures. Yu et al. [22] leverage memory-augmented latent representations with varying-speed strategies to enhance navigation performance. History-conditioned latent adaptation has been applied to quadrotor control by inferring a latent representation of vehicle and environment parameters from recent state–action histories and conditioning the controller on that representation [23]. In WAND, temporal conditioning is grounded in a supervised estimate of wind-induced disturbance acceleration, thereby making the conditioning signal physically interpretable. Com-plementary onboard estimators recover wind or external forces from proprioceptive or visual–inertial measurements [24]– [26], while adaptive learning and control methods improve dynamics prediction or trajectory tracking under wind dis-turbances [27], [28]. WAND integrates these directions by using the explicit disturbance estimate both to adapt obstacle-aware navigation actions and to provide low-level feedforward compensation. III. METHODOLOGY Fig. 2 summarizes the disturbance estimator, wind-aware policy, and simulation pipeline of WAND. 
+
+A. Wind Disturbance Estimator 
+
+Dynamic Model . Let W and B denote the inertial world frame and the quadrotor body frame, respectively. The posi-tion, velocity, and acceleration expressed in W are denoted by pW , vW , and aW . The attitude is represented by the quaternion q, and RWB (q) ∈ SO(3) maps vectors from B
+
+to W. Since the estimator targets translational disturbances, the parallel rotor axes are aggregated at the vehicle center of mass and aerodynamic moments are omitted. We define the relative air velocity and rotor-axis direction as 
+
+vW 
+
+> r
+
+= vW − vW 
+
+> w
+
+, nW = RWB (q)e3, (1) where vW 
+
+> w
+
+is the wind velocity and e3 = [0 , 0, 1] T. The nominal collective-thrust force is 
+
+F W 
+
+> T
+
+= Fct nW , Fct = kfNrX
+
+> i=1
+
+ω2 
+
+> i
+
+, (2) where Nr is the number of rotors, ωi is the angular speed of rotor i, and kf is the thrust coefficient. Following the first-order rotor model in [29], [30], we define the aerodynamic disturbance as the difference between the total rotor force under relative airflow and the nominal collective thrust: 
+
+F W
+
+> aero
+
+(vW 
+
+> w
+
+) = s(vW 
+
+> r
+
+) − 1 Fct nW
+
+− cd(ω)PnvW 
+
+> r
+
+,cd(ω) = krNrX
+
+> i=1
+
+|ωi|,
+
+Pn = I − nW (nW )T.
+
+(3) 3Proprioceptive States 
+
+Ray-cast Obstacle 
+
+Perception 
+
++
+
+Concatenation  
+
+> 72*4 64*1 8*1
+
+Policy Network     
+
+> Acceleration Command
+> Training Deployment
+> 𝑻 t
+> ƶ𝒒 𝑡 T
+> ƶ𝒂 𝑡
+> ℬT
+> ƶ𝒗 𝑡
+> ℬT
+> 𝒙 𝒕
+> 𝒙 𝒕−𝟏
+
+… 
+
+> 𝒙 𝒕−𝑳+𝟐
+> 𝒙 𝒕−𝑳+𝟏 Wind Adapter
+
+Exteroceptive States 
+
+Extractor 
+
+> CNN
+
+## +
+
+## -Wind Disturbance Estimator TCN  
+
+> State Fusion
+> Encoder
+> ƶ𝒂 𝑡
+> 𝑑,𝒲 𝑹 ℎ𝒲
+> ƶ𝒂 𝑡 𝑑,ℎ
+> 𝑹 𝒲ℎ
+> 𝒂 𝑡
+> 𝑐𝑚𝑑,𝒲
+
+Fig. 2: Overview of WAND framework. Ray-cast obstacle perception is first encoded into compact features, while a TCN-based wind disturbance estimator predicts the wind-induced disturbance acceleration from a temporal history of proprioceptive states. The estimated disturbance is encoded by WindAdapter and fused with the state feature to form the input to the policy network. The policy outputs a desired acceleration command, which is further combined with the feedforward disturbance compensation term for execution. Here, kr is the rotor-drag coefficient, which determines the magnitude of the aerodynamic force induced by the in-plane relative airflow, and Pn projects the relative airflow onto the rotor plane. The first-order variation in available thrust caused by axial airflow is represented by the bounded scale factor 
+
+s(vW 
+
+> r
+
+) = sat [smin ,s max ]
+
+ 1 − ks(vW 
+
+> r
+
+)TnW  , (4) where ks > 0 is the axial-flow sensitivity coefficient and 0 ≤
+
+smin ≤ 1 ≤ smax bounds the first-order approximation. The translational dynamics are therefore 
+
+maW = F W 
+
+> T
+
++ F W
+
+> aero
+
+(vW 
+
+> w
+
+) − mg e3. (5) WAND estimates the aerodynamic disturbance acceleration 
+
+ad, W := F W
+
+> aero
+
+(vW 
+
+> w
+
+)
+
+m
+
+= aW + ge3 − F W
+
+> T
+
+m .
+
+(6) Thus, ad, W captures the translational acceleration not ex-plained by gravity and nominal collective thrust, including axial thrust variation and rotor drag associated with relative airflow. During Gazebo data collection, the supervisory target is obtained directly as ad, W 
+
+> t
+
+= F W
+
+> aero,t
+
+/m , where F W 
+
+> aero,t
+
+is the aerodynamic force applied to the vehicle by the simulator at time t.
+
+Disturbance Estimation . Although Eq. (6) provides a phys-ical interpretation of the target, directly evaluating the residual online is sensitive to sensor noise and model mismatch. We instead infer the current disturbance acceleration from a causal history of onboard measurements. At time t, the estimator input is 
+
+xt = Tt, ( ˆ qt)T, (ˆ aB 
+
+> t
+
+)T, (ˆ vB 
+
+> t
+
+)TT ∈ R11 , (7) where T cmd  
+
+> t
+
+is the normalized collective-thrust command gen-erated by PX4, and Thover is the hover-thrust value estimated online by the PX4 Hover Thrust Estimator on the same command scale. Thus, Tt := T cmd  
+
+> t
+
+/T hover = 1 corresponds to the current PX4 estimate of the nominal hover command. This normalized command is used only as an estimator input. 
+
+ˆaB 
+
+> t
+
+is the body-frame acceleration measured by the IMU, and 
+
+ˆvB 
+
+> t
+
+is the estimated linear velocity. The TCN maps the causal window Xt =[xt−L+1 , . . . , xt] ∈ RL×11 to the current disturbance acceleration. The TCN consists of three residual causal blocks with kernel size k=3 and dilations {1, 2, 4}, followed by a 1×1 output convolution. Each causal convolution uses effective left padding p=( k − 1) d, ensuring that the output at time t does not access future measurements: 
+
+ˆad, W 
+
+> t
+
+= fTCN (Xt) ∈ R3. (8) The estimator captures only the disturbance acting at the vehicle’s current location from recent proprioceptive measure-ments. We select L=10 based on a validation sweep over window lengths from 4 to 32 samples. It is the shortest tested window whose validation RMSE is within 1% of the minimum. 
+
+B. Reinforcement Learning Policy 
+
+Since the instantaneous wind disturbance is not directly observed, we formulate wind-aware navigation as a partially observable Markov decision process (POMDP), denoted by 
+
+(S, A, O, P, R, γ ). At time t, the policy receives an aug-mented observation ot in which the TCN estimate summa-rizes the recent proprioceptive history, and selects an action 
+
+ut ∼ π(· | ot). The objective is 
+
+π∗ = arg max  
+
+> π
+
+E
+
+" TX
+
+> t=0
+
+γtR(st, ut)
+
+#
+
+, (9) 4
+
+where st is the latent environment state and γ ∈ (0 , 1) is the discount factor. 
+
+Observation . As shown in Fig. 2, ot comprises proprio-ceptive, exteroceptive, and estimated-disturbance information. We express all vector-valued policy inputs in a heading-aligned local frame h, whose origin is at the quadrotor, x-axis follows its current horizontal heading, and z-axis is aligned with the world vertical; the y-axis completes the right-handed frame. The policy action is defined in the same frame. The proprioceptive component is 
+
+Sprop,t =
+
+ phg,t 
+
+∥phg,t ∥
+
+!T
+
+, d xy,t , d z,t , (vht )T
+
+
+
+> T
+
+, (10) where phg,t is the displacement from the quadrotor to the goal, 
+
+dxy,t and dz,t are its horizontal distance and signed vertical displacement, respectively, and vht is the vehicle velocity. For exteroception, we use 3D LiDAR range measurements represented by the ray-cast observation of [31], as illus-trated in Fig. 1(b). Rays are uniformly cast along heading-frame unit directions ˆehi,j over Nh horizontal and Nv vertical angles. Let ri,j,t denote the corresponding range measure-ment. The ray-cast input is Sobs,t = [˜ ri,j,t ]Nh×Nv , where 
+
+˜ri,j,t = 3 / clip( ri,j,t , 0.3, 12) − 1; no-hit rays are assigned the upper clipping bound. A lightweight CNN encodes Sobs,t 
+
+into an obstacle feature, which is concatenated with Sprop,t 
+
+and processed by the State Fusion Encoder to produce znav .Before being provided to the policy, the world-frame dis-turbance estimate is transformed into frame h as ˆad,h t =
+
+RhW ˆad, W 
+
+> t
+
+, where RhW = RT
+
+> Wh
+
+. The WindAdapter encodes 
+
+ˆad,h t into a wind-conditioned feature zwind with the same dimensionality as znav . The two features are fused by element-wise addition: 
+
+z = znav + zwind . (11) The output layer of the WindAdapter is initialized with zero weights and biases, following the residual initialization prin-ciple of ControlNet [32]. Consequently, zwind = 0 and 
+
+z = znav at initialization, allowing the wind-conditioned residual to be introduced progressively during joint training. 
+
+Action . We optimize the policy using Proximal Policy Opti-mization (PPO) [33]. The actor outputs the desired acceleration 
+
+ut = ades,h t ∈ [−3, 3] 3 m/s2 in the heading frame. This bound is applied before feedforward disturbance compensation, after which the command is transformed into the world frame as 
+
+acmd, W 
+
+> t
+
+= RWh
+
+
+
+ades,h t − ˆad,h t
+
+
+
+, (12) where RWh maps vectors from h to W. The resulting world-frame acceleration setpoint is sent to PX4 through the offboard interface. 
+
+Reward . The overall reward r is defined as a weighted sum of five terms: 
+
+r = λ1rvel + λ2robs + λ3rheight + λ4rwind + rterm . (13) The individual reward terms are designed as follows: 0 4 8 12 16 20                
+
+> Time (s)
+> −8 −6 −4 −2 0
+> Wind Speed (m/s)
+> Constant Wind
+> XYZ
+> 04812 16 20
+> Time (s)
+> −6 −4 −2 0246
+> Wind Speed (m/s)
+> Turbulent Wind
+> 04812 16 20
+> Time (s)
+> −8 −6 −4 −2 02468
+> Wind Speed (m/s)
+> Gust Wind
+> 04812 16 20
+> Time (s)
+> −6 −4 −2 024
+> Wind Speed (m/s)
+> Mixed Wind
+
+Fig. 3: Analytical wind-velocity profiles used in simulation. 
+
+rvel = phg,t 
+
+∥phg,t ∥ · vht , (14a) 
+
+robs = − exp  −2  min (i,j ) ri,j,t − 0.5 , (14b) 
+
+rheight = − min( |pc,z − ps,z |, |pc,z − pg,z |)2, (14c) 
+
+rwind = −
+
+h
+
+∥ˆad,h t ∥ · ReLU  0.3∥ˆad,h t ∥ + 0 .5 − dwind,t 
+
+i2
+
+,
+
+(14d) 
+
+rterm =
+
+(
+
+100 , if Reach Goal 
+
+−50 , if Collision . (14e) Here, rvel rewards motion toward the goal, robs promotes obstacle clearance, and rheight discourages excessive vertical deviation; pc,z , ps,z , and pg,z denote the current, start, and goal heights, respectively. The directional clearance used by 
+
+rwind is defined as 
+
+(i∗, j ∗) = arg max 
+
+> (i,j )
+
+(ˆ ehi,j )T ˆad,h t
+
+∥ˆad,h t ∥ ,dwind,t = ri∗,j ∗,t , ∥ˆad,h t ∥ > 0.1 m /s2.
+
+(15) For smaller estimated disturbances, rwind is set to zero. Thus, 
+
+dwind,t is the LiDAR range most closely aligned with the current estimated disturbance direction. The ReLU( ·) term penalizes insufficient directional clearance and encourages a larger local safety margin as the estimated disturbance increases. By explicitly coupling the estimated disturbance with directional obstacle clearance, this term encourages the policy to adapt its safety margin to the disturbance magnitude and direction. We use λ1 = 1 .0, λ2 = 2 .0, λ3 = 8 .0, and 
+
+λ4 = 2 .0 during training. 
+
+C. Simulation and Training Setup 
+
+Wind-Profile Generation . For standard policy training and simulation evaluation, we define four analytical profiles of the world-frame wind velocity vW 
+
+> w
+
+(t) with distinct temporal characteristics, as illustrated in Fig. 3. Each standard profile is spatially uniform within the simulated environment and, except for constant wind, varies only over time; its type and parameters are resampled at each episode reset. Thus, these profiles do not model obstacle-induced spatial effects such as wakes or recirculation. We use the scalar amplitude A and the unit direction dW = [ dx, d y , d z ]T, where ∥dW ∥2 = 1 . For 5
+
+turbulent wind, component i has an independently sampled unit direction dW 
+
+> i
+
+satisfying ∥dW 
+
+> i
+
+∥2 = 1 .
+
+a) Constant Wind : A steady wind with constant amplitude and direction is defined as 
+
+vW
+
+> w, const
+
+(t) = AdW . (16) 
+
+b) Turbulent Wind : Time-varying wind is generated by superimposing n sinusoidal components: 
+
+vW
+
+> w, turb
+
+(t) = 
+
+> n
+
+X
+
+> i=1
+
+Ai sin(Ω it + ϕi)dW 
+
+> i
+
+, (17) where Ωi, ϕi, and dW 
+
+> i
+
+denote the angular frequency, initial phase, and direction of component i, respectively. 
+
+c) Gust Wind : Let {tℓ} denote the arrival times of ahomogeneous Poisson process with rate λ, τℓ = ( t−tℓ)/T gust ,and cα,β = max 0≤u≤1 uα−1(1 −u)β−1. Each arrival generates a finite-duration beta-shaped gust: 
+
+vW
+
+> w, gust ,ℓ
+
+(t) = AdW
+
+cα,β 
+
+τ α−1 
+
+> ℓ
+
+(1 − τℓ)β−1. (18) This expression applies for 0 ≤ τℓ ≤ 1 and is zero otherwise. The normalization makes A the peak gust speed; Tgust is the gust duration, while α and β control its rise–decay shape. Simultaneously active pulses are summed. 
+
+d) Mixed Wind : The three components are combined as 
+
+vW
+
+> w, mix
+
+(t) = X
+
+> k∈K
+
+εkvW
+
+> w,k
+
+(t), (19) where K = {const , turb , gust } and εk = uk/ P 
+
+> j∈K
+
+uj with 
+
+uk ∼ U (0 , 1) .For policy training, Vmax = 15 m /s, n = 8 , and λ =0.2 s −1. Constant- and gust-wind amplitudes are sampled from U(0 .5Vmax , V max ), while Ai ∼ U (0 .5Vmax /n, V max /n ),
+
+Ωi ∼ U(0 .5, 1.5) rad /s, and ϕi ∼ U(0 , 2π). For gusts, 
+
+Tgust ∼ U (2 , 8) s , α ∼ U (3 , 5) , and β ∼ U (5 , 8) . All direction vectors, including dW and dW 
+
+> i
+
+, are randomly sampled and normalized to unit length. 
+
+Aerodynamic Parameters . For the model in Eqs. (3) and (4), the effective rotor-drag coefficient is resampled at each episode as kr ∼ U (6 , 8) × 10 −5 kg . We set ks = 0 .04 s /m and 
+
+[smin , s max ] = [0 , 2] .
+
+Simulation Environments . Policy training is conducted in Isaac Sim using 1200 parallel environments, each containing 500 obstacles within a 40 m × 40 m area. Wind profiles are randomized between episodes as described above, and the ray-cast observation uses Nh = 72 and Nv = 4 . The Gazebo environment used for estimator-data collection and sim-to-sim evaluation consists of a 20 m × 20 m map populated with 90 static obstacles. 
+
+Estimator Training and Transfer . We collect 90,000 labeled samples at 30 Hz in Gazebo under the constant, turbulent, and gust profiles, with wind-speed levels ranging from 0 to 7.5 m /s. The supervisory target is the simulator-applied aerodynamic force divided by the vehicle mass, as defined in Eq. (6). Complete episodes are divided into disjoint training, validation, and test sets in a 60/20/20 ratio before temporal-window extraction. The TCN is trained with MSE loss using Adam for up to 60 epochs, with a learning rate of 20 40 60 80          
+
+> Reach Goal (%) Training Performance: No Wind vs Base
+> No Wind Base 050 100 150 200 250 300 350 400
+> Steps (Millions)
+> 20 40 60
+> Reach Goal (%) Training Performance: Baselines and WAND
+> Base Base+Comp Random Init w/o rwind
+> WAND
+
+Fig. 4: Reach-goal rates during PPO training: (a) navigation-only comparison and (b) WAND ablations. Curves show the mean over five independent random seeds, and shaded regions indicate 95% confidence intervals across seeds. 
+
+10 −4 and a batch size of 64. A separate mixed-wind dataset is generated exclusively for held-out evaluation and is not used for training, validation, or model selection. Gazebo and Isaac Sim implement the same aerodynamic-force model and parameterization in Eqs. (3)–(4), together with the same coordinate conventions and estimator input def-inition. The Gazebo-trained estimator is therefore transferred to Isaac Sim without retraining and remains frozen throughout PPO optimization. Both policy conditioning and feedforward compensation use its predictions rather than simulator ground truth. For real-world deployment, the policy is transferred without further training, whereas the estimator is fine-tuned using real-flight data as described in Sec. IV-C. 
+
+Policy Training . The policy is optimized for 400 million en-vironment steps. The navigation encoder, WindAdapter , actor, and critic are jointly updated using PPO. The WindAdapter 
+
+output layer is zero initialized, and the remaining policy layers use standard random initialization. We use Adam with a learning rate of 5 × 10 −4 and a discount factor of 0.99. Training takes approximately 3 hours on an NVIDIA RTX 4090 GPU. IV. EXPERIMENTS AND RESULTS 
+
+A. RL Training Results 
+
+To isolate the contributions of disturbance compensation, policy conditioning, and the interaction between zero initial-ization and reward shaping, we compare six configurations. “No Wind” and “Base” share the navigation-only policy and are trained without and with wind disturbances, respectively, while “Base+Comp” adds TCN-based feedforward compen-sation to Base. The remaining variants use the WindAdapter :“w/o rwind ” retains zero initialization but uses the same nav-igation reward as Base+Comp, “Random Init” retains rwind 
+
+but randomly initializes the WindAdapter output layer, and “WAND” combines zero initialization with rwind . All wind-60 2.5 5.0 7.5 020 40 60 80 100               
+
+> Constant Wind
+> 02.5 5.0 7.5
+> Turbulent Wind
+> 02.5 5.0 7.5
+> Gust Wind
+> 02.5 5.0 7.5
+> Mixed Wind
+> Mean wind speed ( m/s )Success rate (%)
+> NavRL EGO-Planner EGO-Planner+Comp Base Base+Comp WAND
+
+Fig. 5: Navigation success rates under constant, turbulent, gust, and mixed wind. Markers show success rates over 50 trials; error bars indicate 95% Wilson confidence intervals. Markers are slightly offset horizontally for clarity. TABLE I: RMSE( m/s 2) IN DIFFERENT WIND TYPES                 
+
+> Method Constant Turbulent Gust Mixed
+> EKF 0.3204 0.4620 0.4203 0.4474 LSTM 0.1166 0.2405 0.2059 0.2525 TCN 0.0777 0.1876 0.1159 0.1970
+
+disturbed configurations share the same environment random-ization and PPO settings. Fig. 4(a) shows that wind disturbances substantially reduce the reach-goal rate of the navigation-only policy. In Fig. 4(b), Base+Comp improves over Base, confirming the benefit of disturbance feedforward compensation. In contrast, neither the zero-initialized WindAdapter without rwind nor rwind 
+
+with random initialization provides a marked improvement over Base+Comp. Combining zero initialization and rwind in WAND produces a clear increase in the late-stage reach-goal rate. This result suggests that the two designs are complemen-tary: zero initialization facilitates the progressive integration of disturbance-conditioned features, while rwind provides the corresponding navigation-level learning signal. 
+
+B. Simulation Results 
+
+We conduct sim-to-sim evaluations in Gazebo using the environment described in Sec. III-C. We first compare EKF, LSTM, and TCN using the RMSE of the estimated disturbance acceleration. Results for constant, turbulent, and gust wind are computed on the corresponding episode-level test sets, while mixed wind is evaluated on the separately generated held-out composite set. As shown in Table I, TCN achieves the lowest RMSE under all four conditions, including the held-out mixed-wind condition. We then assess the navigation framework. We evaluate several mean wind speeds for each disturbance type. For a fair comparison, all methods are tested under the same environment settings and wind conditions. For each setting, we conduct 50 randomized trials. We compare our method with two prior navigation approaches, NavRL [14] and EGO-Planner [9], both of which are widely used open-source TABLE II: FIXED-SCENE RESULTS UNDER OPPOSITE CROSSWINDS.                       
+
+> Wind Method S/C/T (%) dmin (m)
+> +WxBase+Comp 60/20/20 0.086 ±0.089
+> WAND 100/0/0 0.376 ±0.022
+> −W xBase+Comp 0/100/0 –WAND 100/0/0 0.449 ±0.107
+> S/C/T denotes success, collision, and timeout rates. Each condition contains 20 trials. Minimum obstacle clearance is computed over successful trials and reported as the mean ±standard deviation of the per-trial minima; – indicates that no trial succeeded.
+
+methods. In addition, we include an “EGO-Planner+Comp” variant, which augments EGO-Planner with the same feedfor-ward compensation term predicted by TCN. We also include the “Base” and “Base+Comp” ablations to disentangle the effects of feedforward compensation and wind-aware policy adaptation. As shown in Fig. 5, the performance of NavRL, EGO-Planner, and Base generally degrades as the wind intensity increases, while feedforward compensation generally mitigates this degradation. WAND achieves the highest or tied-highest observed success rate in all 13 settings. Compared with Base+Comp, WAND obtains a higher observed success rate in all 12 wind-disturbed settings, with an average improve-ment of 8.3 percentage points. These consistent gains across wind profiles and intensities support the benefit of combining feedforward disturbance compensation with wind-conditioned policy adaptation. To assess how the navigation policy responds to wind direction, we further compare WAND with Base+Comp in a fixed obstacle layout under opposite crosswinds. The start and goal are fixed at pW 
+
+> s
+
+= [0 , 0, 1] T m and pW 
+
+> g
+
+= [0 , 15 , 1] T m,respectively. A constant 7.5 m /s crosswind is applied along either +Wx or −W x, while the map and wind-exposure region remain unchanged. Each method is evaluated in 20 trials per wind direction. Fig. 6 shows that reversing the crosswind shifts WAND’s trajectories to the opposite side of the central obstacle cluster. 7
+
+(a) Crosswind along +Wx.
+
+(b) Crosswind along −W x.
+
+Fig. 6: Fixed-scene trajectories under opposite 7.5 m /s cross-winds. The translucent volume and arrows indicate the pre-scribed wind region and direction. Each panel overlays 20 trials per method; WAND and Base+Comp are shown in blue and orange, while red crosses and yellow squares mark collisions and timeouts. WAND succeeds in all trials under both directions, whereas Base+Comp achieves success rates of 60% and 0%, respec-tively (Table II). Under +Wx, WAND also increases the mean minimum clearance of successful trials by 0.290 m ,demonstrating the benefit of disturbance-conditioned naviga-tion beyond feedforward compensation. 
+
+C. Real-World Experiments 
+
+To evaluate onboard deployment, we conduct real-world navigation experiments in cluttered environments under fan-induced aerodynamic disturbances, as shown in Fig. 7. The quadrotor carries an NVIDIA Jetson Orin NX and a Livox Mid-360 3D LiDAR. The LiDAR stream is processed by Super-LIO [34] for real-time state estimation and is also converted into obstacle observations for the policy. The TCN estimator and PPO navigation module contain 196,547 and 146,151 parameters, respectively, for 342,698 parameters in total. Both modules run onboard at 30 Hz, with an average combined inference time of 11 .76 ms . The desired acceleration commands are sent to the PX4 flight controller through its control interface. For real-world deployment, the navigation policy is trans-ferred directly from simulation without further training, whereas the Gazebo-trained disturbance estimator is fine-tuned using approximately 10 min of real-flight data, corre-TABLE III: REAL-WORLD NAVIGATION RESULTS (SUC-CESSES/TRIALS)                
+
+> Method Scene 1 Scene 2 Total
+> EGO-Planner 4/10 6/10 10/20 NavRL 5/10 6/10 11/20 Base+Comp 7/10 6/10 13/20
+> WAND 10/10 8/10 18/20
+
+sponding to about 18,000 samples at 30 Hz. These data are collected during separate manually piloted flights and exclude all autonomous navigation-evaluation trials. The supervisory target is computed according to Eq. (6) using the world-frame acceleration and attitude provided by motion capture together with the corresponding collective-thrust command. The acceleration output is used directly without numerical differentiation or additional filtering, and no explicit delay compensation is applied. Motion capture is used only for of-fline label generation and is not involved in online navigation. On held-out real-flight sequences from Scenes 1 and 2, the fine-tuned TCN achieves RMSEs of 0.2179 and 0.2442 m /s2,respectively. Under fan-induced airflow with locally measured speeds up to approximately 7.2 m /s, each method is evaluated in ten trials per scene (20 total). WAND succeeds in 18 trials, versus 13 for Base+Comp, 10 for EGO-Planner, and 11 for NavRL (Table III). Under stronger fixed-fan wind, WAND shifts from the direct route toward a more open passage [Fig. 7(a)], while Fig. 7(b) shows navigation under a handheld-fan disturbance, providing system-level evidence of disturbance-conditioned behavior in the evaluated indoor scenes. V. CONCLUSIONS This paper presented WAND, a wind-aware reinforcement learning framework for quadrotor navigation in cluttered en-vironments under time-varying aerodynamic disturbances. By combining a navigation policy with a wind disturbance estima-tor and the proposed WindAdapter module, WAND enables the quadrotor to adapt its motion strategy according to the wind condition. Experiments in simulation and controlled indoor fan tests demonstrated improved navigation robustness. Systematic evaluation under spatially varying wind fields remains future work. REFERENCES [1] S. Geng, Z. Ning, F. Zhang, and B. Zhou, “EPIC: A lightweight LiDAR-based AAV exploration framework for large-scale scenarios,” IEEE Robotics and Automation Letters , vol. 10, no. 5, pp. 5090–5097, 2025. [2] S. H. Alsamhi, A. V. Shvetsov, S. Kumar, S. V. Shvetsova, M. A. Alhartomi, A. Hawbani, N. S. Rajput, S. Srivastava, A. Saif, and V. O. Nyangaresi, “UAV computing-assisted search and rescue mission framework for disaster and harsh environment mitigation,” Drones , vol. 6, no. 7, 2022. [Online]. Available: https://www.mdpi.com/2504-446X/6/7/154 [3] K. Dorling, J. Heinrichs, G. G. Messier, and S. Magierowski, “Vehicle routing problems for drone delivery,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 47, no. 1, pp. 70–85, 2017. [4] Y. Zhang, Y. Hu, Y. Song, D. Zou, and W. Lin, “Learning vision-based agile flight via differentiable physics,” Nature Machine Intelligence ,vol. 7, pp. 954–966, 2025. 8(a) (b) 
+
+Fig. 7: Real-world trajectories under (a) weak and strong fixed-fan wind and (b) strong handheld-fan wind. 
+
+[5] X. Huang, J. Li, T. Wu, X. Zhou, Z. Han, and F. Gao, “Flying in clutter on monocular RGB by learning in 3D radiance fields with domain adaptation,” IEEE Robotics and Automation Letters , vol. 11, no. 4, pp. 5127–5134, 2026. [6] I. Eliasson, B. Offerle, C. Grimmond, and S. Lindqvist, “Wind fields and turbulence statistics in an urban street canyon,” Atmospheric Environment , vol. 40, no. 1, pp. 1–16, 2006. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S1352231005002967 [7] S. Dupont and Y. Brunet, “Edge flow and canopy structure: a large-eddy simulation study,” Boundary-Layer Meteorology , vol. 126, no. 1, pp. 51–71, 2008. [8] B. Zhou, F. Gao, L. Wang, C. Liu, and S. Shen, “Robust and effi-cient quadrotor trajectory generation for fast autonomous flight,” IEEE Robotics and Automation Letters , vol. 4, no. 4, pp. 3529–3536, 2019. [9] X. Zhou, Z. Wang, H. Ye, C. Xu, and F. Gao, “EGO-Planner: An ESDF-free gradient-based local planner for quadrotors,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 478–485, 2021. [10] Y. Ren, F. Zhu, G. Lu, Y. Cai, L. Yin, F. Kong, J. Lin, N. Chen, and F. Zhang, “Safety-assured high-speed navigation for MAVs,” Science Robotics , vol. 10, no. 98, p. eado6187, 2025. [Online]. Available: https://www.science.org/doi/abs/10.1126/scirobotics.ado6187 [11] S. Singh, A. Majumdar, J.-J. Slotine, and M. Pavone, “Robust online mo-tion planning via contraction theory and convex optimization,” in 2017 IEEE International Conference on Robotics and Automation (ICRA) ,2017, pp. 5883–5890. [12] Y. Wu, Z. Ding, C. Xu, and F. Gao, “External forces resilient safe motion planning for quadrotor,” IEEE Robotics and Automation Letters , vol. 6, no. 4, pp. 8506–8513, 2021. [13] J. Ji, X. Zhou, C. Xu, and F. Gao, “CMPCC: Corridor-based model pre-dictive contouring control for aggressive drone flight,” in Experimental Robotics , B. Siciliano, C. Laschi, and O. Khatib, Eds. Cham: Springer International Publishing, 2021, pp. 37–46. [14] Z. Xu, X. Han, H. Shen, H. Jin, and K. Shimada, “NavRL: Learning safe flight in dynamic environments,” IEEE Robotics and Automation Letters , vol. 10, no. 4, pp. 3668–3675, 2025. [15] G. Xu, T. Wu, Z. Wang, Q. Wang, and F. Gao, “Flying on point clouds with reinforcement learning,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 7231– 7238. [16] X. Fan, M. Lu, B. Xu, and P. Lu, “Flying in highly dynamic en-vironments with end-to-end learning approach,” IEEE Robotics and Automation Letters , vol. 10, no. 4, pp. 3851–3858, 2025. [17] Y. Song, K. Shi, R. Penicka, and D. Scaramuzza, “Learning perception-aware agile flight in cluttered environments,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 1989–1995. [18] E. Kaufmann, L. Bauersfeld, and D. Scaramuzza, “A benchmark com-parison of learned control policies for agile quadrotor flight,” in 2022 International Conference on Robotics and Automation (ICRA) , 2022, pp. 10 504–10 510. [19] Z. Wang, X. Zhou, C. Xu, and F. Gao, “Geometrically constrained tra-jectory optimization for multicopters,” IEEE Transactions on Robotics ,vol. 38, no. 5, pp. 3259–3278, 2022. [20] F. Sadeghi and S. Levine, “CAD2RL: Real single-image flight without a single real image,” in Proceedings of Robotics: Science and Systems ,Cambridge, Massachusetts, USA, July 2017. [21] A. Loquercio, E. Kaufmann, R. Ranftl, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Learning high-speed flight in the wild,” Science Robotics , vol. 6, no. 59, p. eabg5810, 2021. [Online]. Available: https://www.science.org/doi/abs/10.1126/scirobotics.abg5810 [22] H. Yu, C. de Wagter, and G. C. H. E. de Croon, “MAVRL: Learn to fly in cluttered environments with varying speed,” IEEE Robotics and Automation Letters , vol. 10, no. 2, pp. 1441–1448, 2025. [23] D. Zhang, A. Loquercio, X. Wu, A. Kumar, J. Malik, and M. W. Mueller, “Learning a single near-hover position controller for vastly different quadcopters,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 1263–1269. [24] H. Yu, X. Liang, and X. Lyu, “DOB-based wind estimation of a UAV using its onboard sensor,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2024, pp. 8126–8133. [25] B. Nisar, P. Foehn, D. Falanga, and D. Scaramuzza, “VIMO: Simultane-ous visual inertial model-based odometry and force estimation,” IEEE Robotics and Automation Letters , vol. 4, no. 3, pp. 2785–2792, 2019. [26] G. Cioffi, L. Bauersfeld, and D. Scaramuzza, “HDVIO: Improving localization and disturbance estimation with hybrid dynamics VIO,” in Proceedings of Robotics: Science and Systems , Daegu, Republic of Korea, July 2023. [27] M. O’Connell, G. Shi, X. Shi, K. Azizzadenesheli, A. Anandkumar, Y. Yue, and S.-J. Chung, “Neural-Fly enables rapid learning for agile flight in strong winds,” Science Robotics , vol. 7, no. 66, p. eabm6597, 2022. [Online]. Available: https://www.science.org/doi/abs/ 10.1126/scirobotics.abm6597 [28] M. Wang, B. Wang, Y. Niu, and C. Wang, “PI-WAN: A physics-informed wind-adaptive network for quadrotor dynamics prediction in unknown environments,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 5413–5419. [29] S. Kim, D. Falanga, and D. Scaramuzza, “Computing the forward reachable set for a multirotor under first-order aerodynamic effects,” 
+
+IEEE Robotics and Automation Letters , vol. 3, no. 4, pp. 2934–2941, 2018. [30] M. Faessler, A. Franchi, and D. Scaramuzza, “Differential flatness of quadrotor dynamics subject to rotor drag for accurate tracking of high-speed trajectories,” IEEE Robotics and Automation Letters , vol. 3, no. 2, pp. 620–626, 2018. [31] B. Xu, F. Gao, C. Yu, R. Zhang, Y. Wu, and Y. Wang, “OmniDrones: An efficient and flexible platform for reinforcement learning in drone control,” IEEE Robotics and Automation Letters , vol. 9, no. 3, pp. 2838– 2844, 2024. [32] L. Zhang, A. Rao, and M. Agrawala, “Adding conditional control to text-to-image diffusion models,” in 2023 IEEE/CVF International Conference on Computer Vision (ICCV) , 2023, pp. 3813–3824. [33] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [34] L. Wang, X. Zhang, C. Li, D. He, Y. Pan, and J. Yi, “Super-lio: A robust and efficient lidar-inertial odometry system with a compact mapping strategy,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 2666–2673, 2026.

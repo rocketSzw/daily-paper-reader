@@ -1,0 +1,668 @@
+Title: Acting from Belief, Looking When Needed: A Bayesian Spatial World Model for Navigation under Intermittent Perception
+
+URL Source: https://arxiv.org/pdf/2610.11591v1
+
+Published Time: Fri, 09 Oct 2026 01:10:19 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Acting from Belief, Looking When Needed: A Bayesian Spatial World Model for Navigation under Intermittent Perception 
+
+Feihong Yang 1,†, Xiang Long 1,†, Jincheng Yu 1,2, Jianfei Zhang 1, Guangjun Ge 1, Chao Wang 1,∗, and Yu Wang 1,2Depth Observation Belief MAP at Flight-Height Slice 
+
+Decision step with a new observation Decision step without a new observation 
+
+Fig. 1. ALONE for drone navigation. Indoor real-world flight experiment among regularly arranged obstacles: ALONE continues selecting and executing actions from a maintained spatial belief, requesting depth only when reliable next-action selection needs new evidence. The red curve is the flight path; blue/purple markers denote decision steps with/without a new depth observation, respectively; blue sectors show the corresponding camera views. Insets show an acquired depth image (left) and the spatial estimate decoded from the maintained belief (right). 
+
+Abstract — Robot navigation commonly uses wide-coverage, high-frequency sensing to reduce partial observability; this reliance becomes restrictive when another task temporarily redi-rects a shared sensor from navigation, interrupting navigation-relevant observations. We study navigation under intermittent perception: acting from an internal spatial belief and looking again only when execution needs a new observation, potentially freeing the shared sensor for other tasks between navigation observations. ALONE, a Bayesian spatial world model, prop-agates a structured spatial belief using executed actions and corrects it with selectively acquired observations; learned priors over common geometric structures infer unobserved structure from available observation history. It decodes the belief into a spatial estimate for the motion-planning module and predicts a reliability map expressing confidence in the estimate’s accuracy. ALONE requests an observation only if insufficient reliability hinders navigation and new evidence should make relevant-region spatial information more reliable; otherwise, it continues acting from the propagated belief. We instantiate ALONE for drone navigation with intermittent single-camera depth images. Across two simulated scene families, it achieves 98% and 97% closed-loop success at a 10 Hz decision rate. Among successful trials, median fractions of decision steps requiring a new depth observation are only 0.9% and 1.3%, respectively, demonstrating high navigation success with substantially reduced observation demand. Real-world indoor flight experiments further validate navigation under intermittent depth observations, with all 10 trials successful. 
+
+> 1
+
+All authors are with Qiyuan Lab, Beijing, China. 2Jincheng Yu and Yu Wang are also with the Department of Electronic Engineering, Tsinghua Uni-versity, Beijing, China. †Feihong Yang and Xiang Long contributed equally to this work. ∗Corresponding author: Chao Wang (wangchao1@qiyuanlab.com). 
+
+I. I NTRODUCTION 
+
+Most robot navigation systems treat perception as an always-on service. To reduce partial observability, they enlarge sensing coverage, observe at high frequency, fuse multiple sensors, and continually update a local map or state estimate [1]–[4]. This perception-first strategy is effective, but assumes that sensing can remain continuously directed toward navigation. The assumption becomes restrictive when another task redirects a shared sensor, interrupting navigation-relevant observations. Humans provide a familiar counterexample. A person can continue walking while visual attention briefly shifts to another task, relying on recent observations, self-motion, and priors to maintain an internal understanding of the surroundings. Such natural gaze behavior is task-dependent and is directed toward the information needed for ongoing action [5], [6]. How long this understanding remains useful depends on environmental predictability. A corridor supports predictable continuation and thus longer observation-free motion, whereas irregular forest geometry leaves upcoming obstacles weakly constrained. These priors support inference between observations; perception returns when reliability is insufficient for the next action. This observation motivates navigation under intermittent perception: can a robot act from an internal spatial belief and look again only when execution requires new evidence? To this end, the robot must infer current spatial structure arXiv:2610.11591v1 [cs.RO] 8 Oct 2026 from partial action–observation history, preserve alternatives not resolved by available evidence, and determine where its estimate is accurate enough for the motion-planning module’s current query. The observation policy should request new evidence only when insufficient reliability hinders navigation and an observation is expected to improve the relevant region. Existing methods provide individual pieces of this ca-pability. Mapping and spatial memory preserve acquired evidence [1]–[4], [7]–[12]; learned world models propagate latent states and predict hidden or future structure [13]– [19]; and belief-space planning or active perception adapts motion and sensing to uncertainty [20]–[23]. They do not by themselves provide one learned spatial belief that is propagated between observations, decoded into a spatial estimate and reliability map, and corrected by requested evidence. Prediction, action, and observation therefore remain separate rather than forming a closed loop. We call the resulting framework ALONE , reflecting its two operating modes: Acting from belief while perception is suspended and Looking Only when Needed for Execution. At its core, a decision-queryable Bayesian spatial world model maintains a structured spatial belief. Its action-conditioned prior performs learned spatial completion: learned geometric priors infer unobserved structure from the partial action– observation history. An observation-conditioned posterior corrects this completion when evidence returns. The belief yields a spatial estimate for the motion-planning module and a reliability map indicating confidence in its accuracy at each queried location. We term this probability query-space reliability. ALONE requests an observation only when insufficient reliability restricts navigation and the relevant region is expected to be visible; otherwise, it acts from the maintained belief. We instantiate ALONE for drone navigation using inter-mittent depth images from a single camera and a vector-quantized occupancy representation. ALONE preserves high navigation success while reducing observation demand by up to two orders of magnitude. Open-loop and ablation experiments further validate spatial-belief prediction and correction, learned spatial completion, query-space reliability, and the observation policy. 
+
+Contributions. Our contributions are threefold: (1) aBayesian spatial world model that maintains a structured spatial belief through action-conditioned propagation and observation-conditioned correction, using learned geometric priors to infer unobserved structure and providing a spatial estimate together with an explicitly supervised reliability map for planning; (2) a navigation policy that uses spatial reliability to select motion actions and determine when new observations are needed, allowing the robot to continue acting from its belief between observations; and (3) an implementation for drone navigation using a single depth camera, evaluated through open-loop spatial inference, closed-loop navigation comparisons, and real-world flight experiments. The results demonstrate high navigation success with substantially re-duced observation demand. II. R ELATED WORK 
+
+A. Spatial Mapping and Memory 
+
+Occupancy mapping integrates measurements into per-sistent free-space and occupancy estimates [1], [2], while probabilistic spatial models jointly estimate maps and agent states [3], [4], [7]. Neural, topological, volumetric, episodic, and semantic memories encode task-relevant spatial struc-ture [8]–[12]. These approaches primarily organize acquired evidence rather than propagate unresolved spatial hypotheses through observation-free motion or assess whether the result-ing local structure supports a motion-planning query. ALONE instead propagates a learned categorical spatial belief with executed actions and corrects it with later observations. 
+
+B. Predictive World Models 
+
+Latent world models learn action-conditioned dynamics for planning and behavior learning [14], [15]. Recent work extends prediction to navigation, visual representations, per-sistent 3D scenes, and occupancy forecasting [16]–[19]. Yet prediction alone does not establish whether a spatial estimate reliably supports current action selection. ALONE uses learned geometric priors to infer unobserved structure and predicts a reliability map for the estimate, so the same belief supports both action selection and observation decisions. 
+
+C. Uncertainty-Aware Planning and Active Perception 
+
+Belief-space planning incorporates state uncertainty into trajectory optimization [20], [22], while active perception selects sensing actions or viewpoints using information gain or task-relevant uncertainty [21], [23]. These methods commonly assume that a suitable belief or uncertainty estimate is available. ALONE instead learns, propagates, queries, and corrects the spatial belief underlying its observation decision. It requests an observation when insufficient reliability restricts navigation and the responsible region is expected to be visible; the returned evidence corrects the maintained belief, closing the loop among prediction, action, observation, and correction. III. ALONE: A B AYESIAN SPATIAL WORLD MODEL FOR 
+
+INTERMITTENT PERCEPTION 
+
+ALONE has two coupled modes. Without a navigation observation, it propagates the belief with the executed action; the motion-planning module generates candidates from the decoded estimate, and the navigation policy selects one to execute. When insufficient reliability restricts navigation and new evidence is expected to resolve the relevant region, ALONE resumes perception and corrects the belief before the next decision. Observation intervals thus adapt to environ-mental predictability and decision-relevant uncertainty. We next formulate this setting, describe belief prediction and correction, and define the navigation policy. 
+
+A. Navigation under Intermittent Perception 
+
+We consider navigation in a partially observable environ-ment where another task may redirect a shared sensor. At each decision step, the navigation policy selects an action to execute and decides whether to acquire a navigation observation. Structured latent belief maintenance         
+
+> Prior propagation
+> b−
+> t=F−
+> θ(bt−1, a t−1)
+> Posterior correction
+> b+
+> t=F+
+> ϕ(b−
+> t, o t)
+> Maintained belief
+> bt(z) = ∏
+> λ∈Λ
+> bt,λ (zλ)
+
+Decision queries     
+
+> Spatial estimate ̂
+> yt= Read(MAP( bt))
+> Query-space reliability
+> πt=Pω(bt)
+
+Navigation policy          
+
+> Action selection Nominal Executed
+> ¯atat
+> Observation policy
+> qt=I[Dt∧Vt]
+> bt̂yt, π t
+> partial action–observation history Fig. 2. ALONE framework. Executed actions propagate a structured spatial belief, and selectively acquired observations correct it. A decoded spatial estimate is provided to the motion-planning module, while the navigation policy uses a reliability map for action selection and the observation decision.
+
+Let Xt ∈ X denote the navigation-relevant spatial state, 
+
+at ∈ A the executed action, Ot an available observation, and qt ∈ { 0, 1} whether that observation is acquired. With 
+
+Tt = {s < t : qs = 1 }, the information available at decision step t and its spatial belief are 
+
+It = ( a0: t−1, o Tt ), pXt = P(Xt ∈ · | I t) ∈ ∆( X ). (1) A navigation policy (μ, ν ) jointly produces at = μ(It, g )
+
+and qt = ν(It, g ) for goal g. Let Jnav denote expected cumulative motion and terminal task cost, and let Jobs denote the expected total number of acquired observations. We seek 
+
+min  
+
+> μ,ν
+
+Jnav (μ, ν ) + λobs Jobs (ν), λobs > 0. (2) Here λobs > 0 represents the opportunity cost of assigning the shared sensor to navigation. Directly solving this joint belief-space problem is generally intractable. ALONE instead maintains a tractable spatial belief, acts where its estimate is reliable, and requests an observation when insufficient reliability changes the preferred action and new evidence is expected to improve the relevant region. 
+
+B. Acting from Belief: Bayesian Spatial Prediction and Correction 
+
+Let Yt = ψ(Xt) ∈ Y be the spatial quantity queried by the motion-planning module. ALONE represents Xt
+
+through structured categorical variables Zt = Struct( Xt) = (Zt,λ )λ∈Λ, where Zt,λ ∈ C λ summarizes a multicoordinate spatial pattern. A decoder Read maps a latent hypothesis to the query space, with Read(Struct( Xt)) ≈ ψ(Xt). For 
+
+σ ∈ {− , +}, corresponding to the pre- and post-observation histories I− 
+
+> t
+
+and I+ 
+
+> t
+
+, respectively, ALONE maintains cate-gorical marginals and the associated factorized approximation 
+
+bσt,λ (k) ≈ P(Zt,λ = k | I σt ) , bσt (z) = Y
+
+> λ∈Λ
+
+bσt,λ (zλ).
+
+(3) Each marginal retains alternatives over the spatial pattern represented by one latent variable; the product approximation discards only dependencies across latent variables. This reduces the representation from an intractable joint field distribution to O(P 
+
+> λ
+
+|C λ|) probabilities. Executed actions propagate a prior belief, and an acquired observation corrects it: 
+
+b− 
+
+> t
+
+= F− 
+
+> θ
+
+(bt−1, a t−1), b+ 
+
+> t
+
+= F+ 
+
+> ϕ
+
+(b− 
+
+> t
+
+, o t). (4) The maintained belief is bt = b+ 
+
+> t
+
+when ot is available and 
+
+bt = b− 
+
+> t
+
+otherwise. Given supervisory observation osup  
+
+> t
+
+,let zsup  
+
+> t
+
+= Sup Z (osup  
+
+> t
+
+). For σ ∈ {− , +}, let nσt denote the number of observation-free inference steps associated with candidate belief bσt , with n+ 
+
+> t
+
+= 0 . Both candidates are supervised through 
+
+Lstr =
+
+> T
+
+X
+
+> t=1
+
+X
+
+> σ∈{− ,+}
+
+αnσt CE( bσt , z sup  
+
+> t
+
+). (5) Training uses deployment-matched recurrent histories con-taining both observed and observation-free steps; αn balances the contribution of beliefs with n observation-free inference steps. Categorical log loss is strictly proper, so its population optimum recovers the corresponding conditional categorical marginals when Sup Z is consistent with the maintained structural abstraction. Thus F− 
+
+> θ
+
+learns prediction from action– observation history, while F+ 
+
+> ϕ
+
+learns correction from newly acquired evidence. 
+
+C. Looking When Needed: Observation Policy 
+
+ALONE derives two complementary outputs from the main-tained belief: a spatial estimate used by the motion-planning module to generate candidate actions, and a reliability map used by the navigation policy to determine whether those actions are sufficiently supported and whether new evidence is needed. 
+
+a) Spatial estimate: The maintained belief is converted into a spatial estimate by componentwise MAP decoding: 
+
+z∗ 
+
+> t,λ
+
+= arg max 
+
+> k∈C λ
+
+bt,λ (k), byt = Read( z∗ 
+
+> t
+
+). (6) This spatial estimate provides the representation on which the motion-planning module generates and evaluates candidate actions. 
+
+b) Query-space reliability: MAP decoding selects a single structured hypothesis and therefore does not preserve the probabilities assigned to alternatives. ALONE retains the full categorical belief to predict where the decoded estimate satisfies the motion-planning module’s accuracy requirement. Let fields in Y be indexed by ΩY , with pointwise discrepancy 
+
+dY and admissible error threshold δY . Given supervisory observation osup  
+
+> t
+
+, let ysup  
+
+> t
+
+= Sup Y (osup  
+
+> t
+
+). For σ ∈ {− , +},
+
+byσt = Read(MAP( bσt )) ,csup ,σ t (ξ) = I[dY (byσt , y sup  
+
+> t
+
+) ( ξ) ≤ δY (ξ)] . (7) The binary target csup ,σ t (ξ) labels whether the estimate decoded from the prior or posterior belief is accurate enough at query location ξ. A decoder Pω predicts the adequacy probability πσt = Pω (bσt ) ∈ [0 , 1] ΩY and is trained with 
+
+Lrel =
+
+> T
+
+X
+
+> t=1
+
+X
+
+> σ∈{− ,+}
+
+γnσt BCE( πσt , c sup ,σ t ) . (8) Here γn balances reliability supervision across beliefs with n
+
+observation-free inference steps. Because binary cross-entropy is strictly proper, πt(ξ) estimates the conditional probability that the spatial estimate meets the accuracy criterion at query location ξ, provided the supervisory query target is consistent. We use this probability directly as query-space reliability. Unlike latent entropy, it indicates whether the spatial estimate is accurate enough for the motion-planning module’s current query. Geometrically regular regions can therefore remain admissible across longer observation gaps, whereas weakly constrained regions lose reliability sooner. 
+
+c) Reliability-gated action and observation: At each decision step, given byt and goal g, the motion-planning module returns a nonempty feasible action set A0 
+
+> t
+
+containing a designated fallback astop , together with a task cost κt and, for each candidate a, a nonempty query region Ω( a) ⊆ ΩY
+
+swept by the robot during execution. ALONE’s navigation policy selects the executed action from this module output using reliability. The nominal action, reliability-admissible set, and executed action are 
+
+¯at ∈ arg min 
+
+> a∈A 0
+> t
+
+κt(a),
+
+Aτt =
+
+
+
+a ∈ A 0 
+
+> t
+
+: min  
+
+> ξ∈Ω( a)
+
+πt(ξ) ≥ τ
+
+
+
+,at =
+
+
+
+arg min 
+
+> a∈A τt
+
+κt(a), Aτt̸ = ∅,astop , Aτt = ∅.
+
+(9) Thus, at is the lowest-cost candidate whose entire query region meets the reliability threshold, or astop if no candidate does. The selected action is executed and used to propagate the next prior. The navigation policy sets the binary observation decision 
+
+qt to one only when both of the following conditions hold: 
+
+Dt indicates that the difference between ¯at and at materially degrades the nominal action, and Vt indicates that the responsible low-reliability region is expected to be observable: 
+
+qt = IDt(¯ at, a t) = 1 ∧ Vt(Ω low  
+
+> t
+
+, Ωvis  
+
+> t
+
+) = 1  . (10) When qt = 0 , no navigation observation is acquired. When 
+
+qt = 1 , the requested observation corrects the belief before the next decision step. This closes the loop among belief propagation, action selection, selective observation, and belief correction. IV. ALONE FOR DEPTH -B ASED DRONE NAVIGATION 
+
+We instantiate ALONE for collision-aware drone navigation using intermittent depth images from a single camera. At each step, the motion-planning module generates candidate actions from the decoded spatial estimate, and ALONE’s navigation policy uses reliability to select the executed action and decide whether to request depth. Executed motion propagates the belief, while requested depth corrects it. 
+
+A. Occupancy Representation and Supervision 
+
+The navigation state and motion-planning query are bi-nary occupancy fields in an ego-centric, yaw-aligned voxel frame with a gravity-aligned vertical axis: X = Y =
+
+{0, 1}nx×ny ×nz and ψ = Id . Actions are relative 3-D poses and runtime observations are depth images. Simulation supplies dense aligned occupancy as Osup ∈ Y , so Sup Y =Id ; zero–one discrepancy with a zero error threshold makes adequacy equivalent to voxelwise occupancy agreement. With real data, Sup Y may instead construct a query-space target from lidar point clouds or another supervisory sensor. Following OccWorld [19], a standard vector-quantized autoencoder maps a dense occupancy field to an h × w code map with codebook size K and decodes it back to occupancy. Each latent location summarizes a multivoxel receptive field, allowing one categorical marginal to represent alternative local shapes. Accordingly, Struct = Sup Z = Enc vq and 
+
+Read = Dec vq . The maintained belief is a K × h × w
+
+tensor whose componentwise MAP code map is decoded as the spatial estimate byt. The adequacy decoder provides its reliability map πt = Pω (bt).
+
+B. Belief Prediction, Correction, and Training 
+
+Between observations, Wat−1 transports the categorical belief into the current ego-centric frame. The prior network completes unobserved structure and predicts categorical logits. When depth becomes available, an observation encoder extracts new evidence and a posterior network fuses it with the prior: 
+
+b− 
+
+> t
+
+= softmax K Ψ−
+
+> θ
+
+ Wat−1 bt−1
+
+ ,b+ 
+
+> t
+
+= softmax K Ψ+
+
+> ϕ
+
+ b− 
+
+> t
+
+, Φobs (ot) . (11) The softmax is applied over the K codes at every latent location. The geometric transport Wat−1 represents the cate-gorical belief by sampled latent hypotheses. Each hypothesis is decoded to 3-D occupancy, rigidly transformed into the current ego-centric frame, and re-encoded and quantized; the resulting codes form an empirical categorical belief. The observation encoder projects depth through the camera and noise models into probabilistic surface evidence and maps it to latent logits for posterior fusion. The maintained belief is 
+
+b+ 
+
+> t
+
+when depth is incorporated and b− 
+
+> t
+
+otherwise. Training proceeds in three stages. First, the VQ autoencoder is trained and frozen, fixing Struct , Sup Z , and Read . Second, 
+
+Ψ− 
+
+> θ
+
+and Ψ+ 
+
+> ϕ
+
+are trained recurrently with Eq. (5). A sampled mask generates both observed and observation-free histories by selecting the belief passed to the next step, while both candidates remain supervised: 
+
+Mt ∼ Bernoulli( pobs ), bt =
+
+(
+
+b+ 
+
+> t
+
+, Mt = 1 ,b− 
+
+> t
+
+, Mt = 0 . (12) Third, the filter is frozen and Pω is trained with Eq. (8), using labels generated separately from prior and posterior spatial estimates. The coefficients αnσt and γnσt first average losses among beliefs with the same number of observation-free inference steps and then across these groups, preventing shorter horizons from dominating training. 
+
+C. Reliability-Gated Navigation Policy 
+
+The motion-planning module computes a reference path on byt using A*. Local motion primitives provide candidate actions; each primitive’s swept voxels instantiate Ω( a),and collision-free primitives form A0 
+
+> t
+
+. A composite cost combining reference-path following and obstacle clearance defines κt. ALONE’s navigation policy then selects the executed action according to Eq. (9). Let Ωvis  
+
+> t
+
+denote the region where a depth observation is expected to provide new evidence from the current pose. It contains voxels inside the depth frustum reached before any intervening voxel ζ satisfying byt(ζ) = 1 and πt(ζ) ≥ τ ; low-reliability occupancy is not treated as confirmed occlusion. The unresolved region relevant to the observation decision is the low-reliability portion of the nominal action’s query support: 
+
+Ωlow  
+
+> t
+
+= {ξ ∈ Ω(¯ at) : πt(ξ) < τ }. (13) The abstract action-impact and observability conditions in Eq. (10) are instantiated as 
+
+Dt = I[κt(at) ≥ κmax ∧ κt(at) − κt(¯ at) ≥ ϵκ] ,
+
+Vt = I
+
+ |Ωlow  
+
+> t
+
+∩ Ωvis  
+
+> t
+
+|
+
+max {1, |Ωlow  
+
+> t
+
+|} ≥ η
+
+
+
+. (14) Here κmax bounds acceptable action cost and ϵκ sets the minimum degradation relative to the nominal action. Thus 
+
+Dt identifies when insufficient reliability hinders navigation, while Vt tests whether new depth is expected to cover enough of the responsible region. Their conjunction gives the observation decision qt in Eq. (10). V. E XPERIMENTS 
+
+A. Experimental Setup a) Scene families: We use two procedurally generated scenes, illustrated by the representative rollouts in Fig. 3. 
+
+Lattice uses a repeating obstacle arrangement with small positional perturbations to test structural continuation and accumulated prediction error between observations. Trap hides randomly positioned passages behind occluders to test the representation of unknown structure and its resolution by fusing new evidence. 
+
+b) Training and evaluation protocol: We generate train-ing and simulated evaluation data in Flightmare, a modular quadrotor simulator [24]. Expert trajectories provide depth, pose, relative motion, and dense occupancy supervision; all learned methods use identical training data. The ego-centric volume spans x, y ∈ [−10 , 10] m and z ∈ [−2, 2] mwith (nx, n y , n z ) = (200 , 200 , 16) voxels. ALONE uses a 
+
+(h, w ) = (50 , 50) latent map with K = 512 codes, and the depth camera has an 87 ◦ × 58 ◦ field of view. Recurrent 
+
+TABLE I 
+
+END -TO -END CLOSED -LOOP NAVIGATION .                                            
+
+> Navigation performance Observation demand Scene Method Succ. rate ↑Duration (s) ↓Obs. count ↓Obs. rate ↓
+> Lattice
+> ALONE 98% 79 .7 [90 .8] 7 [12] 0.009 [0 .014]
+> OccMap-FullRate 96% 99 .4 [139 .2] 981 [1429] 1
+> OccMap-Periodic-0.5 82% 161 .2 [231 .8] 314 [457] 0.2
+> OccMap-Periodic-1 64% 227 .6 [305 .2] 230 [311] 0.1
+> Trap
+> ALONE 97% 121 .4 [160 .6] 16 [39] 0.013 [0 .031]
+> OccMap-FullRate 97 %224 .6 [301 .0] 2266 [3031] 1
+> OccMap-Periodic-0.5 90% 233 .3 [291 .6] 463 [574] 0.2
+> OccMap-Periodic-1 28% 290 .7 [344 .2] 305 [344] 0.1
+> OccMap periodic suffixes denote observation periods in seconds. Success rate uses all rollouts. Other metrics use successful rollouts only and are reported as median [90th percentile]. Lattice
+> Flown trajectory Triggered observation FOV Start Goal SG
+> 10 m Trap
+> Flown trajectory Triggered observation FOV Start Goal SG
+> 10 m
+
+Fig. 3. Representative ALONE rollouts. Top-down views show executed trajectories from start to goal in Lattice (top) and Trap (bottom); viewing cones mark triggered observations. 
+
+training uses T = 6 in Eqs. (5) and (8), with pobs = 0 .2 in Eq. (12). For open-loop evaluation, all methods receive the same ten 20-step action–observation sequences per scene, with obser-vations at Steps 0, 4, 8, 12, and 16. We evaluate the posterior at observation steps and the prior otherwise. Closed-loop evaluation uses 100 trials per method in each scene, with a 50 m start–goal separation. We set τ = 0 .97 , requiring at least 97% predicted probability that the spatial estimate is correct at each queried voxel. The navigation policy runs at 10 Hz. Belief updates are event-driven to reflect structural changes ahead while matching the motion increments used in recurrent training. Without a new observation, ALONE propagates the belief after either 3 m of world-frame translation or a 60 ◦ yaw change since the previous update. A requested observation instead triggers an immediate observation-conditioned update. In addition to Eq. (10), an observation is forced after at most five observation-free inference steps to remain within the training distribution. Trials terminate upon reaching the goal, collision, 100 s without progress, or a lateral deviation of 15 m from the start–goal line. 
+
+c) Baselines: Comparisons comprise three groups. 
+
+System-level baselines (Sec. V-B) model conventional mapping-based navigation as depth-updated probabilistic occupancy mapping with repeated motion planning [1], [2]. 
+
+OccMap-FullRate and OccMap-Periodic update the map at every decision step and at fixed intervals, respectively, Current evidence             
+
+> 2 m
+> Ground truth OccMap prior OccMap posterior RSSM-Query prior RSSM-Query posterior ALONE prior ALONE posterior
+> 2 m
+> Lattice
+> Full view Zoom
+> Current FOV ̂πt≥ 0.97 predicted occupied GT occupied, predicted free GT free, predicted occupied zoom region
+
+Fig. 4. Qualitative spatial estimates in Lattice. Priors precede the new observation; posteriors incorporate it. Dashed blue lines bound the current field of view (FOV); blue hatching marks bπt ≥ 0.97 ; black denotes predicted occupancy. Against ground truth (GT), red marks occupied voxels predicted free and magenta marks free voxels predicted occupied. The lower row enlarges the orange regions. 
+
+using the same decision rate and motion-planning module as ALONE. Representation-level baselines (Sec. V-C) compare ALONE with OccMap and a recurrent state-space model equipped with spatial estimates and query-space reliabil-ity maps ( RSSM-Query ), using shared histories, motion-planning queries, outputs, and supervision. For OccMap, we define reliability as max( pocc , 1 − pocc ), which is the model-implied probability that its binary MAP occupancy prediction is correct. RSSM-Query trains the same post-hoc reliability decoder as ALONE. Observation-policy baselines (Sec. V-D) keep ALONE’s belief and motion-planning module fixed and replace only its observation policy with ALONE-Periodic or 
+
+ALONE-Uncertainty . ALONE-Uncertainty requests obser-vations based only on belief uncertainty, without evaluating their effect on the selected action. 
+
+d) Metrics: Closed-loop evaluation measures navigation performance by success rate and flight duration, and observa-tion demand by observation count and observation rate, the fraction of decision steps requiring a new depth image. Open-loop evaluation uses three groups of metrics. Spatial-estimate quality is measured by occupied/free intersection-over-union (IoU) and same-time prior–posterior gain. Reliability cali-bration is measured by Expected Calibration Error (ECE). Motion-planning relevance is measured by reliable coverage and occupied recall within reliable regions; both are reported in five 2 m bins over the forward, flight-level query region. 
+
+B. End-to-End Navigation under Intermittent Perception 
+
+The primary question is whether ALONE reduces naviga-tion observations without sacrificing closed-loop performance relative to OccMap-FullRate and OccMap-Periodic (Sec. V-A). ALONE retains the same decision rate as all baselines while reducing observation frequency. 
+
+a) System-level navigation: In both scenes, ALONE maintains a success rate comparable to OccMap-FullRate while reducing flight duration. The reduction is especially pronounced in Trap , where ALONE represents uncertainty about occluded passages and fuses newly acquired evidence into the maintained belief before committing to a route (Table I). ALONE consequently follows smooth trajectories without blindly exploring for passages that remain occluded (Fig. 3). 
+
+TABLE II 
+
+OCCUPANCY IOU AND RELIABLE -REGION COVERAGE .                                         
+
+> All valid voxels bπt≥0.97
+> Scene Method Occ. IoU ↑Free IoU ↑Coverage ↑Occ. IoU ↑Free IoU ↑
+> Lattice ALONE 0.768 0.891 0.632 0.981 0.993
+> OccMap 0.332 0.134 0.065 0.043 0.956
+> RSSM-Query 0.533 0.774 0.443 0.859 0.959
+> Trap ALONE 0.692 0.854 0.484 0.958 0.984
+> OccMap 0.332 0.141 0.064 0.032 0.976
+> RSSM-Query 0.578 0.794 0.339 0.938 0.979
+> The first two IoUs use the complete volume under the common validity mask. Under
+> bπt≥0.97 , coverage is the retained fraction; each class IoU uses the predicted–true union within that subset.
+
+b) Observation demand: ALONE requests depth at median rates of 0.9% and 1.3% of decision steps, reducing observation demand by up to two orders of magnitude while preserving navigation performance. Directly reducing OccMap’s observation frequency instead lowers success and increases flight duration (Table I). ALONE concentrates observations near obstacles and turns while traversing lattice corridors from the propagated belief (Fig. 3), potentially leaving the shared sensor available between requests. 
+
+C. Acting from Belief: Spatial Prediction, Correction, and Reliability 
+
+Against OccMap and RSSM-Query (Sec. V-A), the analysis tests the spatial estimate, its correction by new evidence, and its predicted reliability. 
+
+a) Spatial-estimate accuracy and reliability calibration: 
+
+ALONE preserves the unobserved lattice and infers occluded passage structure from the available history, whereas OccMap leaves them unresolved and RSSM-Query can distort obstacle layout (Fig. 4); its spatial estimate also attains the highest occupied/free IoU in both scenes (Table II). New evidence consistently corrects the predicted belief. At the same observed steps, ALONE’s posterior improves occupied and free IoU over its prior in both scenes (Table III), matching the correction property in Eq. (12). ALONE provides a spatially resolved reliability map that indicates where the spatial estimate meets planning requirements. ALONE predicts reliability that agrees with empirical correctness (Fig. 5) and, at bπt ≥ 0.97 , achieves the broadest coverage and highest occupied/free IoU (Table II). TABLE III 
+
+PRIOR –POSTERIOR OCCUPANCY IOU GAIN .
+
+Scene Metric Prior Posterior Paired gain Lattice Occ. IoU 0.770 0.785 0.015 
+
+Free IoU 0.892 0.898 0.007 
+
+Trap Occ. IoU 0.681 0.701 0.020 
+
+Free IoU 0.842 0.853 0.011 
+
+Only observation steps are included, with prior and posterior evaluated as same-time pairs. Values are mean IoU; paired gain is posterior minus prior. 0.0 0.2 0.4 0.6 0.8 1.0            
+
+> Predicted adequacy probability  ̂ πt
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Empirical adequacy frequency  Mass with  ̂ πt< 0.5
+> ALONE: 0.776% OccMap: 0.000% RSSM-Query: 0.002%
+> Lattice
+> Ideal ALONE (ECE = 0.006) OccMap (ECE = 0.166) RSSM-Query (ECE = 0.064) 0.0 0.2 0.4 0.6 0.8 1.0
+> Predicted adequacy probability  ̂ πt
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Empirical adequacy frequency  Mass with  ̂ πt< 0.5
+> ALONE: 1.672% OccMap: 0.000% RSSM-Query: 0.025%
+> Trap
+> Ideal ALONE (ECE = 0.008) OccMap (ECE = 0.157) RSSM-Query (ECE = 0.040)
+
+Fig. 5. Query-space reliability calibration. Empirical correctness frequency versus predicted correctness probability bπt in Lattice (left) and Trap (right); the diagonal is ideal, and the inset reports the voxel mass assigned probability below 0.5. Expected Calibration Error (ECE), the bin-weighted absolute calibration gap, is lowest for ALONE. 0-2 2-4 4-6 6-8 8-10             
+
+> Range in forward sector (m)
+> 0% 20% 40% 60% 80% 100%
+> Coverage at  ̂  πt ≥ 0.97
+> Lattice
+> ALONE OccMap RSSM-Query 0-2 2-4 4-6 6-8 8-10
+> Range in forward sector (m)
+> 0% 20% 40% 60% 80% 100%
+> Coverage at  ̂  πt ≥ 0.97
+> Trap
+> ALONE OccMap RSSM-Query 0-2 2-4 4-6 6-8 8-10
+> Range in forward sector (m)
+> 0% 20% 40% 60% 80% 100%
+> Occupied recall at  ̂  πt ≥ 0.97
+> Lattice
+> ALONE OccMap RSSM-Query 0-2 2-4 4-6 6-8 8-10
+> Range in forward sector (m)
+> 0% 20% 40% 60% 80% 100%
+> Occupied recall at  ̂  πt ≥ 0.97
+> Trap
+> ALONE OccMap RSSM-Query
+
+Fig. 6. Reliable occupancy for the motion-planning module. Lattice/Trap are left/right. Rows show coverage under bπt ≥ 0.97 and occupied recall within that subset, binned by forward distance; shading gives 95% bootstrap confidence intervals over rollouts. 
+
+In the forward region used for collision checking, it also maintains high occupied recall over substantially broader coverage than OccMap, while RSSM-Query misses more obstacles (Fig. 6). Reliable coverage declines gradually in 
+
+Lattice as positional errors accumulate, but sharply in Trap 
+
+because hidden passages remain unresolved until observed. The navigation policy can therefore continue selecting actions where the estimate is reliable and request visible evidence when insufficient reliability hinders action selection. 
+
+b) Spatial-inference ablations: We ablate learned spatial completion (ALONE-NoComp), history during observation updates (ALONE-ObsOnly), and observation-free training transitions (ALONE-NoMask); each ablation degrades occu-pied IoU (Fig. 7). All three mechanisms thus support accurate spatial prediction and correction under intermittent perception. We ablate the periodic structure of Lattice using an auxiliary 
+
+Random scene that retains the same obstacle geometry but 0 4 8 12 16 19      
+
+> Rollout step
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Occupied IoU
+> Observation
+> Lattice
+> ALONE ALONE-NoComp ALONE-ObsOnly ALONE-NoMask 04812 16 19
+> Rollout step
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Occupied IoU
+> Observation
+> Trap
+> ALONE ALONE-NoComp ALONE-ObsOnly ALONE-NoMask
+
+Fig. 7. Spatial-inference ablation over open-loop rollouts. Lattice/Trap are left/right. Black markers indicate observation steps; shading gives 95% bootstrap confidence intervals over rollouts. All variants receive the same action–observation sequence. TABLE IV 
+
+IOU GAINS FROM LEARNED GEOMETRIC PRIORS .
+
+Scene Metric ALONE ALONE-NoComp Paired gain Lattice Occ. IoU 0.766 0.405 0.361 
+
+Free IoU 0.890 0.722 0.168 
+
+Random Occ. IoU 0.541 0.447 0.094 
+
+Free IoU 0.752 0.707 0.044 
+
+Values are mean IoU; paired gain is ALONE minus ALONE-NoComp. 
+
+TABLE V 
+
+CLOSED -LOOP COMPARISON OF SPATIAL REPRESENTATIONS .
+
+Navigation performance Observation demand Scene Method Succ. rate ↑ Duration (s) ↓ Obs. count ↓ Obs. rate ↓
+
+Lattice 
+
+ALONE 98% 79 .7 [90 .8] 7 [12] 0.009 [0 .014] 
+
+OccMap 68% 178 .5 [278 .5] 60 [90] 0.032 [0 .040] 
+
+RSSM-Query 59% 82 .3 [86 .9] 7 [10] 0.008 [0 .012] 
+
+Trap 
+
+ALONE 97% 121 .4 [160 .6] 16 [39] 0.013 [0 .031] 
+
+OccMap 19% 299 .6 [338 .0] 121 [148] 0.043 [0 .055] 
+
+RSSM-Query 75% 115 .2 [163 .0] 18 [38] 0.016 [0 .023] 
+
+OccMap and RSSM-Query use the same navigation policy as ALONE. Success rate uses all rollouts. Other metrics use successful rollouts only and are reported as median [90th percentile]. 
+
+randomizes its arrangement; this ablation markedly reduces completion gains (Table IV). Learned geometric priors thus exploit predictable structure for spatial completion. 
+
+c) Closed-loop comparison: For closed-loop compar-ison, OccMap and RSSM-Query use ALONE’s navigation policy for action selection and observation decisions. Without environment completion, OccMap requires longer flights and more observations in both scenes, with blind exploration causing frequent timeouts, especially in Trap . RSSM-Query achieves observation counts comparable to those of ALONE, but overconfidence in incorrect regions substantially lowers its success rate. Combining environment completion with cal-ibrated reliability, ALONE best balances navigation success, flight duration, and observation demand. 
+
+D. Looking When Needed: Observation-Policy Evaluation 
+
+We compare ALONE’s observation policy with periodic and uncertainty-only alternatives (Sec. V-A). This comparison asks whether ALONE observes at more useful times—when low reliability would alter the selected action and the affected region is expected to be visible to the depth camera. A periodic observation policy imposes a fixed trade-off: frequent observations waste sensing when the selected action is already supported by reliable spatial estimates, whereas infrequent observations delay progress, leave the drone TABLE VI 
+
+OBSERVATION -POLICY ABLATION .                                                      
+
+> Navigation performance Observation demand Scene Method Succ. rate ↑Duration (s) ↓Obs. count ↓Obs. rate ↓
+> Lattice
+> ALONE 98% 79 .7 [90 .8] 7 [12] 0.009 [0 .014]
+> ALONE-Periodic-2 100% 79 .6 [104 .7] 41 [53] 0.05
+> ALONE-Periodic-4 99% 78 .7 [99 .8] 20 [25] 0.025
+> ALONE-Periodic-8 97% 80 .5 [97 .0] 11 [13] 0.013
+> ALONE-Periodic-16 98% 86 .4 [142 .4] 6 [9] 0.006
+> ALONE-Uncertainty 100% 80 .1 [112 .9] 21 [35] 0.024 [0 .039]
+> Trap
+> ALONE 97% 121 .4 [160 .6] 16 [39] 0.013 [0 .031]
+> ALONE-Periodic-2 100% 110 .2 [133 .2] 56 [67] 0.05
+> ALONE-Periodic-4 100% 115 .8 [141 .2] 30 [36] 0.025
+> ALONE-Periodic-8 96% 131 .8 [191 .3] 17 [25] 0.013
+> ALONE-Periodic-16 53% 284 .1 [397 .5] 18 [26] 0.006
+> ALONE-Uncertainty 97% 130 .6 [168 .2] 32 [42] 0.024 [0 .032]
+> Periodic suffixes denote observation periods in seconds. Success rate uses all rollouts. Other metrics use successful rollouts only and are reported as median [90th percentile].
+
+without necessary evidence, and increase the risk of failure, as shown by the sharp degradation of Periodic-16 in Trap . Its operating point must be tuned in advance; ALONE instead finds this balance online by adapting observation timing to the needs of current action selection. The uncertainty-only observation policy is more conservative, at least doubling the median observation count in both scenes. 
+
+E. Real-World Drone Navigation 
+
+We evaluate ALONE with intermittent depth observations on a drone equipped with Intel RealSense D435i and T265 sensors in an indoor Lattice environment (Fig. 1). D435i depth corrects the belief, while T265 visual–inertial relative-motion estimates propagate it, matching the simulation inputs. For real-world flight, we use a more conservative configuration than in simulation, requesting observations sooner to limit belief extrapolation and prevent boundary-wall collisions in the confined space. Each trial starts at a random position and requires 10 m of forward navigation. ALONE completes all 10 trials while acquiring depth at only 7.0% of decision steps, showing that the maintained belief supports action selection and flight between observations with substantially reduced observation demand. VI. C ONCLUSION AND FUTURE WORK 
+
+We presented ALONE, a Bayesian spatial world model that uses learned geometric priors to maintain spatial predictions between observations and reliability to guide when perception resumes. In two simulated scene families, ALONE achieves 98% and 97% navigation success at a 10 Hz decision rate, with median observation rates of 0.9% and 1.3% of decision steps in successful trials, respectively. Real-world flight exper-iments further demonstrate navigation from the maintained belief between depth observations, with all 10 trials completed successfully. These results support substantially reduced observation demand in the tested environments, potentially freeing the shared sensor for other tasks. Future work will investigate explicit sensor allocation between navigation and other tasks, extend ALONE to dynamic environments, and incorporate semantic knowledge to infer complete object structure from partial observations. REFERENCES [1] A. Elfes, “Using occupancy grids for mobile robot perception and navigation,” Computer , vol. 22, no. 6, pp. 46–57, 1989. [2] A. Hornung, K. M. Wurm, M. Bennewitz, C. Stachniss, and W. Burgard, “OctoMap: An efficient probabilistic 3D mapping framework based on octrees,” Auton. Robots , vol. 34, no. 3, pp. 189–206, 2013. [3] A. Mirchev, B. Kayalibay, P. van der Smagt, and J. Bayer, “Variational state-space models for localisation and dense 3D mapping in 6 DoF,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2021. [4] A. Mirchev, B. Kayalibay, A. Agha, P. van der Smagt, D. Cremers, and J. Bayer, “PRISM: Probabilistic real-time inference in spatial world models,” in Proc. Conf. Robot Learn. (CoRL) , ser. Proc. Mach. Learn. Res., vol. 205. PMLR, 2023, pp. 161–174. [5] M. F. Land, “Eye movements and the control of actions in everyday life,” Prog. Retin. Eye Res. , vol. 25, no. 3, pp. 296–324, 2006. [6] M. Hayhoe and D. Ballard, “Eye movements in natural behavior,” 
+
+Trends Cogn. Sci. , vol. 9, no. 4, pp. 188–194, 2005. [7] B. Kayalibay, A. Mirchev, P. van der Smagt, and J. Bayer, “Tracking and planning with spatial world models,” in Proc. Learn. Dyn. Control Conf. (L4DC) , ser. Proc. Mach. Learn. Res., vol. 168. PMLR, 2022, pp. 124–137. [8] E. Parisotto and R. Salakhutdinov, “Neural Map: Structured memory for deep reinforcement learning,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2018. [9] D. S. Chaplot, R. Salakhutdinov, A. Gupta, and S. Gupta, “Neural topological SLAM for visual navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2020, pp. 12 872–12 881. [10] R. Liu, W. Wang, and Y. Yang, “Volumetric environment representation for vision-language navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2024, pp. 16 317–16 328. [11] Q. Zheng, D. Liu, C. Wang, J. Zhang, D. Wang, and D. Tao, “ESceme: Vision-and-language navigation with episodic scene memory,” Int. J. Comput. Vis. , vol. 133, no. 1, pp. 254–274, 2025. [12] L. Zhang et al. , “MapNav: A novel memory representation via annotated semantic maps for VLM-based vision-and-language navigation,” in 
+
+Proc. Annu. Meeting Assoc. Comput. Linguistics (ACL) . Assoc. Comput. Linguistics, 2025, pp. 13 032–13 056. [13] Y. LeCun, “A path towards autonomous machine intelligence,” OpenReview, 2022, position paper, version 0.9.2. [Online]. Available: https://openreview.net/pdf?id=BZ5a1r-kVsf [14] D. Hafner et al. , “Learning latent dynamics for planning from pixels,” in Proc. Int. Conf. Mach. Learn. (ICML) , ser. Proc. Mach. Learn. Res., vol. 97. PMLR, 2019, pp. 2555–2565. [15] D. Hafner, J. Pasukonis, J. Ba, and T. Lillicrap, “Mastering diverse control tasks through world models,” Nature , vol. 640, no. 8059, pp. 647–653, 2025. [16] A. Bar, G. Zhou, D. Tran, T. Darrell, and Y. LeCun, “Navigation world models,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2025, pp. 15 791–15 801. [17] M. Assran et al. , “V-JEPA 2: Self-supervised video models enable understanding, prediction and planning,” 2025, arXiv:2506.09985. [Online]. Available: https://arxiv.org/abs/2506.09985 [18] S. Zhou et al. , “Learning 3D persistent embodied world models,” in 
+
+Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 38, 2025, pp. 104 807– 104 829. [19] W. Zheng, W. Chen, Y. Huang, B. Zhang, Y. Duan, and J. Lu, “OccWorld: Learning a 3D occupancy world model for autonomous driving,” in Proc. Eur. Conf. Comput. Vis. (ECCV) , ser. Lect. Notes Comput. Sci., vol. 15071. Springer, 2024, pp. 55–72. [20] R. Platt, R. Tedrake, L. Kaelbling, and T. Lozano-P´ erez, “Belief space planning assuming maximum likelihood observations,” in Proc. Robot.: Sci. Syst. (RSS) , Zaragoza, Spain, Jun. 2010. [21] N. Atanasov, J. Le Ny, K. Daniilidis, and G. J. Pappas, “Information acquisition with sensing robots: Algorithms and error bounds,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2014, pp. 6447–6454. [22] J. van den Berg, P. Abbeel, and K. Goldberg, “LQG-MP: Optimized path planning for robots with motion uncertainty and imperfect state information,” Int. J. Robot. Res. , vol. 30, no. 7, pp. 895–913, 2011. [23] R. Bajcsy, “Active perception,” Proc. IEEE , vol. 76, no. 8, pp. 996– 1005, 1988. [24] Y. Song, S. Naji, E. Kaufmann, A. Loquercio, and D. Scaramuzza, “Flightmare: A flexible quadrotor simulator,” in Proc. Conf. Robot Learn. (CoRL) , ser. Proc. Mach. Learn. Res., vol. 155, 2021, pp. 1147–1157.

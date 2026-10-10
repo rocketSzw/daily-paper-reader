@@ -1,0 +1,1139 @@
+Title: Constructive Safety-Critical Control for a Class of Underactuated Systems: A Hierarchical Approach
+
+URL Source: https://arxiv.org/pdf/2610.10987v1
+
+Published Time: Fri, 09 Oct 2026 00:27:37 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Constructive Safety-Critical Control for a Class of Underactuated Systems: A Hierarchical Approach 
+
+Massimiliano de Sa and Aaron D. Ames 
+
+Abstract — Underactuated systems with nontrivial geometry are abundant in practical robotic problems. However, little is known about constructive safety-critical control design in the presence of underactuation. In this work, we provide a constructive framework for synthesizing safe control architec-tures and control barrier functions for a class of quadrotor-like underactuated systems. By studying the geometry of their un-deractuation, we characterize when these systems have natural layered architectures useful for safety-critical control design. Using these architectures, we devise a constructive, hierarchical CBF synthesis procedure and provide conditions under which it succeeds. 
+
+I. I NTRODUCTION 
+
+Underactuated mechanical systems—systems with fewer degrees of actuation than degrees of freedom—comprise an important class of control systems ubiquitous in mod-ern robotic problems. Due to their underspecified nature, underactuated systems are substantially more challenging to control than their fully-actuated counterparts. Further-more, numerous important underactuated control systems— for instance, the quadrotor—have manifold-valued states, compelling controller designs to contend with both under-actuation and nontrivial state space geometry. In practice, such systems are subject to a host of safety constraints; quadrotors, for instance, must avoid collisions with their environment. Control barrier functions (CBFs) 
+
+have been established as a leading framework for the specifi-cation of safety constraints and design of safety-critical con-trollers [1], [2]. To leverage this framework, and the host of safety-critical control design techniques it enables, one must first construct a control barrier function. Though the process of synthesizing CBFs for fully-actuated systems is relatively well understood, less is known about the underactuated case. Recently, a hierarchical perspective on synthesizing CBFs for complex, potentially underactuated systems has emerged [3]–[7]. Within this paradigm, one first designs a CBF for a reduced-order model, a virtual model for which CBF design is simple. Then, one assumes there exists a controller for the full-order system that tracks the inputs to the reduced-order model, as well as a Lyapunov certificate of tracking. Under various assumptions (e.g. sufficiently fast tracking, bounded full-to-reduced-order model error), the Lyapunov certificate can be combined with a CBF for the reduced-order model to produce a CBF for the full system.  
+
+> This research is supported by AFOSR Grant No. 113535-19668, Hybrid Dynamics - Deconstruction and Aggregation (HyDDRA). The authors are with the Department of Control and Dynamical Systems, California Institute of Technology, Pasadena CA 91125, U.S.A.
+
+{mdesa, ames }@caltech.edu  
+
+> Fig. 1. For a class of quadrotor-like underactuated systems, symmetries enable natural layered control architectures that can be used to synthesize closed-form CBFs.
+
+Although these hierarchical techniques have demonstrated considerable success as a framework, little is known about hierarchies from the constructive perspective. Indeed, given a complex, underactuated system, it is unknown how to choose a reduced-order model satisfying the requisite tracking and boundedness conditions (nor whether one exists), nor how to find the tracking Lyapunov certificate required for CBF construction (nor whether one exists). Further, the nontrivial role of geometry—which poses fundamental obstructions to tracking control [8], [9]—has yet to be examined. To better understand when these unknowns have concrete solutions, we perform a geometric study of layered control architectures. We are driven by two principal directions. On one front, we aim to determine how and when a layered architecture can be designed. Here, we ask what conditions enable the existence of “natural” layered architectures, and how inputs to reduced-order models can be transformed into references for the full-order system to track. On another front, given an architecture in which a safe controller for a reduced-order model is tracked by a controller for the full system, we ask how and when safety certificates for the full system can be assembled in closed form. In pursuing these two directions, we focus on a class of quadrotor-like geometric mechanical control systems, for which concrete answers are available and interpretable. By leveraging symmetries of these systems, and drawing analogies to existing quadrotor control architectures [10], we characterize when natural choices of architectures exist for these systems and when they can be certified by constructive, closed-form control barrier functions. Our main contributions are summarized as follows: 1) Develop and characterize shape maps as a means of dealing with underactuation and transforming virtual arXiv:2610.10987v1 [eess.SY] 7 Oct 2026 control inputs into references for underactuated systems. 2) Use symmetries and shape maps to design layered con-trol architectures for a class of underactuated systems. 3) Apply these layered architectures to devise a construc-tive, hierarchical CBF synthesis procedure for a class of underactuated systems. The rest of the paper is organized as follows. In Section II, we review the necessary preliminaries. In Section III, we discuss architectures, shape maps, and their existence. In Section IV, we discuss CBF synthesis, and in Section V, we provide concluding remarks. II. P RELIMINARIES 
+
+A. Differential Geometry 
+
+First, we fix basic geometric notation. All of our defini-tions are standard, following [11], [12], and we shall develop concepts in further detail as the need arises. Throughout, we assume all objects to be smooth (C∞) for brevity. Let Q be a smooth n-manifold. Given a tangent vector 
+
+vq ∈ Tq Q and a cotangent vector ωq ∈ T ∗ 
+
+> q
+
+Q (the dual space to Tq Q), we write ⟨ωq ; vq ⟩ for the action of ωq on vq . We write C∞(Q) for the set of smooth functions h : Q → R,and dh q ∈ T ∗ 
+
+> q
+
+Q for the differential of h at q. For ψ ∈
+
+C∞(Q × Q), we write d1ψ and d2ψ for differentials in the first and second arguments. For a smooth map F : Q1 → Q2,we write dF q for its differential (analogous to the Jacobian) and dF ∗ 
+
+> q
+
+for its adjoint. We write X(Q) for the set of smooth vector fields on Q. For X ∈ X(Q), Xq is its value at q. A rank-m codistribution F on Q is a smooth assignment of each q ∈ Q to an m-dimensional subspace Fq of T ∗ 
+
+> q
+
+Q.We write ⟨· , ·⟩ for a Riemannian metric on Q and ∥·∥ Q
+
+for its induced norms on Tq Q and T ∗ 
+
+> q
+
+Q. A metric induces isomorphisms ♯ and ♭ taking covectors to vectors and vice versa. The gradient of h ∈ C∞(Q) at q is grad h|q = ( dh q )♯.A Lie group G is a group with a smooth manifold structure. We write Lh : G → G for left translation on the Lie group, Lh(g) = h · g, and e ∈ G for its identity element. The Lie algebra g of G is its tangent space at the identity, 
+
+g = TeG. The dual space to g is denoted g∗.
+
+B. Simple Mechanical Control Systems 
+
+Lagrangian control systems on Rn are generalized to a geometric setting within the following framework [13]. 
+
+Definition 1. A simple mechanical control system (SMCS) 
+
+is a tuple Σ = ( Q, ⟨· , ·⟩ , V, F) of an n-manifold Q (the 
+
+configuration manifold ), a Riemannian metric ⟨· , ·⟩ on Q (the 
+
+kinetic energy metric ), V ∈ C∞(Q) (the potential function ), and a rank-m codistribution F (the input codistribution ). 
+
+Definition 2. A controller for a SMCS Σ is a map F :
+
+T Q → F with F (vq ) ∈ F q for all vq ∈ T Q .The equations of motion of a SMCS with controller F are: 
+
+∇ ˙q ˙q = − grad V |q + F ( ˙ q)♯. (1) Here, ∇ is the Levi-Civita connection induced by the met-ric, an object that enables the computation of directional derivatives, termed covariant derivatives , on Q. In (1), ∇ ˙q ˙q
+
+is interpreted as the acceleration of q. Provided F is locally Lipschitz, (1) has a unique maximal trajectory q : I(vq ) → Q
+
+for each vq ∈ T Q , a curve satisfying ˙q(0) = vq and (1) for all times in its maximal interval of existence I(vq ) ⊆ R.
+
+C. Error Functions & Transport Maps 
+
+To design trajectory tracking controllers for a SMCS, one requires notions of errors in configuration and velocity. Configuration error is encoded by the following [13]. 
+
+Definition 3. Let Q be a Riemannian manifold. A smooth map ψ : Q × Q → R≥0 is a configuration error function if: 1) ψ(q, r ) = ψ(r, q ) ∀q, r ∈ Q and ψ(q, r ) = 0 ⇔ q = r.2) ψr : q 7 → ψ(q, r ) is proper 1 for all r ∈ Q.3) d1ψ(r,r ) = 0 r for all r ∈ Q.4) Hess 1 ψ|(r,r ) is positive definite for all r ∈ Q, for 
+
+Hess 1 ψ the Hessian 2 of ψ in its first argument. Further, ψ is L-uniformly quadratic with L > 0 if ∃ b1, b 2 >
+
+0 such that for all r ∈ Q and q ∈ ψ−1 
+
+> r
+
+(R≤L),
+
+b1 d1ψ(q,r ) 
+
+> 2
+> Q
+
+≤ ψ(q, r ) ≤ b2 d1ψ(q,r ) 
+
+> 2
+> Q
+
+. (2) Velocity error is defined through a transport map , which enables the comparison of vectors in different tangent spaces. 
+
+Definition 4. A transport map T is a collection of maps 
+
+T(q,r ) satisfying the following properties: 1) For all q, r ∈ Q, T(q,r ) : Tr Q → Tq Q is a linear map. 2) For all r ∈ Q, T(r,r ) = Id Tr Q.3) For each wr ∈ T Q , Y : q 7 → T (q,r )wr belongs to X(Q).Given a configuration error function ψ on Q, T is compatible 
+
+with ψ if d2ψ(q,r ) = −T ∗
+
+> (q,r )
+
+(d1ψ(q,r )) for all q, r ∈ Q.We define the covariant derivative of T as ∇T (q,r ) : Tq Q×
+
+Tr Q → Tq Q, ∇T (q,r )(vq , w r ) = ∇vq (T(q,r )wr ).
+
+Example 1. On SO (3) , the space of 3D rotation matrices, 
+
+ψ(R1, R 2) = 12 tr( I − R⊤ 
+
+> 2
+
+R1) is a configuration error function. Writing tangent vectors in TRSO (3) as R ˆΩ, for 
+
+∧ : R3 → so (3) the hat map, a compatible transport map is given by T(R1,R 2)(R2 ˆΩ2) = R2 ˆΩ2R⊤ 
+
+> 2
+
+R1 [13, p. 554]. 
+
+D. Control Barrier Functions 
+
+In the control barrier function (CBF) framework, one aims to design a controller to keep a system within a set C of safe states. Such control design is achievable when h is a CBF; we now recall the definition of a CBF for a SMCS [14]. 
+
+Definition 5. Let Σ be a SMCS and D be an open subset of T Q . A function h ∈ C∞(D) is a control barrier function (CBF) for Σ on D with safe set C = h−1(R≥0) if there is a function 3 α ∈ K e 
+
+> ∞
+
+for which 
+
+sup  
+
+> Fq∈F q
+
+˙h(vq , F q ) > −α(h(vq )) , ∀vq ∈ C , (3)                                         
+
+> 1A function is proper if its preimage of every compact set is compact.
+> 2The Hessian of h∈C∞(Q)at qis the symmetric, bilinear form
+> Hess h|q:TqQ×TqQ→R,Hess h|q(vq, w q) = ⟨vq,∇wqgrad h|q⟩.
+> 3A function α:R→Rbelongs to Ke
+> ∞if it is continuous, strictly increasing, and satisfies α(0) = 0 ,lim r→±∞ α(r) = ±∞ .
+
+where ˙h is the Lie derivative of h at (vq , F q ) subject to (1). Given a CBF h for a SMCS Σ and a nominal, potentially unsafe controller Fd : T Q → F , the CBF-QP safety filter is 
+
+FQP (vq ) = arg min  
+
+> Fq∈F q
+
+∥Fq − Fd(vq )∥2 
+
+> Q
+
+(4) s.t. ˙h(vq , F q ) ≥ − α(h(vq )) .
+
+For locally Lipschitz Fd, α, this produces a locally Lipschitz control law on C that minimally modifies a nominal input 
+
+Fd to a safe input FQP . For any initial vq ∈ C , the resulting trajectory of Σ under FQP remains in C for all positive times in its maximal interval of existence, thereby achieving safety. Further, it is possible to construct smooth approximations of (4), termed smooth safety filters , in closed-form [15]. III. A RCHITECTURES & A CTUATION GEOMETRY 
+
+In the literature, control barrier functions for complex, po-tentially underactuated systems are often constructed hierar-chically from reduced-order models. For mechanical systems, for instance, hierarchical CBF synthesis typically proceeds as follows. Given a SMCS on a configuration manifold Q,a set of safe configurations C0 ⊂ G is specified, where G is a smaller manifold related to Q by a projection π : Q → G.One designs a CBF for Σ with safe set C such that vq ∈ C 
+
+implies q is safe with respect to C0, satisfying π(q) ∈ C 0.The design procedure is as follows. On G, choose a kinematic reduced-order model, a vector field κ that is safe with respect to C0. Assuming that the full mechanical system can track κ in a certifiable manner, the certificate of tracking can be combined with a certificate of safety for κ to produce the desired CBF for the full system [3], [5], [14]. Though this hierarchical process—determining a safe vec-tor field, tracking it, and finding certificates of tracking and safety—is well understood for fully-actuated systems, comparatively little is known about the underactuated case. This leads to the following motivating problem of this work. 
+
+Problem 1. Let Σ be an underactuated SMCS on Q and 
+
+π : Q → G be a projection to a manifold G. Given a safe configuration set C0 ⊂ G, and a safe vector field κ on G,1) How and when can a κ-tracking controller be designed and certified by a closed-form tracking certificate? 2) When can the tracking certificate be used to synthesize a CBF for the safe configuration set ˜C0 = π−1(C0)?To gain insight into this problem, we begin by examining one of the most important underactuated control systems: the quadrotor on SE (3) . Given a set of safe positions C0 ⊂ R3,we begin by choosing a safe vector field κ on R3 for 
+
+C0. To track κ, a popular strategy is to use yet another hierarchical control design, as visualized in Fig. 2 [10]. First, one designs a force controller for a virtual system, a fully-actuated point mass model on R3; for each vx ∈ T R3, this produces a desired tracking force fd(vx). Recognizing that the quadrotor can only exert fd(vx) if it aligns Re 3 with 
+
+fd(vx), one computes a desired orientation Rd ∈ SO (3) ,with Rde3 aligned with fd(vx). The final control law is          
+
+> Fig. 2. A quadrotor can only apply thrust in the Re 3-direction; to track
+> fd∈R3, one must reorient the quadrotor to align Re 3with fd.
+
+computed by projecting fd(vx) onto Re 3 and tracking the desired orientation Rd. Provided this tracking is sufficiently fast, this design enables stable tracking of κ with a closed-form certificate of tracking [10]. In this section, starting from the key lessons taught by the quadrotor architecture, we address the inverse problem of identifying the key structural aspects which make the quadrotor κ-tracking architecture possible. 
+
+A. Trivial Simple Mechanical Control Systems 
+
+To begin, we seek a class of systems that admit simple dynamical decompositions and virtual models, analogous to the quadrotor. The existence of decompositions of the quadrotor can be traced to an important property: symmetry .Consider the Lie group (R3, +) and the Lie group action 4
+
+Φh : SE (3) → SE (3) of left translation by h ∈ R3,
+
+Φh(( R, x )) = ( R, L h(x)) = ( R, h + x). For each h ∈ R3,both the kinetic energy metric and input codistribution of the quadrotor are invariant under the translation (R, x ) 7 →
+
+(R, h + x); thus, both have a translational symmetry .This setting of a SMCS on a configuration space Q = S ×
+
+G, for S a smooth manifold and G a Lie group, with objects invariant under the group action Φh(s, g ) = ( s, L h(g)) , leads to a general class of quadrotor-like underactuated systems. Below, we employ the standard identifications T(s,g )(S ×
+
+G) ∼= TsS ⊕ Tg G and T ∗
+
+> (s,g )
+
+(S × G) ∼= T ∗ 
+
+> s
+
+S ⊕ T ∗ 
+
+> g
+
+G.
+
+Definition 6. A trivial SMCS Σ = ( Q, ⟨· , ·⟩ , V, F) satisfies: 1) Q = S × G, for S a manifold called the shape space 
+
+and G a Lie group called the symmetry group .2) ⟨(vs, v g ), (ws, w g )⟩ = ⟨vs, w s⟩S + ⟨vg , w g ⟩G, for ⟨· , ·⟩ S
+
+a metric on S and ⟨· , ·⟩ G a left-invariant metric on G.3) V (s, g ) = VG(g) for some VG ∈ C∞(G).4) F is invariant under Φh : ( s, g ) 7 → (s, L h(g)) :
+
+d(Φ h)∗ 
+
+> (s,g )
+
+F(s,hg ) = F(s,g ),
+
+and T ∗ 
+
+> s
+
+S ⊕ { 0g } ⊆ F (s,g ), for all s ∈ S and g, h ∈ G.Thus, as is the case for the quadrotor, the underactuation of a trivial SMCS is concentrated in G, while S is fully-actuated. The equations of motion of a trivial SMCS neatly decompose into a G-subsystem ΣG and an S-subsystem ΣS :
+
+ΣG : ∇G 
+
+> ˙g
+
+˙g = − grad VG|g + ( F Gg )♯
+
+ΣS : ∇S 
+
+> ˙s
+
+˙s = ( F Ss )♯,
+
+where (F Ss , F Gg ) ∈ F(s,g ) and ∇G, ∇S are the Levi-Civita connections on G and S. Critically, the only coupling   
+
+> 4ALie group action is a smooth family of transformations parameterized by a Lie group; we refer to [13, Ch. 5] for further details.
+
+between ΣG and ΣS is through the structure of the force codistribution F. Though this is certainly not the case for general underactuated systems, we will find that this structure enables precise insights into underactuated control. With this in mind, we define a virtual model .
+
+Definition 7. The virtual model of a trivial SMCS Σ is the SMCS ˜ΣG = ( G, ⟨· , ·⟩ G , V G, T ∗G).
+
+Example 2. The quadrotor on SE (3) is a trivial SMCS with: 1) Configuration manifold : S = SO (3) and G = R3.2) Metric : for m the quadrotor’s mass and J ∈ R3×3 its inertia 5, ⟨(R ˆΩ1, v ), (R ˆΩ2, w )⟩ = Ω ⊤ 
+
+> 1
+
+JΩ2 + mv ⊤w.3) Potential : for x ∈ R3, VG(x) = mge ⊤ 
+
+> 3
+
+x.4) Force codistribution : for (R, x ) ∈ SE (3) and e3 =(0 , 0, 1) , F(R,x ) = T ∗
+
+> R
+
+SO (3) ⊕ span( Re 3)♭.The virtual model of this system is (R3, ⟨· , ·⟩ G , V G, T ∗ R3),a fully-actuated point mass with gravity. 
+
+B. Shape Maps 
+
+Trivial SMCS contribute the first key component of the quadrotor’s hierarchical control design: a virtual model. The second component enabling this design was a map from virtual forces fd to orientations in SO (3) at which fd belongs to the force codistribution. In the trivial SMCS setting, this amounts to finding a map from a force Fg ∈ T ∗G to a shape 
+
+s ∈ S at which Fg belongs to the input codistribution. We term this object a shape map . To give a formal definition, we require the following additional notation. Let FG 
+
+> (s,g )
+
+be the G-component of F(s,g ), the unique subspace of T ∗ 
+
+> g
+
+G
+
+for which F(s,g ) = T ∗ 
+
+> s
+
+S ⊕ F G
+
+> (s,g )
+
+, P(s,g ) be the orthogonal projection from T ∗ 
+
+> g
+
+G to FG
+
+> (s,g )
+
+, and Z∗(G) the set of all zero covectors in T ∗G.
+
+Definition 8. A local shape map for a trivial SMCS Σ is a smooth map S : U → S, for U ⊆ T ∗G \ Z∗(G) open, with: 1) Actuation : for all g ∈ G and Fg ∈ U , Fg ∈ F G 
+
+> (S(Fg),g )
+
+.2) Scale-invariance : for all λ > 0, g ∈ G, and Fg ∈ U ,
+
+λF g ∈ U and S(Fg ) = S(λF g ).
+
+3) Translation-invariance : for all h, g ∈ G and Fhg ∈ U ,
+
+d(Lh)∗ 
+
+> g
+
+Fhg ∈ U and S(Fhg ) = S(d(Lh)∗ 
+
+> g
+
+Fhg ).
+
+If U = T ∗G \ Z∗(G), we refer to S as a shape map. If ψ is a configuration error function on S, then S is L-compatible 6
+
+with ψ if ∃ L, C > 0 for which ψ(s, S(Fg )) ≤ L implies: 
+
+P(s,g )
+
+ Fg 
+
+> ∥Fg∥G
+
+
+
+− Fg 
+
+> ∥Fg∥G
+> 2
+> G
+
+≤ Cψ (s, S(Fg )) .
+
+Thus, a shape map simply takes in a force direction, specified by a nonzero covector, and returns a shape at which it belongs to the force codistribution. L-compatibility, which controls force projection error in terms of a configuration error, will later prove valuable in control design.               
+
+> 5We identify tangent vectors in TxR3and TRSO (3) with vectors in R3
+> and matrices RˆΩ,Ω∈R3, respectively.
+> 6As ψis locally quadratic, L-compatibility is locally a mild condition.
+
+Given the role that shape maps play in the quadrotor’s hierarchical design, we now seek conditions for their exis-tence. First, using the symmetry of F, we reduce the search for shape maps to a search over a simpler class of functions. 
+
+Lemma 1. Let Σ be a trivial SMCS, as = FG 
+
+> (s,e )
+
+⊆ g∗, and 
+
+Sg∗
+
+= {ω ∈ g∗ : ∥ω∥G = 1 } the unit sphere in g∗. Then: 1) For each (s, g ) ∈ S × G, FG 
+
+> (s,g )
+
+= d(Lg−1 )∗ 
+
+> g
+
+as.2) Let U be an open subset of Sg∗
+
+. For any smooth s : U ⊆
+
+Sg∗
+
+→ S satisfying f ∈ as(f ) for all f ∈ U, the map 
+
+S : Fg 7 → s
+
+
+
+d(Lg )∗ 
+
+> eFg
+> ∥Fg∥G
+
+
+
+is a local shape map on U = S 
+
+> g∈G,λ> 0
+
+d(Lg−1 )∗ 
+
+> g
+
+(λU).Conversely, every local shape map is of this form. Proof. Item (1) follows immediately from invariance of F.Next, we prove (2). Suppose s : U → S satisfies f ∈ as(f ) for all f ∈ U. First, we note that the domain U is an open subset of T ∗G \ Z∗(G). Now, we verify that the induced S satisfies the actuation property. Let Fg ∈ U . For f = d(Lg )∗ 
+
+> eFg
+> ∥Fg∥G
+
+,we have that f ∈ U and that Fg = ∥Fg ∥G d(Lg−1 )∗ 
+
+> g
+
+f . Thus, using that f ∈ as(f ) and FG 
+
+> (s,g )
+
+= d(Lg−1 )∗ 
+
+> g
+
+as, we find: 
+
+Fg = ∥Fg ∥G d(Lg−1 )∗ 
+
+> g
+
+f ∈ d(Lg−1 )∗ 
+
+> g
+
+as(f ) = FG  
+
+> (s(f),g )
+
+.
+
+Since S(Fg ) = s(f ), we conclude that Fg ∈ F G 
+
+> (S(Fg),g )
+
+.The scale and translation-invariance properties of S follow by construction of S and U . To prove the converse of item (2), given a local shape map S : U → S, we define s by 
+
+s(f ) = S(f ), ∀f ∈ U = U ∩ Sg∗
+
+.
+
+This map s induces S in the same manner as above. We shall call maps of the form of s local Lie shape maps .Lemma 1 reduces the question of existence of local shape maps to that of local Lie shape maps. To establish conditions for the existence of these maps, our next step is to assemble the unit vectors of the as subspaces into a smooth manifold. 
+
+Lemma 2. For a trivial SMCS Σ, A := S 
+
+> s∈S
+
+{s}× (as∩Sg∗
+
+)
+
+is a smooth, embedded submanifold of S × Sg∗
+
+.Proof. Let r = dim a⊥ 
+
+> s
+
+(since F has constant rank, r is independent of s), and fix (s0, f 0) ∈ A . As F is a smooth codistribution, there are r smooth functions θi : V → g∗ on a neighborhood V of s0 in S, for which a⊥ 
+
+> s
+
+= span {θi(s)}ri=1 
+
+on V . Define a map ˜Θ : V × g∗ → Rr by 
+
+˜Θ : ( s, f ) 7 → (⟨θ1(s), f ⟩ , ..., ⟨θr (s), f ⟩),
+
+where ⟨· , ·⟩ is the inner product on g∗ induced by the metric. To prove that A is an embedded submanifold of S × Sg∗
+
+,we shall construct a local defining function for A from ˜Θ.To this end, we study the differential of ˜Θ at (s0, f 0),
+
+d( ˜Θ) (s0,f 0)(vs0 , w f0 ) = d1( ˜Θ) (s0,f 0)(vs0 )+ d2( ˜Θ) (s0,f 0)(wf0 )
+
+Under the canonical identifications T ˜Θ( s0,f 0) Rr ∼= Rr and 
+
+Tf0 g∗ ∼= g∗, d2 ˜Θ(s0,f 0) is the linear map wf0 7 → ˜Θ( s0, w f0 ),and is therefore surjective. We argue its restriction to Tf0 Sg∗
+
+remains surjective. As a subspace of g∗, Tf0 Sg∗
+
+is the orthogonal complement of span {f0}. Since θi(s0) ⊥ f0 for all i, (Tf0 Sg∗
+
+)⊥ ⊆ ker d2( ˜Θ) (s0,f 0). Decomposing Tf0 g∗ =
+
+Tf0 Sg∗
+
+⊕(Tf0 Sg∗
+
+)⊥, we then conclude that surjectivity of 
+
+d2( ˜Θ) (s0,f 0) implies surjectivity of its restriction to Tf0 Sg∗
+
+.Thus, for Θ = ˜Θ|V ×Sg∗ , d2Θ(s0,f 0) is surjective. In turn, 
+
+dΘ(s0,f 0) is surjective in a neighborhood W of (s0, f 0) in 
+
+S × Sg∗
+
+. Since A ∩ W = Θ |−1 
+
+> W
+
+(0) , Θ|W is then a local defining function for A. Thus, each point of A belongs to the domain of a local defining function, and A is an embedded submanifold of S × Sg∗
+
+[11, Prop. 5.16]. As A consists of all (s, f ) for which f ∈ Sg∗
+
+belongs to 
+
+as, we can factor any local Lie shape map s through A as: 
+
+U ⊆ Sg∗
+
+A S.     
+
+> f7→(s,f )
+> s
+> (s,f )7→ s
+
+Thus, each s is fully determined by a map of the form f ∈
+
+U 7 → (s, f ) ∈ A . Using this observation, we now precisely characterize the maps f 7 → (s, f ) ∈ A .
+
+Proposition 1. Let Σ be a trivial SMCS with dim a⊥ 
+
+> s
+
+= r
+
+and Θ be as in Lemma 2. Consider condition (∗):
+
+∀ (s0, f 0) ∈ A , there is a neighborhood V of s0 in S
+
+and r smooth θi : V → g∗ spanning a⊥ 
+
+> s
+
+on V for which 
+
+Θf0 : s 7 → (⟨θi(s), f 0⟩)ri=1 has surjective d(Θ f0 )s0 .
+
+(∗)
+
+For maps π : A → Sg∗
+
+, (s, f ) 7 → f and pr S : ( s, f ) 7 → s:1) π is a submersion if and only if (∗) holds. If π is a surjective submersion, then π : A → Sg∗
+
+is a bundle 7.2) Let π : A → Sg∗
+
+be a bundle. Every local Lie shape map s : U → S determines a unique local section σ :
+
+U → A for which pr S ◦σ = s. Conversely, for every local section σ, pr S ◦σ is a local Lie shape map. Proof. First, we show (1). Fix (s0, f 0) ∈ A , and let θi be as in ( ∗). We will show that dπ (s0,f 0) is surjective iff d(Θ f0 )s0
+
+is. As dπ (s0,f 0)(vs0 , w f0 ) = wf0 , we must prove that 
+
+∀wf0 , ∃ vs0 s.t. (vs0 , w f0 ) ∈ T(s0,f 0)A, (5) 
+
+iff d(Θ f0 )s0 is surjective. As shown in the proof of Lemma 2, the map Θ : ( s, f ) 7 → (⟨θi(s), f ⟩) is a local defining function for A in a neighborhood of (s0, f 0). Hence, T(s0,f 0)A =ker dΘ(s0,f 0). Now, recall that d(Θ) (s0,f 0)(vs0 , w f0 ) is com-puted d1(Θ) (s0,f 0)vs0 + d2(Θ) (s0,f 0)wf0 , and, as shown in Lemma 2, d2(Θ) (s0,f 0) is surjective. Thus, the condition: 
+
+∀wf0 , ∃ vs0 s.t. d(Θ) (s0,f 0)(vs0 , w f0 ) = 0 ,
+
+which is equivalent to (5), holds if and only if d1(Θ) (s0,f 0)
+
+is surjective. As d1(Θ) (s0,f 0) is surjective iff d(Θ f0 )s0 is, we conclude π is a submersion iff (∗) holds. Since the bundle condition is definitional, item (1) follows.                                
+
+> 7Abundle π:E→Qconsists of manifolds Eand Qand a smooth, surjective submersion π, a surjective map with surjective differential. A local section of π:E→Qis a map σ:U⊆Q→Efor which π◦σ= Id U.
+
+Now, we show (2). Suppose s : U → S is a local Lie shape map. Since f ∈ as(f ) for all f ∈ U, σ : f 7 → (s(f ), f ) ∈ A 
+
+is a local section of π : A → Sg∗
+
+. Further, this is the unique section σ : U → A for which pr S ◦σ = s. Now, we show the converse. Suppose σ : U → A is a local section. Since for each f ∈ U, σ(f ) ∈ A and π(σ(f )) = f , it must be that 
+
+f ∈ apr S ◦σ(f ). Item (2) follows, completing the proof. Together, Lemma 1 and Proposition 1 yield the following conditions for the existence of shape maps. 
+
+Theorem 1. Let Σ be a trivial SMCS for which (∗) holds and π is surjective. Then, Σ has a local shape map in a neighborhood of each Fg ∈ T ∗G \ Z∗(G). If π : A → Sg∗
+
+has a global section, then Σ has a global shape map. Proof. Let Fg̸ = 0 and f = d(Lg )∗ 
+
+> eFg
+> ∥Fg∥G
+
+. Assuming ( ∗)and surjectivity, π is a surjective submersion, and therefore has a local section on a neighborhood of f [11, Thm. 4.26]. Applying Proposition 1 and Lemma 1, we obtain a local Lie shape map on a neighborhood of f and a local shape map on a neighborhood of Fg . The global case is identical. Although there are generally topological obstructions to the existence of global sections—and hence to global shape maps—it is often the case that they exist on large domains. 
+
+Example 3. We construct a local shape map for the quadro-tor on SE (3) . First, following [16], we consider the map 
+
+σ : S2 \{− e3} → SO (3) (6) 
+
+σ(p) = 
+
+
+
+1 − p21 
+
+> p3+1
+> −p1p2
+> p3+1
+
+p1 
+
+> −p1p2
+> p3+1
+
+1 − p22 
+
+> p3+1
+
+p2
+
+−p1 −p2 p3
+
+ , (7) and define S by S(f ) = σ(f / ∥f ∥2) for all nonzero f̸ =
+
+−λe 3, λ > 0. This maps f to R ∈ SO (3) with Re 3 =
+
+f / ∥f ∥2. For ψ as in Example 1 and R ∈ SO (3) ,
+
+P(R,x )
+
+ f 
+
+> ∥f∥G
+
+
+
+− f 
+
+> ∥f∥G
+> 2
+> G
+
+≤ 2ψ(R, S(f )) .
+
+IV. H IERARCHICAL CBF S YNTHESIS 
+
+Theorem 1 gives conditions establishing the existence of a link—a shape map—between inputs to a virtual system and configurations of the true system. This provides the main ingredient used in the quadrotor architecture of [10] to manage underactuation. Now, we show that this architecture can be employed more generally for the constructive safety-critical control of trivial simple mechanical control systems. Below, we describe the problem setting. To maintain a con-cise exposition, we make several simplifying assumptions. 
+
+Setting 1. Let Σ be a trivial SMCS and h0 ∈ C∞(G) have zero a regular value and a compact zero superlevel set C0 =
+
+h−10 (R≥0) of safe configurations in G. Assume: 1) An L-uniformly quadratic configuration error function 
+
+ψ on the shape space S, for which 
+
+ψ ≤ L ⇒ b1 d1ψ(s,r ) 
+
+> 2
+> S
+
+≤ ψ(s, r ) ≤ b2 d1ψ(s,r ) 
+
+> 2
+> S
+
+,and b1 d1ψ(s,r ) 
+
+> 2
+> S
+
+≤ ψ(s, r ) for all (s, r ) ∈ S × S.2) A transport map T on S that is compatible with ψ.3) A local shape map S : U ⊂ T ∗G \ Z∗(G) → S that is 
+
+L-compatible with ψ, satisfying 
+
+P(s,g )
+
+ Fg 
+
+> ∥Fg∥G
+
+
+
+− Fg 
+
+> ∥Fg∥G
+> 2
+> G
+
+≤ Cψ (s, S(Fg )) ,
+
+for all s ∈ S and Fg ∈ U with ψ(s, S(Fg )) ≤ L.Shrinking L if necessary, assume that L < 1 
+
+> C
+
+.This section proceeds as follows. First, we will detail a layered architecture for safety-critical control. Then, we will design controllers for each layer of the architecture and produce certificates of their performance. Finally, we will combine these certificates to produce a CBF h for Σ.
+
+A. Layered Architecture 
+
+Now, recalling the kinematic reduced-order model archi-tecture proposed in Problem 1, and the quadrotor tracking architecture [10], we propose the following: 1) Design a safe kinematic vector field κ ∈ X(G) for C0.2) Design a controller ˜F for the virtual model ˜ΣG that tracks the safe vector field κ.3) Compute the control input F = ( F S , F G) to Σ by: a) Designing a PD tracking controller F S (vs, v g ) for the 
+
+S-subsystem ΣS that tracks S( ˜F (vg )) .b) Projecting ˜F onto FG, F G(vs, v g ) = P(s,g )( ˜F (vg )) .This architecture encodes several layers of abstraction. First, we have the simplest model of the system, given by a kinematic reduced-order model κ for Σ on G. Next, we have a virtual mechanical model ˜ΣG of the full system, for which we design a κ-tracking controller. Finally, we compute the input to the true system by tracking the virtual input. Altogether, this produces the desired κ-tracking architecture. To construct a CBF from this architecture, we follow the approach of [3]. We will construct a certificate of the form 
+
+h = h0 − σ( ˜ΣG Tracking Cert. ) − λ(Σ S Tracking Cert. ),
+
+for σ, λ > 0. In the remainder of the section, we construct the controllers and tracking certificates for each layer of the architecture, resulting in a closed-form expression for h.
+
+B. Constructing a Safe Hierarchical Controller 
+
+We begin by designing a controller for the virtual model 
+
+˜ΣG that tracks the velocities of a safe vector field on G.
+
+Lemma 3. Consider Setting 1, and let κ ∈ X(G) satisfy 
+
+d(h0)g κg > −αh 0(g) + δ ∥grad h0|g ∥2 
+
+> G
+
+on C0, for α, δ > 0.Consider the following controller for the virtual model: 
+
+˜F (vg ) = ∇Gvg κ + grad VG|g − ˜kd ˙˜e♭, ˙˜e = vg − κg ,
+
+where ˜kd > 0 is a fixed constant. The Lie derivative of vg 7 → 
+
+> 12
+
+∥ ˙˜e∥2 
+
+> G
+
+along trajectories of the closed-loop ˜ΣG is −˜kd∥ ˙˜e∥2
+
+> G
+
+.Proof. The Lie derivative of 12 ∥ ˙˜e∥2 
+
+> G
+
+at vg ∈ T G is  
+
+> ddt
+> 12
+
+∥ ˙˜e∥2 
+
+> G
+
+= ⟨ ˙˜e, − grad VG|g + ˜F (vg )♯ − ∇ Gvg κ⟩ .
+
+Substituting ˜F (vg ) yields ddt  
+
+> 12
+
+∥ ˙˜e∥2 
+
+> G
+
+= −˜kd∥ ˙˜e∥2
+
+> G
+
+.The condition on κ is a combination of a safety require-ment (in α) and a robustness requirement (in δ). Outside of these requirements, κ can be chosen freely to satisfy other performance specifications. For instance, κ can be chosen as a smooth safety filter with an added robustness term [14]. Next, using the shape map for Σ, we construct a reference trajectory for the next layer in the architecture from ˜F and S.In order to effectively use the shape map S, we shall require a set on which ˜F (vg )̸ = 0 and ˜F (vg ) ∈ U . To this end, fix 
+
+σ0 > 0, and consider the set: 
+
+Nσ0 = {vg ∈ T G : h0(g) − σ0 
+
+> 2
+
+˙˜e 2 
+
+> G
+
+≥ 0}. (8) Later, we shall build upon Nσ0 to form our final safe set. 
+
+Definition 9. Consider Setting 1 and ˜F of Lemma 3. Assume there is a σ0 > 0 and a neighborhood O of Nσ0 for which 
+
+˜F |O̸ = 0 and ˜F (O) ⊂ U . Let F G(vs, v g ) = P(s,g )( ˜F (vg )) .1) The reference induced by ˜F is the smooth map r : O →
+
+S defined r(vg ) = S( ˜F (vg )) .2) The reference velocity induced by ˜F is the smooth map 
+
+˙r : S ×O → T S defined 8 ˙r(s, v g ) = ddt t=0 S( ˜F ( ˙ g(t))) ,for (s(t), g (t)) a trajectory of Σ with s(0) = s, ˙g(0) = 
+
+vg , and G-controller F G.We abbreviate r(vg ), ˙r(s, v g ) as r, ˙r when context allows. 
+
+Remark 1. When grad VG̸ = 0 , the assumption of a σ0 > 0
+
+for which ˜F̸ = 0 on a neighborhood O of Nσ0 is often straightforward to verify; when grad VG ≡ 0, this requires a more careful topological analysis. Due to space constraints, we do not pursue this analysis here. Taking advantage of the full actuation of the S-subsystem, we can track this reference using the geometric PD controller 
+
+F S = FPD + FFF of [9]. FPD and FFF are defined as follows. For a trajectory (s(t), g (t)) of Σ with G-controller F G,
+
+r(t) = r( ˙ g(t)) , ˙e(t) = ˙ s(t) − T (s(t),r (t)) ˙r(t), and kd > 0,
+
+FPD = −d1ψ(s(t),r (t)) − kd( ˙ e(t)) ♭
+
+FFF = ∇T (s(t),r (t)) ( ˙ s(t), ˙r(t)) + ddt s=s(t)
+
+ T(s,r (t)) ˙r(t) ♭.
+
+For each (vs, v g ), evaluating FPD + FFF at ( ˙ s(0) , ˙g(0)) = (vs, v g ) defines a control law F S (vs, v g ) enabling s to track r. As shown by [9], the tracking performance of this controller can be certified through a careful analysis of two energy-like functions on T S × T S :
+
+W (vs, v r ) = ψ(s, r ) + 12 ∥ ˙e∥2 
+
+> S
+
+, ˙e = vs − T (s,r )vr ,Wϵ(vs, v r ) = W (vs, v r ) + ϵ ⟨d1ψ(s,r ); ˙ e⟩ .
+
+In our setting, we will use Wϵ to construct a candidate barrier function h, and W to ensure that the L-regularity conditions and safety constraint are respected on the safe set of h.
+
+Lemma 4. Consider Setting 1. Fix ˜F as in Lemma 3, σ0
+
+and O as in Definition 9, and ϵ0 ∈ (0 , √2b1). Then: 1) Wϵ0 ≥ c0(ϵ0)W across T S ×T S , for c0(ϵ) = 1 − ϵ√2b1
+
+.    
+
+> 8Using local coordinates, one may show that ˙rdepends only on (s, v g).
+
+2) For λ0 ≥ sup ˆg∈C 0 h0(ˆ g) 
+
+> Lc 0(ϵ0)
+
+, the function h0 : T S × O → R,
+
+h0(vs, v g ) = h0(g) − σ0 
+
+> 2
+
+∥ ˙˜e∥2 
+
+> G
+
+− λ0c0(ϵ0)W (vs, ˙r),
+
+is smooth and has compact 0-superlevel set C0. Further, 
+
+h0(g) ≥ 0 and ψ(s, r ) ≤ L for all (vs, v g ) ∈ C 0.3) The function h : T S × O → R,
+
+h(vs, v g ) = h0(g) − σ 
+
+> 2
+
+∥ ˙˜e∥2 
+
+> G
+
+− λW ϵ(vs, ˙r),
+
+for σ ≥ σ0, λ ≥ λ0, and ϵ ∈ (0 , ϵ 0), is smooth and has 
+
+0-superlevel set C ⊆ C 0.Proof. First, we show (1). Using b1∥d1ψ(s,r )∥2 
+
+> S
+
+≤ ψ(s, r ),we bound Wϵ ≥ ψ(s, r ) + 12 ∥ ˙e∥2 
+
+> S
+
+− ϵp1/b 1
+
+pψ(s, r ) ∥ ˙e∥S .We can assemble this lower bound into a quadratic form with symmetric matrix Qϵ0 ; provided ϵ0 ∈ (0 , √2b1), this form will be positive definite. Similarly, W can be written as a quadratic form in the same variables, with symmetric, positive definite Q. For the given c0 function, Qϵ0 − c0(ϵ0)Q
+
+is PSD, and item (1) follows. Next, we show (2). Since ˜F̸ = 0 on O, h0 is well-defined and smooth. Fix (vs, v g ) for which h0(vs, v g ) ≥ 0. Since  
+
+> σ0
+> 2
+
+∥ ˙˜e∥2 
+
+> G
+
+and W are both non-negative, h0(g) ≥ 0. Further, 
+
+h0(g) ≥ λ0c0(ϵ0)W (vs, ˙r), implying sup ˆg∈C 0 h0(ˆ g) ≥
+
+λ0c0(ϵ0)W (vs, ˙r). Given the choice of λ0, this implies 
+
+L ≥ W (vs, ˙r), and therefore that L ≥ ψ(s, r ). One may prove compactness of C0 using compactness of C0 and the properness of each map ψr : s 7 → ψ(s, r ).Finally, we show item (3). Well-definedness and smooth-ness follow as in (2). Now, we show that C ⊆ C 0. Similar to (1), we find that Wϵ ≥ c0(ϵ)W for any ϵ ∈ (0 , ϵ 0).Since c0(ϵ)W ≥ c0(ϵ0)W when ϵ < ϵ 0, it follows that 
+
+Wϵ ≥ c0(ϵ0)W for all ϵ ∈ (0 , ϵ 0). Thus, for σ ≥ σ0, λ ≥ λ0,and ϵ ∈ (0 , ϵ 0), h(vs, v g ) ≤ h0(vs, v g ). Item (3) follows. Thus, for σ ≥ σ0, λ ≥ λ0, and ϵ ∈ (0 , ϵ 0), C ⊆ C 0. Thus, configuration safety, L-regularity conditions, and bounds derived on C0 all hold on C by inclusion. With this in mind, we bound the derivatives of the G and S components of h.
+
+Lemma 5. Consider Setting 1. Let κ, ˜F be defined as in Lemma 3, C0 as in Lemma 4, and σ ≥ σ0. Under the controller F G(vs, v g ) = P(s,g )( ˜F (vg )) , the Lie derivative of ˜h(vg ) = h0(g) − σ 
+
+> 2
+
+∥ ˙˜e∥2 
+
+> G
+
+at (vs, v g ) ∈ C 0 satisfies: 
+
+˙˜h > − αh 0(g) + 
+
+∥grad h0|g ∥G
+
+˙˜e G
+
+⊤
+
+ΛG
+
+∥grad h0|g ∥G
+
+˙˜e G
+
+
+
+− σB ˙˜e G
+
+pCψ (s, r )ΛG =
+
+ δ − 12
+
+− 12 σ˜kd(1 − √CL )
+
+
+
+,
+
+for ˙˜e = vg − κg and B ≥ sup vg ∈Nσ0 ∥∇ Gvg κ + grad VG|g ∥G.Proof. Throughout, we write ∥·∥ for ∥·∥ G and ˜F for ˜F (vg ).Adding and subtracting a ˜F term, we first compute: 
+
+˙˜h(vs, v g ) = d(h0)g vg + σ˜kd ˙˜e 2 (9) 
+
+− σ ⟨ ˙˜e,  P(s,g )( ˜F ) − ˜F ♯⟩ . (10) We start by bounding the first term in ˙˜h, (9). Adding and subtracting κg from vg in d(h0)vg , we bound: (9) > −αh 0(g) + δ ∥grad h0|g ∥2 (11) 
+
+− ∥ grad h0|g ∥ ˙˜e + σ˜kd ˙˜e 2 .
+
+We bound (10) using L-compatibility of S and ψ:(10) ≥ − σ ˙˜e ∥ ˜F ∥∥ (P(s,g )( ˜F / ∥ ˜F ∥) − ˜F / ∥ ˜F ∥)∥≥ − σ ˙˜e ∥ ˜F ∥pCψ (s, r ). (12) Combining (11) and (12) and applying ∥ ˜F ∥ ≤ B + ˜kd ˙˜e ,
+
+˙˜h > −αh 0(g) + δ ∥grad h0|g ∥2 − ∥ grad h0|g ∥ ˙˜e (13) 
+
++ σ˜kd ˙˜e 2 − σ˜kd ˙˜e 2 √CL − σB ˙˜e pCψ (s, r ),
+
+where we use that ψ ≤ L on C0. Collecting like terms and assembling a quadratic form with ΛG, the result follows. Next, we bound the derivative of Wϵ, following [13]. 
+
+Lemma 6. Consider Setting 1, and let ˜F be as in Lemma 3 and C0 as in Lemma 4. Let F S be a geometric PD controller for ΣS with r, ˙r as in Definition 9. Then, there are Mi ≥ 0
+
+for which Hess 1 ψ(s,r ) S ≤ M1, ∇T (s,r ) S ≤ M2, and 
+
+∥ ˙r(s, v g )∥S ≤ M3 on C0. For ϵ ∈ (0 , ϵ 0) and (vs, v g ) ∈ C 0:
+
+˙Wϵ(vs, ˙r(s, v g )) ≤ − 
+
+ d1ψ(s,r ) S
+
+∥ ˙e∥S
+
+⊤
+
+ΛS
+
+ d1ψ(s,r ) S
+
+∥ ˙e∥S
+
+
+
+ΛS =
+
+"
+
+ϵ − ϵ(kd+M2M3)2
+
+− ϵ(kd+M2M3)2 kd − ϵM 1
+
+#
+
+.
+
+Proof. The existence of each Mi follows from compactness of C0. To derive the bound, we recall from [13, p. 652] that: 
+
+˙Wϵ = − kd ∥ ˙e∥2 
+
+> S
+
++ ϵ Hess 1 ψ(s,r )( ˙ e, ˙e) − ϵ d1ψ(s,r )
+
+> 2
+> S
+
+− ϵ ⟨d1ψ(s,r ); kd ˙e + ∇T (s,r )( ˙ e, ˙r)⟩ .
+
+Applying each Mi bound and organizing like terms into a quadratic form, the result follows. Now, we put the individual bounds together to show that each controller can be designed to make h a barrier function. 
+
+Theorem 2. Consider Setting 1. Let ˜F be the controller of Lemma 3 and σ0 > 0 be as in Definition 9, with: 
+
+α > 0, δ > 0, ˜kd > 12δσ 0(1 −√CL ) .
+
+Next, fix λ0, ϵ 0 as in Lemma 4. Let F S be a geometric PD controller with reference r as in Definition 9 and gain kd >
+
+0. Consider the function: 
+
+h(vs, v g ) = h0(g) − σ 
+
+> 2
+
+∥ ˙˜e∥2 
+
+> G
+
+− λW ϵ(vs, ˙r(s, v g )) ,
+
+where ϵ, σ, λ satisfy: 
+
+ϵ ∈ (0 , min {ϵ0, 2kd 
+
+> 2M1+( kd+M2M3)2
+
+})
+
+σ ≥ σ0, λ ≥ max {λ0, σB 2Cb 2 
+
+> ϵ˜kd(1 −√CL )
+
+}.Define matrices ˆΛG = Λ G − diag  0, 12 σ˜kd(1 − √CL ) and 
+
+ˆΛS = Λ S − diag   ϵ 
+
+> 2
+
+, 0, and choose CG, C S > 0 for which: 
+
+ˆΛG ⪰ CG
+
+0 00 1
+
+
+
+, ˆΛS ⪰ CS
+
+b2 ϵ
+
+> 2
+> ϵ
+> 212
+
+
+
+.
+
+If α ≤ min  2 
+
+> σ
+
+CG, C S , the Lie derivative of h for the closed-loop system satisfies ˙h(vs, v g ) > −αh (vs, v g ) for all 
+
+(vs, v g ) with h(vs, v g ) ≥ 0, and h is a CBF for Σ on T S ×O.Proof. We will drop subscripts where clear; e.g. ∥d1ψ(s,r )∥S
+
+will be written ∥d1ψ∥. Fix (vs, v g ) ∈ C . Given the choice of constants, C ⊆ C 0. Hence, all bounds derived on C0 hold and 
+
+g belongs to C0. Define the vectors zG = [ ∥grad h0∥ ; ∥ ˙˜e∥]
+
+and zS = [ ∥d1ψ∥ ; ∥ ˙e∥]. Combining Lemmas 5 and 6 with √Cψ ≤ √Cb 2 ∥d1ψ∥, we bound ˙h(vs, v g ) below by 
+
+> −αh 0 + z⊤ 
+
+> G
+
+ΛGzG + λz ⊤ 
+
+> S
+
+ΛS zS − σB pCb 2∥ ˙˜e∥ ∥ d1ψ∥ .
+
+Next, we introduce the ˆΛG and ˆΛS matrices. We have: 
+
+z⊤ 
+
+> G
+
+ΛGzG = z⊤ 
+
+> G
+
+ˆΛGzG + 12 σ˜kd(1 − √CL )∥ ˙˜e∥2 (14) 
+
+z⊤ 
+
+> S
+
+ΛS zS = z⊤ 
+
+> S
+
+ˆΛS zS + ϵ 
+
+> 2
+
+∥d1ψ∥2 . (15) Define a cross-term vector zC = [ ∥d1ψ∥ ; ∥ ˙˜e∥]. Substituting (14) and (15) into the ˙h bound and collecting cross-terms, 
+
+˙h > −αh 0 + z⊤ 
+
+> G
+
+ˆΛGzG + λz ⊤ 
+
+> S
+
+ˆΛS zS + z⊤ 
+
+> C
+
+ˆΛC zC , (16) where z⊤ 
+
+> C
+
+ˆΛC zC consists of all of the zC -terms assembled into a quadratic form, with 
+
+ˆΛC =
+
+ 12 λϵ − 12 σB √Cb 2
+
+− 12 σB √Cb 2 12 σ˜kd(1 − √CL )
+
+
+
+.
+
+For the given choices of δ, ˜kd, ϵ, σ, λ , we have ˆΛG, ˆΛS ≻ 0
+
+and ˆΛC ⪰ 0. Using ˆΛC ⪰ 0 to drop z⊤ 
+
+> C
+
+ˆΛC zC and CG, C S
+
+to lower bound ˆΛG, ˆΛS , we lower bound all of (16) by: (16) ≥ − αh 0 + CG ˙˜e 2 + λC S z⊤
+
+> S
+
+b2 ϵ
+
+> 2
+> ϵ
+> 212
+
+
+
+zS . (17) As the zS quadratic form upper bounds Wϵ, we conclude: (17) ≥ − αh 0 + CG ˙˜e 2 + λC S Wϵ
+
+≥ − αh 0 + α σ 
+
+> 2
+
+˙˜e 2 + αλW ϵ = −αh (vs, v g )
+
+Thus, the closed-loop satisfies ˙h(vs, v g ) > −αh (vs, v g ) on 
+
+C. This implies that sup F ∈F (s,g )
+
+˙h(vs, v g , F ) > −αh (vs, v g )
+
+on C, and that h is a CBF for Σ defined on T S × O.Thus, provided each layer of the proposed architecture is sufficiently robust and performant, the full control system remains safe and is certified by a closed-form CBF. The bound on α naturally suggests that the aggression of the kinematic vector field κ is limited by the performance of the tracking control laws. Although h is a CBF like any other, and therefore can be implemented directly in a CBF-QP safety filter, it is often more practical to leverage a hierarchical perspective in the use of h. Instead of using h as an end-to-end CBF, one may first design a safe velocity controller κ and track it using the proposed hierarchical control design. Theorem 2 provides conditions under which h is a certificate of safety for the full architecture, even if it is not used in an end-to-end safety filter. This use of h is reflective of the common design practice in which a safe controller is designed for a simple system and tracked by a performant low-level controller. V. C ONCLUSION 
+
+In this work, we performed a constructive, hierarchical study of safety-critical control for underactuated systems. We introduced shape maps, providing precise conditions for the existence of a correspondence between input directions in G
+
+and shapes in S. Using these maps, we developed a layered control architecture enabling a hierarchical CBF synthesis procedure. Future work includes generalization to a broader class of underactuated systems. REFERENCES [1] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Trans. Autom. Control , vol. 62, no. 8, pp. 3861–3876, 2016. [2] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: Theory and applications,” in 2019 18th European control conference , 2019, pp. 3420–3431. [3] T. G. Molnar, R. K. Cosner, A. W. Singletary, W. Ubellacker, and A. D. Ames, “Model-free safety-critical control for robotic systems,” IEEE robotics and automation letters , vol. 7, no. 2, pp. 944–951, 2021. [4] M. H. Cohen, T. G. Molnar, and A. D. Ames, “Safety-critical control for autonomous systems: Control barrier functions via reduced-order models,” Annual Reviews in Control , vol. 57, p. 100947, 2024. [5] M. H. Cohen, N. Csomay-Shanklin, W. D. Compton, T. G. Molnar, and A. D. Ames, “Safety-critical controller synthesis with reduced-order models,” in 2025 American Control Conference (ACC) . IEEE, 2025, pp. 5216–5221. [6] E. Yamaguchi, R. M. Bena, G. Bahati, and A. D. Ames, “Layered safety: Enhancing autonomous collision avoidance via multistage cbf safety filters,” arXiv preprint arXiv:2603.00338 , 2026. [7] N. Matni, A. D. Ames, and J. C. Doyle, “A quantitative framework for layered multirate control: Toward a theory of control architecture,” 
+
+IEEE Control Systems , vol. 44, no. 3, 2024. [8] D. E. Koditschek, “The application of total energy as a Lyapunov function for mechanical control systems,” Contemporary mathematics ,vol. 97, no. 672, pp. 131–157, 1989. [9] F. Bullo and R. M. Murray, “Tracking for fully actuated mechanical systems: a geometric framework,” Automatica , vol. 35, no. 1, pp. 17– 34, 1999. [10] T. Lee, M. Leok, and N. H. McClamroch, “Control of complex maneuvers for a quadrotor UAV using geometric methods on SE(3),” 
+
+arXiv preprint arXiv:1003.2005 , 2010. [11] J. M. Lee, Introduction to smooth manifolds . Springer, 2012. [12] ——, Introduction to Riemannian manifolds . Springer, 2018. [13] F. Bullo and A. D. Lewis, Geometric control of mechanical systems: modeling, analysis, and design for simple mechanical control systems .Springer, 2005, vol. 49. [14] M. De Sa, P. Ong, and A. D. Ames, “From bundles to backstepping: Geometric control barrier functions for safety-critical control on manifolds,” in 2026 American Control Conference (ACC) . IEEE, 2026, pp. 1928–1935. [15] M. H. Cohen, P. Ong, G. Bahati, and A. D. Ames, “Characterizing smooth safety filters via the implicit function theorem,” IEEE Control Systems Letters , vol. 7, pp. 3890–3895, 2023. [16] J. Welde, M. D. Kvalheim, and V. Kumar, “The role of symmetry in constructing geometric flat outputs for free-flying robotic systems,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 12 247–12 253.

@@ -1,0 +1,495 @@
+Title: LiteNWM: Efficient Latent World Models for Onboard Visual Navigation in the Wild
+
+URL Source: https://arxiv.org/pdf/2610.12368v1
+
+Published Time: Fri, 09 Oct 2026 02:01:54 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# LiteNWM: Efficient Latent World Models for Onboard Visual Navigation in the Wild 
+
+Linkai Liu 1,2,†, Yuntian Zhang 1,†, Zhenshan Bing 1, Chen Chen 3, Lingjuan Lyu 3
+
+Shangguang Wang 4, Mengwei Xu 4, and Dongqi Cai 1,∗
+
+> 1
+
+Nanjing University 2Imperial College London 3Sony AI 
+
+> 4
+
+Beijing University of Posts and Telecommunications a. 
+
+Real-world Deployment Simulation Datasets 
+
+> RECON
+> Lab
+
+Goal Previous frame 
+
+> Future latent of Trajectory i
+
+# LiteNWM 
+
+Action-Conditioned Future Prediction  
+
+> SCAND SACSoN
+
+b.     
+
+> 10 40 150 350 1,100
+
+c.  
+
+> SR: 94% SR: 90% SR: 67%
+
+Real-world Deployment 
+
+> Open indoor
+> SR: 90%
+> Open outdoor
+> SR: 70%
+> Clutter indoor
+> SR: 90%
+
+Fig. 1. Overview of LiteNWM and main results. (a) LiteNWM predicts and scores action-conditioned future trajectories from the visual history and goal; (b) Closed-loop real-world/simulation execution of the trajectory selected. SR: success rate.; (c) Accuracy–efficiency comparison. 
+
+Abstract —Direct visual navigation policies generate trajecto-ries efficiently but do not explicitly evaluate their future conse-quences. Generative navigation world models provide this fore-sight through visual rollouts, which are costly when evaluating multiple candidates. We present LiteNWM, a latent navigation world model that shares visual encoding across candidates and jointly predicts their action-conditioned future representations at multiple horizons and a learned scorer uses these predictions to select trajectories. In offline evaluations on RECON, SCAND, and SACSoN, LiteNWM reduces macro-averaged trajectory error by 17.56% relative to NoMaD+NWM-XL and achieves a 128.00 ×
+
+end-to-end speedup on an RTX 5090. The same evaluator trans-fers from NoMaD to MBRA without proposer-specific retraining, reducing MBRA’s macro-averaged trajectory error by 16.2%. In real-robot experiments in unseen indoor and outdoor envi-ronments, LiteNWM improves navigation success from 43.3% to 83.3% relative to NoMaD. These results demonstrate that LiteNWM can be deployed for future-aware planning and closed-loop navigation on a physical robot. 
+
+I. I NTRODUCTION 
+
+Goal-conditioned visual navigation enables a robot to reach a visually specified target using egocentric observations [1]. Recent generalist navigation policies, such as GNM, ViNT, and NoMaD, learn navigation from large and diverse robot datasets [2]–[4]. Diffusion-based policies can further generate multiple plausible trajectories for each observation. However, these policies select trajectories without explicitly evaluating their future consequences, which can lead to suboptimal deci-sions in challenging environments. As illustrated in Fig. 1, Navigation World Models (NWM) address this limitation through future-aware trajectory selec-tion [5]. Given multiple trajectories proposed by a navigation policy, NWM predicts future visual observations conditioned on each candidate and selects the trajectory based on its predicted outcome. In our component profile with prediction horizon H = 4 and 
+
+K = 16 candidate trajectories, candidate-conditioned RGB rollout accounts for 97.6% of the captured NoMaD+NWM-XL computation (Fig. 3). Its end-to-end wall time is 221.97 s per decision state (Sec. IV-E), motivating a less expensive evaluation path. We present LiteNWM, a navigation trajectory evaluator de-signed around the rollout bottleneck identified above. Action-conditioned latent prediction already supports navigation with-out RGB reconstruction. LiteNWM targets candidate-wise rollout cost through shared visual encoding and joint H1– H4 prediction across candidates. A learned incumbent-relative scorer uses the predicted consequences and proposal-set con-text to guide trajectory selection. This design combines an efficient prediction path with relative outcome evaluation while keeping the navigation policies frozen. We evaluate LiteNWM on development cohorts from three navigation datasets and examine its deployment on a phys-ical robot. LiteNWM improves trajectory accuracy while achieving 128.00 × and 16.86 × end-to-end speedups over NoMaD+NWM-XL and NoMaD+NWM-S, respectively, on arXiv:2610.12368v1 [cs.RO] 8 Oct 2026 an RTX 5090 (Fig. 1(d)). The frozen evaluator also trans-fers to MBRA without proposer-specific retraining. Ablations attribute the accuracy gain to dynamic multi-horizon latent prediction. LiteNWM supports closed-loop navigation on a Unitree Go2 EDU in unseen environments. Our main con-tributions are:  
+
+> •
+
+We identify candidate-wise RGB rollout as the dominant evaluation cost and restructure the evaluation path around shared encoding and joint candidate-future prediction.  
+
+> •
+
+We combine pose-conditioned prediction with incumbent-relative scoring to compare candidate consequences using proposal-set context.  
+
+> •
+
+We validate accuracy and end-to-end efficiency on matched initial proposal pools, achieving a 128.00 ×
+
+speedup over NoMaD+NWM-XL on an RTX 5090, and demonstrate cross-proposer transfer and real-robot de-ployment. II. R ELATED WORK 
+
+A. Generalist Navigation Policies and Trajectory Selection 
+
+Learning-based visual navigation has increasingly shifted toward policies trained on heterogeneous robot experience. GNM introduced a shared goal-conditioned formulation across robot platforms [2], while ViNT scaled this direction with a Transformer trained on diverse navigation data [3]. NoMaD further combines goal masking with a diffusion decoder to represent multimodal navigation behaviors [4], [18]. Proposal generation and trajectory selection become distinct operations when multiple stochastic trajectories are exposed at inference. NavDP couples diffusion-based trajectory generation with a learned critic for selection [6], while ViLiNT ranks generated trajectories using an embodiment-conditioned path-clearance predictor [7]. LiteNWM keeps trajectory generation fixed and focuses on evaluating the resulting proposals using predicted future evidence. 
+
+B. Generative World Models for Navigation 
+
+Visual world models provide such evidence by predicting observations along candidate action sequences. Pathdreamer generates unobserved panoramic views for look-ahead plan-ning in indoor navigation [8]. Moreover, NWM predicts future RGB observations conditioned on candidate actions and uses the synthesized futures both for standalone planning and for ranking trajectories sampled from an external policy [5]. NWM therefore establishes that future-conditioned trajectory reranking and a modular proposer–evaluator interface are prior art. The question narrows to whether short-horizon trajectory candidates can instead be compared directly from action-conditioned future latent features rather than reconstructing an RGB future for every candidate. 
+
+C. Latent Predictive and World–Action Models 
+
+Latent world models provide an alternative by supporting decision making directly through learned predictive repre-sentations. Such explicit visual generation also introduces computation that is not directly required by the downstream ranking objective, which is well established by previous work: PlaNet performs online planning in learned latent dynamics [9], while TD-MPC2 optimizes trajectories using a decoder-free implicit world model [10]. More recently, DINO-WM predicts action-conditioned DI-NOv2 patch features for test-time action optimization [12], V-JEPA 2-AC enables model-predictive control through action-conditioned latent prediction [11], [19], and DINO-world ex-tends feature-space prediction to a generalist video model that can be adapted to observation–action trajectories [13]. DF 3
+
+further demonstrates decoder-free feature forecasting, though its current formulation is observation-only and cannot model the consequences of alternative actions [14]. ReL-NWM avoids RGB reconstruction through latent-space planning [15], but retains sequential autoregressive rollouts. LiteNWM targets rollout latency through shared visual encoding and joint multi-horizon prediction, eliminating autoregressive feedback across prediction horizons. In contrast, WAM-Nav and NavWAM take a different direc-tion by coupling visual foresight with action generation inside unified world–action policies [16], [17]. LiteNWM addresses a narrower question: whether action-conditioned latent pre-diction provides sufficient predictive evidence to distinguish among trajectory proposals from a frozen navigation policy. III. M ETHOD 
+
+Figure 2 summarizes LiteNWM, which uses frozen navi-gation policies, shared visual encoding, an action-conditioned latent predictor, and a trajectory scorer. In part C, the predictor estimates candidate futures, while the scorer evaluates them relative to the incumbent and proposal set. 
+
+A. Problem Formulation 
+
+We consider goal-conditioned visual navigation. At time 
+
+t, the robot observes a four-frame visual history Ot =
+
+{ot−3, o t−2, o t−1, o t} and a visual goal g. A frozen navigation policy π generates K = 16 candidate trajectories. After a deterministic waypoint-to-action conversion, each candidate is represented as 
+
+τi = {ai, 1, . . . , a i,H }, ai,h = [∆ x, ∆y, ∆ψ]i,h . (1) We retain an incumbent τ0 and form the complete comparison set 
+
+Tt = {τ0, τ 1, . . . , τ K }. (2) Thus, K denotes the number of challengers and does not include the incumbent. The latent predictor maps the observation history and each candidate action sequence to future features: 
+
+bZi, 1: H = Wlatent (Ot, τ i). (3) The objective is to improve the policy’s trajectory choice without replacing or fine-tuning the proposer. Fig. 2. Overall workflow of LiteNWM. (A) Given a four-frame observation history and a visual goal, a frozen goal-conditioned policy produces K = 16 
+
+four-step trajectory challengers together with a retained incumbent τ0. (B) A shared frozen DINOv3 encoder and a lightweight adapter encode the history and goal once per state. (C) The action-conditioned world model jointly predicts H1–H4 future latents for the incumbent and all challengers. A goal-conditioned, proposal-aware scorer compares these predicted evolutions, ranks eligible challengers, and either selects the best one or retains the incumbent. Further details are provided in Sec. III-C. 
+
+Fig. 3. Captured component-latency profile under matched RTX 5090, RECON-100, H = 4 , and K = 16 conditions. (a) Candidate-wise CDiT rollout accounts for 84 .8% and 97 .6% of the captured NoMaD+NWM-S and NoMaD+NWM-XL latency, respectively. (b) End-to-end outer-process wall time per state for the methods reported in Table III. LiteNWM amortizes candidate-wise RGB rollout through shared visual encoding, batched latent prediction, and trajectory scoring. 
+
+B. Latent-space Navigation World Model 
+
+The profile in Fig. 3 shows that candidate-wise RGB rollout accounts for 84 .8% and 97 .6% of the captured NWM-S and NWM-XL latency, respectively. This motivates the evaluation path in Fig. 2(C): shared encoding and action-conditioned latent prediction replace candidate-wise RGB rollout before trajectory scoring. 
+
+1) Trajectory Proposal and Shared Encoding. We use frozen NoMaD [4] only as the default navigation policy. A shared frozen DINOv3 encoder [20] and lightweight adapter encode the observation history and goal once per state: 
+
+Zhist = Ev (Ot), Zg = Ev (g),
+
+(S0, M h) = Hρ(Zhist ). (4) The history encoder Hρ produces the last encoded state S0
+
+and history memory Mh; Zt is the latest input token grid. The history encoding is shared by all candidates. The navigation policy is conditioned on the visual goal, and the scorer uses its encoded feature; the latent predictor does not take the goal as input. 
+
+2) Action-Conditioned Latent Prediction. Fig. 4 shows the backbone of LiteNWM. For candidate τi, the action encoder returns action tokens and cumulative poses: 
+
+(Ei, 1: H , P i, 1: H ) = Aη (τi). (5) The poses Pi, 1: H are computed by SE(2) integration. Pose-conditioned warping initializes the queries: 
+
+Wi,h = Warp( S0, P i,h ),Ri,h = Warp( Zt, P i,h ),Q(0)  
+
+> i,h
+
+= Wi,h + Ei,h + eh,
+
+(6) where eh is a learned horizon embedding; Ei,h and eh are broadcast across spatial tokens. Six factorized blocks refine the queries: 
+
+Q(ℓ) 
+
+> i, 1: H
+
+= Bℓ
+
+
+
+Q(ℓ−1)  
+
+> i, 1: H
+
+; Ei, 1: H , M h
+
+
+
+, ℓ = 1 , . . . , 6. (7) Fig. 4. Backbone of LiteNWM for joint H1–H4 latent prediction. Pose-conditioned warping provides W for query construction and R for residual prediction. Six factorized blocks integrate action and history conditions. Dashed arrows denote conditioning. 
+
+Each sublayer uses Pre-LN and a learned residual scale. Temporal and action attention are causal, and action tokens modulate SwiGLU. An LN–linear head predicts the residual: 
+
+bZi,h = Ri,h + Dδ
+
+
+
+Q(6) 
+
+> i,h
+
+
+
+, h = 1 , . . . , H. (8) All four horizons are predicted jointly without autoregres-sive feedback. The latent predictor is supervised by frozen DINOv3-adapted future features. 3) Future-Aware Trajec-tory Scoring. The scorer combines predicted futures with the current state and goal: 
+
+ϕi = ϕ( bZi, 1: H , Z t, Z g ). (9) Together with action, history, and proposal-relative features, it predicts outcome changes from the incumbent: 
+
+∆yi = yi − y0 = [∆ATE , ∆RPE trans , ∆FDE , ∆J]i. (10) RPE denotes one-step translational RPE; FDE i = ∥pi,H −
+
+pref  
+
+> H
+
+∥2 and Ji = 0 .4 ATE i + 0 .6 FDE i. Targets use metres, whereas reported errors are normalized by dataset waypoint spacing. Negative changes indicate improvement. Reference future poses are unavailable during selection. 
+
+C. Training, Trajectory Selection, and Execution 
+
+Training and calibration. We sequentially train three-member predictor and scorer ensembles, keeping NoMaD and DI-NOv3 frozen. Predictor losses comprise latent regression, co-sine, action-sensitivity, temporal-consistency, and uncertainty terms. Scorer losses comprise heteroscedastic regression, dual-improvement/harm classification, and pairwise/listwise rank-ing. Both stages use AdamW with weight decay 10 −4. The predictor uses learning rate 6 × 10 −5, batch size 56, gradient clipping at 1.0, and 300 warm-up steps followed by cosine decay. The scorer uses learning rate 10 −4, clipping at 5.0, and early stopping on the disjoint scorer-calibration partition. 
+
+Refinement and selection. CEM1 performs one refinement iteration [25], with all models frozen. For M = 3 ensemble members, 
+
+¯μi,q = 1
+
+M
+
+X
+
+> m
+
+μ(m) 
+
+> i,q
+
+,σ2 
+
+> i,q
+
+= 1
+
+M
+
+X
+
+> m
+
+h
+
+(s(m) 
+
+> i,q
+
+)2 + ( μ(m) 
+
+> i,q
+
+− ¯μi,q )2i
+
+.
+
+(11) The conservative estimate is 
+
+ui,q = ¯ μi,q + zdσi,q , (12) where zd is shared across outcomes within dataset d. For 
+
+k ∈ {dual , harm }, calibrated probabilities are pki =sigmoid( ℓki /T kd ), using ensemble-averaged logits. Dual im-provement requires decreases in both ATE and J; harm denotes an increase in either, with tolerance 10 −7 m. Using ranking logits ri, define 
+
+eri = ri − r0
+
+max {Std Kj=1 (rj ), 10 −3} ,
+
+where Std uses population normalization. The selection score is 
+
+ei = ui, ATE + 0 .25 ui, RPE trans + 0 .25[ ui, FDE ]+
+
++ 0 .50 ui,J + 0 .15 pharm  
+
+> i
+
+− 0.05 pdual  
+
+> i
+
+− 0.03 eri,
+
+with [x]+ = max( x, 0) . A challenger is eligible if it passes physical and proposal-support checks and satisfies 
+
+ui, ATE < −mATE  
+
+> d
+
+, ui,J < −mJd ,pdual  
+
+> i
+
+≥ θdual  
+
+> d
+
+, pharm  
+
+> i
+
+≤ θharm  
+
+> d
+
+.
+
+This eligibility test defines the learned acceptance gate. Tem-peratures, zd, and thresholds are fitted on scorer-calibration data. Let Et contain the eligible challengers. We select 
+
+bi =
+
+(arg min 
+
+> i∈E t
+
+ei, Et̸ = ∅,
+
+0, Et = ∅, τ ∗ = τbi. (13) Otherwise, the incumbent is retained. 
+
+Receding-horizon execution. At each control cycle, LiteNWM observes, proposes, predicts, selects, executes a short segment of τ ∗, and replans. For a different navigation policy such as MBRA [26], a deterministic action adapter maps its output to the same four-step local representation in Eq. (1). All LiteNWM components remain frozen during deployment. TABLE I Cross-domain offline trajectory evaluation at H = 4 . For † baselines, ± denotes the 95% trajectory-cluster-robust confidence-interval half-width; otherwise, it denotes the standard deviation across seeds. 
+
+Method RECON SCAND SACSoN ATE RPE SR@1 ↑ ATE RPE SR@1 ↑ ATE RPE SR@1 ↑
+
+GNM † 0.42 ±0.05 0.20 ±0.03 86.0 0.44 ±0.09 0.21 ±0.03 89.0 0.91 ±0.12 0.45 ±0.06 45.0 ViNT † 0.40 ±0.05 0.20 ±0.03 93.0 0.47 ±0.11 0.22 ±0.04 81.0 0.77 ±0.11 0.41 ±0.06 53.0 NoMaD 0.47 ±0.01 0.23 ±0.00 82.3 0.44 ±0.02 0.22 ±0.01 86.7 0.78 ±0.01 0.43 ±0.00 60.7 NWM-S ‡ 0.52 ±0.01 0.22 ±0.00 81.5 0.58 ±0.01 0.24 ±0.01 77.3 1.20 ±0.03 0.57 ±0.01 27.0 NWM-XL ‡ 0.53 ±0.01 0.22 ±0.00 81.0 0.66 ±0.00 0.26 ±0.00 71.3 1.07 ±0.02 0.54 ±0.01 39.0 NoMaD+NWM-S 0.44 ±0.01 0.21 ±0.00 85.8 0.44 ±0.00 0.22 ±0.00 86.5 0.77 ±0.02 0.42 ±0.01 57.5 NoMaD+NWM-XL 0.44 ±0.01 0.21 ±0.01 87.3 0.45 ±0.02 0.22 ±0.00 86.0 0.77 ±0.03 0.42 ±0.01 60.3 DINO-WM 0.42 ±0.01 0.20 ±0.00 89.3 0.58 ±0.02 0.26 ±0.01 73.8 0.74 ±0.02 0.40 ±0.01 60.8 
+
+LiteNWM (Ours) 0.33 ±0.01 0.17 ±0.00 93.8 0.38 ±0.01 0.20 ±0.00 89.5 0.66 ±0.00 0.37 ±0.00 67.3 
+
+IV. E XPERIMENTS 
+
+We evaluate trajectory selection, predictive representations, end-to-end efficiency, and physical-robot deployment. 
+
+A. Experimental Setup a) Datasets and protocol: We use fixed development cohorts from RECON [21], SCAND [22], and SACSoN [23]. RECON contains diverse open-world navigation trajectories, SCAND spans indoor and outdoor social navigation on different robot platforms, and SACSoN emphasizes indoor robot–pedestrian interaction. Each domain contains 100 query states with a four-step prediction horizon. Four proposal seeds {23 , 42 , 73 , 101 } produce 1,200 state–seed evaluations. LiteNWM starts from the same frozen pool of K = 16 
+
+NoMaD challengers, while the deterministic NoMaD output is retained as the incumbent. 
+
+b) Baselines: We select different visual navigation base-lines and their combination to showcase the effectiveness of LiteNWM:  
+
+> •
+
+Navigation policy baselines: GNM [2], ViNT [3], and NoMaD [4], which produce navigation actions without explicit future-aware reranking.  
+
+> •
+
+Generative navigation world models: NWM-S, NWM-XL, NoMaD+NWM-S and NoMaD+NWM-XL [5], which evaluate the frozen NoMaD candidates through generated future observations.  
+
+> •
+
+Latent world model baseline: DINO-WM [12] is adapted to rerank trajectory candidates using predicted future DINO features. 
+
+c) Metrics and statistics: Trajectories are expressed in the query-centered robot frame and normalized by dataset-average waypoint spacing (RECON: 0.25 m ; SCAND: 0.38 m ;SACSoN: 0.255 m ). Lower ATE and RPE indicate better trajectory accuracy.  
+
+> •
+
+ATE: Translational RMSE over the H future waypoints.  
+
+> •
+
+RPE: Relative-translation RMSE between successive waypoints.   
+
+> Fig. 5. Step error over the prediction horizon (H). The curves report the macro error and the errors on RECON, SCAND, and SACSoN for NoMaD, NoMaD+NWM-XL, and LiteNWM. LiteNWM shows a consistently slower error increase at later timesteps across all three domains.
+> •
+
+SR@1: Percentage of trajectories with normalized 
+
+FDE ≤ 1; higher is better. It measures offline endpoint agreement rather than closed-loop navigation success. No post-hoc alignment or path-length normalization is ap-plied. Absolute errors are not directly comparable with the original NWM results, which use length-eight trajectories [5], whereas our matched evaluation uses H = 4. NWM’s MPC/CEM and terminal-frame objective were designed for eight-step rollouts, which may limit their effectiveness when adapted to H = 4 short-horizon trajectories [5]. Optimiz-ing terminal-frame visual similarity may overlook intermedi-ate trajectory deviations, potentially contributing to NWM’s higher ATE. As shown in Fig. 5, per-step error and trajectory drift accumulate with prediction time, so the four additional late-horizon waypoints at H = 8 produce substantially larger trajectory-level errors than at H = 4 .TABLE II Predictive-feature ablation and correspondence diagnostic. Three-domain development macro with fixed K=16 , lower is better. The first four rows use separately trained matched scorers; the last averages two prespecified candidate–future mismatches applied to the frozen scorer. Variant ATE RPE FDE No predicted future 0.4790 0.2596 0.6743 Static DINO repeat 0.4803 0.2610 0.6763 Predicted H4 only 0.4662 0.2529 0.6500                                                
+
+> Predicted H1–H4 0.4431 0.2316 0.6440
+> H1–H4, mismatched 0.4925 0.2672 0.6996
+> TABLE III System performance on RTX 5090. Per-state wall time, GPU energy, and peak VRAM are measured throughout single action; active parameters are the sum of whole-workflow modules. Method Wall (s) Energy (Wh) VRAM (MiB) Active (M) GNM 0.076 0.0011 1,252 8.66 ViNT 0.088 0.0014 1,658 29.66 NoMaD 0.121 0.0021 791 19.05 DINO-WM 2.811 0.3560 3,520 41.30 NWM-S 11.635 1.5929 8,344 49.23 NWM-XL 88.449 14.070 13,776 1012 NoMaD+NWM-S 11.653 1.5929 8,344 154.40 NoMaD+NWM-XL 88.449 14.0695 13,776 1,117.13
+> LiteNWM 0.691 0.0277 2,459 349.04
+
+B. End-to-end Evaluation 
+
+Table I provides the main system-level comparison. Relative to NoMaD+NWM-XL, LiteNWM reduces ATE by 25.21% on RECON, 14.98% on SCAND, and 14.71% on SACSoN. LiteNWM obtains the lowest ATE and RPE and the highest SR@1 in all three domains. Compared with NoMaD+NWM-XL, it raises SR@1 by 6.5, 3.5, and 7.0 percentage points on RECON, SCAND, and SACSoN, respectively. Figure 5 shows that LiteNWM reduces ATE by slowing error growth over the prediction horizon. Although the meth-ods have similar errors at the initial timestep, the baseline errors increase more rapidly at later timesteps across all three domains. Because ATE aggregates errors over four future waypoints, this reduced accumulation leads to lower ATE (Table I). NWM performance may also be affected by the 
+
+H = 8 -to-H = 4 horizon and prior mismatch, the imperfect alignment between terminal LPIPS and geometric accuracy, and the official one-step CEM update. In contrast, joint H1– H4 prediction provides intermediate and terminal evidence for rejecting candidates with accumulating errors. The next section evaluates the contribution of joint H1–H4 prediction to trajectory selection. 
+
+C. Ablation Study 
+
+Table II compares four representations on identical can-didate pools. All variants retain the same observed visual context and candidate actions, with scorers trained separately under matched conditions. No predicted future removes the future-feature block; Static DINO repeat replaces it with repeated current DINO features; Predicted H4 only uses only terminal-prediction features; and Predicted H1–H4 uses all four predicted horizons. Predicted futures improve selection over both controls. H4 captures most of this gain; intermediate horizons provide a smaller additional improvement by supply-ing trajectory-evolution features beyond the terminal state. To test whether the scorer uses the future associated with each candidate, we freeze the H1–H4 scorer and apply two pre-specified permutations of candidate–future pairings. Complete predicted-future feature blocks are permuted while actions, context, and model weights remain fixed; derived features are recomputed. Averaged over the two permutations, macro ATE increases by 0.0294 (95% paired cluster-bootstrap CI: 
+
+[0 .0175 , 0.0415] ). The interval uses 20,000 dataset-stratified cluster resamples, retaining grouped states and proposal seeds. As consistency checks, jointly permuting complete candidate bundles preserves selections, and the no-prediction control is also unaffected. These results support the scorer’s use of correctly paired predicted-future evidence. 
+
+D. Transfer Across Navigation Policies 
+
+Table IV replaces NoMaD with MBRA while keeping the LiteNWM frozen. A deterministic adapter maps MBRA trajectories to the four-step local action representation used by LiteNWM, without proposer-specific training or recalibration. The frozen evaluator reduces MBRA ATE by 6.9% on RE-CON, 23.0% on SCAND, and 16.8% on SACSoN. The adapter only standardizes the action interface; candidate selection is still performed by the original LiteNWM and scorer. This transfer follows from the navigation policy–evaluator separation in Sec. III. The result supports transfer across the different navigation policies.                  
+
+> TABLE IV Transfer of LiteNWM to another navigation policy, MBRA. Macro is the three-domain mean. Lower is better. Method RECON SCAND SACSoN Macro MBRA 0.408 0.482 0.911 0.600
+> MBRA+LiteNWM 0.380 0.371 0.758 0.503
+> Relative reduction 6.9% 23.0% 16.8% 16.2%
+
+E. System Performance 
+
+We measure end-to-end inference on an NVIDIA RTX 5090 using the same hardware, cohort, and timing boundary for all methods. The timing boundary includes proposal generation, future evaluation, scoring, refinement, and final selection. As shown in Table III, LiteNWM is 16.86 × faster than NoMaD+NWM-S and 128.00 × faster than NoMaD+NWM-XL. A separate seven-state native-CEM diagnostic measures standalone NWM-XL at 221.974 s per state, or 321.24 × the LiteNWM latency; no energy value was collected for this diagnostic. Figure 3 localizes the difference to the candidate-conditioned image-rollout stage, which dominates the NWM runtime. The profile in Fig. 3 links this speedup to the evaluation path: candidate-wise RGB rollout accounts for 84.8% and 97.6% of the captured NWM-S and NWM-XL component latency. LiteNWM encodes the history and goal once per state, jointly predicts candidate futures across H1–H4 without autoregressive feedback, and scores these futures without RGB decoding. This replaces the dominant image-rollout stage with shared encoding, joint prediction, and relative evaluation. The end-to-end measurements in Table III include proposal generation, refinement, and final selection; the gain therefore Fig. 6. Representative offline trajectory selections on three datasets. For each dataset, the left panels show the start and goal observations for NoMaD+NWM-S, NoMaD+NWM-XL, and LiteNWM, while the right panel compares the selected trajectories with ground truth over the first 3 m of longitudinal progress.  
+
+> Fig. 7. (a) Indoor and outdoor routes with start, intermediate, and goal observations. (b) Individual comparison runs, including exploratory NoMaD+NWM-S deployment probes.
+
+reflects the complete pipeline rather than predictor latency alone. 
+
+F. Real-World Deployment 
+
+We deploy LiteNWM on a Unitree Go2 EDU. The naviga-tion policies receive only monocular RGB observations and an RGB goal image. We evaluate 10 trials per method in each of the three scenes listed in Table V. Success requires entering a calibrated 1.0-m goal radius with a visible, goal-consistent target observation and yaw error within 60 ◦, before collision, corrective intervention, or abnormal termination. The valid state must persist for at least 1 s or be followed by a normal stop; merely passing the target does not count. 
+
+Transfer to unseen layouts. LiteNWM performs closed-loop navigation in previously unseen indoor and outdoor layouts without scene-specific training or online model up-dates. Figure 7(a) additionally illustrates representative tra-jectories through furniture-constrained spaces, outdoor areas, and corridors. These examples provide qualitative evidence of deployment across changes in scene structure, illumination, and viewpoint. 
+
+Reliable closed-loop goal reaching. LiteNWM achieves more reliable goal reaching than NoMaD across the three eval-uated settings (Table V). Figure 7(b) shows representative comparisons in the open indoor, cluttered indoor, and outdoor courtyard scenes. The larger success-rate gains in the cluttered indoor route and outdoor courtyard suggest that the benefit extends beyond the short open-indoor route. This pattern is consistent with the future-aware selection design in Sec. III. LiteNWM continuously refreshes the visual history and pre-dicts the H1–H4 latent consequences of proposed trajectories. The scorer relates these predicted futures to the visual goal and retained incumbent, providing evidence about intermediate motion and terminal goal consistency before execution. This receding-horizon procedure repeatedly incorporates the latest observation, allowing future-aware comparisons to be updated as the robot moves. 
+
+Efficient future-aware navigation. LiteNWM reduces the computational burden of future-aware selection, as quantified by the profiling in Table III. The deployment probes reveal the practical scale of the NWM-S planning delay: even with DDIM reduced to 30 steps, the two runs average 234.0 and 236.5 s per planning decision, over 13 and 9 decisions, re-spectively. These exploratory runs characterize computational cost and are excluded from aggregate navigation-outcome comparisons. The lower evaluation cost follows from the com-putational design in Sec. III: the history and goal are encoded once and shared across candidates, while candidate futures are evaluated jointly in latent space without RGB decoding. This preserves candidate-conditioned look-ahead while avoiding the expensive image-generation stage at each replanning step. 
+
+TABLE V Real-world image-goal navigation. Each method has 10 trials per scene and 30 trials overall. SR denotes episode success rate; SPL averages all trials, assigning zero to failures.                      
+
+> Scene NoMaD LiteNWM SR (%) SPL SR (%) SPL Open indoor 70.0 0.642 90.0 0.890
+> Cluttered indoor 40.0 0.397 90.0 0.889
+> Outdoor courtyard 20.0 0.187 70.0 0.651
+> Overall 43.3 0.409 83.3 0.810
+
+V. C ONCLUSION 
+
+Combining action-conditioned multi-horizon latent predic-tion with incumbent-relative scoring, LiteNWM selects tra-jectories from a frozen policy without RGB reconstruction. On matched initial NoMaD proposal pools across RECON, SCAND, and SACSoN, it reduces macro ATE by 17.56% over NWM-XL. Ablations support the contribution of predicted future features beyond static visual context. Experiments on RTX 5090 show 18.39 × and 132.02 × end-to-end speedups over NWM-S and NWM-XL, respectively. The frozen eval-uator transfers to other navigation policies, reducing MBRA macro ATE by 16.2% without proposer-specific retraining. In real-world experiments across three scenes, each method is evaluated over 30 trials on a Unitree Go2 EDU. LiteNWM improves the navigation success rate from 43.3% to 83.3% over NoMaD and increases SPL from 0.409 to 0.810. Future work will extend action-conditioned latent foresight beyond navigation to manipulation tasks. REFERENCES [1] Y. Zhu, R. Mottaghi, E. Kolve, J. J. Lim, A. Gupta, L. Fei-Fei, and A. Farhadi, Target-driven visual navigation in indoor scenes using deep reinforcement learning,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) ,2017, pp. 3357–3364, doi: 10.1109/ICRA.2017.7989381. [2] D. Shah, A. Sridhar, A. Bhorkar, N. Hirose, and S. Levine, GNM: A general navigation model to drive any robot,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2023. [3] D. Shah, A. Sridhar, N. Dashora, K. Stachowicz, K. Black, N. Hirose, and S. Levine, ViNT: A foundation model for visual navigation,” in 
+
+Proc. Conf. Robot Learning (CoRL) , 2023. [4] A. Sridhar, D. Shah, C. Glossop, and S. Levine, NoMaD: Goal masked diffusion policies for navigation and exploration,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2024. [5] A. Bar, G. Zhou, D. Tran, T. Darrell, and Y. LeCun, Navigation world models,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , pp. 15791–15801, 2025. [6] W. Cai et al., NavDP: Learning sim-to-real navigation diffusion policy with privileged information guidance,” arXiv preprint arXiv:2505.08712, 2025. [7] L. Dezons, Q. Picard, R. Marsal, F. Goulette, and D. Filliat, Mul-timodal embodiment-aware navigation transformer,” arXiv preprint arXiv:2604.19267, 2026. [8] J. Y. Koh, H. Lee, Y. Yang, J. Baldridge, and P. Anderson, Pathdreamer: A world model for indoor navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV) , pp. 14738–14748, 2021. [9] D. Hafner, T. Lillicrap, I. Fischer, R. Villegas, D. Ha, H. Lee, and J. Davidson, Learning latent dynamics for planning from pixels,” in Proc. Int. Conf. Mach. Learn. (ICML) , 2019. [10] N. Hansen, H. Su, and X. Wang, TD-MPC2: Scalable, robust world models for continuous control,” in Proc. Int. Conf. Learn. Represent. (ICLR) , 2024. [11] M. Assran et al., V-JEPA 2: Self-supervised video models enable un-derstanding, prediction and planning,” arXiv preprint arXiv:2506.09985, 2025. [12] G. Zhou, H. Pan, Y. LeCun, and L. Pinto, DINO-WM: World models on pre-trained visual features enable zero-shot planning,” in Proc. ICML ,2025. [13] F. Baldassarre et al., Back to the features: DINO as a foundation for video world models,” arXiv preprint arXiv:2507.19468, 2025. [14] J. Chen et al., DF 3: World modeling via decoder-free feature forecasting in autonomous navigation,” arXiv preprint arXiv:2608.02428, 2026. [15] Z. Zhang, H. Zhang, K. Huang, C. Shi, and H. Lu, “Efficient image-goal navigation with representative latent world model,” arXiv preprint arXiv:2511.11011, 2025, doi: 10.48550/arXiv.2511.11011. [16] N. Yang et al., WAM-Nav: Asymmetric latent world-action modeling for unified visual navigation,” arXiv preprint arXiv:2606.04907, 2026. [17] D. Azuma et al., NavWAM: A navigation world action model for goal-conditioned visual navigation,” arXiv preprint arXiv:2606.13494, 2026. [18] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y. Du, B. Burchfiel, R. Tedrake, and S. Song, Diffusion policy: Visuomotor policy learning via action diffusion,” in Proc. Robot. Sci. Syst. (RSS) , 2023, doi: 10.15607/RSS.2023.XIX.026. [19] A. Bardes et al., Revisiting feature prediction for learning visual representations from video,” arXiv preprint arXiv:2404.08471, 2024. [20] O. Sim´ eoni et al., DINOv3,” arXiv preprint arXiv:2508.10104, 2025. [21] D. Shah, B. Eysenbach, N. Rhinehart, and S. Levine, Rapid exploration for open-world navigation with latent goal models,” in Proc. Conf. Robot Learning (CoRL) , PMLR, vol. 164, pp. 674–684, 2022. [22] H. Karnan et al., Socially CompliAnt Navigation Dataset (SCAND): A large-scale dataset of demonstrations for social navigation,” IEEE Robot. Autom. Lett. , vol. 7, no. 4, pp. 11807–11814, 2022, doi: 10.1109/LRA.2022.3184025. [23] N. Hirose, D. Shah, A. Sridhar, and S. Levine, SACSoN: Scalable autonomous control for social navigation,” IEEE Robot. Autom. Lett. ,2024, doi: 10.1109/LRA.2023.3329626. [24] B. Lakshminarayanan, A. Pritzel, and C. Blundell, Simple and scalable predictive uncertainty estimation using deep ensembles,” in Adv. Neural Inf. Process. Syst. , vol. 30, pp. 6402–6413, 2017. [25] M. Kobilarov, Cross-entropy motion planning,” Int. J. Robot. Res. , vol. 31, no. 7, pp. 855–871, 2012, doi: 10.1177/0278364912444543. [26] N. Hirose, L. Ignatova, K. Stachowicz, C. Glossop, S. Levine, and D. Shah, “Learning to drive anywhere with model-based reannotation,” arXiv preprint arXiv:2505.05592, 2025. APPENDIX ASUPPLEMENTARY EVALUATION PROTOCOL 
+
+The supplementary analyses follow the query, proposal-seed, and metric definitions in Sec. IV-A. Macro results give equal weight to the three domains. The fixed-pool representation and inference-intervention diagnostics disable CEM and the learned acceptance gate while retaining action-validity checks. Representation variants use separately trained, matched scorers while the inference interventions keep the diagnostic H1–H4 model fixed. Separately from the main-text ablation, supplementary representation contrasts are computed within their own matched runs. The fixed-pool search control in Appendix C retains the gate. For the four-seed experiments, paired bootstrap resampling keeps all queries and proposal seeds within each sampled group. Confidence intervals (CIs) are 95% cluster-bootstrap intervals, and Holm corrections use the original experiment families. Historical evaluations retain their original configura-tions and candidate pools, as specified below. RPE is computed from the three consecutive differences between the four future poses, without adding the current-pose origin; SR@ r denotes the percentage of normalized FDE values at most r.APPENDIX BPREDICTIVE FEATURES AND ACTION CONDITIONING 
+
+A. Predictor Action Input 
+
+To isolate predictor-side action conditioning, we permute challenger actions at the predictor while keeping model weights, visual inputs, the incumbent, actual candidate tra-jectories, and scorer-side action descriptors fixed. Permutation increases macro ATE by 0.0300 and changes 63.75% of selections. The error increase shows that predictor-side actions contribute to candidate evaluation even when the scorer’s action descriptors are unchanged. Permutation changes 70.00%, 42.50%, and 78.75% of se-lections on RECON, SCAND, and SACSoN, respectively. Conditional on a changed selection, mean ATE increases by 0.0549, 0.0156, and 0.0569. SCAND has both the lowest change rate and the smallest conditional increase, consistent with its smaller aggregate effect of 0.0066 with comparing by 0.0385 on RECON and 0.0448 on SACSoN. Figure 8 also reports a zero-action intervention, which increases macro ATE by 0.0386. Permutation preserves the sampled action values while changing their assignment. Ze-roing additionally changes the input distribution makes it a secondary sensitivity check. 
+
+B. Selection Changes and Dependence Grouping 
+
+The candidate–future correspondence intervention described in Sec. IV-C changes 62.46% of selections. H1–H4 and H4-only select the same candidate in 65.08% of state–seed pairs. The H4-only minus H1–H4 ATE contrast is +0 .0031 , with a CI spanning zero (Table VI). Table VI tests sensitivity to the dependence grouping used for uncertainty estimation. Resampling preserves all queries 0.00 0.02 0.04 
+
+Δ macro ATE (intervention − matched) Action-permuted Zero action                
+
+> Fig. 8. Predictor-action interventions in the fixed-pool diagnostic. Points show intervention minus matched-action macro ATE; bars show 95% paired cluster-bootstrap CIs using 100/7/100 groups over 300 queries and four proposal seeds. Model weights, visual inputs, candidate trajectories, and scorer-side action descriptors remain fixed.
+> TABLE VI Supplementary diagnostic contrasts under alternative grouping.
+> ∆ATE is reference or intervention minus the matched H1–H4 baseline; positive values favor the baseline. CIs use 20,000 paired cluster-bootstrap resamples and are retrospective sensitivity intervals. Reference or intervention ∆ATE 95% CI No predicted future +0 .0158 [0 .0052 ,0.0256]
+> H4-only +0 .0031 [−0.0014 ,0.0065]
+> Future mismatch +0 .0294 [0 .0175 ,0.0413]
+> Action permutation +0 .0300 [0 .0169 ,0.0424]
+
+and four proposal seeds within each group, with query weight-ing within domains and equal domain weighting for macro estimates. The intervals remain positive for removing predicted futures, mismatching future features, and permuting predictor actions. Therefore, the evidence for predictive-feature persists under this alternative grouping of the same cohorts. APPENDIX CSEARCH BUDGET AND SELECTION QUALITY 
+
+A. Selection Within the Initial Pool 
+
+Fixed-pool selection retains most of the default configu-ration’s observed error reduction relative to NoMaD+NWM-XL. Using the macro values in Table VII, fixed-pool se-lection retains 94.75%, 95.03%, and 93.32% of the CEM1 error reductions relative to NoMaD+NWM-XL for ATE, RPE, and FDE, respectively. Each percentage is the baseline-to-fixed-pool error difference divided by the baseline-to-CEM1 difference. The fixed-pool selection diagnostic also compares selected trajectories with the retained incumbent. A challenger with lower ATE than the incumbent exists in 98.42% of the 1,200 state–seed observations. The selected output improves ATE in 49.75%, increases it in 8.42%, and retains the incumbent in 41.83%. Among the 698 replacements, 597 (85.53%) con-tribute to the improvement of trajectory accuarcy. Within the initial pool’s top-1, top-3, and top-5 candidates, ground-truth ATE ranks place 37.25%, 68.05%, and 80.66% of replacements respectively. Figure 9 examines how endpoint advantage varies with tolerance and how frequently ATE improves across states. This historical evaluation contains 100 matched states per primary TABLE VII Three-domain macro results by refinement budget. Methods share the initial challenger pool; subsequent CEM budgets differ. Lower errors are better. Bold marks the default configuration. Configuration ATE RPE FDE NoMaD+NWM-S 0.5489 0.2805 0.7781 NoMaD+NWM-XL 0.5538 0.2813 0.7794 LiteNWM, fixed pool 0.4617 0.2488 0.6453              
+
+> LiteNWM, CEM1 0.4566 0.2471 0.6357
+> LiteNWM, CEM3 0.4537 0.2469 0.6290
+> TABLE VIII Historical CEM3 gate diagnostic over 1,200 paired state–seed observations. Coverage is the replacement rate. Coverage and harmful replacement rates are computed over all 1,200 decisions. Configuration Coverage (%) Harmful replacement (%) Gated 64.83 9.92
+> No gate 100.00 23.00
+
+domain and retains its original configuration and candidate pools. At τ = 1 , the historical macro endpoint-agreement advan-tage over NoMaD+NWM-XL is 6.33 percentage points. Panels (a,b) show the corresponding cumulative endpoint distribution and paired difference across tolerances. The difference con-tracts as both methods approach saturation at looser thresholds, reaching −1 percentage point at some points on the plotted grid. Panel (c) shows that lower average error is accompanied by improvement on most states: 80% on RECON, 68% on SCAND, and 71% on SACSoN. The corresponding loss rates are 19%, 32%, and 29%, with 1% ties on RECON. APPENDIX DACCEPTANCE GATE AND ENSEMBLE DIAGNOSTICS 
+
+The gate and ensemble diagnostics use the historical CEM3 configuration. A replacement is harmful if either ATE or J
+
+increases relative to the incumbent, with tolerance 10 −7 m. The gate reduces the harmful replacement rate from 23.00% to 9.92%, a reduction of 13.08 percentage points (95% CI: 
+
+[10 .22 , 16 .16] ), while reducing replacement coverage from 100% to 64.83% (Table VIII). No-gate minus gated macro ATE is −0.00409 (95% CI: [−0.00912 , 0.00076] ); the interval includes zero. Table IX varies one ensemble at a time: single-predictor runs retain three scorers, and single-scorer runs retain three predictors. In the reported point estimates, the full scorer ensemble has lower ATE than each individual scorer, while the full predictor ensemble has higher ATE than each single-predictor configuration. None of the six contrasts survives Holm correction. APPENDIX ERESOURCE MEASUREMENT DETAILS 
+
+We measure wall time, GPU energy, and peak VRAM on an RTX 5090 by using RECON-100 with H = 4 and K = 16 
+
+(Table X). The NWM rerankers use three interleaved repeats, and the CEM-depth comparison uses four balanced repeats. NWM totals combine the measured proposal-generation and reranking stages, with peak memory taken across stages.                                                     
+
+> TABLE IX Historical ensemble-member diagnostic. ∆ATE is full ensemble minus single member; negative favors full. CIs are unadjusted, and pHuses six-test Holm correction. Single member ∆ATE 95% CI pH
+> Predictor 1701 +0 .00149 [−0.00251 ,0.00537] 0.9407 Predictor 1702 +0 .00258 [−0.00109 ,0.00643] 0.7808 Predictor 1703 +0 .00070 [−0.00334 ,0.00481] 0.9407 Scorer 1701 −0.00735 [−0.01349 ,−0.00159] 0.0929 Scorer 1702 −0.00246 [−0.00713 ,0.00216] 0.8946 Scorer 1703 −0.00317 [−0.00758 ,0.00109] 0.7808
+> TABLE X Runtime and resources. Values are repeat means, except peak VRAM. Bold identifies the default LiteNWM configuration. Measurement campaigns are described in the text. Configuration Runs Wall (s) Energy (Wh) VRAM (MiB) NoMaD+NWM-S 311.653 1.5929 8,344 NoMaD+NWM-XL 388.449 14.0695 13,776
+> LiteNWM, CEM1 40.691 0.0277 2,459
+> LiteNWM, CEM3 41.179 0.0490 2,459
+
+LiteNWM wall time covers the complete pipeline specified in Sec. IV-E, including preprocessing and selection. Its outer-process totals also include initialization and 30 warm-up states, divided by the 100 evaluated states. Therefore, the reported values amortized benchmark costs per state. GPU energy is sampled over the measurement interval and excludes whole-robot consumption. APPENDIX FQUALITATIVE REAL -W ORLD DEPLOYMENT 
+
+A. Route Progression 
+
+Figure 10 supplies ordered observations for the routes shown in Fig. 7(a). The indoor sequence connects doorway traversal and corridor progression to a turn beside furniture and approach to the chair goal. The outdoor sequence connects paved-path travel, an open area, passage beside vegetation, and approach to the visual target. These excerpts illustrate continued route progression through successive local motions under the fixed prediction horizon. 
+
+B. Deployment Conditions 
+
+Figure 11 adds views of the conditions encountered during deployment: enclosed corridors and furnished indoor spaces, as well as open paved areas, vegetated borders, and building-side passages. The selected indoor and outdoor views show changes in surrounding geometry, target appearance, and sunlit or shaded conditions. Episode-level outcomes are reported in Table V. 
+
+C. Onboard Deployment 
+
+LiteNWM runs on the onboard Jetson Orin of a Unitree Go2 EDU, with all models frozen. Onboard odometry supports motion feedback and, in the extended-route demonstrations, route progression. The small aggregate error reduction from CEM1 to CEM3 in Table VII supports CEM1 as the offline default. Onboard deployment skips CEM when the initial pool meets the accep-tance conditions; otherwise, it performs up to three refinement rounds, stopping once an eligible challenger is available. Fig. 9. Robustness across endpoint tolerances and evaluation states. (a) Equal-domain macro endpoint agreement, P (FDE ≤ τ ); the vertical line marks SR@1. (b) Paired endpoint-agreement advantage over NoMaD+NWM-XL, with macro and domain-level estimates. (c) Per-state ATE reduction relative to NoMaD+NWM-XL. Grey points, violins, and diamonds show observations, distributions, and means, respectively. Positive values favor LiteNWM; percentages report per-state win rates. Shading and horizontal bars indicate 95% trajectory-cluster bootstrap CIs from 20,000 resamples; bands in (a,b) are pointwise. Each primary domain contains 100 states. SCAND-bag contains 48 states from six clusters and is a descriptive sensitivity cohort excluded from the macro average. DWM denotes the historical LiteNWM configuration; success measures offline endpoint agreement. a Indoor route: doorway, corridor and goal approach 
+
+> Doorway
+
+›
+
+> Corridor
+
+›
+
+> Turning
+
+› 
+
+> Goal approach Visual goal
+
+b Outdoor route: paved paths and vegetation 
+
+> Paved path
+
+›
+
+> Open area
+
+›
+
+> Around vegetation
+
+› 
+
+> Goal approach Visual goal
+
+Fig. 10. Indoor and outdoor route progression. (a) Doorway traversal, corridor navigation, turning, and approach to a chair goal. (b) Outdoor navigation across paved areas and beside vegetation toward the visual target. Four observations in each row follow video order from left to right, followed by a cropped visual-goal reference. Trajectory overlays reproduce the source-video visualization. Frame spacing does not represent uniform elapsed time. a Indoor environments b Outdoor environments 
+
+Fig. 11. Indoor and outdoor deployment examples. (a) Corridors and furnished indoor spaces with varied objects and layouts. (b) Paved outdoor spaces, vegetation, and building-side passages under different illumination. Each panel contains six selected video views, including robot-camera and external views. Tiles illustrate visual diversity and do not denote independent environments or trials. 
+
+Acceptance uses the learned gate and physical and proposal-support checks in Sec. III-C, together with execution checks. Across 311 logged planning calls, four used two CEM rounds and 19 used three rounds. For the extended-route demonstrations, a pre-mapped vi-sual route supplies a predefined sequence of intermediate goal images. Route memory manages progress and automati-cally switches the active visual goal, while the same frozen LiteNWM evaluator performs local trajectory selection at 
+
+H = 4 .TABLE XI Onboard internal planning latency on Jetson Orin, in seconds per completed planning call. NoMaD+NWM-S uses K = 16 , H = 4 , one rollout repeat, and DDIM-30 across two runs, and is excluded from the SR/SPL comparison. Configuration Calls Mean (s) Median (s) P95 (s) NoMaD 302 0.651 0.562 1.347 LiteNWM 311 2.228 2.085 3.883 NoMaD+NWM-S 22 235.038 230.834 252.300 
+
+D. Onboard Planning Latency 
+
+Table XI reports internal planning latency from the robot logs. For LiteNWM, this includes shared visual encoding, proposal generation, future evaluation, scoring, conditional re-finement or recovery, and final selection. The interval excludes model initialization and robot motion. All completed planning calls from the 30 LiteNWM trials in Table V are included, including calls that abstain from execution. Statistics pool decisions across trials; P95 uses the nearest-rank definition. NoMaD latency is measured from 302 planning calls recorded across 30 real-world runs. With K = 16 , three rollout repeats, and DDIM-100, NWM-S reranking on the same Jetson Orin takes 692.7 s at H = 4 
+
+and 1381.2 s at H = 8, each measured on one saved observation–goal state. The H = 8 profile uses the trajectory horizon of the original NWM [5]. These measurements cover reranking only. Onboard results are reported separately from the RTX 5090 benchmark in Sec. IV-E and Appendix E because the hardware, configurations, and timing boundaries differ. APPENDIX GDISCUSSION 
+
+Fixed-pool selection retains 94.75% of the observed CEM1 ATE reduction relative to NoMaD+NWM-XL (Table VII). Increasing CEM depth from one to three rounds lowers macro ATE by a further 0.64%, while raising wall time by approx-imately 71% in the RECON resource benchmark (Table X). CEM here refines policy proposals, whereas NWM [5] also uses it for standalone planning. Comparing optimization gains requires matched objectives and budgets; these experiments do not distinguish limited search coverage from errors in evaluating refined trajectories. The frozen proposer receives no training feedback from the evaluator, so its initial proposal distribution remains unchanged when LiteNWM identifies better trajectories. The four-step predictor evaluates local consequences; longer routes rely on repeated replanning and do not establish prediction accuracy beyond this horizon. More aggressive score optimization could expose model errors, particularly outside the proposal distri-bution. We aim to train the trajectory generator with scorer and predictor feedback. Inspired by DINO-WM [12], gradients of a smooth incumbent-relative cost could pass through the scorer, predictor, and candidate actions to a differentiable generator’s parameters. Evaluator weights, the incumbent, and comparison context would initially remain fixed, with updates constrained by kinematics and proximity to the pro-posal distribution. Evaluation must test observed trajectory outcomes as well as predicted scores. Comparisons with CEM and random expansion should match computational budgets, including backward-pass costs. Distilling refined trajectories could reduce repeated optimization during deployment. Beyond the predefined intermediate goal images used in the extended-route demonstrations, persistent memory and au-tonomous hierarchical subgoal selection could support detours and partially observed routes. Exploration and search-and-rescue additionally require choosing destinations and discover-ing targets. A higher-level planner could select subgoals using coverage, information gain, or semantic target detection, while LiteNWM evaluates local trajectories. Training would require targets for exploration progress, discovery, and traversability under mission time or energy constraints. Evaluation would measure coverage, discovery rate, and successful execution in unseen environments, sustained onboard latency, and whole-robot energy.

@@ -1,0 +1,629 @@
+Title: Uncertainty-Aware Vision-Based Autonomous Aerial Refueling
+
+URL Source: https://arxiv.org/pdf/2610.07501v1
+
+Published Time: Wed, 07 Oct 2026 00:32:53 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Uncertainty-Aware Vision-Based Autonomous Aerial Refueling 
+
+Minhyuk Jang 1,∗, Thinh Nguyen 1,∗, Vivek Khatana 1,2, Sandeep Banik 1, Naira Hovakimyan 1, Petros G. Voulgaris 2
+
+Abstract — Probe-and-drogue refueling (PDR) requires accu-rate terminal alignment of a receiver probe with an unin-strumented, dynamically moving drogue despite uncertainty in both relative-state estimation and closed-loop motion. Ex-isting vision-based docking approaches provide relative-state estimates, but generally do not quantify estimation and opera-tional uncertainty in a way that informs the control authority required for robust docking performance. We present an uncertainty-aware vision-based PDR docking architecture that fuses keypoint-based drogue measurements, differential GPS, and avionics in an extended Kalman filter. Split conformal calibration characterizes near-contact error in the fused probe-to-drogue displacement estimate, while a covariance-based op-erational uncertainty quantification designs position-dispersion limits along with corrective-command variance budgets under modeled handoff variability and disturbances. The resulting uncertainty statistics define geometric and command margins for a range-conditioned deterministic predictive controller. In high-fidelity FlightGear/JSBSim simulations with four con-troller variants and 50 runs per variant, the combined-margin controller achieved 45/50 centered basket-plane crossings versus 34/50 for nominal MPC. Median planar crossing error de-creased from 0.231 to 0.175 m and the empirical 90th percentile from 0.403 to 0.286 m, while the roll-command RMS increased from 0.22 ◦ to 0.48 ◦.
+
+I. I NTRODUCTION 
+
+Autonomous aerial refueling (AAR) extends aircraft en-durance without landing. One approach is probe-and-drogue refueling (PDR), in which the receiver guides its probe into a drogue towed by the tanker. This docking maneuver is particularly challenging because the flexible hose–drogue assembly responds to atmospheric disturbances, tanker wake, and receiver bow-wave effects, while receiver corrections are constrained by aircraft response and command authority [1], [2]. Small errors near contact can cause the probe to miss the drogue despite a well-tracked nominal trajectory [3]. Termi-nal docking is not only a perception or tracking problem, but also a constrained decision problem: how much of the finite capture region should be reserved for estimation error and                          
+
+> This work was supported in part by the National Aeronautics and Space Administration (NASA) under Grant 80NSSC22M0070, the National Science Foundation (NSF) under Grants CMMI 2135925, CPS 2311085 and IIS 2331878.
+> ∗Minhyuk Jang and Thinh Nguyen contributed equally.
+> 1Minhyuk Jang, Thinh Nguyen, Vivek Khatana, Sandeep Banik, and Naira Hovakimyan are with the Department of Mechanical Science and Engineering, University of Illinois Urbana-Champaign, Urbana, IL-USA.
+
+{jang64, thinhqn2, vkhatana, baniksan, nhovakim }@illinois.edu                  
+
+> 2Vivek Khatana and Petros G. Voulgaris are with the Depart-ment of Mechanical Engineering, University of Nevada, Reno, NV-USA.
+
+{vkhatana,pvoulgaris }@unr.edu 
+
+motion uncertainty, and how much control authority should remain available for corrective response? 
+
+Vision provides close-range measurements without in-strumenting the drogue [4], [5]. The docking control sys-tem must translate uncertain relative-position estimates into control inputs that achieve alignment despite disturbances and variable approach conditions. We distinguish estimation uncertainty , the error in the fused probe-to-drogue vision-aided multisensor estimate, from operational uncertainty , the trajectory dispersion induced by variable handoff conditions, disturbances affecting drogue motion, and receiver-response error. A nominal trajectory through the basket center alone does not indicate how much uncertainty can be accommo-dated or what corrective response is required. We therefore seek a systematic basis for selecting planning margins that reflects both uncertainty and receiver dynamics. To this end, we combine data-driven uncertainty calibration with a model-based feasibility assessment. Conformal prediction converts estimator error into a geometric allowance through calibrated prediction sets, with coverage specified under the calibration assumptions [6]–[8]. Covariance uncertainty quantification [9]–[11] evaluates whether a desired near-contact dispersion can be supported within control-command budgets under operational uncertainty. Together with the estimator allowance, the resulting position and command uncertainty statistics configure a range-conditioned online model predictive controller (MPC) that generates roll, pitch, and airspeed references for the existing automatic flight control system (AFCS). The major contributions of this work are as follows: 
+
+(i) a two-source uncertainty decomposition for vision-based PDR for AAR, in which conformal calibration maps fused-estimator error to a geometric allowance and offline co-variance design maps operational uncertainty to coupled po-sition/command margins; (ii) a computationally light offline– online controller architecture in which these margins config-ure a deterministic range-conditioned MPC above an existing AFCS; and (iii) a high-fidelity simulation ablation and feasi-bility study that reveals the tradeoff between retained capture tolerance and control-command variability, while isolating the effects of estimator and operational-uncertainty margins on crossing accuracy and command effort. Additional videos, implementation details, and supplemen-tary results are available on the project website: https: //aar-refueling.pages.dev/ arXiv:2610.07501v1 [eess.SY] 5 Oct 2026 Perception Uncertainty-Aware Planning Control    
+
+> DGPS + Avionics State estimation
+> EKF
+> Drogue localization
+> Docking planner
+> Capture region Probe target
+> Roll, pitch airspeed references AFCS
+> Automatic flight control system
+> Estimation uncertainty
+> True drogue Estimated drogue Conformal calibration
+> Operational uncertainty
+> Covariance margin design Control surfaces + throttle
+> Receiver aircraft FlightGear / JSBSim Measurements Command range Available Planned
+> Offline computation
+> 4 Hz Detected keypoints
+> Detected bounding box
+> Estimated drogue position (EKF)
+
+Fig. 1: Uncertainty-aware AAR architecture. An EKF fuses vision, DGPS, and avionics. The offline covariance margin design supplies paired geometric and command margins; conformal calibration supplies an estimator allowance. The cone depicts the relative-position spread under the offline affine policy, whose margin schedule configures the online MPC. The MPC targets 4-Hz updates and supplies roll, pitch, and airspeed references for AFCS tracking. 
+
+II. R ELATED WORK 
+
+Relative sensing and estimation. Refueling navigation must distinguish aircraft-relative motion from motion of the drogue itself. Vision/GPS fusion estimates tanker–receiver relative position [12], while stereo/inertial fusion supports relative navigation without GPS [13]. Terminal docking additionally requires direct drogue observations. Monocular tracking and structural geometry provide drogue position and pose measurements [4], [5], while learned keypoints support geometric pose recovery [14] and neural perception has been integrated with unscented filtering [15]. Recent work has further improved pose estimation in challenging vi-sual conditions using lightweight learned architectures [14]. These methods primarily improve the quality and robustness of the visual measurement itself. In contrast, we focus on the residual uncertainty remaining after vision is fused with navigation and avionics, and on converting that fused-estimator error into a geometric allowance for docking. 
+
+Docking control under uncertainty. Vision-based tra-jectory tracking follows drogue motion using relative mea-surements [16]. For uncertain aircraft response, L1 adap-tive flight control provides a priori performance bounds and a time-delay margin bounded under an assumption of known drogue positions; its AAR evaluation includes wake-induced aerodynamic uncertainty and partial loss of control effectiveness [17]. More recent work has derived closed-loop docking-performance bounds under uncertain drogue motion [18] and developed robust PDR docking controllers under nonlinearities, disturbances, and actuator uncertainty [19], [20]. Terminal iterative learning uses earlier docking errors to update initial positions and feedforward commands [2], while data-driven safety assessment predicts docking outcomes to guide the approach strategy [21]. Our approach is complementary: we connect uncertain docking conditions to the receiver’s corrective capability and seek to determine how much geometric tolerance and corrective-command authority should be reserved before online plan-ning to accommodate quantified uncertainty. 
+
+Uncertainty quantification and planning. Conformal prediction provides finite-sample marginal coverage under exchangeability [6], [7], with extensions that quantify cover-age loss when this assumption is violated [8]. In robotics, calibrated keypoint sets propagate image uncertainty into pose regions [22], while calibrated state-estimation regions support measurement-robust barrier-function control under stochastic sensor noise [23]. For dynamic environments, trajectory-prediction regions also support MPC among mov-ing agents [24], [25]. Beyond estimation error, disturbances induce state uncertainty whose evolution depends on the system dynamics. Covariance shaping addresses this depen-dence by propagating dynamic uncertainty through stochastic models and enforcing state and input constraints under un-certainty [10]. Risk-aware formulations similarly couple state and input statistics through stochastic dynamics [9], [11], including applications to motion planning with collision-avoidance constraints [26]. Existing approaches therefore provide strong tools for calibrated perception uncertainty, stochastic state propagation, and uncertainty-aware con-trol, but these mechanisms are generally treated sepa-rately. In PDR docking, estimation error and dynamics-dependent operational uncertainty consume the finite cap-ture and command budgets in different ways. We there-fore use conformal calibration to determine the geometric allowance associated with fused-estimator error, and an of-fline covariance-feasibility design to determine compatible position-dispersion and corrective-command margins under operational uncertainty. Only these margins enter the online MPC, which remains deterministic. III. S YSTEM MODEL AND ESTIMATION 
+
+A. Docking Task and Coordinate Frames 
+
+PDR comprises rendezvous and formation joining, pre-contact positioning, docking, fuel transfer, and disconnec-tion [1]. We consider terminal PDR docking following a DGPS-guided approach. At docking handoff, vision is ac-tivated to observe the uninstrumented drogue, whose tanker-Drogue 
+
+> Probe
+
+Fig. 2: Coordinate frames in the aerial refueling system. 
+
+relative motion is not directly measured by DGPS. An ex-tended Kalman filter (EKF) fuses drogue vision, DGPS, and avionics, while the MPC commands roll, pitch, and airspeed references within AFCS limits. We evaluate probe passage through the modeled capture region at the first basket-plane crossing; mechanical engagement and fuel transfer are outside the scope. Let Fw, Ft, Fr , and Fc denote the world, tanker, receiver, and camera frames, respectively. We use pba for the position of point a relative to the origin of 
+
+Fb, expressed in Fb, Rcb for the rotation matrix mapping vectors from Fb to Fc, and dcab for the displacement vector from point a to point b, expressed in Fc. Receiver-body axes follow the aerospace convention: x forward, y right, z down. The camera axes are x along the optical axis, y-right, z-down. Both frames are illustrated in Fig. 2. For docking alignment, we also define a level approach frame with x
+
+parallel to the nominal approach direction and normal to the nominal basket plane, y right, and z down. 
+
+B. Relative Dynamics and AFCS Model 
+
+Let pwt and pwr denote the tanker and receiver center-of-gravity (CG) in the world frame, and ptd the drogue position in the tanker frame. Over the duration of the task, we assume a steady, straight-and-level tanker track [3], with known attitude Rwt ( ˙Rwt = 0) and airspeed vtt ( ˙vtt = 0). We adopt a double-integrator model for the drogue motion relative to the tanker 
+
+¨ptd = wd(t), (1) where wd is a lumped disturbance acceleration that cap-tures hose dynamics, aerodynamic wake, and atmospheric turbulence. The receiver kinematics depend on its attitude 
+
+Θr = [ ϕr θr ψr ]⊤ (roll, pitch, yaw in the ZYX Euler-angle convention), body angular rate ωr ∈ R3, and body-frame translational velocity vrr ∈ R3. The receiver has two known fixed lever arms, namely, the probe tip prp and camera optical center prc . Probe-to-drogue displacement satisfies drpd =(Rwr )⊤(Rwt ptd +pwt −pwr )−prp. Differentiating and applying the transport theorem [27] yields 
+
+˙drpd = ( Rwr )⊤Rwt
+
+  ˙ptd + vtt
+
+ − vrr − ωr ×  prp + drpd 
+
+. (2) For the calm-air (negligible wind) testbed and under the assumption of zero sideslip, we approximate the body-frame velocity as vrr = vr
+
+cos αr 0 sin αr
+
+⊤, where vr is the airspeed and αr is trim angle of attack. The AFCS accepts roll, pitch, and airspeed commands (attitude loop). Its closed-loop response is approximated by first-order lag models for each commanded axis: 
+
+˙ϕr = ϕcmd − ϕr
+
+τϕ
+
+, ˙θr = θcmd − θr
+
+τθ
+
+, ˙vr = vcmd − vr
+
+τv
+
+, (3) with identified time constants (τϕ, τ θ , τ v ), reported in Sec-tion V. Heading ψr is not independently commanded; the AFCS maintains coordinated flight, giving 
+
+˙ψr = ( g/v r ) tan ϕr , (4) where g is gravitational acceleration. The body rate in (2) 
+
+ωr is related to the Euler rates ˙Θr = [ ˙ϕr ˙θr ˙ψr ]⊤ produced by (3)–(4) via the ZYX Euler kinematic relation [28]: 
+
+ωr =
+
+1 0 − sin θr
+
+0 cos ϕr sin ϕr cos θr
+
+0 − sin ϕr cos ϕr cos θr
+
+ ˙Θr . (5) Collecting (1)–(5), we define the state and input vectors as 
+
+x = [ ptd 
+
+> ⊤
+
+˙ptd
+
+> ⊤
+
+drpd  
+
+> ⊤
+
+Θ⊤ 
+
+> r
+
+vr ]⊤ ∈ R13 ,
+
+u = [ ϕcmd θcmd vcmd ]⊤ ∈ R3. (6) Let f : R13 × R3 → R13 denote the deterministic dynam-ics encompassing (1)–(5). Drogue-acceleration disturbances and AFCS roll–pitch response residuals enter through the stochastic model 
+
+˙x = f (x, u) + Gcwc(t), (7) where wc(t) ∈ R5 is a zero-mean white-noise process with spectral-density matrix Qc, and Gc ∈ R13 ×5 is an injection matrix that maps specific noise components to associated state equations. The vector wc(t) decomposes as 
+
+wc(t) = wd(t)⊤ wϕ wθ
+
+⊤ ∈ R5, (8) where wϕ and wθ represent roll- and pitch-tracking residuals. The injection matrix is defined as Gc = [ e4 e5 e6 e10 e11 ],
+
+where ei ∈ R13 is the i-th standard basis vector. The spectral-density matrix of wc is diagonal, reflecting the assumption that the five noise sources are mutually uncorrelated, of the form: Qc = diag( qx, q y , q z , σ 2
+
+> ϕ
+
+, σ 2 
+
+> θ
+
+), where qx, q y , q z
+
+are the acceleration spectral densities, and σ2
+
+> ϕ
+
+, σ 2 
+
+> θ
+
+are AFCS angular-rate residual intensities. The numerical value of Qc
+
+is identified in Section V-B. 
+
+C. Vision-Based Drogue Detector 
+
+A receiver-mounted monocular camera uses YOLO11s-pose [29] to detect the drogue throat center (u0, v 0) and four evenly spaced rim points, as shown in Fig. 1. With known drogue diameter D and calibrated camera intrinsics 
+
+(f, c x, c y ), using the pinhole model, the projected ring semi-major axis a gives the approximate depth Zd ≈ f D/ (2 a).The resulting camera-frame drogue measurement is 
+
+˜pcd = Zd
+
+1 (u0 − cx)/f (v0 − cy )/f ⊤ , (9) where the first component is depth along the optical axis, consistent with the camera-frame convention. D. Multisensor State Estimator 
+
+The estimator fuses three sensor groups, each providing partial observations of the state vector x:1 (i) DGPS provides the receiver-to-tanker displacement ˜dwrt ∈ R3, (ii) Vision gives the drogue position ˜pcd ∈ R3 (9), and (iii) Avionics provides receiver attitude ˜Θr ∈ R3 and airspeed ˜vr ∈
+
+R. Physically, DGPS measures the displacement from the receiver CG to the tanker CG in the world frame, expressed as dwrt (x) = Rwr
+
+ drpd + prp
+
+ − Rwt ptd. The vision prediction maps the state to the expected drogue position in the camera frame, expressed as pcd(x) = ( Rrc )⊤ drpd + prp − prc
+
+. The attitude and airspeed predictions are direct readouts of the corresponding states: Θr (x) = Θr and vr (x) = vr . Stacking all three sensor groups yields the composite measurement vector y ∈ R10 and measurement function h : R13 → R10 :
+
+y = h(x)+ ν, h(x) = dwrt (x)⊤ pcd(x)⊤ Θ⊤ 
+
+> r
+
+vr
+
+⊤ , (10) where ν ∈ R10 is zero-mean measurement noise with covariance Rν , assumed mutually uncorrelated across sensor groups. A continuous-discrete EKF propagates the state and covariance between sensor updates [30]. IV. U NCERTAINTY -A WARE DOCKING PLANNING 
+
+We separately characterize estimation and operational 
+
+uncertainty before incorporating their resulting margins into the PDR docking MPC. Conformal calibration provides the estimator allowance, while offline covariance design provides compatible position and control-command margins. 
+
+A. Conformal Prediction for Estimation Uncertainty 
+
+Let d, bd ∈ R3 denote the true and estimated probe-to-drogue displacements in the level approach frame, ordered axial, lateral, and vertical. We treat the state estimator as a prediction map that produces an estimate bdi for an input χi
+
+(consisting of measurements and process information) [23]. We use split conformal prediction [7], [8] to characterize the estimation error from an offline calibration set {(χi, di)}nc
+
+> i=1
+
+.For each i, we compute the residual ri := di − bdi, with empirical mean r = 1
+
+> nc
+
+Pnc 
+
+> i=1
+
+ri and covariance Σcal =
+
+> 1
+> nc−1
+
+Pnc
+
+> i=1
+
+(ri − r)( ri − r)⊤. Using the nonconformity score function s(d, bd) := ( d− bd)⊤ Σ−1cal (d − bd) [31], we compute 
+
+si := s(di, bdi) and sort s1, . . . , s nc in non-decreasing order. For a user-specified error probability αc ∈ (0 , 1) , let ˆq be the ⌈(1 − αc)( nc + 1) ⌉-th element in the sorted list. For a new estimate bd, the conformal prediction set given by 
+
+C(bd) = d ∈ R3 : s(d, bd) ≤ ˆq , (11) satisfies the marginal coverage property [8, Thm. 2] 
+
+Pr d ∈ C (bd) ≥ 1 − αc − 1
+
+> nc+1
+
+Pnc 
+
+> i=1
+
+dTV (Z, Z i), (12) where Z := {(χ1, d1), . . . , (χnc+1 , dnc+1 )}. Zi is Z
+
+with the i-th and (nc + 1) -th elements exchanged, and dTV denotes the total variation distance. When 
+
+(χ1, d1), . . . , (χnc+1 , dnc+1 ) are exchangeable, the total 
+
+> 1Tildes denote measured quantities to distinguish them from ground truth or estimated ones.
+
+variation term is zero and the coverage of (11) is marginally 
+
+1 − αc. In practice, exchangeability is often violated and the lower bound in (12) is not computable [32]. In Section V-B, we detail our data collection procedure that maintains a good empirical coverage. To avoid non-affine constraints in the control problem imposed by the ellipsoidal set (11), we consider the bounding box with half-widths 
+
+ρx = pˆq[Σcal ]11 , ρ y = pˆq[Σcal ]22 , ρ z = pˆq[Σcal ]33 , (13) which is more conservative (does not degrade coverage) and introduces affine constraints. 
+
+B. Operational Uncertainty Quantification 
+
+Operational uncertainty arises from variability in the initial state x0, including the probe-to-drogue displacement, and disturbances in the receiver–drogue dynamics. For the offline design, k = 0 , . . . , N indexes the states along a nominal tra-jectory with N discretization intervals. Linearizing (7) about a deterministic nominal trajectory (¯ xk, ¯uk) and discretizing over an interval Tc gives 
+
+δxk+1 = Akδxk + Bkδuk + Dkwk, (14) where Ak and Bk are the linearized discrete-time state and input matrices, respectively, δxk = xk − ¯xk, and 
+
+δuk = uk − ¯uk. The normalized disturbances wk have zero mean and identity covariance independent across stages and of the initial state x0. We obtain Qdk by Van Loan discretization [33] of the linearized model with state-noise spectral density GcQcG⊤ 
+
+> c
+
+over Tc, and choose a covariance factor Dk satisfying DkD⊤ 
+
+> k
+
+= Qdk. Let xh denote the full state (6) at the approach-to-docking handoff, ¯xh := E[xh]
+
+and Σh := E[( xh − ¯xh)( xh − ¯xh)⊤]. The covariance Σh
+
+captures variability in the pre-contact handoff state, while 
+
+Qdk captures uncertainty accumulated during the subsequent docking maneuver. Together, these quantities define the op-erational uncertainty model. The effect of Σh and Qdk on docking accuracy depends on the receiver’s corrective response. Let ek := δxk −
+
+E[δxk] denote the zero-mean state fluctuation, with covari-ance Σk := E[eke⊤ 
+
+> k
+
+]. For the offline covariance design, we choose the auxiliary feedback policy δuk = Kkek, so that 
+
+uk = ¯uk + Kkek. Substituting this policy into (14) and subtracting the mean dynamics yields 
+
+ek+1 = ( Ak + BkKk)ek + Dkwk,
+
+Σk+1 = ( Ak + BkKk)Σk(Ak + BkKk)⊤ + Qdk, (15) with Σ0 = Σh. The corresponding control-input covariance 
+
+Σu,k = KkΣkK⊤ 
+
+> k
+
+. (16) Recursions (15) and (16) characterize the coupled evolution of state dispersion and the control input variability under the operational uncertainty model. We measure docking performance using the lateral and vertical components of the probe-to-drogue displacement in the level approach frame in Section III-A. Linearizing the lateral and vertical probe-to-drogue displacement components with respect to x at the nominal state ¯xk gives Hk ∈ R2×13 , which maps small state deviations to changes in alignment. The corre-sponding alignment covariance is Σd,k := HkΣkH⊤ 
+
+> k
+
+, and the lateral and vertical standard deviations are σd,y,k := p[Σd,k ]11 , σ d,z,k := p[Σd,k ]22 . Similarly, the control input covariance Σu,k yields the stagewise standard deviations 
+
+σu,i,k := p[Σu,k ]ii , i ∈ { 1, 2, 3}.Let ¯σd,y and ¯σd,z denote prescribed upper bounds on the lateral and vertical alignment standard deviations during the near-contact stages Kc = {N − 3, . . . , N }, and for each command channel i, let ¯σu,i,k denote the maximum allowable standard deviation of the control input required at time k. The design therefore seeks matrices {Kk} such that 
+
+σd,y,k ≤ ¯σd,y σd,z,k ≤ ¯σd,z for all k ∈ K c, (17) while simultaneously satisfying 
+
+σu,i,k ≤ ¯σu,i,k , i ∈ { 1, 2, 3}, k = 0 , . . . , N − 1. (18) To enforce these coupled position and command-dispersion requirements tractably, we use the covariance-variable formulation of [11]. Let symmetric matrices Zk ⪰ 0
+
+and Yk ⪰ 0 be upper bounds on the state and control covari-ances, respectively, together with an auxiliary variable Uk
+
+satisfying Uk = KkZk. Defining Mk = AkZk +BkUk, the covariance propagation and command-dispersion constraints can be written as linear matrix inequalities. For state weights 
+
+QΣ,k ⪰ 0 and command weights RΣ,k ≻ 0, we solve 
+
+min     
+
+> {Zk,Uk,Yk}
+> N−1
+
+X
+
+> k=0
+
+[tr( QΣ,k Zk) + tr( RΣ,k Yk)] + tr( QΣ,N ZN )s.t. Z0 = Σh,
+
+Zk+1 − Qdk Mk
+
+M⊤ 
+
+> k
+
+Zk
+
+
+
+⪰ 0,
+
+Zk U⊤
+
+> k
+
+Uk Yk
+
+
+
+⪰ 0,
+
+[HkZkH⊤ 
+
+> k
+
+]11 ≤ ¯σ2 
+
+> d,y
+
+, k ∈ K c, (19) 
+
+[HkZkH⊤ 
+
+> k
+
+]22 ≤ ¯σ2 
+
+> d,z
+
+, k ∈ K c,
+
+[Yk]ii ≤ ¯σ2
+
+> u,i,k
+
+, i ∈ { 1, 2, 3}.
+
+The solution yields Kk := UkZ†
+
+> k
+
+, where (·)† denotes the Moore–Penrose pseudoinverse. Propagating (15) and (16) with these gains gives lateral and vertical alignment standard deviations, together with the stagewise command standard deviations that are retained as the operational-uncertainty statistics passed to the docking online controller. The auxil-iary gains Kk are not applied online. 
+
+C. Uncertainty-Aware Docking MPC 
+
+The online MPC uses the estimator allowance ρj , terminal alignment SDs σd,j := σd,j,N for j ∈ { y, z }, and stagewise control input SDs σu,i,k obtained in Sections IV-A and IV-B to tighten an otherwise nominal docking problem. Here t indexes MPC updates, l indexes prediction stages starting from zero at each update, and k indexes the offline covariance propagation. We omit the update index on quan-tities defined within the current horizon. At MPC update t,a straight-in reference is initialized at the current estimated probe-to-drogue range ˆrt = ∥ˆdt∥, with zero lateral and vertical offsets in the level approach frame. The range ˆrt
+
+selects an offline stage s and a horizon of Nt = N −
+
+s prediction intervals, where N is the offline covariance propagation horizon length. The reference trajectory (¯ xl, ¯ul)
+
+is generated by propagating the deterministic model under constant trim commands. The MPC optimizes deviations from this reference according to μl+1 = Alμl + Blvl,
+
+where μl denotes the nominal state correction and vl the corresponding control input correction required. Let HNt
+
+denote the stored alignment Jacobian evaluated offline at the terminal reference state. The predicted terminal alignment is dpred  
+
+> Nt
+
+= HNt μNt , and the predicted control inputs are 
+
+upred  
+
+> l
+
+= ¯ul + vl for l = 0, . . . , N t − 1. The terminal capture constraint is tightened to account for both uncertainty sources. Let bg denote the admissible capture half-width along each alignment axis. Reserving the estimator allowance 
+
+ρj from (13) and the operational margin κσ d,j , with chosen scale κ > 0, leaves 
+
+βj = bg − ρj − κσ d,j,N ≥ 0, j ∈ { y, z }. (20) 
+
+Thus, to be robust against the estimation and operational uncertainties, the nominal terminal trajectory is required to lie inside a reduced capture region whose size reflects both estimation error and modeled closed-loop dispersion. 
+
+The operational uncertainty propagation procedure also determines how much of the AFCS command authority must be reserved for corrective maneuvers. For each command input channel i ∈ { 1, 2, 3}, the lower and upper bounds 
+
+ui, min and ui, max are tightened, respectively, according to 
+
+ui,l = ui, min + κσ u,i,s +l, u i,l = ui, max − κσ u,i,s +l. (21) The geometric and control input margins are coupled through the uncertainty propagation design: achieving smaller near-contact position dispersion can require larger corrective-command variability and reduce the control authority. For positive-semidefinite state weights Qμ, Qμ,N and positive-definite command weight Rμ, define 
+
+Jμ := PNt−1
+
+> l=0
+
+ μ⊤ 
+
+> l
+
+Qμμl + v⊤ 
+
+> l
+
+Rμvl
+
+ + μ⊤ 
+
+> Nt
+
+Qμ,N μNt .
+
+Let ˆxt denote the current EKF state estimate, ui,t −1 the previously applied command in channel i, ˙ui, max its slew-rate limit, and wξ > 0 the slack-penalty weights. The online docking control problem is then 
+
+min   
+
+> {μl,vl},ξ≥0
+
+Jμ + w⊤ 
+
+> ξ
+
+ξ
+
+s.t. [μ0]1:6 = 0, [μ0]7:13 = [ˆ xt − ¯x0]7:13 ,
+
+μl+1 = Alμl + Blvl,
+
+|[dpred  
+
+> Nt
+
+]1| ≤ βy + ξy , |[dpred  
+
+> Nt
+
+]2| ≤ βz + ξz ,ui,l ≤ [upred  
+
+> l
+
+]i ≤ ui,l ,
+
+|[upred 0 ]i − ui,t −1| ≤ ˙ui, max Ts + ξu,i ,
+
+|[upred  
+
+> l
+
+− upred  
+
+> l−1
+
+]i| ≤ ˙ui, max Tc.
+
+(22) Here Ts is the target controller-update period and Tc is the prediction-stage duration. Dynamics and command bounds apply for l = 0, . . . , N t − 1. The final slew constraint applies for l = 1 , . . . , N t − 1; terminal alignment is en-forced at the horizon endpoint. The slack variables ξ =TABLE I: Testbed, perception, controller, and covariance uncer-tainty quantification design settings. Command tuples follow roll, pitch, and airspeed. Unlisted entries and stages of QΣ,k are zero. Parameter Value Ring diameter; damping ratio 1.1 m; 0.2
+
+Natural frequency (lateral/vertical) 1.0 rad/s Forcing time constant 3.0 sRealized drogue RMS (per axis) 0.10 mImage size; frame rate 1848 × 1016 px; 30 Hz 
+
+f ; (cx, c y ) 1616 px; (924 , 508) px Images (training/validation/test) 1521 /189 /114 
+
+Input size; maximum rendered range 1920 px; 130 m
+
+(τϕ, τ θ , τ v ) (1 .358 , 1.301 , 1.264) sMPC target Ts; prediction step Tc 0.25 s; 0.75 s
+
+Qμ, Qμ,N IRμ, RΣ,k diag(3000 , 10 5, 1) 
+
+Command authority about trim (10 ◦, 2.5◦, 5.0 m /s) 
+
+Slew increments ˙ui, max Tc (0 .57 ◦, 0.29 ◦, 0.30 m /s) 
+
+wξ [10 5, 10 5, 10 4, 10 4, 10 4]⊤
+
+[QΣ,k ]7:9 ,7:9 , k ∈ K c diag(0 .3, 1, 1) 
+
+Alignment SD caps ¯σd,y , ¯σd,z bg /3 ≃ 0.130 mRoll-command SD limit ¯σu,ϕ 3.0◦
+
+Margin scaling κ ≃ 2.06 
+
+[ξy , ξ z , ξ u, 1, ξ u, 2, ξ u, 3]⊤ soften the terminal alignment and first-command slew constraints. At each update, the AFCS receives the control input ut = ¯ u0 + v⋆ 
+
+> 0
+
+, where v⋆ 
+
+> 0
+
+is the first MPC-optimized command correction. V. E XPERIMENTAL EVALUATION 
+
+We first assess estimator-error calibration (Section IV-A) and operational-uncertainty statistics via covariance design (Section IV-B). We examine covariance-margin feasibility and evaluate closed-loop docking performance in high-fidelity simulator. 
+
+A. Testbed and Implementation 
+
+FlightGear 2024.1 and JSBSim [34] simulate an F-14B receiver approaching an A330 MRTT tanker flying straight and level at FL220 and 183 m/s in calm air. 2
+
+The nominal 20-ft (6.1-m) pre-contact handoff is consis-tent with the NASA/DARPA flight tests [36]. The drogue follows lightly damped pendulum dynamics under station-ary, constant-intensity Ornstein–Uhlenbeck forcing [37]. A receiver-mounted camera feeds YOLO11s-pose [29], fine-tuned on synthetic images to predict five keypoints. Ren-dering varies camera-to-drogue distance, lateral and vertical offsets, and receiver attitude; training augmentation includes flipping, translation, scaling, and color variation. Table I lists the parameters used in the experiments. AFCS time constants are identified by output-error fitting of (3) to data from a dedicated open-loop excitation flight. 
+
+> 2Detection uses Ultralytics 8.4 and PyTorch 2.5, and the online QP (22) is solved using Clarabel 0.11 [35]. Experiments were run on an Intel Core i7-14700F with 32 GB RAM and an NVIDIA RTX 4060 Ti (8 GB).
+
+B. Uncertainty Characterization 
+
+Conformal Prediction Results. We collect calibration data from 7 independent PDR runs using a baseline LQR con-troller [38] and retain samples with depth ≤ 1 m to reflect the terminal estimator margin (20). 10% uniformly random subsampling is performed on each run. Exchangeability condition is not met: calibration data points from the same run are not independent, and the deployed controller and flight conditions differ. However, our procedure keeps the total variation term in (12) small in two ways. First, we retain the distribution of online PDR operations as opposed to grid sampling [22] that could cause distribution shift. Second, random subsampling spaces the samples apart in time and mixes flight conditions, weakening the temporal correlation that causes dependence and nonexchangeability. We use a calibration dataset with nc = 481 and target error rate αc = 0 .1. On one held-out closed-loop flight, 716 /790 
+
+evaluated samples were contained, corresponding to 90 .6% 
+
+empirical pointwise coverage that meets the target 1 − αc =90% . The calibrated estimator error margin is (ρx, ρ y , ρ z ) = (0 .082 , 0.118 , 0.093) m. 
+
+Covariance Design Results. The operational-uncertainty inputs are identified from preceding runs. The full hand-off covariance Σh is estimated from 100 handoff state vectors; its lateral and vertical relative-position marginal standard deviations are 0.55 and 0.23 m, respectively. Drogue acceleration intensities (0 .0004 , 0.0104 , 0.0109) m 2/s3 are estimated from 125 docking trials. Receiver residuals from 34 runs give roll and pitch diffusion amplitudes of 0.050 and 0.066 deg s−1/2, respectively. These amplitudes are con-verted to radians and squared to form covariance intensities, then discretized using the Van Loan method [33]. The alignment caps (¯ σd,y , ¯σd,z ) and roll-command SD limit ¯σu,ϕ in Table I define the nominal configuration for the margin-allocation study. Covariance propagation veri-fies both position requirements and gives (σd,y , σ d,z ) ≃
+
+(0 .12962 , 0.12962) m and max k σu, 1,k ≃ 2.424 ◦. With 
+
+(ρy , ρ z ) = (0 .118 , 0.093) m, applying the selected margins in (20) gives terminal half-widths (βy , β z ) of approximately 
+
+(0 .3889 , 0.3889) m without margins, (0 .2706 , 0.2964) mwith the estimator allowance only, (0 .1215 , 0.1215) m with covariance margins only, and (0 .0032 , 0.0290) m with both. The stagewise command standard deviations additionally determine the command margins in (21) for the covariance-margin and both-margin variants. 
+
+Margin Feasibility. Next, to determine desired nominal capture allowance, we start with each lateral position cap expressed as a requested nominal half-width βreq = bg −
+
+ρy − κ¯σd,y ; a feasible policy leaves βy ≥ βreq while satisfying the command-variance limits. We examine how the lateral position requirement and roll-command variability limit constrain one another in the offline design. Figure 3(a) re-solves (19) across these limits, keeping the estimator allowance, uncertainty inputs, objective, and remaining con-straints fixed. At a 2.1◦ roll-command SD limit, a 3-cm request is compatible whereas a 5-cm request is not; the 0.32 1 2 3 5 8           
+
+> Requested nominal half-width βreq [cm]
+> 3.0 2.7 2.4 2.1 1.8 1.2
+> Roll-command SD limit  ̄  σu, ϕ [deg]
+> 0246810 12 14
+> Offline stage k
+> 0.0 0.2 0.4 0.6
+> Lateral SD [m]  Total Handoff Disturbance Cap Near contact
+> (a) (b)
+
+Fig. 3: (a) Compatible ( •) and incompatible ( ×) margin allocations; the outline marks the main design. (b) Lateral SD and its handoff and disturbance contributions under the corresponding auxiliary policy, with the cap applied over Kc (shaded). 
+
+latter becomes compatible at 2.4◦.3 The outlined cell marks the main configuration evaluated in the docking. Figure 3(b) separates the handoff and disturbance contributions under the main-design gains. We propagate the handoff covariance without process noise and the disturbance contribution from zero initial covariance; their covariances sum to the total. The handoff contribution decays under the auxiliary closed-loop control, whereas disturbance-driven variance accumulates along the approach and dominates near contact. 4
+
+C. Closed-Loop Docking Evaluation 
+
+Each trial includes the DGPS-guided approach and tran-sition to vision-aided docking, so the MPC starts from the handoff state delivered by the approach controller. Runs begin 90–110 m behind the tanker, with offsets up to ±15 m laterally and ±8 m vertically. Handoff requires remaining within ±2.0 m axially of the nominal 20-ft station with closing speed above 0.1 m/s for 1 s. Station-target offsets are sampled uniformly within ±0.8 m laterally and 
+
+±0.4 m vertically, yielding actual handoff offsets up to 1.5 and 0.6 m, respectively. Docking terminates if range exceeds its handoff value by more than 3 m for over 2 s. We evaluate four controller variants with 50 runs per variant on identical target-offset and drogue-disturbance seed pairs. All variants share the estimator, dynamics, costs, reference corrections, and physical command limits. Nominal MPC uses no uncertainty margins; estimator margin adds only ρ; covariance margins add κσ d and the command margins; and both margins is the combined controller. The corresponding terminal half-widths are reported in Section V-B. At the first basket-plane crossing, let dy,c and dz,c denote the true lateral and vertical probe-to-drogue displacements in the level approach frame. The planar crossing error is   
+
+> 3We solve (19) with SD limits reduced by 0.01% to allow for numerical error. Compatible pairs satisfy the original limits after covariance prop-agation; incompatible pairs have verified infeasibility certificates for the tightened limits.
+> 4The same feasibility and covariance-decomposition analyses can be applied to vertical alignment and pitch-command variability.
+
+TABLE II: Crossing accuracy and roll-command effort (50 runs per variant). P90 is the empirical 90th percentile. 
+
+Variant Centered Median 
+
+ec [m] P90 
+
+ec [m] Lateral bias [m] Roll RMS [deg] Nominal MPC 34/50 0.231 0.403 −0.180 0.22 
+
+Estimator margin 38/50 0.230 0.373 −0.141 0.25 Covariance margins 43/50 0.176 0.304 −0.042 0.33 Both margins 45/50 0.175 0.286 +0.014 0.48 −0.5 0 0.5 −0.5 00.5          
+
+> Nominal MPC (34/50)
+> −0.5 00.5
+> Estimator margin (38/50)
+> −0.5 00.5
+> Covariance margins (43/50)
+> −0.5 00.5
+> Both margins (45/50)
+> Vertical  dz, c [m] Lateral dy,c[m]
+
+Fig. 4: Main-campaign basket-plane crossings, with 50 runs per variant. The solid 0.55-m circle marks the rim, and the dashed 0.30-m circle marks the centered criterion. Dots and crosses denote centered and outer-annulus crossings, and + marks the mean. 
+
+ec =
+
+q
+
+d2 
+
+> y,c
+
++ d2
+
+> z,c
+
+. A crossing is centered for ec ≤ 0.30 mand lies in the outer annulus for 0.30 < e c ≤ 0.55 m. 
+
+Crossing Accuracy and Command Activity. With tracking costs fixed, MPC with both margins achieved the highest centered-crossing count and lowest median and P90 error among the four variants (Table II and Fig. 4). Covariance-derived margins account for most of the improvement in median crossing error, reducing it from 0.231 m to 0.176 m. Adding the conformal estimator allowance changes the me-dian only marginally, but further reduces the empirical P90 from 0.304 m to 0.286 m and increases centered crossings from 43 /50 to 45 /50 . This suggests that the operational-uncertainty margins primarily improve nominal centering, while the estimator allowance provides additional robustness in the upper tail. The combined controller also exhibits substantially smaller empirical lateral bias: the mean lateral crossing error shifted from −0.180 m for nominal MPC to 0.014 m with both margins. This improvement came with greater roll-command RMS, increasing from 0.22 ◦ for nominal MPC to 0.48 ◦ with both margins. Figure 5(a) shows trajectories with both margins on the offline covariance envelope, showing convergence toward the basket from varied handoff offsets. Figure 5(b) shows similar roll activity near handoff but sustained higher activity with both margins near contact, indicating that the additional effort is concentrated in final alignment. 
+
+Runtime and Solver Outcomes. Offline covariance uncer-tainty quantification required 5.3 s on average, while online MPC, including QP construction and solution, took a median of 24 ms and a maximum of 126 ms, below the 250 ms target update period. All online QPs returned an optimal status, and all logged terminal alignment slacks were zero. 6420
+
+Axial dx [m] −1 0 1
+
+Lateral dy [m]        
+
+> −0.5 00.5
+> Vertical  dz [m] Offline covariance envelope ±κσ d,j,k
+> Rim 54321
+
+Axial dx [m] 
+
+> 0.0 0.5 1.0
+> Roll RMS [deg]  Nominal MPC Estimator margin Covariance margins Both margins
+
+(a) (b) Fig. 5: (a) Approach trajectories with margins overlaid on the offline covariance envelope. The envelope visualizes the offline covariance design and is not a probabilistic tube for the executed MPC trajectories. (b) Roll-command RMS relative to trim, binned by axial distance for all four variants. 
+
+VI. C ONCLUSION AND FUTURE WORK 
+
+We presented a vision-based docking architecture that translates estimation and operational uncertainty into geo-metric and control input margins. Conformal calibration pro-vides the estimator allowance, while covariance uncertainty quantification provides the position dispersion along with the control input margins required to counter the operational uncertainty. This provides a principled basis for incorporating uncertainty bounds and corresponding control input margins while retaining a deterministic MPC. The high-fidelity ex-periments demonstrate that the proposed controller achieved 45/50 centered crossings versus 34/50 for nominal MPC. Future work will extend conformal calibration to trajectory-wide uncertainty tubes for planning within a corri-dor of autonomy [3]. and integrate L1 adaptive control [39] for improved transient response and disturbance rejection. ACKNOWLEDGMENT 
+
+The authors used Claude Opus 5 for code implementation assistance and OpenAI GPT-6 for manuscript editing. All research design, experiments, validation, and interpretation were independently developed and verified by the authors. REFERENCES [1] J. Ren and Q. Quan, “Progress in modeling and control of probe-and-drogue autonomous aerial refueling,” Chin. J. Aeronaut. , vol. 37, no. 5, pp. 6–26, 2024. [2] J. Ren, X. Dai, Q. Quan, Z.-B. Wei, and K.-Y. Cai, “Reliable docking control scheme for probe–drogue refueling,” J. Guid. Control Dyn. ,vol. 42, no. 11, pp. 2511–2520, 2019. [3] D. Costello and R. Adams, “A framework for airworthiness certifica-tion of autonomous systems within United States Naval Aviation,” J. Aviation , vol. 7, no. 1, pp. 7–16, 2023. [4] C. Mart´ ınez, T. Richardson, P. Thomas, J. L. du Bois, and P. Campoy, “A vision-based strategy for autonomous aerial refueling tasks,” Robot. Auton. Syst. , vol. 61, no. 8, pp. 876–895, 2013. [5] Y. Ma, R. Zhao, E. Liu, Z. Zhang, and K. Yan, “A novel autonomous aerial refueling drogue detection and pose estimation method based on monocular vision,” Measurement , vol. 136, pp. 132–142, 2019. [6] V. Vovk, A. Gammerman, and G. Shafer, Algorithmic Learning in a Random World . New York, NY, USA: Springer, 2005. [7] A. N. Angelopoulos, R. F. Barber, and S. Bates, “Theoretical founda-tions of conformal prediction,” arXiv:2411.11824, 2024. [8] R. F. Barber, E. J. Cand` es, A. Ramdas, and R. J. Tibshirani, “Confor-mal prediction beyond exchangeability,” Ann. Statist. , vol. 51, no. 2, pp. 816–845, 2023. [9] K. Okamoto, M. Goldshtein, and P. Tsiotras, “Optimal covariance control for stochastic systems under chance constraints,” IEEE Control Syst. Lett. , vol. 2, no. 2, pp. 266–271, 2018. [10] F. Liu, G. Rapakoulias, and P. Tsiotras, “Optimal covariance steer-ing for discrete-time linear stochastic systems,” IEEE Trans. Autom. Control , vol. 70, no. 4, pp. 2289–2304, 2025. [11] G. Rapakoulias and P. Tsiotras, “Discrete-time optimal covariance steering via semidefinite programming,” in Proc. IEEE Conf. Decis. Control (CDC) , Singapore, 2023, pp. 1802–1807. [12] M. Mammarella, G. Campa, M. R. Napolitano, M. L. Fravolini, Y. Gu, and M. G. Perhinschi, “Machine vision/GPS integration using EKF for the UAV aerial refueling problem,” IEEE Trans. Syst., Man, Cybern. C, Appl. Rev. , vol. 38, no. 6, pp. 791–801, 2008. [13] D. T. Johnson, S. L. Nykl, and J. F. Raquet, “Combining stereo vision and inertial navigation for automated aerial refueling,” J. Guid. Control Dyn. , vol. 40, no. 9, pp. 2250–2259, 2017. [14] S. Wen, Y. Gao, B. Hu, Z. Luo, Z. Wei, and G. Zhang, “AARPose: Real-time and accurate drogue pose measurement based on monocular vision for autonomous aerial refueling,” Chin. J. Aeronaut. , vol. 38, no. 6, 2025, Art. no. 103307. [15] L. Wagner, D. H. Costello, III, and V. Mwaffo, “Towards autonomous aerial refueling using deep neural networks/Unscented Kalman Filter models,” J. Guid. Control Dyn. , vol. 49, no. 4, pp. 1243–1251, 2026. [16] M. D. Tandale, R. Bowers, and J. Valasek, “Trajectory tracking con-troller for vision-based probe and drogue autonomous aerial refueling,” 
+
+J. Guid. Control Dyn. , vol. 29, no. 4, pp. 846–857, 2006. [17] J. Wang, N. Hovakimyan, and C. Cao, “Verifiable adaptive flight control: Unmanned combat aerial vehicle and aerial refueling,” J. Guid. Control Dyn. , vol. 33, no. 1, pp. 75–87, 2010. [18] D. Jayarathne, S. Paternain, and S. Mishra, “Autonomous helicopter aerial refueling: controller design and performance guarantees,” in 
+
+2025 American Control Conference (ACC) , 2025, pp. 959–964. [19] B. Hang, P. Guo, S. Yan, and B. Xu, “Robust docking control and safety evaluation of autonomous aerial refueling for unmanned aerial vehicles,” Journal of the Franklin Institute , vol. 362, no. 10, p. 107736, 2025. [20] J. Ren, J. Du, B. Xu, Y. Chen, and Z. Li, “Multi-degree-of-freedom reliable docking control for probe-and-drogue autonomous aerial re-fueling,” Aerospace Science and Technology , p. 111086, 2025. [21] Y. Liu, H. Wang, and J. Fan, “Docking safety assessment and op-timization for autonomous aerial refueling: A data-driven method,” 
+
+IEEE Syst. J. , vol. 15, no. 3, pp. 4057–4068, 2021. [22] H. Yang and M. Pavone, “Object pose estimation with statistical guarantees: Conformal keypoint detection and geometric uncertainty propagation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recogn. (CVPR) , 2023, pp. 8947–8958. [23] S. Yang, G. J. Pappas, R. Mangharam, and L. Lindemann, “Safe perception-based control under stochastic sensor uncertainty using conformal prediction,” in Proc. IEEE Conf. Decision and Control (CDC) , Singapore, 2023, pp. 6072–6078. [24] L. Lindemann, M. Cleaveland, G. Shim, and G. J. Pappas, “Safe planning in dynamic environments using conformal prediction,” IEEE Robot. Autom. Lett. , vol. 8, no. 8, pp. 5116–5123, 2023. [25] A. Dixit, L. Lindemann, S. X. Wei, M. Cleaveland, G. J. Pappas, and J. W. Burdick, “Adaptive conformal prediction for motion planning among dynamic agents,” in Proc. Learn. Dyn. Control Conf. (L4DC) ,ser. Proceedings of Machine Learning Research, vol. 211, 2023, pp. 300–314. [26] A. Gahlawat, V. Khatana, D. Wang, S. H. Karumanchi, N. Hov-akimyan, and P. Voulgaris, “Wasserstein distributionally robust adap-tive covariance steering,” in 2025 IEEE 64th Conference on Decision and Control (CDC) , 2025, pp. 4845–4850. [27] H. Baruh, Analytical dynamics , ser. McGraw-Hill international edi-tions. WCB/McGraw-Hill, 1999. [28] J. Diebel, “Representing attitude: Euler angles, unit quaternions, and rotation vectors,” Matrix , vol. 58, no. 15-16, pp. 1–35, 2006. [29] G. Jocher and J. Qiu, “Ultralytics YOLO11,” 2024. [Online]. Available: https://github.com/ultralytics/ultralytics [30] F. L. Lewis, Optimal Estimation: With an Introduction to Stochastic Control Theory . New York, NY, USA: Wiley, 1986. [31] P. C. Mahalanobis, “On the generalized distance in statistics,” Pro-ceedings of the National Institute of Sciences of India , vol. 2, no. 1, pp. 49–55, 1936. [32] A. N. Angelopoulos and S. Bates, “Conformal prediction: A gentle introduction,” Foundations and Trends in Machine Learning , vol. 16, no. 4, pp. 494–591, 2023. [33] C. F. Van Loan, “Computing integrals involving the matrix exponen-tial,” IEEE Trans. Autom. Control , vol. 23, no. 3, pp. 395–404, Jun. 1978. [34] J. S. Berndt, “JSBSim: An open source flight dynamics model in C++,” in AIAA Modeling and Simulation Technologies Conference and Exhibit , Providence, RI, USA, 2004, AIAA Paper 2004-4923. [35] P. J. Goulart and Y. Chen, “Clarabel: An interior-point solver for conic programs with quadratic objectives,” Math. Program. Comput. , 2026, published online May 21, 2026. [36] R. P. Dibley, M. J. Allen, and N. Nabaa, “Autonomous airborne refueling demonstration phase I flight-test results,” in Proc. AIAA Atmospheric Flight Mechanics Conf. Exhibit , Hilton Head, SC, USA, 2007, AIAA Paper 2007-6639. [37] D. T. Gillespie, “Exact numerical simulation of the Ornstein– Uhlenbeck process and its integral,” Phys. Rev. E , vol. 54, no. 2, pp. 2084–2091, 1996. [38] R. E. Kalman et al. , “Contributions to the theory of optimal control,” 
+
+Bol. soc. mat. mexicana , vol. 5, no. 2, pp. 102–119, 1960. [39] N. Hovakimyan and C. Cao, L1 Adaptive Control Theory: Guaranteed Robustness with Fast Adaptation . SIAM, 2010.
